@@ -288,7 +288,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 //      ws_connected = false;
 //      ws_conn = NULL;
 //      update_connection_button(false, conn_button);
-      event_emit("http.disconnected", NULL, NULL);
+      event_emit("goodbye", NULL, NULL);
 // XXX: readd this
 //      userlist_clear_all();
    }

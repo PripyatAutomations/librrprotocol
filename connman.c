@@ -120,7 +120,7 @@ bool rrproto_disconnect_server(const char *server) {
    }
 #endif
    ws_connected = false;
-   event_emit("http.disconnected", NULL, NULL);
+   event_emit("goodbye", NULL, NULL);
    userlist_clear_all();
 
    return false;
@@ -150,7 +150,7 @@ bool rrproto_connect_server(const char *server) {
       return true;
    }
    ws_connected = true;
-   event_emit("http.connected", NULL, NULL);
+   event_emit("connected", NULL, NULL);
 #else
    // No mongoose transport available; emit event for higher-level code to
    // handle

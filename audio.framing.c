@@ -86,9 +86,10 @@ int listen_shm_socket(const char *path) {
 
 // in your WS handler:
 static int shmfd_out = -1;
-if (shmfd_out < 0) {
+if ((shmfd_out < 0)) {
    shmfd_out = listen_shm_socket("/tmp/rrws-audio-out");
 }
+
 if ( wm->data.len >= sizeof(rrws_frame_header_t) ) {
    rrws_frame_header_t fh;
    memcpy(&fh, wm->data.ptr, sizeof fh);

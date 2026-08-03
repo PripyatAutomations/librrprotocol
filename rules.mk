@@ -5,6 +5,7 @@ libs += ${librrprotocol}
 librrprotocol_objs += auth.o
 #librrprotocol_objs += auth.hash.o
 librrprotocol_objs += codecneg.o
+librrprotocol_objs += cfg.servers.o
 librrprotocol_objs += http.o
 librrprotocol_objs += irc.o
 librrprotocol_objs += irc.capab.o

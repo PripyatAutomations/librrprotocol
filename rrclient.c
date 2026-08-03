@@ -8,17 +8,12 @@
 #include <time.h>
 #include <librustyaxe/core.h>
 #include <librustyaxe/event-bus.h>
-#include <librrprotocol/rrclient.h>
 #include <librrprotocol/rrprotocol.h>
-
-#if defined(USE_MONGOOSE)
-#include "ext/libmongoose/mongoose.h"
+#include <librrprotocol/rrclient.h>
 extern struct mg_mgr mgr;
 struct mg_connection *ws_conn = NULL;
 bool ws_connected = false;
-//char session_token[HTTP_TOKEN_LEN+1] = {0};
 extern char session_token[HTTP_TOKEN_LEN + 1];
-
 const char *login_user = NULL;
 
 const char *get_server_property(const char *server, const char *prop) {
@@ -87,7 +82,7 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
       }
    } else if (ev == MG_EV_WS_OPEN) {
       ws_connected = true;
-      event_emit("http.connected", NULL, NULL);
+      event_emit("connected", NULL, NULL);
       tui_print_win(tui_window_find("status"), "Connected to server");
 
       login_user = cfg_get_exp("server.user");
@@ -102,7 +97,7 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
       }
    } else if (ev == MG_EV_CLOSE) {
       ws_connected = false;
-      event_emit("http.disconnected", NULL, NULL);
+      event_emit("goodbye", NULL, NULL);
       tui_print_win(tui_window_find("status"), "Disconnected from server");
    }
 }
@@ -155,7 +150,6 @@ bool rrclient_disconnect(void) {
 void rrclient_poll_events(void) {
    mg_mgr_poll(&mgr, 0);
 }
-#endif
 
 bool rrclient_autoconnect(void) {
    const char *server = cfg_get_exp("server.auto-connect");
