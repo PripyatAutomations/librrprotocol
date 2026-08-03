@@ -1,6 +1,7 @@
 //
 // vfo.c
-// 	This is part of rustyrig-fw. https://github.com/pripyatautomations/rustyrig-fw
+//    This is part of rustyrig-fw.
+// https://github.com/pripyatautomations/rustyrig-fw
 //
 // Do not pay money for this, except donations to the project, if you wish to.
 // The software is not for sale. It is freely available, always.
@@ -38,6 +39,7 @@ static const char vfo_mode_ft8[] = "FT8";
 // This should be called by CAT to set the backend appropriately
 bool set_vfo_frequency(rr_vfo_type_t vfo_type, uint32_t input, float freq) {
    Log(LOG_INFO, "vfo", "Setting VFO (type: %d) input #%d to %f", vfo_type, input, freq);
+
    // We should call into the backend here to set the frequency
    return true;
 }
@@ -45,52 +47,65 @@ bool set_vfo_frequency(rr_vfo_type_t vfo_type, uint32_t input, float freq) {
 rr_vfo_t vfo_lookup(const char vfo) {
    rr_vfo_t c_vfo;
 
-   switch(vfo) {
-      case 'A':
+   switch (vfo) {
+      case 'A': {
          c_vfo = VFO_A;
          break;
-      case 'B':
+      }
+      case 'B': {
          c_vfo = VFO_B;
          break;
-      case 'C':
+      }
+      case 'C': {
          c_vfo = VFO_C;
          break;
-      case 'D':
+      }
+      case 'D': {
          c_vfo = VFO_D;
          break;
-      case 'E':
+      }
+      case 'E': {
          c_vfo = VFO_E;
          break;
-      default:
+      }
+      default: {
          c_vfo = VFO_NONE;
          break;
+      }
    }
 
    return c_vfo;
 }
 
 const char *vfo_name(rr_vfo_t vfo) {
-   switch(vfo) {
-      case VFO_A:
+   switch (vfo) {
+      case VFO_A: {
          return "A";
          break;
-      case VFO_B:
+      }
+      case VFO_B: {
          return "B";
          break;
-      case VFO_C:
+      }
+      case VFO_C: {
          return "C";
          break;
-      case VFO_D:
+      }
+      case VFO_D: {
          return "D";
          break;
-      case VFO_E:
+      }
+      case VFO_E: {
          return "E";
          break;
+      }
       case VFO_NONE:
-      default:
+      default: {
          return "*";
          break;
+      }
    }
+
    return "*";
 }
 
@@ -108,9 +123,11 @@ rr_mode_t vfo_parse_mode(const char *mode) {
       return MODE_DSB;
    } else if (strcasecmp(mode, vfo_mode_fm) == 0) {
       return MODE_FM;
-   } else if (strcasecmp(mode, vfo_mode_dl) == 0 || strcasecmp(mode, "dl") == 0 || strcasecmp(mode, "PKTLSB") == 0) {
+   } else if (strcasecmp(mode, vfo_mode_dl) == 0 || strcasecmp(mode, "dl") == 0 || strcasecmp(mode,
+      "PKTLSB") == 0) {
       return MODE_DL;
-   } else if (strcasecmp(mode, vfo_mode_du) == 0 || strcasecmp(mode, "du") == 0 || strcasecmp(mode, "PKTUSB") == 0) {
+   } else if (strcasecmp(mode, vfo_mode_du) == 0 || strcasecmp(mode, "du") == 0 || strcasecmp(mode,
+      "PKTUSB") == 0) {
       return MODE_DU;
    } else if (strcasecmp(mode, vfo_mode_ft4) == 0) {
       return MODE_FT4;
@@ -118,81 +135,90 @@ rr_mode_t vfo_parse_mode(const char *mode) {
       return MODE_FT8;
    }
    Log(LOG_DEBUG, "vfo", "vfo_parse_mode: Couldn't parse %s, returning MODE_NONE", mode);
+
    return MODE_NONE;
 }
 
 const char *vfo_mode_name(rr_mode_t mode) {
    const char *rv = NULL;
 
-   switch(mode) {
-      case MODE_CW:
+   switch (mode) {
+      case MODE_CW: {
          rv = vfo_mode_cw;
          break;
-      case MODE_AM:
+      }
+      case MODE_AM: {
          rv = vfo_mode_am;
          break;
-      case MODE_LSB:
+      }
+      case MODE_LSB: {
          rv = vfo_mode_lsb;
          break;
-      case MODE_USB:
+      }
+      case MODE_USB: {
          rv = vfo_mode_usb;
          break;
-      case MODE_DSB:
+      }
+      case MODE_DSB: {
          rv = vfo_mode_dsb;
          break;
-      case MODE_FM:
+      }
+      case MODE_FM: {
          rv = vfo_mode_fm;
          break;
-      case MODE_DL:
+      }
+      case MODE_DL: {
          rv = vfo_mode_dl;
          break;
-      case MODE_DU:
+      }
+      case MODE_DU: {
          rv = vfo_mode_du;
          break;
-      case MODE_FT4:
+      }
+      case MODE_FT4: {
          rv = vfo_mode_ft4;
          break;
-      case MODE_FT8:
+      }
+      case MODE_FT8: {
          rv = vfo_mode_ft8;
          break;
+      }
       case MODE_NONE:
-      default:
+      default: {
          rv = vfo_mode_none;
          break;
+      }
    }
+
    return rv;
 }
 
 long parse_freq(const char *str) {
-   while (isspace(*str)) {
+   while ( isspace(*str) ) {
       str++;
    }
-
    char *end = NULL;
    double val = strtod(str, &end);
 
-   while (isspace(*end)) {
+   while ( isspace(*end) ) {
       end++;
    }
-
    // If no suffix provided, guess unit
    if (*end == '\0') {
       // Count digits before any decimal point
       const char *dot = strchr(str, '.');
       int digits = dot ? (dot - str) : strlen(str);
-
       if (digits >= 3 && digits <= 5) {
-         return (long)(val * 1e3); // assume kHz
+         return (long)(val * 1e3);  // assume kHz
       } else {
-         return (long)val;         // assume Hz
+         return (long)val;          // assume Hz
       }
    } else if (*end == 'k' || *end == 'K') {
       return (long)(val * 1e3);
    } else if (*end == 'm' || *end == 'M') {
       return (long)(val * 1e6);
    }
-
-   return -1; // invalid format
+   return -1;  // invalid format
 }
 
 const char *format_freq(long hz, char *buf, size_t len) {

@@ -1,11 +1,12 @@
-//      This is part of rustyrig-fw. https://github.com/pripyatautomations/rustyrig-fw
+//      This is part of rustyrig-fw.
+// https://github.com/pripyatautomations/rustyrig-fw
 //
 // Do not pay money for this, except donations to the project, if you wish to.
 // The software is not for sale. It is freely available, always.
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
-#if	!defined(__irc_parser_h)
-#define	__irc_parser_h
+#if     !defined(__irc_parser_h)
+#define __irc_parser_h
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,5 +40,4 @@ extern bool irc_register_default_numeric_callbacks(void);
 // XXX: this belongs elsewhere but where?
 extern bool irc_set_conn_pool(rrlist_t *conn_list);
 
-#endif	// !defined(__irc_parser_h)
-
+#endif // !defined(__irc_parser_h)

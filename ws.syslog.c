@@ -1,6 +1,7 @@
 //
 // rrclient/ws.syslog.c
-// 	This is part of rustyrig-fw. https://github.com/pripyatautomations/rustyrig-fw
+//    This is part of rustyrig-fw.
+// https://github.com/pripyatautomations/rustyrig-fw
 //
 // Do not pay money for this, except donations to the project, if you wish to.
 // The software is not for sale. It is freely available, always.
@@ -18,26 +19,24 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-extern dict *cfg;		// config.c
+extern dict *cfg;                // config.c
 extern time_t now;
 
-#if	defined(USE_MONGOOSE)
+#if     defined(USE_MONGOOSE)
 bool ws_handle_syslog_msg(struct mg_connection *c, dict *d) {
    bool rv = false;
-
    if (!c || !d) {
       Log(LOG_WARN, "http.ws", "syslog_msg: got d:<%p> mg_conn:<%p>", d, c);
+
       return true;
    }
-
    char ip[INET6_ADDRSTRLEN];
    int port = c->rem.port;
    if (c->rem.is_ip6) {
-      inet_ntop(AF_INET6, c->rem.addr.ip6, ip, sizeof(ip));
+      inet_ntop( AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
    } else {
-      inet_ntop(AF_INET, &c->rem.addr.ip4, ip, sizeof(ip));
+      inet_ntop( AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
    }
-
    char *ts = dict_get(d, "syslog.ts", NULL);
    char *prio = dict_get(d, "syslog.prio", NULL);
    char *subsys = dict_get(d, "syslog.subsys", NULL);
@@ -45,24 +44,24 @@ bool ws_handle_syslog_msg(struct mg_connection *c, dict *d) {
    char my_timestamp[64];
    time_t t;
    struct tm *tmp;
-   memset(my_timestamp, 0, sizeof(my_timestamp));
+   memset( my_timestamp, 0, sizeof(my_timestamp) );
    t = time(NULL);
-
-   if ((tmp = localtime(&t))) {
+   if ( ( tmp = localtime(&t) ) ) {
       // success, proceed
       if (strftime(my_timestamp, sizeof(my_timestamp), "%Y/%m/%d %H:%M:%S", tmp) == 0) {
-         // handle the error 
-         memset(my_timestamp, 0, sizeof(my_timestamp));
-         snprintf(my_timestamp, sizeof(my_timestamp), "<%ld>", (long)time(NULL));
+         // handle the error
+         memset( my_timestamp, 0, sizeof(my_timestamp) );
+         snprintf( my_timestamp, sizeof(my_timestamp), "<%ld>", (long)time(NULL) );
       }
    }
-
    logpriority_t log_priority = log_priority_from_str(prio);
 
    Log(LOG_DEBUG, "server.syslog", "remote syslog: <%s.%s> %s", subsys, prio, data);
+
 // XXX: readd this
-//   log_print(log_priority, subsys, "[%s] <%s.%s> %s", my_timestamp, subsys, prio, data);
+//   log_print(log_priority, subsys, "[%s] <%s.%s> %s", my_timestamp, subsys,
+// prio, data);
    return false;
 }
 
-#endif	// defined(USE_MONGOOSE)
+#endif // defined(USE_MONGOOSE)

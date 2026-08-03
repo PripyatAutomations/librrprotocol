@@ -1,6 +1,7 @@
 //
 // ws.audio.c
-// 	This is part of rustyrig-fw. https://github.com/pripyatautomations/rustyrig-fw
+//    This is part of rustyrig-fw.
+// https://github.com/pripyatautomations/rustyrig-fw
 //
 // Do not pay money for this, except donations to the project, if you wish to.
 // The software is not for sale. It is freely available, always.
@@ -23,7 +24,7 @@
 extern time_t now;
 extern bool ws_connected;
 //extern struct mg_connection *ws_conn;
-extern char *negotiated_codecs; 		// ws.c
+extern char *negotiated_codecs;                  // ws.c
 
 bool ws_audio_init(void) {
    // Initialize optional GStreamer-based audio support. If GStreamer is not
@@ -35,44 +36,41 @@ bool ws_select_codec(struct mg_connection *c, const char *codec, bool is_tx) {
    if (!c || !codec) {
       return true;
    }
-
-   const char *jp = dict2json_mkstr(
-      VAL_STR, "media.cmd", "codec",
-      VAL_STR, "media.codec", codec,
-      VAL_STR, "media.channel", (is_tx ? "tx" : "rx"));		// XXX: replace this with UUIDs
+   const char *jp = dict2json_mkstr( VAL_STR, "media.cmd", "codec", VAL_STR, "media.codec", codec,
+      VAL_STR, "media.channel", (is_tx ? "tx" : "rx") );        // XXX: replace
+                                                                // this with
+                                                                // UUIDs
    Log(LOG_DEBUG, "ws.audio", "Send %s codec selection: %s", (is_tx ? "TX" : "RX"), jp);
    mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-   free((char *)jp);
+   free( (char *)jp );
 
    return false;
 }
 
 static bool is_in_array(const uint32_t *arr, size_t len, uint32_t id) {
-   for (size_t i = 0; i < len; i++) {
+   for (size_t i = 0 ; i < len ; i++) {
       if (arr[i] == id) {
          return true;
       }
    }
-
    return false;
 }
-extern struct GlobalState rig;	// Global state
+extern struct GlobalState rig;   // Global state
 
 // Send to all users subscribed to this channel #
 void au_send_to_ws(const void *data, size_t len, int channel) {
-   struct mg_str msg = mg_str_n((const char *)data, len);
+   struct mg_str msg = mg_str_n( (const char *)data, len );
    ws_broadcast(NULL, &msg, WEBSOCKET_OP_BINARY);
 
    struct mg_connection *c;
    http_client_t *current = http_client_list;
    while (current) {
-      if (current && (current->is_ws && current->authenticated)) {
+      if ( current && (current->is_ws && current->authenticated) ) {
          struct mg_connection *c = current->conn;
-
          if (c->is_websocket) {
             // Is this in the the array?
-            if (is_in_array(current->rx_channels, MAX_RX_CHANNELS, channel) ||
-                is_in_array(current->tx_channels, MAX_TX_CHANNELS, channel)) {
+            if ( is_in_array(current->rx_channels, MAX_RX_CHANNELS, channel) ||
+                 is_in_array(current->tx_channels, MAX_TX_CHANNELS, channel) ) {
                mg_ws_send(c, data, len, WEBSOCKET_OP_BINARY);
             }
          }
@@ -84,12 +82,14 @@ void au_send_to_ws(const void *data, size_t len, int channel) {
 // Find an existing channel
 u_int32_t au_find_channel(const char codec[5], bool tx) {
    u_int32_t ret = 0;
+
    return ret;
 }
 
 // Create's a new channel
 u_int32_t au_create_channel(const char codec[5], bool tx) {
    u_int32_t ret = 0;
+
    return ret;
 }
 

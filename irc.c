@@ -1,6 +1,7 @@
 //
 // irc.c
-// 	This is part of rustyrig-fw. https://github.com/pripyatautomations/rustyrig-fw
+//    This is part of rustyrig-fw.
+// https://github.com/pripyatautomations/rustyrig-fw
 //
 // Do not pay money for this, except donations to the project, if you wish to.
 // The software is not for sale. It is freely available, always.
@@ -21,30 +22,30 @@
 #include <librrprotocol/rrprotocol.h>
 
 bool irc_init(void) {
-   // XXX: These need to go into the irc_init() or irc_client_init/irc_server_init functions as appropriate!
+   // XXX: These need to go into the irc_init() or
+   // irc_client_init/irc_server_init functions as appropriate!
    irc_register_default_callbacks();
    irc_register_default_numeric_callbacks();
+
    return false;
 }
 
 //
-// This will create a dict containing various things which we'll allow substituting
+// This will create a dict containing various things which we'll allow
+// substituting
 dict *irc_generate_vars(irc_conn_t *cptr, const char *chan) {
    dict *d = dict_new();
-
    if (!d) {
       Log(LOG_CRIT, "irc", "OOM in irc_generate_vars");
+
       return NULL;
    }
-
    if (cptr) {
       dict_add(d, "nick", cptr->nick);
    }
-
    if (chan) {
       dict_add(d, "chan", (char *)chan);
    }
-
    return d;
 }
 
@@ -52,34 +53,29 @@ static void irc_try_send(irc_conn_t *cptr) {
    if (!cptr || cptr->fd <= 0) {
       return;
    }
-
    size_t len = 0;
    char *p = cptr->sendq;
 
    // find how much of sendq is complete messages ending with \r\n
-   while ((p = strstr(p, "\r\n"))) {
+   while ( ( p = strstr(p, "\r\n") ) ) {
       len = (p - cptr->sendq) + 2;
       p += 2;
    }
-
    if (len == 0) {
       return;
    }
-
    ssize_t n = send(cptr->fd, cptr->sendq, len, 0);
-   Log(LOG_CRIT, "irc", "send(%d) to cptr:<%p>: %d bytes: %.*s",
-       cptr->fd, cptr, (int)n, (int)len, cptr->sendq);
-
+   Log(LOG_CRIT, "irc", "send(%d) to cptr:<%p>: %d bytes: %.*s", cptr->fd, cptr, (int)n, (int)len,
+      cptr->sendq);
    if (n < 0) {
       if (errno != EAGAIN && errno != EWOULDBLOCK) {
-         Log(LOG_CRIT, "irc", "send failed: %s", strerror(errno));
+         Log( LOG_CRIT, "irc", "send failed: %s", strerror(errno) );
          close(cptr->fd);
          cptr->connected = false;
       }
       return;
    }
-
-   if ((size_t)n < len) {
+   if ( (size_t)n < len ) {
       // partial send, move remaining to front
       memmove(cptr->sendq, cptr->sendq + n, len - n);
       cptr->sendq[len - n] = '\0';
@@ -98,7 +94,6 @@ bool irc_send(irc_conn_t *cptr, const char *fmt, ...) {
    if (!cptr || !fmt || cptr->fd <= 0) {
       return false;
    }
-
    char msg[512];
    va_list ap;
    va_start(ap, fmt);
@@ -108,9 +103,9 @@ bool irc_send(irc_conn_t *cptr, const char *fmt, ...) {
    size_t msglen = strlen(msg);
    if (msglen + 2 + strlen(cptr->sendq) >= SENDQLEN) {
       Log(LOG_WARN, "irc", "sendq full, dropping message");
+
       return false;
    }
-
    // append message + CRLF
    size_t cur_len = strlen(cptr->sendq);
    memcpy(cptr->sendq + cur_len, msg, msglen);
@@ -121,7 +116,6 @@ bool irc_send(irc_conn_t *cptr, const char *fmt, ...) {
 
    // attempt to send immediately
    irc_try_send(cptr);
-
    // watch for EV_WRITE only if there’s still data
    if (cptr->sendq[0] != '\0') {
       ev_io_set(&cptr->io_watcher, cptr->fd, EV_READ | EV_WRITE);
@@ -129,13 +123,11 @@ bool irc_send(irc_conn_t *cptr, const char *fmt, ...) {
    } else {
       ev_io_set(&cptr->io_watcher, cptr->fd, EV_READ);
    }
-
    return true;
 }
 
 void irc_io_cb(EV_P_ ev_io *w, int revents) {
-   irc_conn_t *cptr = (irc_conn_t *)(((char*)w) - offsetof(irc_conn_t, io_watcher));
-
+   irc_conn_t *cptr = (irc_conn_t *)( ( (char*)w ) - offsetof(irc_conn_t, io_watcher) );
    if (revents & EV_READ) {
       char buf[512];
       ssize_t n = recv(cptr->fd, buf, sizeof(buf), 0);
@@ -143,9 +135,9 @@ void irc_io_cb(EV_P_ ev_io *w, int revents) {
          ev_io_stop(EV_A_ w);
          close(cptr->fd);
          cptr->connected = false;
+
          return;
       }
-
       buf[n] = '\0';
 
       // append to recvq safely
@@ -162,35 +154,32 @@ void irc_io_cb(EV_P_ ev_io *w, int revents) {
       // process complete lines
       char *start = cptr->recvq;
       char *end;
-      while ((end = strstr(start, "\r\n"))) {
+      while ( ( end = strstr(start, "\r\n") ) ) {
          *end = '\0';
          Log(LOG_DEBUG, "net", "processing line: [%s]", start);
          irc_process_message(cptr, start);
-
          // send login on first server message
          if (!cptr->sent_login) {
-            tui_print_win(tui_active_window(), "[{green}%s{reset}] {bright-cyan}***{reset} Sending login {bright-cyan}***{reset} ");
-
+            tui_print_win(tui_active_window(),
+               "[{green}%s{reset}] {bright-cyan}***{reset} Sending login {bright-cyan}***{reset} ");
             if (cptr->server->pass[0]) {
-               if (cptr->server->account[0])
+               if (cptr->server->account[0]) {
                   irc_send(cptr, "PASS %s:%s", cptr->server->account, cptr->server->pass);
-               else
+               }else {
                   irc_send(cptr, "PASS %s", cptr->server->pass);
+               }
             }
             irc_send(cptr, "NICK %s", cptr->nick);
             const char *ident = cptr->server->ident[0] ? cptr->server->ident : cptr->nick;
             irc_send(cptr, "USER %s 0 * :%s", ident, cptr->nick);
             cptr->sent_login = true;
          }
-
          start = end + 2;
       }
-
       // move leftover partial line to front
       size_t leftover = strlen(start);
       memmove(cptr->recvq, start, leftover + 1);
    }
-
    if (revents & EV_WRITE) {
       irc_try_send(cptr);
       if (strchr(cptr->sendq, '\r') == NULL) {

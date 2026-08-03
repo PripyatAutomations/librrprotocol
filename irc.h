@@ -1,11 +1,12 @@
-//      This is part of rustyrig-fw. https://github.com/pripyatautomations/rustyrig-fw
+//      This is part of rustyrig-fw.
+// https://github.com/pripyatautomations/rustyrig-fw
 //
 // Do not pay money for this, except donations to the project, if you wish to.
 // The software is not for sale. It is freely available, always.
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
-#if	!defined(__librrprotocol_irc_h)
-#define	__librrprotocol_irc_h
+#if     !defined(__librrprotocol_irc_h)
+#define __librrprotocol_irc_h
 
 #include <librustyaxe/list.h>
 
@@ -46,4 +47,4 @@ static inline char *irc_name(irc_conn_t *cptr) {
    return NULL;
 }
 
-#endif	// !defined(__librrprotocol_irc_h)
+#endif // !defined(__librrprotocol_irc_h)

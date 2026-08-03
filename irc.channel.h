@@ -1,10 +1,11 @@
-//      This is part of rustyrig-fw. https://github.com/pripyatautomations/rustyrig-fw
+//      This is part of rustyrig-fw.
+// https://github.com/pripyatautomations/rustyrig-fw
 //
 // Do not pay money for this, except donations to the project, if you wish to.
 // The software is not for sale. It is freely available, always.
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
-#if	!defined(__irc_channel_h)
+#if     !defined(__irc_channel_h)
 #define __irc_channel_h
 
 extern unsigned irc_hash_nick(const char *nick);
@@ -20,4 +21,4 @@ extern void handle_join(irc_channel_t *chan, const irc_message_t *msg);
 extern void handle_part_or_quit(irc_channel_t *chan, const irc_message_t *msg);
 extern void handle_nick_change(irc_channel_t *chan, const irc_message_t *msg);
 
-#endif	// !defined(__irc_channel_h)
+#endif // !defined(__irc_channel_h)

@@ -26,9 +26,9 @@ enum rr_conn_type {
 };
 
 struct rr_connection {
-   char                 name[256];
-   bool                 connected;
-   bool                 ptt_active;
+   char name[256];
+   bool connected;
+   bool ptt_active;
    enum rr_conn_type    *conn_type;
 #if defined(USE_MONGOOSE)
    struct mg_connection *mg_conn;
@@ -36,7 +36,7 @@ struct rr_connection {
    struct mg_connection *ws_tx_conn;
 #endif
    time_t poll_block_expire, poll_block_delay;
-   char session_token[HTTP_TOKEN_LEN+1];
+   char session_token[HTTP_TOKEN_LEN + 1];
 
    struct rr_connection *next;
 };

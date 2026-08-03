@@ -1,4 +1,5 @@
-//      This is part of rustyrig-fw. https://github.com/pripyatautomations/rustyrig-fw
+//      This is part of rustyrig-fw.
+// https://github.com/pripyatautomations/rustyrig-fw
 //
 // Do not pay money for this, except donations to the project, if you wish to.
 // The software is not for sale. It is freely available, always.
@@ -31,11 +32,11 @@ int au_shm_write(au_shm_ctx *ctx, const void *buf, size_t n);
 ////////////////////////
 struct au_channel {
    // Channel metadata
-   u_int32_t	ch_id;		// Channel ID
-   u_int32_t	ch_4cc;		// 4byte CC
+   u_int32_t ch_id;              // Channel ID
+   u_int32_t ch_4cc;             // 4byte CC
    // Channel state
-   u_int32_t	ch_subscribers;	// # of active subscribers
-   u_int32_t	ch_lastseq;	// Last sent seq number
+   u_int32_t ch_subscribers;     // # of active subscribers
+   u_int32_t ch_lastseq;         // Last sent seq number
 
    // gstreamer shm interface
    au_shm_ctx  *gst_shm;

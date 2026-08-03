@@ -1,6 +1,7 @@
 //
 // vfo.h
-// 	This is part of rustyrig-fw. https://github.com/pripyatautomations/rustyrig-fw
+//    This is part of rustyrig-fw.
+// https://github.com/pripyatautomations/rustyrig-fw
 //
 // Do not pay money for this, except donations to the project, if you wish to.
 // The software is not for sale. It is freely available, always.
@@ -11,18 +12,18 @@
 //
 // Storage and interface for Variable Frequency Oscillator objecs
 //
-#if	!defined(__rr_vfo_h)
-#define	__rr_vfo_h
+#if     !defined(__rr_vfo_h)
+#define __rr_vfo_h
 #include <stdint.h>
 #include <stdbool.h>
 
-#define	MAX_VFOS		2		// maximum VFOs
-#define	DEFAULT_TOT_TIME	300		// TOT time, if not set
+#define MAX_VFOS 2                              // maximum VFOs
+#define DEFAULT_TOT_TIME 300                    // TOT time, if not set
 
 typedef enum rr_vfo_type {
-   VFO_INVALID = 0,	// Not present
-   VFS_DDS,		// Direct Digital Synthesizer
-   VFO_EXTERNAL		// External frequency reference
+   VFO_INVALID = 0,     // Not present
+   VFS_DDS,             // Direct Digital Synthesizer
+   VFO_EXTERNAL         // External frequency reference
 } rr_vfo_type_t;
 
 enum rr_vfo {
@@ -45,21 +46,22 @@ enum rr_mode {
    MODE_FM,
    MODE_DU,
    MODE_DL,
-   MODE_FT4,			// ft8lib?
-   MODE_FT8			// ft8lib?
+   MODE_FT4,                    // ft8lib?
+   MODE_FT8                     // ft8lib?
 };
 typedef enum rr_mode rr_mode_t;
 
 struct rr_vfo_data {
-   rr_vfo_t	id;
+   rr_vfo_t id;
    rr_vfo_type_t type;
-   uint32_t	input;		// input #
-   int          width;		// width in hz
-   float        freq;		// dial frequency
-   rr_mode_t	mode;		// Mode we're TXing
-   float        power;		// power in watts
-   time_t	tx_started;
-   time_t	tot_time;	// TOT time length configured (defaults to DEFAULT_TOT_TIME)
+   uint32_t input;               // input #
+   int width;                    // width in hz
+   float freq;                   // dial frequency
+   rr_mode_t mode;               // Mode we're TXing
+   float power;                  // power in watts
+   time_t tx_started;
+   time_t tot_time;              // TOT time length configured (defaults to
+                                 // DEFAULT_TOT_TIME)
 };
 typedef struct rr_vfo_data rr_vfo_data_t;
 extern bool set_vfo_frequency(rr_vfo_type_t vfo_type, uint32_t input, float freq);
@@ -74,4 +76,4 @@ extern rr_vfo_data_t get_vfo(int vfo);
 extern rr_vfo_data_t vfos[MAX_VFOS];
 extern rr_vfo_t active_vfo;
 
-#endif	// !defined(__rr_vfo_h)
+#endif // !defined(__rr_vfo_h)
