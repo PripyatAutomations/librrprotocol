@@ -262,7 +262,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          mg_tls_init(c, &opts);
       }
       ws_connected = true;
-      event_emit("http.connected", NULL, NULL);
+      event_emit("connected", NULL, NULL);
 
       const char *login_user = get_server_property(this_server, "server.user");
       Log(LOG_DEBUG, "ws", "ev_ws_connect: server: |%s| user: |%s|", server_name, login_user);

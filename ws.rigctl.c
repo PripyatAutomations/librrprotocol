@@ -32,12 +32,8 @@ bool rr_set_mode(rr_vfo_t vfo, rr_mode_t mode) {
 
    return false;
 }
-#if     defined(USE_MONGOOSE)
-#include "ext/libmongoose/mongoose.h"
-#endif
 
 extern time_t now;
-extern struct GlobalState rig;   // Global state
 
 #define WS_RIGCTL_FORCE_INTERVAL 60                     // every 60 seconds,
                                                         // send a full update
@@ -106,6 +102,7 @@ static ws_rig_state_t *ws_rigctl_state_diff(rr_vfo_t vfo) {
 }
 
 // Save the old state then poll the rig
+// XXX: this should be throttled
 static bool ws_rig_state_poll(rr_vfo_t vfo) {
    // shortcut pointers
    ws_rig_state_t *curr = &vfo_states[vfo],
@@ -115,7 +112,7 @@ static bool ws_rig_state_poll(rr_vfo_t vfo) {
    memset( old, 0, sizeof(ws_rig_state_t) );
    memcpy( old, curr, sizeof(ws_rig_state_t) );
 
-#if     0       // XXX: Re-enable this
+#if	0
    // Poll the backend
    if (rig.backend && rig.backend->api && rig.backend->api->backend_poll) {
       rig.backend->api->backend_poll();
@@ -264,12 +261,14 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
             VAL_STR, "cat.ptt", ptt_state, VAL_STR, "cat.user", cptr->chatname, VAL_STR, "cat.vfo",
             vfo, VAL_INT, "cat.width", dp->width, VAL_LONG, "cat.ts", now);
 
+#if	defined(USE_MONGOOSE)
          struct mg_str mp = mg_str(jp);
          ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
+#endif	// use_mongoose
          free( (char *)jp );
 
-// XXX: readd this
-//         rr_ptt_set(c_vfo, c_state);
+         // Send a PTT event
+         event_emit("ptt", NULL, (void *)jp);
          free(ptt_state);
       } else if (strcasecmp(cmd, "freq") == 0) {
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
@@ -307,6 +306,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
          Log(LOG_AUDIT, "ws.cat", "User %s set VFO %s FREQ to %.0f hz", cptr->chatname, vfo,
             new_freq);
+         event_emit("cat.freq", NULL, (void *)jp);
 // XXX: Implement this as an event
 //         rr_freq_set(c_vfo, new_freq);
       } else if (strcasecmp(cmd, "mode") == 0) {
