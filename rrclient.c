@@ -53,32 +53,7 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
          } else if (pong_ts) {
             Log(LOG_CRAZY, "http.pong", "Received pong ts:%s", pong_ts);
          } else if (cmd && strcasecmp(cmd, "msg") == 0) {
-            char *from = dict_get(d, "talk.from", NULL);
-            char *data = dict_get(d, "talk.data", NULL);
-            char *msg_type = dict_get(d, "talk.msg_type", NULL);
-            char *target = dict_get(d, "talk.target", NULL);
-            time_t ts = dict_get_time_t(d, "talk.ts", now);
-
-            if (from && data) {
-               struct talk_msg_event_data {
-                  char from[128];
-                  char data[4096];
-                  char target[128];
-                  char msg_type[32];
-                  time_t ts;
-               } *tmed = calloc( 1, sizeof(*tmed) );
-
-               if (tmed) {
-                  snprintf(tmed->from, sizeof(tmed->from), "%s", from);
-                  snprintf(tmed->data, sizeof(tmed->data), "%s", data);
-                  snprintf(tmed->target, sizeof(tmed->target), "%s", target ? target : "");
-                  snprintf(tmed->msg_type, sizeof(tmed->msg_type), "%s",
-                     msg_type ? msg_type : "pub");
-                  tmed->ts = ts;
-                  event_emit("talk.msg", NULL, tmed);
-                  free(tmed);
-               }
-            }
+            event_emit_dict("talk.msg", NULL, d);
          } else if (dict_get(d, "hello", NULL) ) {
             Log(LOG_DEBUG, "ws", "Got hello from server");
          } else if (dict_get(d, "auth.cmd", NULL) ) {

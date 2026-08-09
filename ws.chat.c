@@ -19,20 +19,6 @@
 #include <librrprotocol/rrprotocol.h>
 #include <rrserver/backend.h>
 
-// XXX: Move this to rrserver's event handler for chat.msg
-//sqlite3 *masterdb = NULL;
-/*
- *  bool db_add_chat_msg(sqlite3 *db, time_t msg_ts, const char *msg_src, const
- * char *msg_dest, const char *msg_type, const char *msg_data) {
- *  (void)db;
- *  (void)msg_ts;
- *  (void)msg_src;
- *  (void)msg_dest;
- *  (void)msg_type;
- *  (void)msg_data;
- *  return false;
- *  }
- */
 
 // minimum reason length for kick/ban/etc
 #define	CHAT_MIN_REASON_LEN 10
@@ -110,6 +96,10 @@ static bool ws_chat_cmd_die(http_client_t *cptr, const char *reason) {
 #if     defined(USE_MONGOOSE)
       send_global_alert("***SERVER***", msgbuf);
 #endif
+      // Throw a shutdown event
+      event_emit("shutdown", NULL, NULL);
+
+      // XXX: This should move to the shutdown event handler?
       dying = 1;
    } else {
       ws_chat_err_noprivs(cptr, "DIE");
@@ -580,17 +570,6 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
                   // Check if this is to a local channel. If not, relay it
                   if (channel[0] != '&') {
                      // Send the message to all connected servers
-                  }
-
-// XXX: readd
-                  // Log to database, if configured
-                  if (cfg_get_bool("chat.log", false) ) {
-// XXX: move this to rrserver chat.mgs handler
-//                     bool db_res = db_add_chat_msg(masterdb, now,
-// cptr->chatname, channel, msg_type, data);
-//                     if (!db_res) {
-//                        fprintf(stderr, "db_add_chat_msg failed\n");
-//                     }
                   }
                   const char *jp = dict2json_mkstr(VAL_STR, "talk.cmd", "msg", VAL_STR, "talk.data",
                      data, VAL_STR, "talk.from", cptr->chatname, VAL_STR, "talk.target", channel,

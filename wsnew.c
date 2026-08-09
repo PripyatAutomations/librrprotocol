@@ -46,7 +46,7 @@ bool ws_msg_alert(rrconn_t *cptr, dict *msg) {
       return true;
    }
 
-   event_emit("alert", NULL, msg);
+   event_emit_dict("alert", NULL, msg);
 
    return false;
 }
@@ -64,7 +64,7 @@ bool ws_msg_cat(rrconn_t *cptr, dict *msg) {
       return true;
    }
 
-   event_emit("cat", NULL, msg);
+   event_emit_dict("cat", NULL, msg);
 
    return false;
 }
@@ -82,7 +82,7 @@ bool ws_msg_privmsg(rrconn_t *cptr, dict *msg) {
       return true;
    }
 
-   event_emit("privmsg", NULL, msg);
+   event_emit_dict("privmsg", NULL, msg);
 
    return false;
 }
@@ -101,7 +101,7 @@ bool ws_msg_syslog(rrconn_t *cptr, dict *msg) {
       return true;
    }
 
-   event_emit("syslog", cptr, msg);
+   event_emit_dict("syslog", cptr, msg);
 
    return false;
 }

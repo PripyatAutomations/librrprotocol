@@ -1,4 +1,6 @@
 [Merge]
+* auth.c / newauth.c
+
 * ws.c / ws.cli.c / wsnew.c
   - We want to make the protocol handling the same on client/server
     - Send an event with the JSON message along

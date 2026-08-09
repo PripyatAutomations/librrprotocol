@@ -55,71 +55,7 @@ bool ws_handle_talk_msg(struct mg_connection *c, dict *d) {
       }
       Log(LOG_DEBUG, "ws.talk", "UserInfo: %s has privs '%s' (TX: %s, Muted: %s, clones: %.0f)",
          user, privs, (tx ? "true" : "false"), muted, clones);
-
-      struct rr_user tmp = {
-         0
-      };
-
-      snprintf(tmp.name, sizeof(tmp.name), "%s", user);
-      snprintf(tmp.privs, sizeof(tmp.privs), "%s", privs);
-
-      if (tx) {
-         tmp.is_ptt = true;
-      }
-
-      if (muted && strcasecmp(muted, "true") == 0) {
-         tmp.is_muted = true;
-      }
-
-      if (has_privs(&tmp, "admin") ) {
-         tmp.user_flags |= FLAG_ADMIN;
-      } else if (has_privs(&tmp, "owner") ) {
-         tmp.user_flags |= FLAG_OWNER;
-      }
-
-      if (has_privs(&tmp, "muted") ) {
-         tmp.user_flags |= FLAG_MUTED;
-         tmp.is_muted = true;
-      }
-
-      if (has_privs(&tmp, "ptt") ) {
-         tmp.user_flags |= FLAG_PTT;
-      }
-
-      if (has_privs(&tmp, "subscriber") ) {
-         tmp.user_flags |= FLAG_SUBSCRIBER;
-      }
-
-      if (has_privs(&tmp, "elmer") ) {
-         tmp.user_flags |= FLAG_ELMER;
-      } else if (has_privs(&tmp, "noob") ) {
-         tmp.user_flags |= FLAG_NOOB;
-      }
-
-      if (has_privs(&tmp, "bot") ) {
-         tmp.user_flags |= FLAG_SERVERBOT;
-      }
-
-      if (has_privs(&tmp, "listener") ) {
-         tmp.user_flags |= FLAG_LISTENER;
-      }
-
-      if (has_privs(&tmp, "syslog") ) {
-         tmp.user_flags |= FLAG_SYSLOG;
-      }
-
-      if (has_privs(&tmp, "tx") ) {
-         tmp.user_flags |= FLAG_CAN_TX;
-      }
-      struct rr_user *ui_user = calloc( 1, sizeof(*ui_user) );
-
-      if (!ui_user) {
-         Log(LOG_CRIT, "ws", "OOM in ws_handle_talk_msg");
-      } else {
-         memcpy( ui_user, &tmp, sizeof(*ui_user) );
-         event_emit("http.userinfo", NULL, ui_user);
-         free(ui_user);
-      }
+      event_emit_dict("http.userinfo", NULL, d);
    } else if (cmd && strcasecmp(cmd, "msg") == 0) {
       char *from = dict_get(d, "talk.from", NULL);
       char *data = dict_get(d, "talk.data", NULL);
@@ -134,32 +70,8 @@ bool ws_handle_talk_msg(struct mg_connection *c, dict *d) {
       }
 
       if (from && data) {
-         struct talk_msg_event_data {
-            char from[128];
-            char data[4096];
-            char target[128];
-            char msg_type[32];
-            time_t ts;
-         } *tmed = calloc( 1, sizeof(*tmed) );
-
-         if (tmed) {
-            snprintf(tmed->from, sizeof(tmed->from), "%s", from);
-            snprintf(tmed->data, sizeof(tmed->data), "%s", data);
-            snprintf(tmed->target, sizeof(tmed->target), "%s", target ? target : "");
-            snprintf(tmed->msg_type, sizeof(tmed->msg_type), "%s", msg_type ? msg_type : "pub");
-            tmed->ts = ts;
-            event_emit("talk.msg", NULL, tmed);
-            free(tmed);
-         }
+         event_emit_dict("talk.msg", NULL, d);
       }
-#if     0
-      gui_window_t *win = gui_find_window(NULL, "main");
-      GtkWidget *main_window = win->gtk_win;
-
-      if (!gtk_window_is_active( GTK_WINDOW(main_window) ) ) {
-         gtk_window_set_urgency_hint(GTK_WINDOW(main_window), TRUE);
-      }
-#endif
    } else if (cmd && strcasecmp(cmd, "join") == 0) {
       char *ip = dict_get(d, "talk.ip", NULL);
       time_t ts = dict_get_time_t(d, "talk.ts", now);
@@ -167,15 +79,7 @@ bool ws_handle_talk_msg(struct mg_connection *c, dict *d) {
       if (!user || !ip) {
          goto cleanup;
       }
-      struct rr_user *cptr = calloc( 1, sizeof(struct rr_user) );
-
-      if (!cptr) {
-         fprintf(stderr, "oom in ws_handle_chat_msg?!\n");
-         goto cleanup;
-      }
-      snprintf(cptr->name, sizeof(cptr->name), "%s", user);
-      Log(LOG_DEBUG, "ws.join", "New user %s has cptr:<%p>", user, cptr);
-      event_emit("http.userjoin", NULL, cptr);
+      event_emit_dict("http.userjoin", NULL, d);
    } else if (cmd && strcasecmp(cmd, "quit") == 0) {
       char *reason = dict_get(d, "talk.reason", NULL);
 

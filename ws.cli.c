@@ -164,10 +164,11 @@ static bool ws_txtframe_dispatch(struct mg_connection *c, struct mg_ws_message *
           * parts of the system can listen to socket-level messages without
           * depending on the current in-process handlers. The existing handler
           * is still called afterwards for backward compatibility. */
-         char evname[64];
-         memset( evname, 0, sizeof(evname) );
+         char evname[64]; memset( evname, 0, sizeof(evname) );
          snprintf(evname, sizeof(evname), "ws.msg.%s", rp[i].type);
-         event_emit(evname, NULL, d);
+         const char *jp = dict2json(d);
+         event_emit(evname, NULL, jp);
+         free( (void *)jp );
 
          /* Call existing handler to preserve current behavior, then free the
           * dict. */
@@ -279,7 +280,6 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          mg_tls_init(c, &opts);
       }
       ws_connected = true;
-      event_emit("connected", NULL, NULL);
 
       const char *login_user = get_server_property(this_server, "server.user");
       Log(LOG_DEBUG, "ws", "ev_ws_connect: server: |%s| user: |%s|", server_name, login_user);
@@ -289,9 +289,11 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 
          return;
       }
+      const char *jp = dict2json_mkstr(VAL_STR, "auth.user", login_user, VAL_STR, "auth.server", server_name);
+      event_emit("connected", NULL, (char *)jp);
+      free( (void *)jp );
       ws_send_hello(c);
       ws_send_login(c, login_user);
-
    } else if (ev == MG_EV_WS_MSG) {
       struct mg_ws_message *wm = (struct mg_ws_message *)ev_data;
 
@@ -302,14 +304,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       event_emit("http.error", NULL, NULL);
 //      ui_print("[%s] Socket error: %s", get_chat_ts(now), (char *)ev_data);
    } else if (ev == MG_EV_CLOSE) {
-// XXX: readd this
-//      ui_print("[%s] *** DISCONNECTED ***", get_chat_ts(now));
-//      ws_connected = false;
-//      ws_conn = NULL;
-//      update_connection_button(false, conn_button);
       event_emit("goodbye", NULL, NULL);
-// XXX: readd this
-//      userlist_clear_all();
    }
 }
 
