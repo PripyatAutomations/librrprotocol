@@ -23,20 +23,20 @@
 
 #if     defined(FEATURE_HTTP)
 #if     defined(HOST_POSIX)
-#define HTTP_MAX_ROUTES 64
+#define	HTTP_MAX_ROUTES 64
 #else
-#define HTTP_MAX_ROUTES 20
+#define	HTTP_MAX_ROUTES 20
 #endif
 
 // This defines a hard-coded fallback path for httpd root, if not set in config
 #if     defined(HOST_POSIX)
 #if     !defined(INSTALL_PREFIX)
-#define WWW_ROOT_FALLBACK "./www"
-#define WWW_404_FALLBACK "./www/404.html"
+#define	WWW_ROOT_FALLBACK "./www"
+#define	WWW_404_FALLBACK "./www/404.html"
 #endif // !defined(INSTALL_PREFIX)
 #else
-#define WWW_ROOT_FALLBACK "fs:www/"
-#define WWW_404_FALLBACK "fs:www/404.html"
+#define	WWW_ROOT_FALLBACK "fs:www/"
+#define	WWW_404_FALLBACK "fs:www/404.html"
 #endif // defined(HOST_POSIX).else
 
 //////////////////////////////////////
@@ -62,21 +62,25 @@ static bool http_help(struct mg_http_message *msg, struct mg_connection *c) {
    // Extract topic from URI after "/help/"
    const char *prefix = "/help/";
    size_t prefix_len = strlen(prefix);
+
    if (msg->uri.len > prefix_len && strncmp(msg->uri.buf, prefix, prefix_len) == 0) {
       snprintf(topic, t_sz, "%.*s", (int)(msg->uri.len - prefix_len), msg->uri.buf + prefix_len);
    }
+
    // Default to index if no specific topic is provided
    if (topic[0] == '\0') {
       snprintf(topic, t_sz, "index");
    }
+
    // Sanity check the topic doesnt contain illegal characters like .. or /
-   if ( check_url(topic) ) {
+   if (check_url(topic) ) {
       Log(LOG_AUDIT, "http.api", "Topic |%s| contains sketch characters, bailing from http_help",
          help_path);
 
       return true;
    }
    snprintf(help_path, h_sz, "%s/help/%s.html", www_root, topic);
+
    if (file_exists(help_path) != true) {
       Log(LOG_AUDIT, "http.api", "help: %s doesn't exist", help_path);
    }
@@ -124,6 +128,7 @@ static bool http_api_stats(struct mg_http_message *msg, struct mg_connection *c)
          t->is_listening ? "LISTENING" : t->is_accepted ? "ACCEPTED " : "CONNECTED", mg_print_ip,
          &t->loc, mg_print_ip, &t->rem);
    }
+
    mg_http_printf_chunk(c, "");   // Don't forget the last empty chunk
 
    return false;
@@ -167,15 +172,17 @@ bool http_dispatch_route(struct mg_http_message *msg, struct mg_connection *c) {
    if (!c || !msg) {
       return true;
    }
-   int items = ( sizeof(http_routes) / sizeof(http_route_t) ) - 1;
+   int items = (sizeof(http_routes) / sizeof(http_route_t) ) - 1;
 
    for (int i = 0 ; i < items ; i++) {
       int rv = 0;
+
       // end of table marker
       if (!http_routes[i].match && !http_routes[i].cb) {
          break;
       }
       size_t match_len = strlen(http_routes[i].match);
+
 /*
  *     if (match_len < HTTP_ROUTE_MIN_MATCHLEN) {
  *        continue;
@@ -184,6 +191,7 @@ bool http_dispatch_route(struct mg_http_message *msg, struct mg_connection *c) {
       if (strncmp(msg->uri.buf, http_routes[i].match, match_len) == 0) {
          Log(LOG_CRAZY, "http.req", "Matched %s with request URI %.*s [length: %d]",
             http_routes[i].match, (int)msg->uri.len, msg->uri.buf, match_len);
+
          // Strip trailing slash if it's there
          if (msg->uri.len > 0 && msg->uri.buf[msg->uri.len - 1] == '/') {
             msg->uri.len--;
@@ -196,6 +204,7 @@ bool http_dispatch_route(struct mg_http_message *msg, struct mg_connection *c) {
             i, http_routes[i].match);
       }
    }
+
    return true;  // No match found, let static handler take over
 }
 #endif // defined(USE_MONGOOSE)

@@ -37,7 +37,8 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
       return true;
    }
    time_t ts = dict_get_time_t(d, "cat.ts", now);
-   if ( dict_get(d, "cat.state.mode", NULL) ) {
+
+   if (dict_get(d, "cat.state.mode", NULL) ) {
       if (poll_block_expire < now) {
          char *vfo = dict_get(d, "cat.state.vfo", NULL);
          double freq = dict_get_double(d, "cat.state.freq", 0.0);
@@ -50,6 +51,7 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
 
          int ts = dict_get_int(d, "cat.ts", 0);
          char *user = dict_get(d, "cat.user", NULL);
+
          if (user && *user) {
             Log(LOG_DEBUG, "ws.cat", "user:<%p> = |%s|", user, user);
             struct rr_user *cptr = NULL;
@@ -60,9 +62,11 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
 //               cptr->is_ptt = ptt;
 //            }
          }
+
          if (freq > 0) {
             event_emit("rig.freq", NULL, &freq);
          }
+
          if (mode && strlen(mode) > 0) {
             // XXX: We need to suppress sending a CAT message by disabling the
             // changed signal on the mode combo
@@ -73,11 +77,13 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
                memset(mode, 0, 6);
                sprintf(mode, "D-L");
             }
+
             if (strcasecmp(old_mode, mode) == 0) {
                goto local_cleanup;
             }
 // XXX: need to fix FM mode dialog crash ASAP
             Log(LOG_CRAZY, "ws.rigctl", "Set MODE to %s", mode);
+
             if (strcasecmp(mode, "FM") == 0) {
 //               fm_dialog_show();
             } else {
@@ -112,11 +118,13 @@ bool ws_send_ptt_cmd(struct mg_connection *c, const char *vfo, bool ptt) {
    Log(LOG_CRAZY, "ws.cat", "Sending: %s", jp);
    int ret = mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
    free( (char *)jp );
+
    if (ret < 0) {
       Log(LOG_DEBUG, "cat", "ws_send_ptt_cmd: mg_ws_send error: %d", ret);
 
       return true;
    }
+
    return false;
 }
 
@@ -132,11 +140,13 @@ bool ws_send_mode_cmd(struct mg_connection *c, const char *vfo, const char *mode
    Log(LOG_CRAZY, "ws.cat", "Sending: %s", jp);
    int ret = mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
    free( (char *)jp );
+
    if (ret < 0) {
       Log(LOG_DEBUG, "cat", "ws_send_mode_cmd: mg_ws_send error: %d", ret);
 
       return true;
    }
+
    return false;
 }
 
@@ -151,11 +161,13 @@ bool ws_send_freq_cmd(struct mg_connection *c, const char *vfo, float freq) {
    Log(LOG_CRAZY, "ws.cat", "Sending: %s", jp);
    int ret = mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
    free( (char *)jp );
+
    if (ret < 0) {
       Log(LOG_DEBUG, "cat", "ws_send_mode_cmd: mg_ws_send error: %d", ret);
 
       return true;
    }
+
    return false;
 }
 

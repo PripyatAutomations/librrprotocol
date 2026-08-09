@@ -6,7 +6,7 @@
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #if     !defined(__irc_parser_h)
-#define __irc_parser_h
+#define	__irc_parser_h
 
 #include <stdio.h>
 #include <stdlib.h>

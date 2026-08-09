@@ -8,7 +8,7 @@
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #if     !defined(__http_h)
-#define __http_h
+#define	__http_h
 #include <stdbool.h>
 #include <stdint.h>
 #include <arpa/inet.h>
@@ -21,51 +21,51 @@
 // many of these need moved to config; decide if runtime or build? (prob build)
 // Limit to 10 backups of authdb retained, this should be sane; we delete older
 // backups
-#define MAX_AUTHDB_BK_INDEX 10
+#define	MAX_AUTHDB_BK_INDEX 10
 #undef HTTP_DEBUG_CRAZY
-#define HTTP_MAX_SESSIONS 32                    // max sessions total
-#define HTTP_WS_MAX_MSG 65535                   // 64kbytes should be enough per
+#define	HTTP_MAX_SESSIONS 32                   // max sessions total
+#define	HTTP_WS_MAX_MSG 65535                  // 64kbytes should be enough per
                                                 // message, even with audio
                                                 // frames
-#define HTTP_SESSION_LIFETIME 12 * 60 * 60        // Require a re-login every 12
+#define	HTTP_SESSION_LIFETIME 12 * 60 * 60       // Require a re-login every 12
                                                   // hours, if still connected
-#define HTTP_SESSION_REAP_TIME 30               // Every 30 seconds, kill
+#define	HTTP_SESSION_REAP_TIME 30              // Every 30 seconds, kill
                                                 // expired sessions
-#define HTTP_AUTH_TIMEOUT 20                    // Allow 20 seconds from
+#define	HTTP_AUTH_TIMEOUT 20                   // Allow 20 seconds from
                                                 // connection to send login
                                                 // command
-#define HTTP_PING_TIME 60                       // If we haven't heard from the
+#define	HTTP_PING_TIME 60                      // If we haven't heard from the
                                                 // client in this long, send a
                                                 // ping
-#define HTTP_MAX_ELMERS 8                       // how many elmers can accept
+#define	HTTP_MAX_ELMERS 8                      // how many elmers can accept
                                                 // elevate request from the
                                                 // user?
-#define HTTP_MAX_NOOBS 8                        // how many noobs can an elmer
+#define	HTTP_MAX_NOOBS 8                       // how many noobs can an elmer
                                                 // babysit?
 
 #if     (HTTP_PING_TIME / 4) >= 10
-#define HTTP_PING_TIMEOUT (HTTP_PING_TIME / 4)          // And give them this
+#define	HTTP_PING_TIMEOUT (HTTP_PING_TIME / 4)         // And give them this
                                                         // long to respond
 #else
-#define HTTP_PING_TIMEOUT 10                    // Ensure a minimum of 10
+#define	HTTP_PING_TIMEOUT 10                   // Ensure a minimum of 10
                                                 // seconds wait for a reply
 #endif // (HTTP_PING_TIME / 4)
-#define HTTP_PING_TRIES 3                       // We'll try this many times
+#define	HTTP_PING_TRIES 3                      // We'll try this many times
                                                 // before kicking the client
 // HTTP Basic-auth user
-#define HTTP_MAX_USERS 64                       // How many users are allowed in
+#define	HTTP_MAX_USERS 64                      // How many users are allowed in
                                                 // http.users?
-#define HTTP_USER_LEN 16                        // username length (16 char)
-#define HTTP_PASS_LEN 40                        // sha1: 40, sha256: 64
-#define HTTP_HASH_LEN 40                        // sha1
-#define HTTP_TOKEN_LEN 14                       // session-id / nonce length,
+#define	HTTP_USER_LEN 16                       // username length (16 char)
+#define	HTTP_PASS_LEN 40                       // sha1: 40, sha256: 64
+#define	HTTP_HASH_LEN 40                       // sha1
+#define	HTTP_TOKEN_LEN 14                      // session-id / nonce length,
                                                 // longer moar secure
-#define HTTP_UA_LEN 512                         // allow 128 bytes
-#define USER_PRIV_LEN 100                       // privileges list
-#define USER_EMAIL_LEN 128                      // email address
+#define	HTTP_UA_LEN 512                        // allow 128 bytes
+#define	USER_PRIV_LEN 100                      // privileges list
+#define	USER_EMAIL_LEN 128                     // email address
 
 // ws.cat protocol
-#define HTTP_API_RIGPOLL_PAUSE 2                // time to delay polling the rig
+#define	HTTP_API_RIGPOLL_PAUSE 2               // time to delay polling the rig
                                                 // after a freq message on
                                                 // ws.cat
 
@@ -122,8 +122,8 @@ struct http_res_types {
 };
 
 // Maximum number of subscribed channels for users
-#define MAX_RX_CHANNELS 64              // User RX channels
-#define MAX_TX_CHANNELS 16              // User TX channels
+#define	MAX_RX_CHANNELS 64             // User RX channels
+#define	MAX_TX_CHANNELS 16             // User TX channels
 
 struct http_client {
    bool active;                  // Is this slot actually used or is it

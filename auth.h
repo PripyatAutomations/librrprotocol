@@ -8,7 +8,7 @@
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #if     !defined(__rr_auth_h)
-#define __rr_auth_h
+#define	__rr_auth_h
 #include <librrprotocol/http.h>
 #include <librrprotocol/codecneg.h>
 

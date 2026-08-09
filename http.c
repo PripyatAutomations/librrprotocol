@@ -23,9 +23,9 @@
 #include <librrprotocol/rrprotocol.h>
 
 #if     defined(HOST_POSIX)
-#define HTTP_MAX_ROUTES 64
+#define	HTTP_MAX_ROUTES 64
 #else
-#define HTTP_MAX_ROUTES 20
+#define	HTTP_MAX_ROUTES 20
 #endif
 
 extern time_t now;
@@ -33,12 +33,12 @@ extern time_t now;
 // This defines a hard-coded fallback path for httpd root, if not set in config
 #if     defined(HOST_POSIX)
 #if     !defined(INSTALL_PREFIX)
-#define WWW_ROOT_FALLBACK "./www"
-#define WWW_404_FALLBACK "./www/404.html"
+#define	WWW_ROOT_FALLBACK "./www"
+#define	WWW_404_FALLBACK "./www/404.html"
 #endif // !defined(INSTALL_PREFIX)
 #else
-#define WWW_ROOT_FALLBACK "fs:www/"
-#define WWW_404_FALLBACK "fs:www/404.html"
+#define	WWW_ROOT_FALLBACK "fs:www/"
+#define	WWW_404_FALLBACK "fs:www/404.html"
 #endif // defined(HOST_POSIX).else
 
 char www_root[PATH_MAX];
@@ -165,6 +165,7 @@ http_client_t *http_find_client_by_token(const char *token) {
       if (cptr->token[0] == '\0') {
          continue;
       }
+
       if (memcmp( cptr->token, token, strlen(cptr->token) ) == 0) {
          Log( LOG_CRAZY, "http.core", "find_client_by_token |%s| returning index %i: %p |%s|",
             token, i, cptr, (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
@@ -182,6 +183,7 @@ http_client_t *http_find_client_by_token(const char *token) {
 http_client_t *http_find_client_by_guest_id(int gid) {
    http_client_t *cptr = http_client_list;
    int i = 0;
+
    // this filters out invalid calls
    if (gid <= 1) {
       Log(LOG_WARN, "http", "find_client_by_guestid: gid %d isn't valid", gid);
@@ -201,17 +203,20 @@ http_client_t *http_find_client_by_guest_id(int gid) {
 http_client_t *http_find_client_by_name(const char *name) {
    http_client_t *cptr = http_client_list;
    int i = 0;
+
    if (!name) {
       return NULL;
    }
    while (cptr) {
       Log(LOG_CRAZY, "http.core", "find client by name: i: %d user:<%p> chatname: %s", i,
          cptr->user, cptr->chatname);
+
       // incomplete entry
-      if ( !cptr->user || (cptr->chatname[0] == '\0') ) {
+      if (!cptr->user || (cptr->chatname[0] == '\0') ) {
          cptr = cptr->next;
          continue;
       }
+
       // match?
       if (strcasecmp(cptr->chatname, name) == 0) {
          Log( LOG_CRAZY, "http.core", "find client by name |%s| found match at index %d: <%p> |%s|",
@@ -247,7 +252,8 @@ const char *http_content_type(const char *type) {
    if (!type) {
       return NULL;
    }
-   int items = ( sizeof(http_res_types) / sizeof(struct http_res_types) );
+   int items = (sizeof(http_res_types) / sizeof(struct http_res_types) );
+
    for (int i = 0 ; i <= items ; i++) {
 //      printf("hct: %s, checking %d: %s\n",
 //         type, i, http_res_types[i].shortname);
@@ -255,6 +261,7 @@ const char *http_content_type(const char *type) {
       if (!http_res_types[i].shortname && !http_res_types[i].msg) {
          break;
       }
+
       // compare the short name
       if (strcasecmp(http_res_types[i].shortname, type) == 0) {
 //         printf("hct: %s is [%d] => %s: %s\n",
@@ -263,6 +270,7 @@ const char *http_content_type(const char *type) {
          return http_res_types[i].msg;
       }
    }
+
    return "text/plain\r\n";
 }
 
@@ -280,15 +288,18 @@ void http_tls_init(void) {
    memset( &tls_opts, 0, sizeof(tls_opts) );
 
    tls_cert = mg_file_read(&mg_fs_posix, HTTP_TLS_CERT);
+
    if (!tls_cert.buf) {
       Log(LOG_CRIT, "http.tls", "Unable to load TLS cert from %s", HTTP_TLS_CERT);
       tls_error = true;
    }
    tls_key = mg_file_read(&mg_fs_posix, HTTP_TLS_KEY);
+
    if (!tls_key.buf || tls_key.len <= 1) {
       Log(LOG_CRIT, "http.tls", "Unable to load TLS key from %s", HTTP_TLS_KEY);
       tls_error = true;
    }
+
    if (tls_error == true) {
       Log(LOG_CRIT, "http.tls", "No cert/key, aborting TLS setup");
       Log(LOG_CRIT, "http.tls", "Either fix this or disable TLS!");
@@ -305,6 +316,7 @@ void http_tls_init(void) {
 
 bool http_static(struct mg_http_message *msg, struct mg_connection *c) {
    struct mg_http_serve_opts opts = http_opts;
+
    if (!msg) {
       return true;
    }
@@ -314,20 +326,24 @@ bool http_static(struct mg_http_message *msg, struct mg_connection *c) {
    snprintf(path, sizeof(path), "%.*s", (int)msg->uri.len, msg->uri.buf);
    char real_path[8192];
    memset( real_path, 0, sizeof(real_path) );
+
    if (www_root[0] == '\0') {
       Log(LOG_CRIT, "http.core", "www_root is NULL");
 
       return true;
    }
+
    if (strlen(path) == 1 && path[0] == '/') {
       memset( path, 0, sizeof(path) );
       snprintf(path, sizeof(path), "index.html");
    }
    snprintf(real_path, sizeof(real_path), "%s/%s", www_root, path);
-   if ( file_exists(real_path) ) {
+
+   if (file_exists(real_path) ) {
       // Find last '.' in the path for the extension
       const char *ext = strrchr(path, '.');
-      if ( ext && *(ext + 1) ) {
+
+      if (ext && *(ext + 1) ) {
          // lookup the mime type based on extension
          const char *ctype = http_content_type(ext + 1);
          char typebuf[256];
@@ -341,7 +357,7 @@ bool http_static(struct mg_http_message *msg, struct mg_connection *c) {
 
          return false;
       }
-   } else if ( is_dir(real_path) ) {
+   } else if (is_dir(real_path) ) {
       mg_http_serve_dir(c, msg, &opts);
 
       return false;
@@ -350,6 +366,7 @@ bool http_static(struct mg_http_message *msg, struct mg_connection *c) {
       Log(LOG_DEBUG, "http.core", "Static dispatch for %s returning 404", path);
       mg_http_serve_file(c, msg, www_404_path, &opts);
    }
+
    return true;
 }
 
@@ -364,13 +381,15 @@ static void http_cb(struct mg_connection *c, int ev, void *ev_data) {
    memset(ip, 0, INET6_ADDRSTRLEN);
 
    int port = c->rem.port;
+
    if (c->rem.is_ip6) {
       inet_ntop( AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
    } else {
       inet_ntop( AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
    }
+
    if (ev == MG_EV_OPEN) {
-      if ( cfg_get_bool("net.http.hex-dump", false) ) {
+      if (cfg_get_bool("net.http.hex-dump", false) ) {
          c->is_hexdumping = 1;
       }
    } else if (ev == MG_EV_CONNECT) {
@@ -384,6 +403,7 @@ static void http_cb(struct mg_connection *c, int ev, void *ev_data) {
       Log(LOG_CRAZY, "http", "Accepted connection on mg_conn:<%p> from %s:%d", c, ip, port);
 
 #if     defined(HTTP_USE_TLS)
+
       if (c->fn_data) {
          Log(LOG_CRAZY, "http", "Init TLS for mg_conn:<%p> from %s:%d", c, ip, port);
          mg_tls_init(c, &tls_opts);
@@ -391,19 +411,23 @@ static void http_cb(struct mg_connection *c, int ev, void *ev_data) {
 #endif
    } else if (ev == MG_EV_HTTP_MSG) {
       http_client_t *cptr = http_find_client_by_c(c);
+
       if (!cptr) {
          Log(LOG_CRAZY, "http.core", "ACCEPT: mg_ev_http_msg cptr doesn't exist, creating");
          cptr = http_add_client(c, false);
       }
+
       // Save the user-agent the first time
       if (!cptr->user_agent) {
          if (hm) {
             struct mg_str *ua_hdr = mg_http_get_header(hm, "User-Agent");
+
             if (ua_hdr) {
                size_t ua_len = ua_hdr->len < HTTP_UA_LEN ? ua_hdr->len : HTTP_UA_LEN;
 
                // allocate the memory
                cptr->user_agent = malloc(ua_len);
+
                if (!cptr->user_agent) {
                   fprintf(stderr, "OOM in http_cb EV_HTTP_MSG\n");
 
@@ -416,6 +440,7 @@ static void http_cb(struct mg_connection *c, int ev, void *ev_data) {
             }
          }
       }
+
       // Send the request to our HTTP router
       if (hm && http_dispatch_route(hm, c) == true) {
          Log(LOG_CRAZY, "http.core", "fall through to http_static");
@@ -424,6 +449,7 @@ static void http_cb(struct mg_connection *c, int ev, void *ev_data) {
    } else if (ev == MG_EV_WS_OPEN) {
       Log(LOG_CRAZY, "http.core", "WS OPEN for c:<%p>", c);
       http_client_t *cptr = http_find_client_by_c(c);
+
       if (cptr) {
          Log(LOG_DEBUG, "http", "Conn mg_conn:<%p> from %s:%d upgraded to ws with cptr:<%p>", c, ip,
             port, cptr);
@@ -445,6 +471,7 @@ static void http_cb(struct mg_connection *c, int ev, void *ev_data) {
       char resp_buf[HTTP_WS_MAX_MSG + 1];
       http_client_t *cptr = http_find_client_by_c(c);
       Log(LOG_DEBUG, "http", "http_cb MG_EV_CLOSE for cptr:<%p> c:<%p>", cptr, c);
+
       // make sure we're not accessing unsafe memory
       if (cptr && cptr->user && cptr->chatname[0] != '\0') {
          // Does the user hold PTT? if so turn it off
@@ -453,11 +480,13 @@ static void http_cb(struct mg_connection *c, int ev, void *ev_data) {
 //            rr_ptt_set_all_off();
             cptr->is_ptt = false;
          }
+
          // Free the resources, if any, for the user_agent
          if (cptr->user_agent) {
             free(cptr->user_agent);
             cptr->user_agent = NULL;
          }
+
          if (cptr->cli_version) {
             free(cptr->cli_version);
             cptr->cli_version = NULL;
@@ -465,6 +494,7 @@ static void http_cb(struct mg_connection *c, int ev, void *ev_data) {
          // reduce the # of clones for the user / reset to 0
          Log(LOG_CRAZY, "http", "Departing user %s had %d clones", cptr->chatname,
             cptr->user->clones);
+
          if (cptr->active) {
             // blorp out a quit to all connected users
             const char *jp = dict2json_mkstr(VAL_STR, "talk.cmd", "quit", VAL_STR, "talk.user",
@@ -495,9 +525,11 @@ bool http_init(struct mg_mgr *mgr) {
    const char *cfg_404_path = cfg_get_exp("net.http.404-path");
 
 #if     defined(USE_EEPROM)
+
    if (!cfg_www_root) {
       cfg_www_root = eeprom_get_str("net/http/www-root");
    }
+
    if (!cfg_404_path) {
       cfg_404_path = eeprom_get_str("net/http/404-path");
    }
@@ -510,6 +542,7 @@ bool http_init(struct mg_mgr *mgr) {
    // and make our headers
    prepare_msg(www_headers, sizeof(www_headers), "%s\r\n", www_fw_ver);
 #endif
+
    // store the 404 path if available
    if (cfg_404_path) {
       prepare_msg(www_404_path, sizeof(www_404_path), "%s", WWW_404_FALLBACK);
@@ -518,6 +551,7 @@ bool http_init(struct mg_mgr *mgr) {
    }
    free( (char *)cfg_404_path );
    cfg_404_path = NULL;
+
    // set the www-root if configured
    if (cfg_www_root) {
       prepare_msg(www_root, sizeof(www_root), "%s", cfg_www_root);
@@ -528,6 +562,7 @@ bool http_init(struct mg_mgr *mgr) {
    Log(LOG_CRIT, "http.init", "set www-root to %s", www_root);
    free( (char *)cfg_www_root );
    cfg_www_root = NULL;
+
    if (http_load_users(HTTP_AUTHDB_PATH) < 0) {
       Log(LOG_WARN, "http.core", "Error loading users from %s", HTTP_AUTHDB_PATH);
    }
@@ -535,20 +570,23 @@ bool http_init(struct mg_mgr *mgr) {
    char listen_addr[255];
    int bind_port = cfg_get_int("net.http.port", 0);
 #if     defined(USE_EEPROM)
+
    if (!bind_port) {
       bind_port = eeprom_get_int("net/http/port");
    }
 #endif
 
    const char *s = cfg_get("net.http.bind");
-   if ( !s || !inet_aton(s, &sa_bind) ) {
+
+   if (!s || !inet_aton(s, &sa_bind) ) {
 #if     defined(USE_EEPROM)
       eeprom_get_ip4("net/http/bind", &sa_bind);
 #endif
    }
    free( (char *)s );
    prepare_msg(listen_addr, sizeof(listen_addr), "http://%s:%d", inet_ntoa(sa_bind), bind_port);
-   if ( !mg_http_listen(mgr, listen_addr, http_cb, NULL) ) {
+
+   if (!mg_http_listen(mgr, listen_addr, http_cb, NULL) ) {
       Log(LOG_CRIT, "http", "Failed to start http listener");
       exit(1);
    }
@@ -556,10 +594,12 @@ bool http_init(struct mg_mgr *mgr) {
       (cfg_www_root ? cfg_www_root : WWW_ROOT_FALLBACK) );
 
 #if     defined(HTTP_USE_TLS)
-   if ( cfg_get_bool("net.http.tls-enabled", false) ) {
+
+   if (cfg_get_bool("net.http.tls-enabled", false) ) {
       int tls_bind_port = cfg_get_int("net.http.tls-port", 0);
 
 #if     defined(USE_EEPROM)
+
       if (!tls_bind_port) {
          tls_bind_port = eeprom_get_int("net/http/tls_port");
       }
@@ -567,7 +607,8 @@ bool http_init(struct mg_mgr *mgr) {
 
       struct in_addr sa_tls_bind;
       s = cfg_get_exp("net.http.tls-bind");
-      if ( !s || !inet_aton(s, &sa_tls_bind) ) {
+
+      if (!s || !inet_aton(s, &sa_tls_bind) ) {
 #if     defined(USE_EEPROM)
          eeprom_get_ip4("net/http/bind", &sa_tls_bind);
 #endif
@@ -579,7 +620,8 @@ bool http_init(struct mg_mgr *mgr) {
       prepare_msg(tls_listen_addr, sizeof(tls_listen_addr), "https://%s:%d", inet_ntoa(sa_tls_bind),
          tls_bind_port);
       http_tls_init();
-      if ( !mg_http_listen(mgr, tls_listen_addr, http_cb, (void *)1) ) {
+
+      if (!mg_http_listen(mgr, tls_listen_addr, http_cb, (void *)1) ) {
          Log(LOG_CRIT, "http", "Failed to start https listener");
          exit(1);
       }
@@ -594,6 +636,7 @@ bool http_init(struct mg_mgr *mgr) {
 // Add a new client to the client list (HTTP or WebSocket)
 http_client_t *http_add_client(struct mg_connection *c, bool is_ws) {
    http_client_t *cptr = (http_client_t *)malloc( sizeof(http_client_t) );
+
    if (!cptr) {
       fprintf(stderr, "OOM in http_add_client\n");
 
@@ -640,6 +683,7 @@ void http_remove_client(struct mg_connection *c) {
       if (current->conn == c) {
          // Found the client to remove, mark it dead
          current->active = false;
+
          if (!prev) {
             http_client_list = current->next;
          } else {
@@ -648,10 +692,12 @@ void http_remove_client(struct mg_connection *c) {
          Log( LOG_CRAZY, "http",
             "Removing client at cptr:<%p> with mgconn:<%p> (%d connections / %d users remain)",
             current, c, http_count_connections(), http_count_clients() );
+
          if (current->user) {
             if (current->authenticated && current->is_ws) {
                current->user->clones--;
             }
+
             if (current->user->clones < 0) {
                Log(LOG_WARN, "http", "Client at cptr:<%p> has %d clones??", current,
                   current->user->clones);
@@ -691,6 +737,7 @@ void http_expire_sessions(void) {
 #endif // defined(USE_MONGOOSE)
             continue;
          }
+
          // Check for ping timeout & retry
          if (cptr->last_ping != 0 && (now - cptr->last_ping) > HTTP_PING_TIMEOUT) {
             if (cptr->ping_attempts >= HTTP_PING_TRIES) {

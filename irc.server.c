@@ -20,21 +20,26 @@
 // Recompose IRC message from irc_message_t
 void irc_build_message(const irc_message_t *mp, char *msg, size_t msglen) {
    size_t pos = 0;
+
    if (!mp || !msg || msglen == 0) {
       return;
    }
+
    // Prefix
    if (mp->prefix) {
       pos += snprintf(msg + pos, msglen - pos, ":%s ", mp->prefix);
    }
+
    for (int i = 0 ; i < mp->argc ; i++) {
       const char *arg = mp->argv[i] ? mp->argv[i] : "";
+
       // Last argument → prefix with ':'
-      if ( i == mp->argc - 1 && (strchr(arg, ' ') || arg[0] == ':') ) {
+      if (i == mp->argc - 1 && (strchr(arg, ' ') || arg[0] == ':') ) {
          pos += snprintf(msg + pos, msglen - pos, " :%s", arg);
       } else {
          pos += snprintf(msg + pos, msglen - pos, "%s%s", (i > 0 ? " " : ""), arg);
       }
+
       if (pos >= msglen) {
          msg[msglen - 1] = '\0';
 
@@ -48,6 +53,7 @@ bool irc_sendto_all(rrlist_t *conn_list, rrconn_t *cptr, irc_message_t *mp) {
       // This message isn't valid
       return true;
    }
+
    // this rarely will match, because the current connection will be in the
    // list...
    if (!conn_list) {
@@ -64,14 +70,17 @@ bool irc_sendto_all(rrlist_t *conn_list, rrconn_t *cptr, irc_message_t *mp) {
    // Walk the list
    while (lptr) {
       rrconn_t *acptr = NULL;
+
       if (lptr->ptr) {
          acptr = (rrconn_t *)lptr->ptr;
       }
+
       // skip cptr
       if (cptr && acptr == cptr) {
          lptr = lptr->next;
          continue;
       }
+
       if (acptr && acptr->is_server && acptr->fd) {
          // Send to the client
          irc_send(acptr, "%s", msg);

@@ -51,6 +51,7 @@ const char *media_capab_prepare(const char *codecs) {
 char *codec_filter_common(const char *preferred, const char *available) {
    char *result = NULL;
    size_t res_sz = 0;
+
    if (!preferred || !available) {
       Log(LOG_WARN, "codecneg", "codec_filter_common: empty list -- preferred:<%p> available:<%p>",
          preferred, available);
@@ -62,6 +63,7 @@ char *codec_filter_common(const char *preferred, const char *available) {
       while (*p == ' ') {
          p++;
       }
+
       if (!*p) {
          break;
       }
@@ -76,6 +78,7 @@ char *codec_filter_common(const char *preferred, const char *available) {
          while (*a == ' ') {
             a++;
          }
+
          if (!*a) {
             break;
          }
@@ -84,8 +87,10 @@ char *codec_filter_common(const char *preferred, const char *available) {
             a++;
          }
          size_t alen = a - astart;
+
          if (len == alen && memcmp(start, astart, len) == 0) {
             char *new_result = realloc(result, res_sz + len + 2);
+
             if (!new_result) {
                free(result);
 
@@ -101,6 +106,7 @@ char *codec_filter_common(const char *preferred, const char *available) {
          }
       }
    }
+
    if (res_sz > 0 && result[res_sz - 1] == ' ') {
       result[--res_sz] = 0;
    }

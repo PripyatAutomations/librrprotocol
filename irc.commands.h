@@ -6,7 +6,7 @@
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #if !defined(__irc_commands_h)
-#define __irc_commands_h
+#define	__irc_commands_h
 #include <stdlib.h>
 #include <unistd.h>
 #include <ctype.h>

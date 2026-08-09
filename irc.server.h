@@ -6,7 +6,7 @@
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #if     !defined(__rr_irc_server_h)
-#define __rr_irc_server_h
+#define	__rr_irc_server_h
 
 extern bool irc_sendto_all(rrlist_t *conn_list, rrconn_t *cptr, irc_message_t *mp);
 

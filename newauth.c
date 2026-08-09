@@ -24,12 +24,12 @@
 // This defines a hard-coded fallback path for httpd root, if not set in config
 #if     defined(HOST_POSIX)
 #if     !defined(INSTALL_PREFIX)
-#define WWW_ROOT_FALLBACK "./www"
-#define WWW_404_FALLBACK "./www/404.html"
+#define	WWW_ROOT_FALLBACK "./www"
+#define	WWW_404_FALLBACK "./www/404.html"
 #endif // !defined(INSTALL_PREFIX)
 #else
-#define WWW_ROOT_FALLBACK "fs:www/"
-#define WWW_404_FALLBACK "fs:www/404.html"
+#define	WWW_ROOT_FALLBACK "fs:www/"
+#define	WWW_404_FALLBACK "fs:www/404.html"
 #endif // defined(HOST_POSIX).else
 
 extern bool dying;
@@ -49,17 +49,21 @@ int http_getuid(const char *user) {
    if (!user) {
       return -1;
    }
+
    for (int i = 0 ; i < HTTP_MAX_USERS ; i++) {
       http_user_t *up = &http_users[i];
+
       if (up->name[0] == '\0' || up->pass[0] == '\0') {
          continue;
       }
+
       if (strcasecmp(up->name, user) == 0) {
          Log(LOG_CRAZY, "auth", "Found uid [%d] for username |%s|", i, up->name);
 
          return i;
       }
    }
+
    Log(LOG_CRAZY, "auth", "http_getuid(%s) returns not-found!", user);
 
    return -1;
@@ -80,7 +84,8 @@ static bool http_backup_authdb(void) {
       }
       prepare_msg(new_path, sizeof(new_path), "%s.bak-%s.%d", HTTP_AUTHDB_PATH, date_str, index);
       index++;
-   } while ( file_exists(new_path) );
+   } while (file_exists(new_path) );
+
    // Rename the file
    if (rename(HTTP_AUTHDB_PATH, new_path) == 0) {
       Log(LOG_INFO, "http.core", "* Renamed old config (%s) to %s", HTTP_AUTHDB_PATH, new_path);
@@ -90,6 +95,7 @@ static bool http_backup_authdb(void) {
 
       return true;
    }
+
    return false;
 }
 
@@ -97,12 +103,14 @@ bool http_save_users(const char *filename) {
    if (!filename) {
       return true;
    }
-   if ( http_backup_authdb() ) {
+
+   if (http_backup_authdb() ) {
       return true;
    }
    int users_saved = 0;
 
    FILE *file = fopen(filename, "w");
+
    if (!file) {
       Log( LOG_CRIT, "auth", "Error saving user database to %s: %d:%s", filename, errno,
          strerror(errno) );
@@ -113,9 +121,11 @@ bool http_save_users(const char *filename) {
 
    for (int i = 0 ; i < HTTP_MAX_USERS ; i++) {
       http_user_t *up = &http_users[i];
+
       if (!up) {
          return true;
       }
+
       if (up->name[0] != '\0' && up->pass[0] != '\0') {
          Log(LOG_DEBUG, "auth", " => %s %sabled with privileges: %s", up->name,
             (up->enabled ? "en" : "dis"), up->privs);
@@ -124,6 +134,7 @@ bool http_save_users(const char *filename) {
          users_saved++;
       }
    }
+
    fclose(file);
    Log(LOG_INFO, "auth", "Saved %d users to %s", users_saved, filename);
 
@@ -137,6 +148,7 @@ int http_load_users(const char *filename) {
    }
    Log(LOG_INFO, "auth", "Loading static users from %s", filename);
    FILE *file = fopen(filename, "r");
+
    if (!file) {
       return -1;
    }
@@ -147,25 +159,29 @@ int http_load_users(const char *filename) {
    while (fgets(line, sizeof(line), file) && user_count < HTTP_MAX_USERS) {
       // Trim leading spaces
       char *start = line + strspn(line, " \t\r\n");
+
       if (start != line) {
          memmove(line, start, strlen(start) + 1);
       }
+
       // Skip comments and empty lines
       if (line[0] == '#' || line[0] == ';' ||
-          ( strlen(line) > 1 && (line[0] == '/' && line[1] == '/') ) || line[0] == '\n') {
+          (strlen(line) > 1 && (line[0] == '/' && line[1] == '/') ) || line[0] == '\n') {
          continue;
       }
       // Remove trailing \r or \n characters
       char *end = line + strlen(line) - 1;
-      while ( end >= line && (*end == '\r' || *end == '\n') ) {
+      while (end >= line && (*end == '\r' || *end == '\n') ) {
          *end = '\0';
          end--;
       }
       // Trim leading spaces (again)
       start = line + strspn(line, " \t\r\n");
+
       if (start != line) {
          memmove(line, start, strlen(start) + 1);
       }
+
       if (line[0] == '\n' || line[0] == '\0') {
          continue;
       }
@@ -205,6 +221,7 @@ int http_load_users(const char *filename) {
             case 5: {
                // max_clones limit
                int val = atoi(token);
+
                if (val < 0 || val > HTTP_MAX_SESSIONS) {
                   Log(LOG_CRIT, "auth.core",
                      "Loading user %s has invalid maxclones: %d (min: 1, max: %d)", up->name, val,
@@ -242,6 +259,7 @@ static http_client_t *http_find_client_by_nonce(const char *nonce) {
    }
    http_client_t *cptr = http_client_list;
    int i = 0;
+
    if (nonce == NULL) {
       return NULL;
    }
@@ -249,6 +267,7 @@ static http_client_t *http_find_client_by_nonce(const char *nonce) {
       if (cptr->nonce[0] == '\0') {
          continue;
       }
+
       if (memcmp( cptr->nonce, nonce, strlen(cptr->nonce) ) == 0) {
          Log(LOG_CRAZY, "http.core", "hfcbn returning index [%i] for nonce |%s|", cptr->nonce);
 
@@ -264,6 +283,7 @@ static http_client_t *http_find_client_by_nonce(const char *nonce) {
 
 bool match_priv(const char *user_privs, const char *priv) {
    Log(LOG_CRAZY, "auth", "match_priv(): comparing |%s| to |%s|", user_privs, priv);
+
    if (user_privs == NULL || priv == NULL) {
       return false;
    }
@@ -275,20 +295,24 @@ bool match_priv(const char *user_privs, const char *priv) {
       size_t len = end ? (size_t)(end - start) : strlen(start);
 
       char token[64];
-      if ( len >= sizeof(token) ) {
+
+      if (len >= sizeof(token) ) {
          len = sizeof(token) - 1;
       }
       memcpy(token, start, len);
       token[len] = '\0';
 
       Log(LOG_CRAZY, "auth", "token=|%s|", token);
+
       if (strcmp(token, priv) == 0) {
          Log(LOG_CRAZY, "auth", " → exact match |%s|", token);
 
          return true;
       }
+
       if (len >= 2 && token[len - 2] == '.' && token[len - 1] == '*') {
          token[len - 2] = '\0';   // strip .*
+
          if (strncmp( priv, token, strlen(token) ) == 0 && priv[strlen(token)] == '.') {
             Log(LOG_CRAZY, "auth", " → wildcard match |%s|", token);
 
@@ -301,7 +325,7 @@ bool match_priv(const char *user_privs, const char *priv) {
 }
 
 bool has_priv(int uid, const char *priv) {
-   if ( priv == NULL || uid < 0 || (uid > HTTP_MAX_USERS - 1) ) {
+   if (priv == NULL || uid < 0 || (uid > HTTP_MAX_USERS - 1) ) {
       return false;
    }
    const char *p = priv;
@@ -310,15 +334,18 @@ bool has_priv(int uid, const char *priv) {
       size_t len = sep ? (size_t)(sep - p) : strlen(p);
 
       char tmp[64];   // adjust size as needed
-      if ( len >= sizeof(tmp) ) {
+
+      if (len >= sizeof(tmp) ) {
          len = sizeof(tmp) - 1;
       }
       memcpy(tmp, p, len);
       tmp[len] = '\0';
+
       if (http_users[uid].privs[0] == '\0') {
          return false;
       }
-      if ( match_priv(http_users[uid].privs, tmp) ) {
+
+      if (match_priv(http_users[uid].privs, tmp) ) {
          return true;
       }
       p = sep ? sep + 1 : NULL;
@@ -328,6 +355,7 @@ bool has_priv(int uid, const char *priv) {
 
 bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    bool rv = false;
+
    if (c == NULL || msg == NULL) {
       Log(LOG_WARN, "http.ws", "auth_msg: got msg:<%x> mg_conn:<%x>", msg, c);
 
@@ -335,11 +363,13 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    }
    char ip[INET6_ADDRSTRLEN];
    int port = c->rem.port;
+
    if (c->rem.is_ip6) {
       inet_ntop( AF_INET6, c->rem.ip, ip, sizeof(ip) );
    } else {
       inet_ntop( AF_INET, &c->rem.ip, ip, sizeof(ip) );
    }
+
    if (msg->data.buf == NULL) {
       Log(LOG_WARN, "http.ws",
          "auth_msg: got msg from msg_conn:<%x> from %s:%d -- msg:<%x> with no data ptr", c, ip,
@@ -360,16 +390,19 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    char *token = dict_get(d, "auth.token", NULL);
    char *user = dict_get(d, "auth.user", NULL);
    char *temp_pw = NULL;
+
    // Must always send a command and username during auth
-   if ( !cmd || (!user && !token) ) {
+   if (!cmd || (!user && !token) ) {
       return true;
    }
+
    if (strcasecmp(cmd, "login") == 0) {
       char resp_buf[HTTP_WS_MAX_MSG + 1];
       Log(LOG_AUDIT, "auth", "Login request from user %s on mg_conn:<%x> from %s:%d", user, c, ip,
          port);
 
       http_client_t *cptr = http_find_client_by_c(c);
+
       if (cptr == NULL) {
          Log(LOG_CRIT, "auth",
             "Discarding login request on mg_conn:<%x> from %s:%d due to NULL cptr?!?!!?", c, ip,
@@ -378,6 +411,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
          return true;
       }
+
       // search for user
       for (int i = 0 ; i < HTTP_MAX_USERS ; i++) {
          if (strcasecmp(http_users[i].name, user) == 0) {
@@ -385,6 +419,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
             break;
          }
       }
+
       // handle disabled accounts
       if (cptr->user == NULL || cptr->user->enabled == false) {
          Log(LOG_AUDIT, "auth.users", "User account %s is disabled", user);
@@ -394,6 +429,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          return true;
       }
       int curr_clients = http_count_clients();
+
       if (curr_clients > HTTP_MAX_SESSIONS) {
          Log(LOG_AUDIT, "auth.users", "Server is full! %d clients exceeds max %d", curr_clients,
             HTTP_MAX_SESSIONS);
@@ -403,6 +439,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
          return true;
       }
+
       if (cptr->user) {
          if (cptr->user->clones + 1 > cptr->user->max_clones) {
             Log(LOG_AUDIT, "auth.users",
@@ -430,6 +467,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
       ws_kick_client_by_c(c, "Logged out. 73!");
    } else if (strcasecmp(cmd, "pass") == 0) {
       bool guest = false;
+
       if (pass == NULL || token == NULL) {
          Log(LOG_DEBUG, "auth", "auth pass command without password <%x> / token <%x>", pass,
             token);
@@ -439,6 +477,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          return true;
       }
       http_client_t *cptr = http_find_client_by_token(token);
+
       if (cptr == NULL) {
          Log(LOG_WARN, "auth", "Unable to find client in PASS parsing");
          http_dump_clients();
@@ -449,11 +488,13 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
       // Save the remote IP
       char ip[INET6_ADDRSTRLEN];   // Buffer to hold IPv4 or IPv6 address
       int port = c->rem.port;
+
       if (c->rem.is_ip6) {
          inet_ntop( AF_INET6, c->rem.ip, ip, sizeof(ip) );
       } else {
          inet_ntop( AF_INET, &c->rem.ip, ip, sizeof(ip) );
       }
+
       if (cptr->user == NULL) {
          Log(LOG_WARN, "auth", "cptr-> user == NULL handling conn from ip %s:%d, Kicking!", ip,
             port);
@@ -463,6 +504,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          return true;
       }
       int login_uid = cptr->user->uid;
+
       if (login_uid < 0 || login_uid > HTTP_MAX_USERS) {
          Log(LOG_WARN, "auth", "Invalid uid for username |%s| from IP %s:%d", cptr->chatname, ip,
             port);
@@ -472,6 +514,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          return true;
       }
       http_user_t *up = &http_users[login_uid];
+
       if (up == NULL) {
          Log(LOG_WARN, "auth", "Uid %d returned NULL http_user_t", login_uid);
          dict_free(d);
@@ -480,6 +523,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
       }
       // Deal with double-hashed (reply-protected) responses
       char *nonce = cptr->nonce;
+
       if (nonce == NULL) {
          Log(LOG_WARN, "auth", "No nonce for user %d", login_uid);
          dict_free(d);
@@ -487,6 +531,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          return true;
       }
       temp_pw = compute_wire_password(up->pass, nonce);
+
       if (temp_pw == NULL) {
          Log(LOG_WARN, "auth",
             "Got NULL return from compute_wire_password for mg_conn:<%x>, kicking!", c);
@@ -496,6 +541,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
       }
       Log(LOG_CRAZY, "auth", "Saved: |%s|, hashed (server): |%s|, received: |%s|", up->pass,
          temp_pw, pass);
+
       if (strcmp(temp_pw, pass) == 0) {
          // special handling for guests; we generate a random # prefix for their
          // name
@@ -514,26 +560,31 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          // forcibly expire
          cptr->session_start = now;
          cptr->last_heard = now;
+
          // XXX: This might be a bad idea
 //         cptr->session_expiry = now + HTTP_SESSION_LIFETIME;
          ////////////////////
          // Set user flags //
          ////////////////////
-         if ( has_priv(cptr->user->uid, "owner|syslog") ) {
+         if (has_priv(cptr->user->uid, "owner|syslog") ) {
             client_set_flag(cptr, FLAG_SYSLOG);
          }
-         if ( has_priv(cptr->user->uid, "admin|owner") ) {
+
+         if (has_priv(cptr->user->uid, "admin|owner") ) {
             client_set_flag(cptr, FLAG_STAFF);
          }
-         if ( has_priv(cptr->user->uid, "tx") ) {
+
+         if (has_priv(cptr->user->uid, "tx") ) {
             client_set_flag(cptr, FLAG_CAN_TX);
          }
+
          // client cannot transmit unless a user with elmer flag is logged in
-         if ( has_priv(cptr->user->uid, "noob") ) {
+         if (has_priv(cptr->user->uid, "noob") ) {
             client_set_flag(cptr, FLAG_NOOB);
          }
+
          // client is an elmer and can allow noobs to control rig
-         if ( has_priv(cptr->user->uid, "elmer") ) {
+         if (has_priv(cptr->user->uid, "elmer") ) {
             client_set_flag(cptr, FLAG_ELMER);
          }
          // Send a ping to the user and expect them to reply within
@@ -560,6 +611,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          const char *my_codecs = cfg_get_exp("codecs.allowed");
          const char *capab_msg = media_capab_prepare(my_codecs);
          free( (void *)my_codecs );
+
          if (capab_msg) {
             mg_ws_send(c, capab_msg, strlen(capab_msg), WEBSOCKET_OP_TEXT);
             free( (char *)capab_msg );
@@ -607,6 +659,7 @@ int generate_random_guest_id(int digits) {
    int num = 0, prev_digit = -1;
 
 try_again:
+
    for (int i = 0 ; i < digits ; i++) {
       int digit;
       do{
@@ -616,6 +669,7 @@ try_again:
       num = num * 10 + digit;
       prev_digit = digit;
    }
+
    http_client_t *cptr = http_client_list;
    while (cptr) {
       // if we match an existing number, start over

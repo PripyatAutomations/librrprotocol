@@ -33,11 +33,13 @@ bool ws_handle_notice_msg(struct mg_connection *c, struct mg_ws_message *msg) {
 
    char ip[INET6_ADDRSTRLEN];
    int port = c->rem.port;
+
    if (c->rem.is_ip6) {
       inet_ntop( AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
    } else {
       inet_ntop( AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
    }
+
    if (!msg->data.buf) {
       Log(LOG_WARN, "http.ws",
          "notice_msg: got msg from msg_conn:<%p> from %s:%d -- msg:<%p> with no data ptr", c, ip,
@@ -57,6 +59,7 @@ bool ws_handle_notice_msg(struct mg_connection *c, struct mg_ws_message *msg) {
    char *notice_msg = dict_get(d, "notice.msg", NULL);
    char *notice_from = dict_get(d, "notice.from", NULL);
    time_t ts = dict_get_time_t(d, "notice.ts", now);
+
    if (notice_msg) {
 // XXX: readd this
 //      ui_print("[%s] NOTICE: %s: %s !!!", get_chat_ts(ts), (notice_from ?

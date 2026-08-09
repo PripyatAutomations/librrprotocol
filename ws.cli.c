@@ -87,10 +87,10 @@ struct ws_msg_routes ws_routes_cli[] = {
       .type = "hello", .cb = ws_handle_hello_msg
    },
 /*
-   {
-      .type = "media", .cb = ws_handle_media_msg
-   },
-*/
+ *  {
+ *     .type = "media", .cb = ws_handle_media_msg
+ *  },
+ */
    {
       .type = "notice", .cb = ws_handle_notice_msg
    },
@@ -115,9 +115,11 @@ bool ws_handle_hello_msg(struct mg_connection *c, dict *d) {
       return true;
    }
    char *hello = dict_get(d, "hello", NULL);
+
    if (hello) {
 //      ui_print("[%s] *** Server version: %s ***", get_chat_ts(now), hello);
    }
+
    return false;
 }
 
@@ -150,6 +152,7 @@ static bool ws_txtframe_dispatch(struct mg_connection *c, struct mg_ws_message *
       }
       memset( json_req, 0, sizeof(json_req) );
       snprintf(json_req, sizeof(json_req), "$.%s", rp[i].type);
+
       // see if this exists in the json
       if (mg_json_get(msg_data, json_req, NULL) > 0) {
          // Matched, dispatch the message
@@ -196,9 +199,11 @@ bool ws_binframe_process(const char *data, size_t len) {
       0
    };
    size_t n = len < 16 ? len : 16;
+
    for (size_t i = 0 ; i < n ; i++) {
       snprintf(hex + i * 3, sizeof(hex) - i * 3, "%02X ", (unsigned char)data[i]);
    }
+
    Log(LOG_DEBUG, "http.ws", "binary: %zu bytes, hex: %s", len, hex);
 #endif
 
@@ -219,11 +224,13 @@ bool ws_handle_cli(struct mg_connection *c, struct mg_ws_message *msg) {
       return true;
    }
 #if     defined(HTTP_DEBUG_CRAZY)
+
    if (cfg_http_debug_crazy) {
       // XXX: This should be moved to an option in config perhaps?
       Log(LOG_CRAZY, "http", "WS msg: %.*s", (int) msg->data.len, msg->data.buf);
    }
 #endif
+
    if (msg->flags & WEBSOCKET_OP_BINARY) {
       // Binary (audio, waterfall, etc) frames
       ws_binframe_process(msg->data.buf, msg->data.len);
@@ -231,6 +238,7 @@ bool ws_handle_cli(struct mg_connection *c, struct mg_ws_message *msg) {
       // Text (mostly json) frames
       ws_txtframe_dispatch(c, msg);
    }
+
    return false;
 }
 
@@ -240,8 +248,10 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 
       return;
    }
+
    if (ev == MG_EV_OPEN) {
 #if     defined(HTTP_DEBUG_CRAZY)
+
       if (cfg_http_debug_crazy) {
          c->is_hexdumping = 1;
       }
@@ -255,10 +265,12 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
    } else if (ev == MG_EV_WS_OPEN) {
       const char *this_server = server_name;
       const char *url = get_server_property(this_server, "server.url");
+
       if (c->is_tls) {
          struct mg_tls_opts opts = {
             .name = mg_url_host(url)
          };
+
          if (tls_ca_path) {
             opts.ca = tls_ca_path_str;
          } else {
@@ -271,6 +283,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 
       const char *login_user = get_server_property(this_server, "server.user");
       Log(LOG_DEBUG, "ws", "ev_ws_connect: server: |%s| user: |%s|", server_name, login_user);
+
       if (!login_user) {
          Log(LOG_CRIT, "ws", "server.user not set in config!");
 
@@ -281,6 +294,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 
    } else if (ev == MG_EV_WS_MSG) {
       struct mg_ws_message *wm = (struct mg_ws_message *)ev_data;
+
       if (wm) {
          ws_handle_cli(c, wm);
       }
@@ -302,8 +316,9 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 #endif // defined(USE_MONGOOSE)
 void ws_client_init(void) {
    const char *debug = cfg_get_exp("debug.http");
-   if ( debug && (strcasecmp(debug, "true") == 0 ||
-                  strcasecmp(debug, "yes") == 0) ) {
+
+   if (debug && (strcasecmp(debug, "true") == 0 ||
+                 strcasecmp(debug, "yes") == 0) ) {
 #if     defined(USE_MONGOOSE)
       mg_log_set(MG_LL_DEBUG);   // or MG_LL_VERBOSE for even more
 #endif
@@ -314,8 +329,9 @@ void ws_client_init(void) {
    }
    free( (void *)debug );
    const char *debug_crazy = cfg_get_exp("debug.http.crazy");
-   if ( debug_crazy && (strcasecmp(debug_crazy, "true") == 0 ||
-                        strcasecmp(debug_crazy, "yes") == 0) ) {
+
+   if (debug_crazy && (strcasecmp(debug_crazy, "true") == 0 ||
+                       strcasecmp(debug_crazy, "yes") == 0) ) {
       cfg_http_debug_crazy = true;
    }
    free( (void *)debug_crazy );
@@ -323,12 +339,14 @@ void ws_client_init(void) {
 #if     defined(USE_MONGOOSE)
    mg_mgr_init(&mgr);
 #endif
+
 // XXX: Fix this
 //   tls_ca_path = find_file_by_list(default_tls_ca_paths,
 // sizeof(default_tls_ca_paths) / sizeof(char *));
    if (!tls_ca_path) {
       tls_ca_path = strdup("*");
    }
+
    if (tls_ca_path) {
 #if     defined(USE_MONGOOSE)
       // turn it into a mongoose string
@@ -403,7 +421,7 @@ void ws_send_to_name(struct mg_connection *sender, const char *username, struct 
    http_client_t *current = http_client_list;
    while (current) {
       // Messages from the server will have NULL sender
-      if ( !sender || (current->is_ws && current->conn != sender) ) {
+      if (!sender || (current->is_ws && current->conn != sender) ) {
          ws_send_to_cptr(sender, current, msg_data, data_type);
       }
       current = current->next;
@@ -454,6 +472,7 @@ bool ws_kick_client(http_client_t *cptr, const char *reason) {
       return true;
    }
 #if     defined(USE_MONGOOSE)
+
    if (!cptr->conn) {
       Log( LOG_DEBUG, "auth", "ws_kick_client for cptr <%p> has mg_conn <%p> and is invalid", cptr,
          (cptr ? cptr->conn : NULL) );
@@ -461,11 +480,13 @@ bool ws_kick_client(http_client_t *cptr, const char *reason) {
       return true;
    }
 #endif // defined(USE_MONGOOSE)
+
    // If we have a client structure attached, release it's resources
    if (cptr->user_agent) {
       free(cptr->user_agent);
       cptr->user_agent = NULL;
    }
+
    if (cptr->cli_version) {
       free(cptr->cli_version);
       cptr->cli_version = NULL;
@@ -473,6 +494,7 @@ bool ws_kick_client(http_client_t *cptr, const char *reason) {
    char resp_buf[HTTP_WS_MAX_MSG + 1];
 #if     defined(USE_MONGOOSE)
    struct mg_connection *c = cptr->conn;
+
    // make sure we're not accessing unsafe memory
    if (cptr->user && cptr->chatname[0] != '\0') {
       if (cptr->active) {
@@ -491,6 +513,7 @@ bool ws_kick_client(http_client_t *cptr, const char *reason) {
          free( (void *)jp );
       }
    }
+
    return ws_kick_client_by_c(cptr->conn, reason);
 #endif // defined(USE_MONGOOSE)
 
@@ -500,6 +523,7 @@ bool ws_kick_client(http_client_t *cptr, const char *reason) {
 #if     defined(USE_MONGOOSE)
 bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
    char resp_buf[HTTP_WS_MAX_MSG + 1];
+
    if (!c) {
       return true;
    }
@@ -519,6 +543,7 @@ bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
 static bool ws_handle_pong(struct mg_ws_message *msg, struct mg_connection *c) {
    bool rv = false;
    char *ts = NULL;
+
    if (!c || !msg || !msg->data.buf) {
       Log( LOG_CRAZY, "http.ws", "ws_handle_pong got msg <%p> c <%p> data <%p>", msg, c,
          (msg ? msg->data.buf : NULL) );
@@ -527,12 +552,14 @@ static bool ws_handle_pong(struct mg_ws_message *msg, struct mg_connection *c) {
    }
    char ip[INET6_ADDRSTRLEN];   // Buffer to hold IPv4 or IPv6 address
    int port = c->rem.port;
+
    if (c->rem.is_ip6) {
       inet_ntop( AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
    } else {
       inet_ntop( AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
    }
    http_client_t *cptr = http_find_client_by_c(c);
+
    if (!cptr) {
       char msgbuf[512];
 
@@ -543,7 +570,8 @@ static bool ws_handle_pong(struct mg_ws_message *msg, struct mg_connection *c) {
       goto cleanup;
    }
    struct mg_str msg_data = msg->data;
-   if ( !( ts = mg_json_get_str(msg_data, "$.pong.ts") ) ) {
+
+   if (!(ts = mg_json_get_str(msg_data, "$.pong.ts") ) ) {
       Log(LOG_WARN, "http.ws", "ws_handle_pong: PONG from user with no timestamp");
       rv = true;
       goto cleanup;
@@ -554,13 +582,15 @@ static bool ws_handle_pong(struct mg_ws_message *msg, struct mg_connection *c) {
    char *endptr;
    errno = 0;
    time_t ts_t = strtoll(ts, &endptr, 10);
+
    if (errno == ERANGE || ts_t < 0 || ts_t > LONG_MAX || *endptr != '\0') {
       Log(LOG_WARN, "http.pong", "Got invalid ts |%s| from client <%p>", ts, c);
       rv = true;
       goto cleanup;
    }
    time_t ping_expiry = ts_t + HTTP_PING_TIME;
-   if ( (ping_expiry) < now ) {
+
+   if ( (ping_expiry) < now) {
       Log(LOG_AUDIT, "http.pong",
          "Late ping for mg_conn:<%p> on cptr:<%p> from %s:%d ts: %li + %li (timeout) < now %li", c,
          cptr, ip, port, ts_t, HTTP_PING_TIMEOUT, now);
@@ -586,12 +616,14 @@ bool ws_binframe_process_mg(struct mg_connection *c, const char *buf, size_t len
    Log(LOG_DEBUG, "ws.binframe", "Binary frame of %li bytes", len);
 
    http_client_t *cptr = http_find_client_by_c(c);
+
    if (!cptr) {
       Log(LOG_CRIT, "ws.binframe",
          "Binary frame from client at <%p> with no http session. Ignoring!");
 
       return true;
    }
+
    // Here we need to pull out the channel ID and send it the users expecting
    // this codec
    if (len < 8) {
@@ -638,15 +670,18 @@ static bool ws_txtframe_process(struct mg_ws_message *msg, struct mg_connection 
 
    // Update the last-heard time for the user
    http_client_t *cptr = http_find_client_by_c(c);
+
    if (!cptr) {
       Log(LOG_CRAZY, "ws", "message from unauthenticated user at c:<%p>", c);
 
       return true;
    }
    cptr->last_heard = now;
+
    // Handle ping messages
    if (ping) {
       time_t ping_ts = dict_get_time_t(d, "ping.ts", 0);
+
       if (ping_ts) {
          const char *jp = dict2json_mkstr(VAL_STR, "type", "pong", VAL_ULONG, "ts", ping_ts);
          mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
@@ -656,6 +691,7 @@ static bool ws_txtframe_process(struct mg_ws_message *msg, struct mg_connection 
    }
    // Handle pong messages (responses to server-initiated pings)
    time_t pong_ts = dict_get_time_t(d, "pong.ts", 0);
+
    if (pong_ts && cptr) {
       cptr->last_ping = 0;
       cptr->ping_attempts = 0;
@@ -664,6 +700,7 @@ static bool ws_txtframe_process(struct mg_ws_message *msg, struct mg_connection 
    } else if (hello) {
       Log(LOG_DEBUG, "ws", "Got HELLO from client at mg_conn:<%p>: %s", c, hello);
       cptr->cli_version = malloc(HTTP_UA_LEN);
+
       if (cptr->cli_version) {
          memset(cptr->cli_version, 0, HTTP_UA_LEN);
          snprintf(cptr->cli_version, HTTP_UA_LEN, "%s", hello);
@@ -675,19 +712,22 @@ static bool ws_txtframe_process(struct mg_ws_message *msg, struct mg_connection 
       if (cmd) {
          result = ws_handle_chat_msg(c, d);
       }
-#if	0	// codec
+#if     0       // codec
    } else if (mg_json_get(msg_data, "$.media", NULL) > 0) {
       char *media_cmd = dict_get(d, "media.cmd", NULL);
       char *media_codecs = dict_get(d, "media.codecs", NULL);
+
       // all packets need a command
       if (!media_cmd) {
          result = true;
          goto cleanup;
       }
+
       if (strcasecmp(media_cmd, "capab") == 0) {
          // Capability negotiation
          if (media_codecs) {
             const char *preferred = cfg_get_exp("codecs.allowed");
+
             if (!preferred) {
                Log(LOG_CRIT, "ws.media", "media.capab needs codecs.allowed set in config!");
                result = true;
@@ -695,6 +735,7 @@ static bool ws_txtframe_process(struct mg_ws_message *msg, struct mg_connection 
             }
             char *common = codec_filter_common(preferred, media_codecs);
             free( (char *)preferred );
+
             if (strlen(common) < 4) {
                free(common);
                result = true;
@@ -726,11 +767,13 @@ static bool ws_txtframe_process(struct mg_ws_message *msg, struct mg_connection 
          }
          char *media_codec = dict_get(d, "media.codec", NULL);
          char *media_channel = dict_get(d, "media.channel", NULL);
+
          if (media_codec && strlen(media_codec) == 4) {
             Log(LOG_DEBUG, "ws.media", "Selected %s codec %s.%s for user %s at cptr:<%p>",
                media_channel, media_codec, media_channel, cptr->chatname, cptr);
             struct fwdsp_subproc *codec_tx_subproc = NULL;
             struct fwdsp_subproc *codec_rx_subproc = NULL;
+
 // XXX: Rewrite this to subscribe rx_channels and rx_channels
             if (media_channel) {
                // XXX: Should we store pointers to the subprocs in the user
@@ -794,6 +837,7 @@ bool ws_handle(struct mg_ws_message *msg, struct mg_connection *c) {
    // XXX: This should be moved to an option in config perhaps?
    Log(LOG_CRAZY, "http", "WS msg: %.*s", (int) msg->data.len, msg->data.buf);
 #endif
+
    // Binary (audio, waterfall) frames
    if (msg->flags & WEBSOCKET_OP_BINARY) {
       Log(LOG_CRAZY, "ws.binframe", "Binary frame: %li bytes", msg->data.len);
@@ -803,6 +847,7 @@ bool ws_handle(struct mg_ws_message *msg, struct mg_connection *c) {
       Log(LOG_CRAZY, "ws", "Text frame: %li bytes", msg->data.len);
       ws_txtframe_process(msg, c);
    }
+
    return false;
 }
 
@@ -815,12 +860,14 @@ bool ws_send_ping(http_client_t *cptr) {
    // XXX: Send a ping, so they'll have something to respond to, to acknowledge
    // life
    char resp_buf[HTTP_WS_MAX_MSG + 1];
+
    if (!cptr) {
       Log(LOG_DEBUG, "auth", "ws_send_ping for null cptr!");
 
       return true;
    }
 #if     defined(USE_MONGOOSE)
+
    if (!cptr->conn) {
       Log( LOG_DEBUG, "auth", "ws_send_ping for cptr:<%p> has mg_conn:<%p> and is invalid", cptr,
          (cptr ? cptr->conn : NULL) );
@@ -832,6 +879,7 @@ bool ws_send_ping(http_client_t *cptr) {
    // Make sure that timeout will happen if no response
    cptr->last_ping = now;
    cptr->ping_attempts++;
+
    // only bother making noise if the first attempt failed, send the first ping
    // to crazy level log
    if (cptr->ping_attempts > 1) {

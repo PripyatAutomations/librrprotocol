@@ -35,7 +35,7 @@ bool rr_set_mode(rr_vfo_t vfo, rr_mode_t mode) {
 
 extern time_t now;
 
-#define WS_RIGCTL_FORCE_INTERVAL 60                     // every 60 seconds,
+#define	WS_RIGCTL_FORCE_INTERVAL 60                    // every 60 seconds,
                                                         // send a full update
 
 // XXX: Merge with existing rr_vfo_data_t
@@ -70,6 +70,7 @@ static ws_rig_state_t *ws_rigctl_state_diff(rr_vfo_t vfo) {
 
    // allocate some storage for the diff values
    ws_rig_state_t *update = malloc( sizeof(ws_rig_state_t) );
+
    if (!update) {
       // XXX: we should throw a log message but we're out of memory....
       fprintf(stderr, "OOM in ws_rigctl_state_diff!\n");
@@ -79,19 +80,23 @@ static ws_rig_state_t *ws_rigctl_state_diff(rr_vfo_t vfo) {
    memset( update, 0, sizeof(ws_rig_state_t) );
 
    bool u_freq = false, u_mode = false, u_width = false;
+
    // Only propogate changed fields
    if (old->freq != curr->freq) {
       update->freq = curr->freq;
       u_freq = true;
    }
+
    if (old->mode != curr->mode) {
       update->mode = curr->mode;
       u_mode = true;
    }
+
    if (old->width != curr->width) {
       update->width = curr->width;
       u_width = true;
    }
+
    if (u_freq || u_mode || u_width) {
       return update;
    }
@@ -112,7 +117,8 @@ static bool ws_rig_state_poll(rr_vfo_t vfo) {
    memset( old, 0, sizeof(ws_rig_state_t) );
    memcpy( old, curr, sizeof(ws_rig_state_t) );
 
-#if	0
+#if     0
+
    // Poll the backend
    if (rig.backend && rig.backend->api && rig.backend->api->backend_poll) {
       rig.backend->api->backend_poll();
@@ -125,19 +131,23 @@ static bool ws_rig_state_poll(rr_vfo_t vfo) {
 // Sends a diff of the changes since last poll, in json
 static bool ws_rig_state_send(rr_vfo_t vfo) {
    bool force_send = false;
+
    if (vfo == VFO_NONE) {
       return NULL;
    }
+
    // Nothing to return, see if we've iterated enough times to force a send
    if (ws_rig_state_last_sent >= WS_RIGCTL_FORCE_INTERVAL) {
       force_send = true;
    }
    ws_rig_state_t *diff = NULL;
+
    if (force_send) {
       // send the entire latest update to the users
       diff = &vfo_states[vfo];
    } else {
       ws_rigctl_state_diff(vfo);
+
       if (!diff) {
          return false;
       }
@@ -153,6 +163,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    struct mg_str msg_data = msg->data;
    http_client_t *cptr = http_find_client_by_c(c);
    bool rv = false;
+
    if (!cptr) {
       Log(LOG_DEBUG, "ws.rigctl", "rig parse, cptr == NULL, c: <%p>", c);
 
@@ -170,6 +181,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    char *cmd = dict_get(d, "cat.cmd", NULL);
    char *vfo = dict_get(d, "cat.vfo", NULL);
    char *state = dict_get(d, "cat.state", NULL);
+
    if (cptr->user->is_muted) {
       Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they are muted!", cmd,
          cptr->chatname);
@@ -178,11 +190,12 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
       return true;
    }
+
    // Support for 'noob' class users who can only control rig if an elmer is
    // present
    // XXX: Add support for per noob Elmer (link from noob to elmer(s) who have
    // approved their use)
-   if ( client_has_flag(cptr, FLAG_NOOB) && !is_elmer_online() ) {
+   if (client_has_flag(cptr, FLAG_NOOB) && !is_elmer_online() ) {
       Log(LOG_AUDIT, "ws.rigctl",
          "Ignoring %s command from %s as they're a noob and no elmers are online", cmd,
          cptr->chatname);
@@ -190,6 +203,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
       return true;
    }
+
    if (cmd) {
       // XXX: This needs split up to move functionality to ptt.c
       if (strcasecmp(cmd, "ptt") == 0) {
@@ -199,6 +213,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
             return true;
          }
          char *ptt_state = mg_json_get_str(msg_data, "$.cat.ptt");
+
          if (!vfo || !ptt_state) {
             Log(LOG_DEBUG, "ws.rigctl", "PTT set without vfo or ptt_state");
             dict_free(d);
@@ -213,6 +228,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          const char *mode_name = NULL;
 
          vfo_id = vfo_lookup(vfo[0]);
+
          if (vfo_id < 0) {
             dict_free(d);
 
@@ -222,6 +238,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          mode_name = vfo_mode_name(dp->mode);
 
          int channel = -1;
+
          // XXX: We need to look up the channel ID for RX *FROM* the client
          if (channel < 0) {
             Log(LOG_CRIT, "ptt", "Couldn't find channel ID for TX stream, ignoring PTT event");
@@ -230,6 +247,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
             return true;
             // XXX: send an error & ptt off notice
          }
+
          // turn PTT state requested into a boolean value
          if (strcasecmp(ptt_state, "true") == 0 || strcasecmp(ptt_state, "on") == 0) {
             c_state = true;
@@ -243,6 +261,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          // Start/stop PTT session
 // XXX: Need to move this into a event...
 #if     0
+
          if (!cptr->ptt_session) {
             const char *recording = au_recording_start(channel);
             cptr->ptt_session = db_ptt_start(masterdb, cptr->user->name, dp->freq, mode_name,
@@ -261,10 +280,10 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
             VAL_STR, "cat.ptt", ptt_state, VAL_STR, "cat.user", cptr->chatname, VAL_STR, "cat.vfo",
             vfo, VAL_INT, "cat.width", dp->width, VAL_LONG, "cat.ts", now);
 
-#if	defined(USE_MONGOOSE)
+#if     defined(USE_MONGOOSE)
          struct mg_str mp = mg_str(jp);
          ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
-#endif	// use_mongoose
+#endif // use_mongoose
          free( (char *)jp );
 
          // Send a PTT event
@@ -279,6 +298,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          double new_freq_d;
          mg_json_get_num(msg_data, "$.cat.freq", &new_freq_d);
          float new_freq = (float)new_freq_d;
+
          if (!vfo || new_freq <= 0) {
             Log(LOG_DEBUG, "ws.rigctl", "FREQ set without vfo or freq");
             dict_free(d);
@@ -311,12 +331,14 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 //         rr_freq_set(c_vfo, new_freq);
       } else if (strcasecmp(cmd, "mode") == 0) {
          char *mode = mg_json_get_str(msg_data, "$.cat.mode");
+
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
             free(mode);
             dict_free(d);
 
             return true;
          }
+
          if (!vfo || !mode) {
             Log(LOG_DEBUG, "ws.rigctl", "MODE set without vfo:<%p> or mode:<%p>", vfo, mode);
             free(mode);
@@ -339,6 +361,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
          Log(LOG_AUDIT, "mode", "User %s set VFO %s MODE to %s", cptr->chatname, vfo, mode);
          rr_mode_t new_mode = vfo_parse_mode(mode);
+
          if (new_mode != MODE_NONE) {
 // XXX: Implement this as an event
 //            rr_set_mode(c_vfo, new_mode);

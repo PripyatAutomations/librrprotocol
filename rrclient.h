@@ -1,6 +1,6 @@
 // librrprotocol/rrclient.h
 #ifndef __librrprotocol_rrclient_h
-#define __librrprotocol_rrclient_h
+#define	__librrprotocol_rrclient_h
 
 #include <stdbool.h>
 

@@ -15,25 +15,29 @@ int generate_nonce(char *buffer, size_t length) {
    static const char base64_chars[] =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
    size_t i;
+
    if (length < 8) {
       length = 8;
    }
+
    for (i = 0 ; i < (length - 2) ; i++) {
       buffer[i] = base64_chars[rand() % 64];
    }
+
    buffer[length] = '\0';
 
    return length;
 }
 
-#if	defined(USE_MONGOOSE)
+#if     defined(USE_MONGOOSE)
 char *hash_passwd(const char *passwd) {
    if (!passwd) {
       return NULL;
    }
    unsigned char combined[(HTTP_HASH_LEN * 2) + 1];
    char *hex_output = (char *)malloc(HTTP_HASH_LEN * 2 + 1);   // Allocate space
-                                                               // for hex string
+
+   // for hex string
    if (!hex_output) {
       fprintf(stderr, "oom in hash_passwd?!\n");
 
@@ -53,6 +57,7 @@ char *hash_passwd(const char *passwd) {
    for (int i = 0 ; i < 20 ; i++) {
       sprintf(hex_output + (i * 2), "%02x", hash[i]);
    }
+
    // Null terminate teh string for libc's sake
    hex_output[HTTP_HASH_LEN * 2] = '\0';
 
@@ -74,6 +79,7 @@ char *compute_wire_password(const char *password, const char *nonce) {
 #if     defined(USE_MONGOOSE)
    mg_sha1_ctx ctx;
 #endif // USE_MONGOOSE
+
    if (password == NULL || nonce == NULL) {
       Log(LOG_CRIT, "auth", "wtf compute_wire_password called with NULL password<%p> or nonce<%p>",
          password, nonce);
@@ -81,7 +87,8 @@ char *compute_wire_password(const char *password, const char *nonce) {
       return NULL;
    }
    char *hex_output = (char *)malloc(HTTP_HASH_LEN * 2 + 1);   // Allocate space
-                                                               // for hex string
+
+   // for hex string
    if (hex_output == NULL) {
       Log(LOG_CRIT, "auth", "oom in compute_wire_password");
 
@@ -104,10 +111,11 @@ char *compute_wire_password(const char *password, const char *nonce) {
    for (int i = 0 ; i < 20 ; i++) {
       sprintf(hex_output + (i * 2), "%02x", hash[i]);
    }
+
    hex_output[HTTP_HASH_LEN * 2] = '\0';   // Null-terminate the string
    Log(LOG_CRAZY, "auth", "passwd |%s| nonce |%s| result |%s|", password, nonce, hex_output);
 
    return hex_output;
 }
 
-#endif	// defined(USE_MONGOOSE)
+#endif // defined(USE_MONGOOSE)

@@ -28,19 +28,23 @@ const char *get_server_property(const char *server, const char *prop) {
 
 static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) {
    (void)c;
+
    if (ev == MG_EV_WS_MSG) {
       struct mg_ws_message *msg = (struct mg_ws_message *)ev_data;
+
       if (msg && msg->data.buf) {
          char buf[HTTP_WS_MAX_MSG + 1];
          memset( buf, 0, sizeof(buf) );
          memcpy(buf, msg->data.buf, msg->data.len);
          dict *d = json2dict(buf);
+
          if (!d) {
             return;
          }
          char *cmd = dict_get(d, "talk.cmd", NULL);
          char *pong_ts = dict_get(d, "pong.ts", NULL);
          char *ping_ts = dict_get(d, "ping.ts", NULL);
+
          if (ping_ts) {
             const char *jp = dict2json_mkstr( VAL_STR, "type", "pong", VAL_ULONG, "ts",
                atol(ping_ts) );
@@ -54,6 +58,7 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
             char *msg_type = dict_get(d, "talk.msg_type", NULL);
             char *target = dict_get(d, "talk.target", NULL);
             time_t ts = dict_get_time_t(d, "talk.ts", now);
+
             if (from && data) {
                struct talk_msg_event_data {
                   char from[128];
@@ -62,6 +67,7 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
                   char msg_type[32];
                   time_t ts;
                } *tmed = calloc( 1, sizeof(*tmed) );
+
                if (tmed) {
                   snprintf(tmed->from, sizeof(tmed->from), "%s", from);
                   snprintf(tmed->data, sizeof(tmed->data), "%s", data);
@@ -73,9 +79,9 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
                   free(tmed);
                }
             }
-         } else if ( dict_get(d, "hello", NULL) ) {
+         } else if (dict_get(d, "hello", NULL) ) {
             Log(LOG_DEBUG, "ws", "Got hello from server");
-         } else if ( dict_get(d, "auth.cmd", NULL) ) {
+         } else if (dict_get(d, "auth.cmd", NULL) ) {
             Log(LOG_DEBUG, "ws", "Got auth message");
          }
          dict_free(d);
@@ -86,6 +92,7 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
       tui_print_win(tui_window_find("status"), "Connected to server");
 
       login_user = cfg_get_exp("server.user");
+
       if (login_user) {
          const char *jp = dict2json_mkstr(VAL_STR, "hello", "rrcli");
          mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
@@ -108,11 +115,13 @@ bool rrclient_connect(const char *url) {
    }
    tui_print_win(tui_window_find("status"), "Connecting to %s", url);
    ws_conn = mg_ws_connect(&mgr, url, rrclient_ws_handler, NULL, NULL);
+
    if (!ws_conn) {
       tui_print_win(tui_window_find("status"), "Connection failed");
 
       return true;
    }
+
    return false;
 }
 
@@ -153,6 +162,7 @@ void rrclient_poll_events(void) {
 
 bool rrclient_autoconnect(void) {
    const char *server = cfg_get_exp("server.auto-connect");
+
    if (server) {
       char server_name[256];
       snprintf(server_name, sizeof(server_name), "%s", server);
@@ -161,10 +171,12 @@ bool rrclient_autoconnect(void) {
       char fullkey[1024];
       snprintf(fullkey, sizeof(fullkey), "server:%s.server.url", server_name);
       const char *url = cfg_get_exp(fullkey);
+
       if (url) {
          rrclient_connect(url);
          free( (void *)url );
       }
    }
+
    return false;
 }

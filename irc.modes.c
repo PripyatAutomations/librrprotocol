@@ -102,6 +102,7 @@ irc_mode_t *irc_find_cmode(char c) {
          return modes;
       }
    }
+
    return NULL;
 }
 
@@ -113,5 +114,6 @@ irc_mode_t *irc_find_umode(char c) {
          return modes;
       }
    }
+
    return NULL;
 }

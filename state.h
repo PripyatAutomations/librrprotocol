@@ -9,13 +9,13 @@
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 // This file contains the structures used for statistics and state
 #if     !defined(__rr_state_h)
-#define __rr_state_h
+#define	__rr_state_h
 #include <time.h>
 #include <stdbool.h>
 #include "build_config.h"
 #include <librustyaxe/cat.h>
 
-#define PARSE_LINE_LEN 512
+#define	PARSE_LINE_LEN 512
 
 // State of the all tunings: PA & Matching Units
 enum TuningState {

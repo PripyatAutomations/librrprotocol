@@ -111,6 +111,7 @@ const char *vfo_name(rr_vfo_t vfo) {
 
 rr_mode_t vfo_parse_mode(const char *mode) {
    Log(LOG_CRAZY, "vfo", "vfo_parse_mode: %s", mode);
+
    if (strcasecmp(mode, vfo_mode_cw) == 0) {
       return MODE_CW;
    } else if (strcasecmp(mode, vfo_mode_am) == 0) {
@@ -194,20 +195,22 @@ const char *vfo_mode_name(rr_mode_t mode) {
 }
 
 long parse_freq(const char *str) {
-   while ( isspace(*str) ) {
+   while (isspace(*str) ) {
       str++;
    }
    char *end = NULL;
    double val = strtod(str, &end);
 
-   while ( isspace(*end) ) {
+   while (isspace(*end) ) {
       end++;
    }
+
    // If no suffix provided, guess unit
    if (*end == '\0') {
       // Count digits before any decimal point
       const char *dot = strchr(str, '.');
       int digits = dot ? (dot - str) : strlen(str);
+
       if (digits >= 3 && digits <= 5) {
          return (long)(val * 1e3);  // assume kHz
       } else {
@@ -218,6 +221,7 @@ long parse_freq(const char *str) {
    } else if (*end == 'm' || *end == 'M') {
       return (long)(val * 1e6);
    }
+
    return -1;  // invalid format
 }
 
@@ -229,5 +233,6 @@ const char *format_freq(long hz, char *buf, size_t len) {
    } else {
       snprintf(buf, len, "%ld Hz", hz);
    }
+
    return buf;
 }

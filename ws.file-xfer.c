@@ -19,7 +19,7 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-#define CHUNK 32768
+#define	CHUNK 32768
 
 static uint64_t gen_id(void) {
    uint64_t x = (uint64_t) mg_millis();
@@ -36,11 +36,13 @@ static const char *rr_basename(const char *path) {
       return "file.bin";
    }
    const char *base = path;
+
    for (const char *p = path ; *p ; ++p) {
       if (*p == '/' || *p == '\\') {
          base = p + 1;
       }
    }
+
    return base;
 }
 
@@ -49,6 +51,7 @@ static void ws_send_file(struct mg_connection *c, const char *path, const char *
       return;
    }
    FILE *fp = fopen(path, "rb");
+
    if (!fp) {
       Log( LOG_CRIT, "ws.file-xfer", "Failed opening file %s - %d:%s", path, errno,
          strerror(errno) );
@@ -60,7 +63,7 @@ static void ws_send_file(struct mg_connection *c, const char *path, const char *
    fseeko(fp, 0, SEEK_SET);
 
    uint64_t id = gen_id();
-   uint32_t total = (uint32_t)( (fsize + CHUNK - 1) / CHUNK );
+   uint32_t total = (uint32_t)( (fsize + CHUNK - 1) / CHUNK);
 
    // meta (text frame)
    mg_ws_printf(c, WEBSOCKET_OP_TEXT,
@@ -70,13 +73,16 @@ static void ws_send_file(struct mg_connection *c, const char *path, const char *
 
    // chunk buffer: header(24) + payload
    uint8_t *buf = (uint8_t *) malloc(24 + CHUNK);
+
    if (!buf) {
       fclose(fp);
 
       return;
    }
+
    for (uint32_t idx = 0 ; ; idx++) {
       size_t n = fread(buf + 24, 1, CHUNK, fp);
+
       if (n == 0) {
          break;
       }
@@ -90,6 +96,7 @@ static void ws_send_file(struct mg_connection *c, const char *path, const char *
 
       mg_ws_send(c, buf, 24 + n, WEBSOCKET_OP_BINARY);
    }
+
    free(buf);
    fclose(fp);
 }
@@ -114,20 +121,25 @@ static struct slot g_tbl[64];
 
 static struct xfer *xf_get(uint64_t id, bool create) {
    size_t count = sizeof(g_tbl) / sizeof(g_tbl[0]);
+
    for (size_t i = 0 ; i < count ; i++) {
       size_t j = (id + i) % count;
+
       if (g_tbl[j].id == id) {
          return &g_tbl[j].xf;
       }
+
       if (create && g_tbl[j].id == 0) {
          g_tbl[j].id = id; return &g_tbl[j].xf;
       }
    }
+
    return NULL;
 }
 
 static void xf_done(uint64_t id) {
    size_t count = sizeof(g_tbl) / sizeof(g_tbl[0]);
+
    for (size_t j = 0 ; j < count ; j++) {
       if (g_tbl[j].id == id) {
          if (g_tbl[j].xf.fp) {
@@ -145,9 +157,11 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
       return;
    }
    struct mg_ws_message *m = (struct mg_ws_message *) ev_data;
+
    if (m->flags & WEBSOCKET_OP_TEXT) {
       // Parse meta
       char *type = mg_json_get_str(mg_str_n(m->data.buf, m->data.len), "$.type");
+
       if (!type || mg_strcmp(mg_str(type), k_meta) != 0) {
          mg_free(type);
 
@@ -159,6 +173,7 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
       char idbuf[32] = {
          0
       };
+
       if (sid) {
          mg_snprintf(idbuf, sizeof(idbuf), "%s", sid);
          mg_free(sid);
@@ -167,6 +182,7 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
       sscanf(idbuf, "%llx", (unsigned long long *) &id);
 
       struct xfer *xf = xf_get(id, true);
+
       if (!xf) {
          return;
       }
@@ -174,10 +190,12 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
 
       char *sname = mg_json_get_str(m->data, "$.name");
       char *smime = mg_json_get_str(m->data, "$.mime");
+
       if (sname) {
          mg_snprintf(xf->name, sizeof(xf->name), "%s", sname);
          mg_free(sname);
       }
+
       if (smime) {
          mg_snprintf(xf->mime, sizeof(xf->mime), "%s", smime);
          mg_free(smime);
@@ -190,6 +208,7 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
       char out[320];
       mg_snprintf(out, sizeof(out), "recv_%s", xf->name[0] ? xf->name : "file.bin");
       xf->fp = fopen(out, "wb");
+
       if (!xf->fp) {
          xf_done(id);
       }
@@ -199,6 +218,7 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
 
       return;
    }
+
    if (m->flags & WEBSOCKET_OP_BINARY) {
       if (m->data.len < 24) {
          return;
@@ -208,6 +228,7 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
       uint32_t idx, n; memcpy(&idx, p + 8, 4); memcpy(&n, p + 12, 4);
 
       struct xfer *xf = xf_get(id, false);
+
       if (!xf || !xf->fp) {
          return;
       }
@@ -220,6 +241,7 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
 
       xf->got_chunks++;
       xf->received += n;
+
       if (xf->got_chunks >= xf->total || xf->received >= xf->size) {
          MG_INFO( ("Complete id=%llx bytes=%llu", (unsigned long long) id,
                    (unsigned long long) xf->received) );

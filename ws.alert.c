@@ -33,11 +33,13 @@ bool ws_handle_alert_msg(struct mg_connection *c, struct mg_ws_message *msg) {
 
    char ip[INET6_ADDRSTRLEN];
    int port = c->rem.port;
+
    if (c->rem.is_ip6) {
       inet_ntop( AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
    } else {
       inet_ntop( AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
    }
+
    if (!msg->data.buf) {
       Log(LOG_WARN, "http.ws",
          "alert_msg: got msg from msg_conn:<%p> from %s:%d -- msg:<%p> with no data ptr", c, ip,
@@ -57,12 +59,15 @@ bool ws_handle_alert_msg(struct mg_connection *c, struct mg_ws_message *msg) {
    char *alert_msg = dict_get(d, "alert.msg", NULL);
    char *alert_from = dict_get(d, "alert.from", NULL);
    time_t alert_ts = dict_get_time_t(d, "alert.ts", 0);
+
    if (!alert_from) {
       alert_from = strdup("***SERVER***");
    }
+
    if (!alert_ts) {
       alert_ts = now;
    }
+
    if (alert_msg) {
 // XXX: readd this
 //      ui_print("[%s] ALERT: %s: %s !!!", get_chat_ts(alert_ts), alert_from,

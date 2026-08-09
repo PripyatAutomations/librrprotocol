@@ -6,7 +6,7 @@
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #if     !defined(__irc_channel_h)
-#define __irc_channel_h
+#define	__irc_channel_h
 
 extern unsigned irc_hash_nick(const char *nick);
 extern irc_chan_user_t *chan_find_user(irc_channel_t *chan, const char *nick);

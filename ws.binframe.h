@@ -9,12 +9,12 @@
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 
 #if     !defined(_ws_binframe_h)
-#define _ws_binframe_h
+#define	_ws_binframe_h
 #include <librustyaxe/config.h>
 
-#define BINFRAME_AUDIO 0x01
-#define BINFRAME_VIDEO 0x02
-#define BINFRAME_FILE 0x04
+#define	BINFRAME_AUDIO 0x01
+#define	BINFRAME_VIDEO 0x02
+#define	BINFRAME_FILE 0x04
 
 typedef struct bin_frame_header {
    uint8_t frame_type;                   // Payload type

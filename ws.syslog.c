@@ -25,6 +25,7 @@ extern time_t now;
 #if     defined(USE_MONGOOSE)
 bool ws_handle_syslog_msg(struct mg_connection *c, dict *d) {
    bool rv = false;
+
    if (!c || !d) {
       Log(LOG_WARN, "http.ws", "syslog_msg: got d:<%p> mg_conn:<%p>", d, c);
 
@@ -32,6 +33,7 @@ bool ws_handle_syslog_msg(struct mg_connection *c, dict *d) {
    }
    char ip[INET6_ADDRSTRLEN];
    int port = c->rem.port;
+
    if (c->rem.is_ip6) {
       inet_ntop( AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
    } else {
@@ -46,7 +48,8 @@ bool ws_handle_syslog_msg(struct mg_connection *c, dict *d) {
    struct tm *tmp;
    memset( my_timestamp, 0, sizeof(my_timestamp) );
    t = time(NULL);
-   if ( ( tmp = localtime(&t) ) ) {
+
+   if ( (tmp = localtime(&t) ) ) {
       // success, proceed
       if (strftime(my_timestamp, sizeof(my_timestamp), "%Y/%m/%d %H:%M:%S", tmp) == 0) {
          // handle the error

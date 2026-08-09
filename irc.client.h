@@ -6,7 +6,7 @@
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #if     !defined(__rr_irc_client_h)
-#define __rr_irc_client_h
+#define	__rr_irc_client_h
 
 extern rrconn_t *irc_cli_connect(server_cfg_t *srv);
 

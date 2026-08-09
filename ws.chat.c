@@ -35,7 +35,7 @@
  */
 
 // minimum reason length for kick/ban/etc
-#define CHAT_MIN_REASON_LEN 10
+#define	CHAT_MIN_REASON_LEN 10
 extern time_t now;
 extern bool dying, restarting;
 
@@ -45,6 +45,7 @@ bool ws_chat_err_noprivs(http_client_t *cptr, const char *action) {
    if (!action || !cptr) {
       return true;
    }
+
    if (!cptr->user) {
       return true;
    }
@@ -89,15 +90,18 @@ static bool ws_chat_cmd_die(http_client_t *cptr, const char *reason) {
    if (!cptr) {
       return true;
    }
+
    if (!reason || strlen(reason) < CHAT_MIN_REASON_LEN) {
       ws_chat_error_need_reason(cptr, "die");
 
       return true;
    }
+
    if (!cptr->user) {
       return true;
    }
-   if ( client_has_flag(cptr, FLAG_STAFF) ) {
+
+   if (client_has_flag(cptr, FLAG_STAFF) ) {
       // Send an ALERT to all connected users
       char msgbuf[HTTP_WS_MAX_MSG + 1];
       prepare_msg(msgbuf, sizeof(msgbuf),
@@ -112,6 +116,7 @@ static bool ws_chat_cmd_die(http_client_t *cptr, const char *reason) {
 
       return true;
    }
+
    return false;
 }
 
@@ -122,15 +127,18 @@ static bool ws_chat_cmd_restart(http_client_t *cptr, const char *reason) {
    if (!cptr) {
       return true;
    }
+
    if (!reason || strlen(reason) < CHAT_MIN_REASON_LEN) {
       ws_chat_error_need_reason(cptr, "RESTART");
 
       return true;
    }
+
    if (!cptr->user) {
       return true;
    }
-   if ( client_has_flag(cptr, FLAG_STAFF) ) {
+
+   if (client_has_flag(cptr, FLAG_STAFF) ) {
       // Send an ALERT to all connected users
       char msgbuf[HTTP_WS_MAX_MSG + 1];
       prepare_msg(msgbuf, sizeof(msgbuf),
@@ -147,6 +155,7 @@ static bool ws_chat_cmd_restart(http_client_t *cptr, const char *reason) {
 
       return true;
    }
+
    return false;
 }
 
@@ -157,22 +166,21 @@ static bool ws_chat_cmd_kick(http_client_t *cptr, const char *target, const char
    if (!cptr) {
       return true;
    }
+
    if (!target) {
-#if     defined(USE_MONGOOSE)
       // XXX: send an error response 'No target given'
       ws_send_error(cptr, "No target given for KICK");
-#endif
 
       return true;
    }
+
    if (!reason || strlen(reason) < CHAT_MIN_REASON_LEN) {
-#if     defined(USE_MONGOOSE)
       ws_chat_error_need_reason(cptr, "kick");
-#endif
 
       return true;
    }
-   if ( client_has_flag(cptr, FLAG_STAFF) ) {
+
+   if (client_has_flag(cptr, FLAG_STAFF) ) {
       http_client_t *acptr;
       int kicked = 0;
 
@@ -181,6 +189,7 @@ static bool ws_chat_cmd_kick(http_client_t *cptr, const char *target, const char
          if (!acptr->active || !acptr->is_ws || acptr->chatname[0] == '\0') {
             continue;
          }
+
          if (strcmp(acptr->chatname, target) == 0) {
             // Build and send message
             char msgbuf[HTTP_WS_MAX_MSG + 1];
@@ -195,6 +204,7 @@ static bool ws_chat_cmd_kick(http_client_t *cptr, const char *target, const char
             kicked++;
          }
       }
+
       if (!kicked) {
          char msgbuf[HTTP_WS_MAX_MSG + 1];
          prepare_msg(msgbuf, sizeof(msgbuf), "KICK '%s' command matched no connected users", now,
@@ -212,6 +222,7 @@ static bool ws_chat_cmd_kick(http_client_t *cptr, const char *target, const char
 
       return true;
    }
+
    return false;
 }
 
@@ -222,16 +233,16 @@ static bool ws_chat_cmd_mute(http_client_t *cptr, const char *target, const char
    if (!cptr || !cptr->user) {
       return true;
    }
+
    if (!target) {
-      // XXX: send an error response 'No target given'
-#if     defined(USE_MONGOOSE)
       ws_send_error(cptr, "No target given for MUTE");
-#endif
 
       return true;
    }
-   if ( client_has_flag(cptr, FLAG_STAFF) ) {
+
+   if (client_has_flag(cptr, FLAG_STAFF) ) {
       http_client_t *acptr = http_find_client_by_name(target);
+
       if (!acptr) {
          return true;
       }
@@ -241,15 +252,15 @@ static bool ws_chat_cmd_mute(http_client_t *cptr, const char *target, const char
       char msgbuf[HTTP_WS_MAX_MSG + 1];
       prepare_msg( msgbuf, sizeof(msgbuf), "%s MUTEd by %s: Reason: %s", target, cptr->chatname,
          (reason ? reason : "No reason given") );
-#if     defined(USE_MONGOOSE)
       send_global_alert("***SERVER***", msgbuf);
 
       // broadcast the userinfo so cul updates
       ws_send_userinfo(acptr, NULL);
-#endif
+
       // turn off PTT if this user holds it
       if (acptr->is_ptt) {
-//         rr_ptt_set_all_off();
+         // XXX: This needs to include which rig/ptt, user, etc
+         event_emit("ptt.off", NULL, NULL);
          acptr->is_ptt = false;
       }
    } else {
@@ -257,6 +268,7 @@ static bool ws_chat_cmd_mute(http_client_t *cptr, const char *target, const char
 
       return true;
    }
+
    return false;
 }
 
@@ -267,6 +279,7 @@ static bool ws_chat_cmd_unmute(http_client_t *cptr, const char *target) {
    if (!cptr) {
       return true;
    }
+
    if (!target) {
       // XXX: send an error response 'No target given'
 #if     defined(USE_MONGOOSE)
@@ -275,11 +288,14 @@ static bool ws_chat_cmd_unmute(http_client_t *cptr, const char *target) {
 
       return true;
    }
+
    if (!cptr->user) {
       return true;
    }
-   if ( client_has_flag(cptr, FLAG_STAFF) ) {
+
+   if (client_has_flag(cptr, FLAG_STAFF) ) {
       http_client_t *acptr = http_find_client_by_name(target);
+
       if (!acptr) {
          return true;
       }
@@ -288,16 +304,15 @@ static bool ws_chat_cmd_unmute(http_client_t *cptr, const char *target) {
       // Send an ALERT to all connected users
       char msgbuf[HTTP_WS_MAX_MSG + 1];
       prepare_msg(msgbuf, sizeof(msgbuf), "%s UNMUTEd by %s", target, cptr->chatname);
-#if     defined(USE_MONGOOSE)
       send_global_alert("***SERVER***", msgbuf);
       // broadcast the userinfo so cul updates
       ws_send_userinfo(acptr, NULL);
-#endif
    } else {
       ws_chat_err_noprivs(cptr, "UNMUTE");
 
       return true;
    }
+
    return false;
 }
 
@@ -306,10 +321,12 @@ static bool ws_chat_cmd_syslog(http_client_t *cptr, const char *state) {
    if (!cptr || !state) {
       return true;
    }
-   if ( client_has_flag(cptr, FLAG_STAFF) || client_has_flag(cptr, FLAG_SYSLOG) ) {
+
+   if (client_has_flag(cptr, FLAG_STAFF) || client_has_flag(cptr, FLAG_SYSLOG) ) {
       bool new_state = false;
 
       new_state = parse_bool(state);
+
       if (new_state) {
          client_set_flag(cptr, FLAG_SYSLOG);
       } else {
@@ -320,6 +337,7 @@ static bool ws_chat_cmd_syslog(http_client_t *cptr, const char *state) {
 
       return true;
    }
+
    return false;
 }
 
@@ -336,6 +354,7 @@ bool ws_send_userinfo(http_client_t *cptr, http_client_t *acptr) {
       "talk.tx", cptr->is_ptt);
 
    struct mg_str mp = mg_str(jp);
+
    if (acptr) {
       ws_send_to_cptr(NULL, acptr, &mp, WEBSOCKET_OP_TEXT);
    } else {
@@ -358,6 +377,7 @@ bool ws_send_users(http_client_t *cptr) {
    while (current) {
       // should this be sent to a single user?
 #if     defined(USE_MONGOOSE)
+
       if (cptr) {
          ws_send_userinfo(current, cptr);
       } else {
@@ -365,6 +385,7 @@ bool ws_send_users(http_client_t *cptr) {
          ws_send_userinfo(current, NULL);
       }
 #endif
+
       if (!current->next) {
          return false;
       }
@@ -380,11 +401,13 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
       return true;
    }
    http_client_t *cptr = http_find_client_by_c(c);
+
    if (!cptr) {
       Log(LOG_DEBUG, "chat", "talk parse, cptr is NULL, c: <%p>", c);
 
       return true;
    }
+
    if (!cptr->user) {
       Log(LOG_WARN, "chat", "talk parse, cptr:<%p> ->user NULL", cptr);
 
@@ -408,9 +431,11 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
 
    // set a default of &localrig, but use target if passed
    const char *channel = "&localrig";
+
    if (target) {
       channel = target;
    }
+
    if (cmd) {
       if (strcasecmp(cmd, "msg") == 0) {
          if (!data) {
@@ -418,13 +443,15 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
 
             return true;
          }
+
          // If the message is empty, just return success
          if (strlen(data) == 0) {
             Log(LOG_CRAZY, "chat", "talk msg has no data");
 
             return false;
          }
-         if ( !has_priv(cptr->user->uid, "admin|owner|chat") ) {
+
+         if (!has_priv(cptr->user->uid, "admin|owner|chat") ) {
             Log(LOG_CRAZY, "chat",
                "user %s doesn't have chat privileges but tried to send a message", user);
             // XXX: Alert the user that their message was NOT deliverred because
@@ -435,12 +462,14 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
          }
          struct mg_str mp;
          char msgbuf[HTTP_WS_MAX_MSG + 1];
+
          // sanity check
          if (!user) {
             Log(LOG_CRAZY, "chat", "talk parse, msg has no user field");
 
             return true;
          }
+
          // handle a file chunk
          if (msg_type) {
             if (strcasecmp(msg_type, "file_chunk") == 0) {
@@ -469,17 +498,19 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
                } else {
                   Log(LOG_CRAZY, "ws.chat", "%s <%s> %s", channel, cptr->chatname, data);
                }
+
                // Check for commands
                if (data[0] == '!') {
                   char *input = data;
                   char cmd[16], arg[32];
                   size_t cmd_len = sizeof(cmd), arg_len = sizeof(arg);
+
                   if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
                      /// XXX: we should send an error alert
                      return true;
                   }
                   while (*input) {
-                     while ( isspace(*input) || (*input == '!') ) {
+                     while (isspace(*input) || (*input == '!') ) {
                         input++;
                      }
                      // extract command
@@ -489,7 +520,7 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
                      }
                      cmd[i] = '\0';
 
-                     while ( isspace(*input) ) {
+                     while (isspace(*input) ) {
                         input++;
                      }
                      // extract argument
@@ -498,9 +529,11 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
                         arg[i++] = *input++;
                      }
                      arg[i] = '\0';
+
                      if (*cmd == '\0' || *arg == '\0') {
                         break;
                      }
+
                      if (strcasecmp(cmd, "help") == 0) {
                         // XXX: These should move to help/ and get served via
                         // that mechanism
@@ -522,6 +555,7 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
                      } else if (strcasecmp(cmd, "mode") == 0) {
                         Log(LOG_DEBUG, "ws.chat", "Got !mode %s from %s", arg, cptr->chatname);
                         rr_mode_t new_mode = vfo_parse_mode(arg);
+
                         if (new_mode != MODE_NONE) {
                            rr_set_mode(active_vfo, new_mode);
                         }
@@ -547,9 +581,10 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
                   if (channel[0] != '&') {
                      // Send the message to all connected servers
                   }
+
 // XXX: readd
                   // Log to database, if configured
-                  if ( cfg_get_bool("chat.log", false) ) {
+                  if (cfg_get_bool("chat.log", false) ) {
 // XXX: move this to rrserver chat.mgs handler
 //                     bool db_res = db_add_chat_msg(masterdb, now,
 // cptr->chatname, channel, msg_type, data);
@@ -584,6 +619,7 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
          }
          char msgbuf[HTTP_WS_MAX_MSG + 1];
          http_client_t *acptr = http_client_list;
+
          if (!acptr) {
             Log(LOG_DEBUG, "chat", "whois no users online?!?");
 
@@ -606,6 +642,7 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
          ws_chat_cmd_unmute(cptr, target);
       }
    }
+
    return true;
 }
 #endif // defined(USE_MONGOOSE)

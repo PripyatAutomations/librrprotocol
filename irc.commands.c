@@ -18,6 +18,7 @@ bool irc_builtin_error_cb(rrconn_t *cptr, irc_message_t *mp) {
 
 bool irc_builtin_join_cb(rrconn_t *cptr, irc_message_t *mp) {
    char *nick = mp->prefix;
+
    if (!nick) {
       Log(LOG_CRIT, "irc", "join_cb with no prefix! mp:<%p>", mp);
 
@@ -26,6 +27,7 @@ bool irc_builtin_join_cb(rrconn_t *cptr, irc_message_t *mp) {
    char *nick_end = strchr(nick, '!');
    char tmp_nick[NICKLEN + 1];
    size_t nicklen = (nick_end - nick);
+
    if (nicklen <= 0) {
       // XXX: we should handle messages without full masks here
       Log(LOG_CRIT, "irc", "join_cb nicklen <= 0: %d", nicklen);
@@ -60,6 +62,7 @@ bool irc_builtin_join_cb(rrconn_t *cptr, irc_message_t *mp) {
 
 bool irc_builtin_notice_cb(rrconn_t *cptr, irc_message_t *mp) {
    char *nick = mp->prefix;
+
    if (!nick) {
       return true;
    }
@@ -67,6 +70,7 @@ bool irc_builtin_notice_cb(rrconn_t *cptr, irc_message_t *mp) {
    char tmp_nick[NICKLEN + 1];
    char *network = cptr->server->network;
    size_t nicklen = (nick_end - nick);
+
    if (nicklen <= 0) {
       return true;
    }
@@ -76,6 +80,7 @@ bool irc_builtin_notice_cb(rrconn_t *cptr, irc_message_t *mp) {
    char *win_title = tmp_nick;
    // Is this a query or channel message?
    bool is_private = true;
+
    if (*mp->argv[1] == '&' || *mp->argv[1] == '#') {
       is_private = false;
       win_title = mp->argv[1];
@@ -96,6 +101,7 @@ bool irc_builtin_part_cb(rrconn_t *cptr, irc_message_t *mp) {
 
       return true;
    }
+
    if (!mp->prefix || !mp->argv[1]) {
       return true;
    }
@@ -106,17 +112,21 @@ bool irc_builtin_part_cb(rrconn_t *cptr, irc_message_t *mp) {
    char tmp_nick[NICKLEN + 1] = {
       0
    };
+
    if (nick_end) {
       size_t nicklen = nick_end - mp->prefix;
-      if ( nicklen > 0 && nicklen < sizeof(tmp_nick) ) {
+
+      if (nicklen > 0 && nicklen < sizeof(tmp_nick) ) {
          snprintf(tmp_nick, sizeof(tmp_nick), "%.*s", (int)nicklen, mp->prefix);
       }
    }
    char *network = cptr->server->network;
    Log(LOG_INFO, "irc", "[%s] * %s left %s", network, tmp_nick, win_title);
+
    if (strcmp(cptr->nick, tmp_nick) == 0) {
       // Find and destroy the window
       tui_window_t *w = tui_window_find(win_title);
+
       if (w) {
          tui_window_destroy(w);
       }
@@ -136,6 +146,7 @@ bool irc_builtin_part_cb(rrconn_t *cptr, irc_message_t *mp) {
 bool irc_builtin_ping_cb(rrconn_t *cptr, irc_message_t *mp) {
    // pull out the message argument from argv[2]
    const char *data = mp->argv[1];
+
    // reply with the message data
    if (data) {
       Log(LOG_DEBUG, "irc.parser", "[%s] Ping? Pong! |%s|", irc_name(cptr), data);
@@ -160,6 +171,7 @@ bool irc_builtin_pong_cb(rrconn_t *cptr, irc_message_t *mp) {
 
 bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
    char *nick = mp->prefix;
+
    if (!nick) {
       return true;
    }
@@ -174,14 +186,17 @@ bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
    char *win_title = tmp_nick;
    // Is this a query or channel message?
    bool is_private = true;
+
    if (*mp->argv[1] == '&' || *mp->argv[1] == '#') {
       is_private = false;
       win_title = mp->argv[1];
    }
    tui_window_t *wp = tui_window_find(win_title);
+
    if (!wp) {
       wp = tui_active_window();
    }
+
    if (*mp->argv[2] == '\001') {
       // CTCP parser
       // - Command
@@ -190,6 +205,7 @@ bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
       char *scp = mp->argv[2] + 1;
       char *ecp = strchr(scp, ' ');
       size_t ecl = strlen(scp);
+
       if (!ecp) {
          ecp = scp + ecl;
       }
@@ -201,12 +217,14 @@ bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
       size_t edl = strlen(sdp);
       char *edp = sdp + edl;
       char *data = sdp;
+
       if (edl > 0) {
          // Remove the CTCP \001 ending
          *edp = '\0';
       } else {
          edp = NULL;
       }
+
       // CTCP handling
 //      tui_print_win(tui_window_find("status"), "%s {bright-yellow}***
 // CTCP{reset} from {bright-cyan}%s{reset} cmd: %s data: %s
@@ -241,17 +259,20 @@ bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
 // ", get_chat_ts(0), tmp_nick, mp->argv[2]);
       event_emit("irc.privmsg", cptr, mp);
    }
+
    return false;
 }
 
 bool irc_builtin_quit_cb(rrconn_t *cptr, irc_message_t *mp) {
    char *nick = mp->prefix;
+
    if (!nick) {
       return true;
    }
    char *nick_end = strchr(nick, '!');
    char tmp_nick[NICKLEN + 1];
    size_t nicklen = (nick_end - nick);
+
    if (nicklen <= 0) {
       return true;
    }
@@ -280,6 +301,7 @@ bool irc_builtin_quit_cb(rrconn_t *cptr, irc_message_t *mp) {
 
 bool irc_builtin_topic_cb(rrconn_t *cptr, irc_message_t *mp) {
    char *nick = mp->prefix;
+
    if (!nick) {
       return true;
    }
@@ -295,6 +317,7 @@ bool irc_builtin_topic_cb(rrconn_t *cptr, irc_message_t *mp) {
    snprintf(tmp_nick, NICKLEN + 1, "%.*s", nicklen, nick);
 
    tui_window_t *tw = tui_window_find(chan);
+
    if (tw) {
       memset( tw->status_line, 0, sizeof(tw->status_line) );
       snprintf(tw->status_line, sizeof(tw->status_line), "{green}*{reset} %s", topic);

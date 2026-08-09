@@ -33,11 +33,13 @@ bool ws_handle_error_msg(struct mg_connection *c, struct mg_ws_message *msg) {
 
    char ip[INET6_ADDRSTRLEN];
    int port = c->rem.port;
+
    if (c->rem.is_ip6) {
       inet_ntop( AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
    } else {
       inet_ntop( AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
    }
+
    if (!msg->data.buf) {
       Log(LOG_WARN, "http.ws",
          "error_msg: got msg from msg_conn:<%p> from %s:%d -- msg:<%p> with no data ptr", c, ip,
@@ -56,9 +58,11 @@ bool ws_handle_error_msg(struct mg_connection *c, struct mg_ws_message *msg) {
    char *error_msg = dict_get(d, "error.msg", NULL);
    char *error_from = dict_get(d, "error.from", NULL);
    time_t ts = dict_get_time_t(d, "error.ts", now);
+
    if (!error_from) {
       error_from = strdup("***SERVER***");
    }
+
    if (error_msg) {
 // XXX: readd this
 //      ui_print("[%s] ERROR: %s: %s !!!", get_chat_ts(ts), error_from,

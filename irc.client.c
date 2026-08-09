@@ -23,6 +23,7 @@ rrconn_t *irc_cli_connect(server_cfg_t *srv) {
       return NULL;
    }
    rrconn_t *cptr = calloc( 1, sizeof(*cptr) );
+
    if (!cptr) {
       return NULL;
    }
@@ -38,14 +39,17 @@ rrconn_t *irc_cli_connect(server_cfg_t *srv) {
 
    char portbuf[16];
    snprintf(portbuf, sizeof(portbuf), "%d", srv->port);
+
    if (getaddrinfo(srv->host, portbuf, &hints, &res) != 0) {
       free(cptr);
 
       return NULL;
    }
    int fd = -1;
+
    for (rp = res ; rp != NULL ; rp = rp->ai_next) {
       fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+
       if (fd < 0) {
          continue;
       }
@@ -53,6 +57,7 @@ rrconn_t *irc_cli_connect(server_cfg_t *srv) {
 
       int rc = connect(fd, rp->ai_addr, rp->ai_addrlen);
       Log(LOG_DEBUG, "irc.net", "connect(fd=%d) rc=%d errno=%d", fd, rc, errno);
+
       if (rc == 0) {
          cptr->connected = true;
          break;
@@ -63,7 +68,9 @@ rrconn_t *irc_cli_connect(server_cfg_t *srv) {
       close(fd);
       fd = -1;
    }
+
    freeaddrinfo(res);
+
    if (fd < 0) {
       free(cptr);
 

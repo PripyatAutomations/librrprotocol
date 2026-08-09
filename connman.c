@@ -52,6 +52,7 @@ bool connection_create(const char *server) {
       return true;
    }
    rr_connection_t *cptr = connection_find(server);
+
    if (cptr) {
       Log(LOG_WARN, "connman", "Connection for server |%s| already exists", server);
 
@@ -59,6 +60,7 @@ bool connection_create(const char *server) {
    }
    // Create a basic connection object and add it to the list
    rr_connection_t *n = calloc( 1, sizeof(*n) );
+
    if (!n) {
       return true;
    }
@@ -112,9 +114,11 @@ bool rrproto_disconnect_server(const char *server) {
    // If a websocket connection exists, mark it closing. Actual mg loop will
    // close.
    extern struct mg_connection *ws_conn, *ws_tx_conn;
+
    if (ws_conn) {
       ws_conn->is_closing = 1;
    }
+
    if (ws_tx_conn) {
       ws_tx_conn->is_closing = 1;
    }
@@ -135,6 +139,7 @@ bool rrproto_connect_server(const char *server) {
    const char *url = get_server_property(server, "server.url");
    Log(LOG_DEBUG, "connman", "rrproto_connect server: |%s| url: |%s|", server,
       url ? url : "(null)");
+
    if (!url) {
       ui_print("[%s] * Server '%s' does not have a server.url configured!", server, server);
 
@@ -144,6 +149,7 @@ bool rrproto_connect_server(const char *server) {
    extern struct mg_connection *ws_conn, *ws_tx_conn;
    extern void http_handler(struct mg_connection *c, int ev, void *ev_data);
    ws_conn = mg_ws_connect(&mgr, url, http_handler, NULL, NULL);
+
    if (!ws_conn) {
       ui_print( "%s Socket connect error", get_chat_ts(now) );
 
@@ -162,6 +168,7 @@ bool rrproto_connect_server(const char *server) {
 
 void rrproto_connman_autoconnect(void) {
    const char *autoconnect = cfg_get_exp("server.auto-connect");
+
    if (!autoconnect) {
       return;
    }

@@ -9,7 +9,7 @@
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 //
 #if     !defined(__common_codecneg_h)
-#define __common_codecneg_h
+#define	__common_codecneg_h
 #include <stdint.h>
 #include <stdbool.h>
 #include <ctype.h>

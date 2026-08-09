@@ -2,7 +2,7 @@
 // Shared connection manager types and API for librrprotocol
 
 #ifndef __librrprotocol_connman_h
-#define __librrprotocol_connman_h
+#define	__librrprotocol_connman_h
 
 #include <stddef.h>
 #include <stdarg.h>

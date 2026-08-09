@@ -34,6 +34,7 @@ extern char session_token[HTTP_TOKEN_LEN + 1];
 
 bool ws_handle_client_auth_msg(struct mg_connection *c, dict *d) {
    bool rv = false;
+
    if (!c || !d) {
       Log(LOG_WARN, "http.ws", "auth_msg: got msg mg_conn:<%p> msg:<%p>", c, d);
 
@@ -41,6 +42,7 @@ bool ws_handle_client_auth_msg(struct mg_connection *c, dict *d) {
    }
    char ip[INET6_ADDRSTRLEN];
    int port = c->rem.port;
+
    if (c->rem.is_ip6) {
       inet_ntop( AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
    } else {
@@ -50,6 +52,7 @@ bool ws_handle_client_auth_msg(struct mg_connection *c, dict *d) {
    char *nonce = dict_get(d, "auth.nonce", NULL);
    char *user = dict_get(d, "auth.user", NULL);
    time_t ts = dict_get_time_t(d, "auth.ts", now);
+
 //   ui_print("[%s] => cmd: '%s', nonce: %s, user: %s", get_chat_ts(ts), cmd,
 // nonce, user);
    // Must always send a command and username during auth
@@ -57,9 +60,11 @@ bool ws_handle_client_auth_msg(struct mg_connection *c, dict *d) {
       rv = true;
       goto cleanup;
    }
+
    if (cmd && strcasecmp(cmd, "challenge") == 0) {
       char *token = dict_get(d, "auth.token", NULL);
       time_t ts = dict_get_time_t(d, "auth.ts", now);
+
       if (token) {
          memset(session_token, 0, HTTP_TOKEN_LEN + 1);
          snprintf(session_token, HTTP_TOKEN_LEN + 1, "%s", token);
@@ -94,11 +99,13 @@ bool ws_send_login(struct mg_connection *c, const char *login_user) {
 
    int ret = mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
    free( (char *)jp );
+
    if (ret < 0) {
       Log(LOG_DEBUG, "auth", "ws_send_login: mg_ws_send error: %d", ret);
 
       return true;
    }
+
    return false;
 }
 
@@ -113,6 +120,7 @@ bool ws_send_passwd(struct mg_connection *c, const char *user, const char *passw
       return true;
    }
    char *temp_pw = compute_wire_password(hash_passwd(passwd), nonce);
+
    if (!temp_pw) {
       Log(LOG_CRIT, "auth", "Failed to hash session password (nonce: |%s|)", nonce);
 

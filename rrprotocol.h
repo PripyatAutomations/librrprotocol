@@ -6,7 +6,7 @@
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #if     !defined(__rrprotocol_h)
-#define __rrprotocol_h
+#define	__rrprotocol_h
 
 #include "build_config.h"
 #if     defined(USE_MONGOOSE)

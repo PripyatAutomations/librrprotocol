@@ -8,7 +8,7 @@
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #if     !defined(__rr_ws_h)
-#define __rr_ws_h
+#define	__rr_ws_h
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdlib.h>

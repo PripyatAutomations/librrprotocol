@@ -31,12 +31,15 @@ void irc_message_free(irc_message_t *mp) {
    if (!mp) {
       return;
    }
+
    if (mp->argv) {
       for (int i = 0 ; i < mp->argc ; i++) {
          free(mp->argv[i]);
       }
+
       free(mp->argv);
    }
+
    if (mp->prefix) {
       free(mp->prefix);
    }
@@ -48,12 +51,14 @@ irc_message_t *irc_parse_message(const char *msg) {
       return NULL;
    }
    irc_message_t *mp = calloc( 1, sizeof(*mp) );
+
    if (!mp) {
       fprintf(stderr, "OOM in irc_parse_message\n");
 
       return NULL;
    }
    char *dup = strdup(msg);
+
    if (!dup) {
       free(mp);
 
@@ -62,27 +67,33 @@ irc_message_t *irc_parse_message(const char *msg) {
    char **argv = NULL;
    int argc = 0;
    char *s = dup;
+
    // Prefix
    if (*s == ':') {
       s++;
       char *space = strchr(s, ' ');
+
       if (space) {
          *space = '\0';
       }
       mp->prefix = strdup(s);   // store sender
       s = space ? space + 1 : NULL;
    }
+
    // Command
    if (s && *s) {
       while (*s == ' ') {
          s++;   // skip leading spaces
       }
+
       if (*s) {
          char *space = strchr(s, ' ');
+
          if (space) {
             *space = '\0';
          }
          argv = realloc( argv, sizeof(char*) * (argc + 1) );
+
          // XXX: make this more graceful
          if (argv == NULL) {
             abort();
@@ -96,6 +107,7 @@ irc_message_t *irc_parse_message(const char *msg) {
       while (*s == ' ') {
          s++;
       }
+
       if (!*s) {
          break;
       }
@@ -103,10 +115,12 @@ irc_message_t *irc_parse_message(const char *msg) {
       // XXX: Do we need to sanitize the new
 //      char *old_argv = argv;
       argv = realloc( argv, sizeof(char*) * (argc + 1) );
+
       // XXX: make this more graceful
       if (argv == NULL) {
          abort();
       }
+
 //      if (argv != old_argv) {
       // we reallocated the string somewhere else
 //      } else {
@@ -117,6 +131,7 @@ irc_message_t *irc_parse_message(const char *msg) {
          break;
       } else {
          char *space = strchr(s, ' ');
+
          if (space) {
             *space = '\0';
          }
@@ -137,12 +152,14 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
       // XXX: cry about null message pointer
       return true;
    }
+
    if (!irc_callbacks) {
       Log(LOG_CRIT, "irc.parser", "%s: no callbacks configured while searching for |%s|",
          __FUNCTION__, mp->argv[0]);
 
       return true;
    }
+
    if (mp->argc < 2) {
       return true;
    }
@@ -152,8 +169,10 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
    // is this a numeric response?
    bool is_numeric = false;
    int parsed_numeric = 0;
-   if ( mp->argv[0] && isdigit(mp->argv[0][0]) ) {
+
+   if (mp->argv[0] && isdigit(mp->argv[0][0]) ) {
       parsed_numeric = atoi(mp->argv[0]);
+
       if (!parsed_numeric) {
          Log(LOG_CRIT, "irc.parser", "is_numeric but failed to parse numeric |%s|; got %d",
             mp->argv[0], parsed_numeric);
@@ -167,12 +186,14 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
       nc++;
       Log(LOG_CRAZY, "dispatcher", "CB <%p> cmd: <%p> numeric: %d mp: <%p>", p->cb, p->cmd,
          p->numeric, mp->argv);
+
       if (is_numeric) {
          if (!p->numeric) {
             // if this isn't a numeric callback, skip it
             p = p->next;
             continue;
          }
+
          if (parsed_numeric == p->numeric) {
             if (p->cb) {
                Log(LOG_CRAZY, "dispatcher", "Callback for %s is <%p>, passing %d args", mp->argv[0],
@@ -186,6 +207,7 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
                   "[{green}%s{reset}] Unsupported numeric/command: %s", irc_name(cptr),
                   mp->argv[0]);
             }
+
             return false;
          }
       } else if (mp->argv[0]) {
@@ -203,11 +225,13 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
                   "[{green}%s{reset}] Unsupported numeric/command: %s", irc_name(cptr),
                   mp->argv[0]);
             }
+
             // Handle relayed commands
             if (p->relayed && irc_connections) {
                Log(LOG_CRAZY, "irc.relay", "Sending %s msg outward", mp->argv[0]);
                irc_sendto_all(irc_connections, cptr, mp);
             }
+
             return false;
          }
       } else {
@@ -233,6 +257,7 @@ bool irc_set_conn_pool(rrlist_t *conn_list) {
 
 bool irc_process_message(rrconn_t *cptr, const char *msg) {
    irc_message_t *mp = irc_parse_message(msg);
+
    if (!mp) {
       Log(LOG_DEBUG, "irc.parser", "Failed parsing msg:<%p>: |%s|", msg, msg);
 
@@ -249,6 +274,7 @@ bool irc_remove_callback(irc_callback_t *cb) {
       // XXX: cry that no callback passed
       return true;
    }
+
    if (!irc_callbacks) {
       // XXX: cry that callbacks is empty but remove_cb called anyways
       return true;
@@ -259,11 +285,14 @@ bool irc_remove_callback(irc_callback_t *cb) {
          if (p->cmd) {
             free(p->cmd);
          }
+
          if (prev) {
             prev->next = p->next;
          }
+
          return true;
       }
+
       // we want to find the end of the list, not the NULL pointer dangling at
       // the end ;)
       if (p->next == NULL) {
@@ -287,6 +316,7 @@ bool irc_register_callback(irc_callback_t *cb) {
    if (!cb) {
       return true;
    }
+
    if (!irc_callbacks) {
       irc_callbacks = cb;
 
@@ -299,14 +329,17 @@ bool irc_register_callback(irc_callback_t *cb) {
          Log(LOG_CRIT, "irc.parser",
             "irc_register_callback: callback at <%p> for message |%s| already registered, replacing!",
             cb, p->cmd);
+
          if (p->event_key) {
             // free event-key, if strdup()'d
             free(p->event_key);
          }
+
          if (p->cmd) {
             // free name, if strdup()'d
             free(p->cmd);
          }
+
          // fix the list
          if (prev) {
             prev->next = cb;
@@ -316,6 +349,7 @@ bool irc_register_callback(irc_callback_t *cb) {
 
          return false;
       }
+
       // we want to find the end of the list, not the NULL pointer dangling at
       // the end ;)
       if (p->next == NULL) {
@@ -324,10 +358,12 @@ bool irc_register_callback(irc_callback_t *cb) {
       prev = p;
       p = p->next;
    }
+
    // We're at the end of list, add it.
    if (p) {
       p->next = cb;
    }
+
    return false;
 }
 
@@ -336,12 +372,14 @@ bool irc_register_default_callbacks(void) {
 
    while (cmd && cmd->name) {
       irc_callback_t *cb = calloc( 1, sizeof(*cb) );
+
       if (!cb) {
          Log(LOG_CRIT, "irc", "OOM allocating callback for %s", cmd->name);
 
          return false;
       }
       cb->cmd = strdup(cmd->name);
+
       if (!cb->cmd) {
          Log(LOG_CRIT, "irc", "OOM allocating cmd string for %s", cmd->name);
          free(cb);
@@ -356,10 +394,12 @@ bool irc_register_default_callbacks(void) {
       cb->relayed = cmd->relayed;        // should it be relayed to other
                                          // clients/servers?
       cb->unidle = cmd->unidle;          // does this clear idle for the user?
+
       if (cmd->event_key) {
          cb->event_key = strdup(cmd->event_key);
       }
-      if ( irc_register_callback(cb) ) {
+
+      if (irc_register_callback(cb) ) {
          Log(LOG_CRIT, "irc", "Failed to register callback for %s", cmd->name);
          free(cb->cmd);
          free(cb);
@@ -381,6 +421,7 @@ bool irc_register_default_numeric_callbacks(void) {
 
    while (numeric && numeric->code) {
       irc_callback_t *cb = calloc( 1, sizeof(*cb) );
+
       if (!cb) {
          Log(LOG_CRIT, "irc", "OOM allocating numeric callback for %s", numeric->name);
 
@@ -389,7 +430,8 @@ bool irc_register_default_numeric_callbacks(void) {
       cb->cmd = strdup(numeric->name);
       cb->relayed = false;                       // numerics are never relayed
       cb->unidle = numeric->unidle;              // does this clear idle for the
-                                                 // user?
+
+      // user?
       if (!cb->cmd) {
          Log(LOG_CRIT, "irc", "OOM allocating cmd string for %s", numeric->name);
          free(cb);
@@ -402,10 +444,12 @@ bool irc_register_default_numeric_callbacks(void) {
       cb->max_args_server = 16;
       cb->numeric = numeric->code;
       cb->cb = numeric->cb ? numeric->cb : NULL;
+
       if (numeric->event_key) {
          cb->event_key = strdup(numeric->event_key);
       }
-      if ( irc_register_callback(cb) ) {
+
+      if (irc_register_callback(cb) ) {
          Log(LOG_CRIT, "irc", "Failed to register numeric %03d (%s)", numeric->code, numeric->name);
          free(cb->cmd);
          free(cb);

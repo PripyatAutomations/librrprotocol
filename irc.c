@@ -31,21 +31,26 @@ bool irc_init(void) {
 }
 
 //
-// This will create a dict containing a restricted set of state things which we'll allow
+// This will create a dict containing a restricted set of state things which
+// we'll allow
 // substituting in log files, messages, etc.
 dict *irc_generate_vars(rrconn_t *cptr, const char *chan) {
    dict *d = dict_new();
+
    if (!d) {
       Log(LOG_CRIT, "irc", "OOM in irc_generate_vars");
 
       return NULL;
    }
+
    if (cptr) {
       dict_add(d, "nick", cptr->nick);
    }
+
    if (chan) {
       dict_add(d, "chan", (char *)chan);
    }
+
    return d;
 }
 
@@ -58,31 +63,36 @@ static void irc_try_send(rrconn_t *cptr) {
    char *p = cptr->sendq;
 
    // find how much of sendq is complete messages ending with \r\n
-   while ( ( p = strstr(p, "\r\n") ) ) {
+   while ( (p = strstr(p, "\r\n") ) ) {
       len = (p - cptr->sendq) + 2;
       p += 2;
    }
+
    if (len == 0) {
       return;
    }
    ssize_t n = send(cptr->fd, cptr->sendq, len, 0);
    Log(LOG_CRIT, "irc", "send(%d) to cptr:<%p>: %d bytes: %.*s", cptr->fd, cptr, (int)n, (int)len,
       cptr->sendq);
+
    if (n < 0) {
       if (errno != EAGAIN && errno != EWOULDBLOCK) {
          Log( LOG_CRIT, "irc", "send failed: %s", strerror(errno) );
          close(cptr->fd);
          cptr->connected = false;
       }
+
       return;
    }
-   if ( (size_t)n < len ) {
+
+   if ( (size_t)n < len) {
       // partial send, move remaining to front
       memmove(cptr->sendq, cptr->sendq + n, len - n);
       cptr->sendq[len - n] = '\0';
    } else {
       // full send, move any leftover queued messages
       size_t remaining = strlen(cptr->sendq + len);
+
       if (remaining > 0) {
          memmove(cptr->sendq, cptr->sendq + len, remaining + 1);
       } else {
@@ -102,6 +112,7 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
    va_end(ap);
 
    size_t msglen = strlen(msg);
+
    if (msglen + 2 + strlen(cptr->sendq) >= SENDQLEN) {
       Log(LOG_WARN, "irc", "sendq full, dropping message");
 
@@ -117,6 +128,7 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
 
    // attempt to send immediately
    irc_try_send(cptr);
+
    // watch for EV_WRITE only if there’s still data
    if (cptr->sendq[0] != '\0') {
       ev_io_set(&cptr->io_watcher, cptr->fd, EV_READ | EV_WRITE);
@@ -124,14 +136,17 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
    } else {
       ev_io_set(&cptr->io_watcher, cptr->fd, EV_READ);
    }
+
    return true;
 }
 
 void irc_io_cb(EV_P_ ev_io *w, int revents) {
-   rrconn_t *cptr = (rrconn_t *)( ( (char*)w ) - offsetof(rrconn_t, io_watcher) );
+   rrconn_t *cptr = (rrconn_t *)( ( (char*)w) - offsetof(rrconn_t, io_watcher) );
+
    if (revents & EV_READ) {
       char buf[512];
       ssize_t n = recv(cptr->fd, buf, sizeof(buf), 0);
+
       if (n <= 0) {
          ev_io_stop(EV_A_ w);
          close(cptr->fd);
@@ -143,6 +158,7 @@ void irc_io_cb(EV_P_ ev_io *w, int revents) {
 
       // append to recvq safely
       size_t cur_len = strlen(cptr->recvq);
+
       if (cur_len + n >= RECVQLEN) {
          Log(LOG_WARN, "irc", "recvq overflow, resetting");
          cptr->recvq[0] = '\0';
@@ -155,7 +171,7 @@ void irc_io_cb(EV_P_ ev_io *w, int revents) {
       // process complete lines
       char *start = cptr->recvq;
       char *end;
-      while ( ( end = strstr(start, "\r\n") ) ) {
+      while ( (end = strstr(start, "\r\n") ) ) {
          *end = '\0';
          Log(LOG_DEBUG, "net", "processing line: [%s]", start);
          irc_process_message(cptr, start);
@@ -164,6 +180,7 @@ void irc_io_cb(EV_P_ ev_io *w, int revents) {
          if (!cptr->sent_login) {
             tui_print_win(tui_active_window(),
                "[{green}%s{reset}] {bright-cyan}***{reset} Sending login {bright-cyan}***{reset} ");
+
             if (cptr->server->pass[0]) {
                if (cptr->server->account[0]) {
                   irc_send(cptr, "PASS %s:%s", cptr->server->account, cptr->server->pass);
@@ -182,8 +199,10 @@ void irc_io_cb(EV_P_ ev_io *w, int revents) {
       size_t leftover = strlen(start);
       memmove(cptr->recvq, start, leftover + 1);
    }
+
    if (revents & EV_WRITE) {
       irc_try_send(cptr);
+
       if (strchr(cptr->sendq, '\r') == NULL) {
          ev_io_set(EV_A_ w, cptr->fd, EV_READ);
       }
