@@ -173,7 +173,7 @@ static bool ws_txtframe_dispatch(struct mg_connection *c, struct mg_ws_message *
          /* Call existing handler to preserve current behavior, then free the
           * dict. */
          rp[i].cb(c, d);
-         free(d);
+         dict_free(d);
 
          return false;
       }
