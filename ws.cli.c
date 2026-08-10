@@ -493,10 +493,7 @@ bool ws_kick_client(http_client_t *cptr, const char *reason) {
    // make sure we're not accessing unsafe memory
    if (cptr->user && cptr->chatname[0] != '\0') {
       if (cptr->active) {
-// XXX: readd this
-//         ws_send_notice(c, "You have been kicked from the server: %s",
-// reason);
-
+         ws_send_notice(c, "You have been kicked from the server: %s", reason);
          // XXX: replace with ws_broadcast_quit(cptr);
 
          // blorp out a quit to all connected users

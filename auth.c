@@ -549,7 +549,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
          return true;
       }
-      Log(LOG_CRAZY, "auth", "Saved: |%s|, hashed (server): |%s|, received: |%s|", up->pass,
+      Log(LOG_INFO, "auth", "Saved: |%s|, hashed (server): |%s|, received: |%s|", up->pass,
          temp_pw, pass);
 
       if (strcmp(temp_pw, pass) == 0) {
@@ -645,10 +645,10 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
          // send an initial user-list  message to populate the chat-user-list
          // (cul)
-//         ws_send_users(cptr);
+         ws_send_users(cptr);
 
          // Send chat replay to the user
-//         chat_replay_send(cptr, channel);
+//         db_send_chat_replay(cptr, channel);
       } else {
          Log(LOG_AUDIT, "auth", "User %s on cptr <%p> from IP %s:%d gave wrong password. Kicking!",
             cptr->user, cptr, ip, port);
