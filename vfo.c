@@ -195,13 +195,13 @@ const char *vfo_mode_name(rr_mode_t mode) {
 }
 
 long parse_freq(const char *str) {
-   while (isspace(*str) ) {
+   while ( isspace(*str) ) {
       str++;
    }
    char *end = NULL;
    double val = strtod(str, &end);
 
-   while (isspace(*end) ) {
+   while ( isspace(*end) ) {
       end++;
    }
 

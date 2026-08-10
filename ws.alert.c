@@ -71,7 +71,7 @@ bool ws_handle_alert_msg(struct mg_connection *c, struct mg_ws_message *msg) {
    if (alert_msg) {
       const char *jp = dict2json(d);
       event_emit("alert", NULL, jp);
-      free((void *)jp);
+      free( (void *)jp );
    }
    dict_free(d);
 

@@ -38,7 +38,7 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
    }
    time_t ts = dict_get_time_t(d, "cat.ts", now);
 
-   if (dict_get(d, "cat.state.mode", NULL) ) {
+   if ( dict_get(d, "cat.state.mode", NULL) ) {
       if (poll_block_expire < now) {
          char *vfo = dict_get(d, "cat.state.vfo", NULL);
          double freq = dict_get_double(d, "cat.state.freq", 0.0);
@@ -85,13 +85,13 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
             Log(LOG_CRAZY, "ws.rigctl", "Set MODE to %s", mode);
 
 /*
-            if (strcasecmp(mode, "FM") == 0) {
-//               fm_dialog_show();
-            } else {
-               // Hide the FM dialog
-//               fm_dialog_hide();
-            }
-*/
+ *           if (strcasecmp(mode, "FM") == 0) {
+ *  //               fm_dialog_show();
+ *           } else {
+ *              // Hide the FM dialog
+ *  //               fm_dialog_hide();
+ *           }
+ */
             event_emit("rig.mode", NULL, mode);
 
             // save the old mode so we can compare next time

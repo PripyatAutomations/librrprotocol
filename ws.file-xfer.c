@@ -63,7 +63,7 @@ static void ws_send_file(struct mg_connection *c, const char *path, const char *
    fseeko(fp, 0, SEEK_SET);
 
    uint64_t id = gen_id();
-   uint32_t total = (uint32_t)( (fsize + CHUNK - 1) / CHUNK);
+   uint32_t total = (uint32_t)( (fsize + CHUNK - 1) / CHUNK );
 
    // meta (text frame)
    mg_ws_printf(c, WEBSOCKET_OP_TEXT,

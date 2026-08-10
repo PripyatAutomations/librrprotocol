@@ -289,7 +289,8 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 
          return;
       }
-      const char *jp = dict2json_mkstr(VAL_STR, "auth.user", login_user, VAL_STR, "auth.server", server_name);
+      const char *jp = dict2json_mkstr(VAL_STR, "auth.user", login_user, VAL_STR, "auth.server",
+         server_name);
       event_emit("connected", NULL, (char *)jp);
       free( (void *)jp );
       ws_send_hello(c);
@@ -312,8 +313,8 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 void ws_client_init(void) {
    const char *debug = cfg_get_exp("debug.http");
 
-   if (debug && (strcasecmp(debug, "true") == 0 ||
-                 strcasecmp(debug, "yes") == 0) ) {
+   if ( debug && (strcasecmp(debug, "true") == 0 ||
+                  strcasecmp(debug, "yes") == 0) ) {
 #if     defined(USE_MONGOOSE)
       mg_log_set(MG_LL_DEBUG);   // or MG_LL_VERBOSE for even more
 #endif
@@ -325,8 +326,8 @@ void ws_client_init(void) {
    free( (void *)debug );
    const char *debug_crazy = cfg_get_exp("debug.http.crazy");
 
-   if (debug_crazy && (strcasecmp(debug_crazy, "true") == 0 ||
-                       strcasecmp(debug_crazy, "yes") == 0) ) {
+   if ( debug_crazy && (strcasecmp(debug_crazy, "true") == 0 ||
+                        strcasecmp(debug_crazy, "yes") == 0) ) {
       cfg_http_debug_crazy = true;
    }
    free( (void *)debug_crazy );
@@ -416,7 +417,7 @@ void ws_send_to_name(struct mg_connection *sender, const char *username, struct 
    http_client_t *current = http_client_list;
    while (current) {
       // Messages from the server will have NULL sender
-      if (!sender || (current->is_ws && current->conn != sender) ) {
+      if ( !sender || (current->is_ws && current->conn != sender) ) {
          ws_send_to_cptr(sender, current, msg_data, data_type);
       }
       current = current->next;
@@ -563,7 +564,7 @@ static bool ws_handle_pong(struct mg_ws_message *msg, struct mg_connection *c) {
    }
    struct mg_str msg_data = msg->data;
 
-   if (!(ts = mg_json_get_str(msg_data, "$.pong.ts") ) ) {
+   if ( !( ts = mg_json_get_str(msg_data, "$.pong.ts") ) ) {
       Log(LOG_WARN, "http.ws", "ws_handle_pong: PONG from user with no timestamp");
       rv = true;
       goto cleanup;
@@ -582,7 +583,7 @@ static bool ws_handle_pong(struct mg_ws_message *msg, struct mg_connection *c) {
    }
    time_t ping_expiry = ts_t + HTTP_PING_TIME;
 
-   if ( (ping_expiry) < now) {
+   if ( (ping_expiry) < now ) {
       Log(LOG_AUDIT, "http.pong",
          "Late ping for mg_conn:<%p> on cptr:<%p> from %s:%d ts: %li + %li (timeout) < now %li", c,
          cptr, ip, port, ts_t, HTTP_PING_TIMEOUT, now);

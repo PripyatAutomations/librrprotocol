@@ -212,7 +212,7 @@ http_client_t *http_find_client_by_name(const char *name) {
          cptr->user, cptr->chatname);
 
       // incomplete entry
-      if (!cptr->user || (cptr->chatname[0] == '\0') ) {
+      if ( !cptr->user || (cptr->chatname[0] == '\0') ) {
          cptr = cptr->next;
          continue;
       }
@@ -252,7 +252,7 @@ const char *http_content_type(const char *type) {
    if (!type) {
       return NULL;
    }
-   int items = (sizeof(http_res_types) / sizeof(struct http_res_types) );
+   int items = ( sizeof(http_res_types) / sizeof(struct http_res_types) );
 
    for (int i = 0 ; i <= items ; i++) {
 //      printf("hct: %s, checking %d: %s\n",
@@ -339,11 +339,11 @@ bool http_static(struct mg_http_message *msg, struct mg_connection *c) {
    }
    snprintf(real_path, sizeof(real_path), "%s/%s", www_root, path);
 
-   if (file_exists(real_path) ) {
+   if ( file_exists(real_path) ) {
       // Find last '.' in the path for the extension
       const char *ext = strrchr(path, '.');
 
-      if (ext && *(ext + 1) ) {
+      if ( ext && *(ext + 1) ) {
          // lookup the mime type based on extension
          const char *ctype = http_content_type(ext + 1);
          char typebuf[256];
@@ -357,7 +357,7 @@ bool http_static(struct mg_http_message *msg, struct mg_connection *c) {
 
          return false;
       }
-   } else if (is_dir(real_path) ) {
+   } else if ( is_dir(real_path) ) {
       mg_http_serve_dir(c, msg, &opts);
 
       return false;
@@ -389,7 +389,7 @@ static void http_cb(struct mg_connection *c, int ev, void *ev_data) {
    }
 
    if (ev == MG_EV_OPEN) {
-      if (cfg_get_bool("net.http.hex-dump", false) ) {
+      if ( cfg_get_bool("net.http.hex-dump", false) ) {
          c->is_hexdumping = 1;
       }
    } else if (ev == MG_EV_CONNECT) {
@@ -578,7 +578,7 @@ bool http_init(struct mg_mgr *mgr) {
 
    const char *s = cfg_get("net.http.bind");
 
-   if (!s || !inet_aton(s, &sa_bind) ) {
+   if ( !s || !inet_aton(s, &sa_bind) ) {
 #if     defined(USE_EEPROM)
       eeprom_get_ip4("net/http/bind", &sa_bind);
 #endif
@@ -586,7 +586,7 @@ bool http_init(struct mg_mgr *mgr) {
    free( (char *)s );
    prepare_msg(listen_addr, sizeof(listen_addr), "http://%s:%d", inet_ntoa(sa_bind), bind_port);
 
-   if (!mg_http_listen(mgr, listen_addr, http_cb, NULL) ) {
+   if ( !mg_http_listen(mgr, listen_addr, http_cb, NULL) ) {
       Log(LOG_CRIT, "http", "Failed to start http listener");
       exit(1);
    }
@@ -595,7 +595,7 @@ bool http_init(struct mg_mgr *mgr) {
 
 #if     defined(HTTP_USE_TLS)
 
-   if (cfg_get_bool("net.http.tls-enabled", false) ) {
+   if ( cfg_get_bool("net.http.tls-enabled", false) ) {
       int tls_bind_port = cfg_get_int("net.http.tls-port", 0);
 
 #if     defined(USE_EEPROM)
@@ -608,7 +608,7 @@ bool http_init(struct mg_mgr *mgr) {
       struct in_addr sa_tls_bind;
       s = cfg_get_exp("net.http.tls-bind");
 
-      if (!s || !inet_aton(s, &sa_tls_bind) ) {
+      if ( !s || !inet_aton(s, &sa_tls_bind) ) {
 #if     defined(USE_EEPROM)
          eeprom_get_ip4("net/http/bind", &sa_tls_bind);
 #endif
@@ -621,7 +621,7 @@ bool http_init(struct mg_mgr *mgr) {
          tls_bind_port);
       http_tls_init();
 
-      if (!mg_http_listen(mgr, tls_listen_addr, http_cb, (void *)1) ) {
+      if ( !mg_http_listen(mgr, tls_listen_addr, http_cb, (void *)1) ) {
          Log(LOG_CRIT, "http", "Failed to start https listener");
          exit(1);
       }

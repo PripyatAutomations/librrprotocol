@@ -86,7 +86,7 @@ static bool http_backup_authdb(void) {
       }
       prepare_msg(new_path, sizeof(new_path), "%s.bak-%s.%d", HTTP_AUTHDB_PATH, date_str, index);
       index++;
-   } while (file_exists(new_path) );
+   } while ( file_exists(new_path) );
 
    // Rename the file
    if (rename(HTTP_AUTHDB_PATH, new_path) == 0) {
@@ -106,7 +106,7 @@ bool http_save_users(const char *filename) {
       return true;
    }
 
-   if (http_backup_authdb() ) {
+   if ( http_backup_authdb() ) {
       return true;
    }
    int users_saved = 0;
@@ -168,12 +168,12 @@ int http_load_users(const char *filename) {
 
       // Skip comments and empty lines
       if (line[0] == '#' || line[0] == ';' ||
-          (strlen(line) > 1 && (line[0] == '/' && line[1] == '/') ) || line[0] == '\n') {
+          ( strlen(line) > 1 && (line[0] == '/' && line[1] == '/') ) || line[0] == '\n') {
          continue;
       }
       // Remove trailing \r or \n characters
       char *end = line + strlen(line) - 1;
-      while (end >= line && (*end == '\r' || *end == '\n') ) {
+      while ( end >= line && (*end == '\r' || *end == '\n') ) {
          *end = '\0';
          end--;
       }
@@ -202,7 +202,7 @@ int http_load_users(const char *filename) {
             }
             case 1: {
                // Username
-               strlcpy(up->name, token, sizeof(up->name));
+               strlcpy( up->name, token, sizeof(up->name) );
                break;
             }
             case 2: {
@@ -212,12 +212,12 @@ int http_load_users(const char *filename) {
             }
             case 3: {
                // Password hash
-               strlcpy(up->pass, token, sizeof(up->pass));
+               strlcpy( up->pass, token, sizeof(up->pass) );
                break;
             }
             case 4: {
                // Email
-               strlcpy(up->email, token, sizeof(up->email));
+               strlcpy( up->email, token, sizeof(up->email) );
                break;
             }
             case 5: {
@@ -234,7 +234,7 @@ int http_load_users(const char *filename) {
             }
             case 6: {
                // Privileges
-               strlcpy(up->privs, token, sizeof(up->privs));
+               strlcpy( up->privs, token, sizeof(up->privs) );
                Log(LOG_DEBUG, "auth",
                   "load_users: uid=%d, user=%s, email=%s, enabled=%s, privs=%s, max_clones=%d", uid,
                   (up->name[0] != '\0' ? up->name : "none"),
@@ -298,7 +298,7 @@ bool match_priv(const char *user_privs, const char *priv) {
 
       char token[64];
 
-      if (len >= sizeof(token) ) {
+      if ( len >= sizeof(token) ) {
          len = sizeof(token) - 1;
       }
       memcpy(token, start, len);
@@ -334,7 +334,7 @@ bool has_privs(struct rr_user *cptr, const char *priv) {
 }
 
 bool has_priv(int uid, const char *priv) {
-   if (priv == NULL || uid < 0 || (uid > HTTP_MAX_USERS - 1) ) {
+   if ( priv == NULL || uid < 0 || (uid > HTTP_MAX_USERS - 1) ) {
       return false;
    }
    const char *p = priv;
@@ -344,7 +344,7 @@ bool has_priv(int uid, const char *priv) {
 
       char tmp[64];   // adjust size as needed
 
-      if (len >= sizeof(tmp) ) {
+      if ( len >= sizeof(tmp) ) {
          len = sizeof(tmp) - 1;
       }
       memcpy(tmp, p, len);
@@ -354,7 +354,7 @@ bool has_priv(int uid, const char *priv) {
          return false;
       }
 
-      if (match_priv(http_users[uid].privs, tmp) ) {
+      if ( match_priv(http_users[uid].privs, tmp) ) {
          return true;
       }
       p = sep ? sep + 1 : NULL;
@@ -402,7 +402,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    char *temp_pw = NULL;
 
    // Must always send a command and username during auth
-   if (!cmd || (!user && !token) ) {
+   if ( !cmd || (!user && !token) ) {
       return true;
    }
 
@@ -549,13 +549,13 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
          return true;
       }
-      Log(LOG_INFO, "auth", "Saved: |%s|, hashed (server): |%s|, received: |%s|", up->pass,
-         temp_pw, pass);
+      Log(LOG_CRAZY, "auth", "Saved: |%s|, hashed (server): |%s|, received: |%s|", up->pass, temp_pw,
+         pass);
 
       if (strcmp(temp_pw, pass) == 0) {
-         // special handling for guests; we generate a random # prefix for their
-         // name
-         if (strcasecmp(up->name, "guest") == 0) {
+         // special handling for guests; we generate a random suffix
+         // force rewriting if they use any nick starting with Guest.
+         if (strncasecmp(up->name, "guest", 5) == 0) {
             cptr->guest_id = generate_random_guest_id(4);
             memset( cptr->chatname, 0, sizeof(cptr->chatname) );
             snprintf(cptr->chatname, sizeof(cptr->chatname), "GUEST%04d", cptr->guest_id);
@@ -576,25 +576,25 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          ////////////////////
          // Set user flags //
          ////////////////////
-         if (has_priv(cptr->user->uid, "owner|syslog") ) {
+         if ( has_priv(cptr->user->uid, "owner|syslog") ) {
             client_set_flag(cptr, FLAG_SYSLOG);
          }
 
-         if (has_priv(cptr->user->uid, "admin|owner") ) {
+         if ( has_priv(cptr->user->uid, "admin|owner") ) {
             client_set_flag(cptr, FLAG_STAFF);
          }
 
-         if (has_priv(cptr->user->uid, "tx") ) {
+         if ( has_priv(cptr->user->uid, "tx") ) {
             client_set_flag(cptr, FLAG_CAN_TX);
          }
 
          // client cannot transmit unless a user with elmer flag is logged in
-         if (has_priv(cptr->user->uid, "noob") ) {
+         if ( has_priv(cptr->user->uid, "noob") ) {
             client_set_flag(cptr, FLAG_NOOB);
          }
 
          // client is an elmer and can allow noobs to control rig
-         if (has_priv(cptr->user->uid, "elmer") ) {
+         if ( has_priv(cptr->user->uid, "elmer") ) {
             client_set_flag(cptr, FLAG_ELMER);
          }
          // Send a ping to the user and expect them to reply within
@@ -640,6 +640,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          ws_broadcast(NULL, &ms, WEBSOCKET_OP_TEXT);
          free( (char *)jp );
 
+         // XXX: Do we need to do this twice? Shouldn't NULL send it to this user too?
          // Send userlist update to all users
          ws_send_users(NULL);
 

@@ -49,7 +49,7 @@ bool ws_handle_syslog_msg(struct mg_connection *c, dict *d) {
    memset( my_timestamp, 0, sizeof(my_timestamp) );
    t = time(NULL);
 
-   if ( (tmp = localtime(&t) ) ) {
+   if ( ( tmp = localtime(&t) ) ) {
       // success, proceed
       if (strftime(my_timestamp, sizeof(my_timestamp), "%Y/%m/%d %H:%M:%S", tmp) == 0) {
          // handle the error

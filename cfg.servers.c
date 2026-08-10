@@ -34,7 +34,7 @@ static void parse_server_opts(server_cfg_t *cfg, const char *opts) {
       if (len > 0) {
          char buf[256];
 
-         if ( len >= sizeof(buf) ) {
+         if (len >= sizeof(buf) ) {
             len = sizeof(buf) - 1;
          }
          memcpy(buf, p, len);
@@ -55,7 +55,7 @@ static void parse_server_opts(server_cfg_t *cfg, const char *opts) {
                } else {
                   size_t len = strlen(cfg->autojoin);
 
-                  if ( len + 1 < sizeof(cfg->autojoin) ) {
+                  if (len + 1 < sizeof(cfg->autojoin) ) {
                      // +1 for comma
                      strncat(cfg->autojoin, ",", sizeof(cfg->autojoin) - len - 1);
                      strncat(cfg->autojoin, val, sizeof(cfg->autojoin) - strlen(cfg->autojoin) - 1);
@@ -107,7 +107,7 @@ bool add_server(const char *network, const char *str) {
 
    char hostbuf[256];
 
-   if ( hostlen >= sizeof(hostbuf) ) {
+   if (hostlen >= sizeof(hostbuf) ) {
       hostlen = sizeof(hostbuf) - 1;
    }
    memcpy(hostbuf, p, hostlen);
@@ -190,6 +190,7 @@ bool autoconnect(void) {
 //                  srvp->host, srvp->port, srvp->priority);
                // Wrap server pointer in a list node
                rrlist_t *node = malloc( sizeof(rrlist_t) );
+
                if (!node) {
                   // OOM
                   abort();
@@ -201,7 +202,7 @@ bool autoconnect(void) {
                // Insert into temp_list sorted by priority (descending)
                rrlist_t *cur = temp_list;
                rrlist_t *prev = NULL;
-               while (cur && ( (server_cfg_t *)cur->ptr )->priority >= srvp->priority) {
+               while (cur && ( (server_cfg_t *)cur->ptr)->priority >= srvp->priority) {
                   prev = cur;
                   cur = cur->next;
                }
@@ -239,7 +240,7 @@ bool autoconnect(void) {
 #if     0
             rrconn_t *cli;
 
-            if ( ( cli = irc_cli_connect(srv) ) ) {
+            if ( (cli = irc_cli_connect(srv) ) ) {
                // Add to the connection list
                rrlist_add(&irc_client_conns, cli, LIST_TAIL);
             }

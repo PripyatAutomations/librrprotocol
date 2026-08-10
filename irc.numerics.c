@@ -65,7 +65,7 @@ bool irc_builtin_num001(rrconn_t *cptr, irc_message_t *mp) {
       char *aj = strdup(cptr->server->autojoin);   // safe copy to modify
       char *tok, *saveptr = NULL;
 
-      for (tok = strtok_r(aj, ",", &saveptr) ; tok ; tok = strtok_r(NULL, ",", &saveptr) ) {
+      for ( tok = strtok_r(aj, ",", &saveptr) ; tok ; tok = strtok_r(NULL, ",", &saveptr) ) {
          char *chan = tok;
          char *key = strchr(tok, ':');
 
@@ -90,7 +90,7 @@ bool irc_builtin_num001(rrconn_t *cptr, irc_message_t *mp) {
       char *aj = strdup(net_aj);   // safe copy to modify
       char *tok, *saveptr = NULL;
 
-      for (tok = strtok_r(aj, ",", &saveptr) ; tok ; tok = strtok_r(NULL, ",", &saveptr) ) {
+      for ( tok = strtok_r(aj, ",", &saveptr) ; tok ; tok = strtok_r(NULL, ",", &saveptr) ) {
          char *chan = tok;
          char *key = strchr(tok, ':');
 

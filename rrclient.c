@@ -54,9 +54,9 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
             Log(LOG_CRAZY, "http.pong", "Received pong ts:%s", pong_ts);
          } else if (cmd && strcasecmp(cmd, "msg") == 0) {
             event_emit_dict("talk.msg", NULL, d);
-         } else if (dict_get(d, "hello", NULL) ) {
+         } else if ( dict_get(d, "hello", NULL) ) {
             Log(LOG_DEBUG, "ws", "Got hello from server");
-         } else if (dict_get(d, "auth.cmd", NULL) ) {
+         } else if ( dict_get(d, "auth.cmd", NULL) ) {
             Log(LOG_DEBUG, "ws", "Got auth message");
          }
          dict_free(d);
