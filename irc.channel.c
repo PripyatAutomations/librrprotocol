@@ -61,7 +61,7 @@ irc_chan_user_t *chan_add_user(irc_channel_t *chan, const char *raw) {
       if (!u) {
          return NULL;
       }
-      strncpy(u->nick, nick, sizeof(u->nick) - 1);
+      strlcpy(u->nick, nick, sizeof(u->nick) - 1);
       u->next = chan->user_table[h];
       chan->user_table[h] = u;
       chan->users++;
@@ -182,7 +182,7 @@ void handle_join(irc_channel_t *chan, const irc_message_t *msg) {
    if (n > NICKLEN) {
       n = NICKLEN;
    }
-   strncpy(clean_nick, nick, n);
+   strlcpy(clean_nick, nick, n);
 
    chan_add_user(chan, clean_nick);
 }
@@ -204,7 +204,7 @@ void handle_part_or_quit(irc_channel_t *chan, const irc_message_t *msg) {
    if (n > NICKLEN) {
       n = NICKLEN;
    }
-   strncpy(clean_nick, nick, n);
+   strlcpy(clean_nick, nick, n);
 
    chan_remove_user(chan, clean_nick);
 }
@@ -228,11 +228,11 @@ void handle_nick_change(irc_channel_t *chan, const irc_message_t *msg) {
    if (n > NICKLEN) {
       n = NICKLEN;
    }
-   strncpy(clean_old, old_nick, n);
+   strlcpy(clean_old, old_nick, n);
 
    irc_chan_user_t *user = chan_find_user(chan, clean_old);
 
    if (user) {
-      strncpy(user->nick, new_nick, NICKLEN);
+      strlcpy(user->nick, new_nick, NICKLEN);
    }
 }
