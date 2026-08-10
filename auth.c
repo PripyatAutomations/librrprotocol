@@ -202,7 +202,7 @@ int http_load_users(const char *filename) {
             }
             case 1: {
                // Username
-               strlcpy(up->name, token, HTTP_USER_LEN);
+               strlcpy(up->name, token, sizeof(up->name));
                break;
             }
             case 2: {
@@ -212,12 +212,12 @@ int http_load_users(const char *filename) {
             }
             case 3: {
                // Password hash
-               strlcpy(up->pass, token, HTTP_PASS_LEN);
+               strlcpy(up->pass, token, sizeof(up->pass));
                break;
             }
             case 4: {
                // Email
-               strlcpy(up->email, token, USER_EMAIL_LEN);
+               strlcpy(up->email, token, sizeof(up->email));
                break;
             }
             case 5: {
@@ -234,7 +234,7 @@ int http_load_users(const char *filename) {
             }
             case 6: {
                // Privileges
-               strlcpy(up->privs, token, USER_PRIV_LEN);
+               strlcpy(up->privs, token, sizeof(up->privs));
                Log(LOG_DEBUG, "auth",
                   "load_users: uid=%d, user=%s, email=%s, enabled=%s, privs=%s, max_clones=%d", uid,
                   (up->name[0] != '\0' ? up->name : "none"),
