@@ -61,11 +61,14 @@ bool ws_handle_alert_msg(struct mg_connection *c, struct mg_ws_message *msg) {
    time_t alert_ts = dict_get_time_t(d, "alert.ts", 0);
 
    if (!alert_from) {
-      alert_from = strdup("***SERVER***");
+      dict_add(d, "alert.from", "***SERVER***");
    }
 
    if (!alert_ts) {
-      alert_ts = now;
+      char now_ts[12];
+      memset(now_ts, 0, 12);
+      snprintf(now_ts, 12, "%lu", now);
+      dict_add(d, "alert.ts", now_ts);
    }
 
    if (alert_msg) {

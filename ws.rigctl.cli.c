@@ -153,7 +153,7 @@ bool ws_send_mode_cmd(struct mg_connection *c, const char *vfo, const char *mode
    return false;
 }
 
-bool ws_send_freq_cmd(struct mg_connection *c, const char *vfo, int freq) {
+bool ws_send_freq_cmd(struct mg_connection *c, const char *vfo, long freq) {
    if (!c || !vfo) {
       return true;
    }

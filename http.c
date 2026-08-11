@@ -621,7 +621,7 @@ bool http_init(struct mg_mgr *mgr) {
          tls_bind_port);
       http_tls_init();
 
-      if ( !mg_http_listen(mgr, tls_listen_addr, http_cb, (void *)1) ) {
+      if ( !mg_http_listen(mgr, tls_listen_addr, http_cb, NULL) ) {
          Log(LOG_CRIT, "http", "Failed to start https listener");
          exit(1);
       }

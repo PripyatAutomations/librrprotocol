@@ -60,7 +60,7 @@ bool ws_handle_error_msg(struct mg_connection *c, struct mg_ws_message *msg) {
    time_t ts = dict_get_time_t(d, "error.ts", now);
 
    if (!error_from) {
-      error_from = strdup("***SERVER***");
+      dict_add(d, "error.from", "***SERVER***");
    }
 
    if (error_msg) {
