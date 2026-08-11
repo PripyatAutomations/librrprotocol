@@ -55,7 +55,7 @@ bool ws_handle_talk_msg(struct mg_connection *c, dict *d) {
       }
       Log(LOG_DEBUG, "ws.talk", "UserInfo: %s has privs '%s' (TX: %s, Muted: %s, clones: %.0f)",
          user, privs, (tx ? "true" : "false"), muted, clones);
-      event_emit_dict("http.userinfo", NULL, d);
+      event_emit_dict("userinfo", NULL, d);
    } else if (cmd && strcasecmp(cmd, "msg") == 0) {
       char *from = dict_get(d, "talk.from", NULL);
       char *data = dict_get(d, "talk.data", NULL);
@@ -79,7 +79,7 @@ bool ws_handle_talk_msg(struct mg_connection *c, dict *d) {
       if (!user || !ip) {
          goto cleanup;
       }
-      event_emit_dict("http.userjoin", NULL, d);
+      event_emit_dict("join", NULL, d);
    } else if (cmd && strcasecmp(cmd, "quit") == 0) {
       char *reason = dict_get(d, "talk.reason", NULL);
 
@@ -95,13 +95,13 @@ bool ws_handle_talk_msg(struct mg_connection *c, dict *d) {
       if (!quit_user) {
          goto cleanup;
       }
-      event_emit("http.userquit", NULL, quit_user);
+      event_emit("quit", NULL, quit_user);
       free(quit_user);
    } else if (cmd && strcasecmp(cmd, "whois") == 0) {
       const char *whois_msg = dict_get(d, "talk.data", NULL);
 
       if (whois_msg) {
-         event_emit("http.whois", NULL, (void *)whois_msg);
+         event_emit("whois", NULL, (void *)whois_msg);
       }
 //      ui_print("[%s] >>> WHOIS %s", user);
 //      ui_print("[%s]   %s", whois_msg);

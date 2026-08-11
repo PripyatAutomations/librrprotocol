@@ -41,13 +41,12 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
    if ( dict_get(d, "cat.state.mode", NULL) ) {
       if (poll_block_expire < now) {
          char *vfo = dict_get(d, "cat.state.vfo", NULL);
-         double freq = dict_get_double(d, "cat.state.freq", 0.0);
          char *mode = dict_get(d, "cat.state.mode", NULL);
-         double width = dict_get_double(d, "cat.state.width", 0.0);
-         double power = dict_get_double(d, "cat.state.power", 0.0);
+         long freq = dict_get_long(d, "cat.state.freq", 0);
+         int width = dict_get_int(d, "cat.state.width", 0);
+         int power = dict_get_int(d, "cat.state.power", 0);
          bool ptt = dict_get_bool(d, "cat.state.ptt", false);
          server_ptt_state = ptt;
-         event_emit_dict("rig.ptt", NULL, d);
 
          int ts = dict_get_int(d, "cat.ts", 0);
          char *user = dict_get(d, "cat.user", NULL);
@@ -78,6 +77,8 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
                sprintf(mode, "D-L");
             }
 
+            event_emit_dict("rig.ptt", NULL, d);
+
             if (strcasecmp(old_mode, mode) == 0) {
                goto local_cleanup;
             }
@@ -92,11 +93,11 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
  *  //               fm_dialog_hide();
  *           }
  */
-            event_emit("rig.mode", NULL, mode);
-
             // save the old mode so we can compare next time
             memset( old_mode, 0, sizeof(old_mode) );
             snprintf(old_mode, sizeof(old_mode), "%s", mode);
+
+            event_emit_dict("rig.mode", NULL, d);
          }
       }
    } else {
@@ -152,13 +153,13 @@ bool ws_send_mode_cmd(struct mg_connection *c, const char *vfo, const char *mode
    return false;
 }
 
-bool ws_send_freq_cmd(struct mg_connection *c, const char *vfo, float freq) {
+bool ws_send_freq_cmd(struct mg_connection *c, const char *vfo, int freq) {
    if (!c || !vfo) {
       return true;
    }
    char msgbuf[512];
    memset(msgbuf, 0, 512);
-   const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "freq", VAL_STR, "cat.vfo", vfo, VAL_FLOAT,
+   const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "freq", VAL_STR, "cat.vfo", vfo, VAL_LONG,
       "cat.freq", freq, VAL_ULONG, "cat.ts", now);
    Log(LOG_CRAZY, "ws.cat", "Sending: %s", jp);
    int ret = mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);

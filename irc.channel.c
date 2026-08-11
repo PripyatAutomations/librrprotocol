@@ -61,7 +61,7 @@ irc_chan_user_t *chan_add_user(irc_channel_t *chan, const char *raw) {
       if (!u) {
          return NULL;
       }
-      strlcpy(u->nick, nick, sizeof(u->nick) - 1);
+      strlcpy(u->nick, nick, sizeof(u->nick));
       u->next = chan->user_table[h];
       chan->user_table[h] = u;
       chan->users++;

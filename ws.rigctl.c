@@ -20,16 +20,10 @@
 #include <rrserver/backend.h>
 
 bool rr_set_width(rr_vfo_t vfo, const char *width) {
-   (void)vfo;
-   (void)width;
-
    return false;
 }
 
 bool rr_set_mode(rr_vfo_t vfo, rr_mode_t mode) {
-   (void)vfo;
-   (void)mode;
-
    return false;
 }
 
@@ -41,7 +35,7 @@ extern time_t now;
 // XXX: Merge with existing rr_vfo_data_t
 // This ugly mess needs sorted out asap ;)
 typedef struct ws_rig_state {
-   float freq;
+   long freq;
    rr_mode_t mode;
    int width;
 } ws_rig_state_t;
@@ -275,8 +269,8 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          Log(LOG_AUDIT, "ptt", "User %s set PTT to %s on vfo %s", cptr->chatname,
             (c_state ? "true" : "false"), vfo);
 
-         const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "ptt", VAL_FLOATP, "cat.freq",
-            dp->freq, 3, VAL_STR, "cat.mode", mode_name, VAL_FLOATP, "cat.power", dp->power, 3,
+         const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "ptt", VAL_LONG, "cat.freq",
+            dp->freq, VAL_STR, "cat.mode", mode_name, VAL_FLOATP, "cat.power", dp->power,
             VAL_STR, "cat.ptt", ptt_state, VAL_STR, "cat.user", cptr->chatname, VAL_STR, "cat.vfo",
             vfo, VAL_INT, "cat.width", dp->width, VAL_LONG, "cat.ts", now);
 
@@ -295,9 +289,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
             return true;
          }
-         double new_freq_d;
-         mg_json_get_num(msg_data, "$.cat.freq", &new_freq_d);
-         float new_freq = (float)new_freq_d;
+         long new_freq = mg_json_get_long(msg_data, "$.cat.freq", 0);
 
          if (!vfo || new_freq <= 0) {
             Log(LOG_DEBUG, "ws.rigctl", "FREQ set without vfo or freq");
@@ -316,17 +308,15 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          cptr->last_heard = now;
 
          // tell everyone about it
-         const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "freq", VAL_FLOATP, "cat.freq",
-            new_freq, 3, VAL_LONG, "cat.ts", now, VAL_STR, "cat.user", cptr->chatname, VAL_STR,
+         const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "freq", VAL_LONG, "cat.freq",
+            new_freq, VAL_LONG, "cat.ts", now, VAL_STR, "cat.user", cptr->chatname, VAL_STR,
             "cat.vfo", vfo);
 
          struct mg_str mp = mg_str(jp);
          ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
+         Log(LOG_AUDIT, "ws.cat", "User %s set VFO %s FREQ to %d hz", cptr->chatname, vfo, new_freq);
+         event_emit("cat.freq", NULL, jp);
          free( (char *)jp );
-
-         Log(LOG_AUDIT, "ws.cat", "User %s set VFO %s FREQ to %.0f hz", cptr->chatname, vfo,
-            new_freq);
-         event_emit("cat.freq", NULL, (void *)jp);
 // XXX: Implement this as an event
 //         rr_freq_set(c_vfo, new_freq);
       } else if (strcasecmp(cmd, "mode") == 0) {

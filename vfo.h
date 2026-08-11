@@ -56,7 +56,7 @@ struct rr_vfo_data {
    rr_vfo_type_t type;
    uint32_t input;               // input #
    int width;                    // width in hz
-   float freq;                   // dial frequency
+   long freq;                   // dial frequency
    rr_mode_t mode;               // Mode we're TXing
    float power;                  // power in watts
    time_t tx_started;
@@ -64,7 +64,7 @@ struct rr_vfo_data {
                                  // DEFAULT_TOT_TIME)
 };
 typedef struct rr_vfo_data rr_vfo_data_t;
-extern bool set_vfo_frequency(rr_vfo_type_t vfo_type, uint32_t input, float freq);
+extern bool set_vfo_frequency(rr_vfo_type_t vfo_type, uint32_t input, long freq);
 extern rr_vfo_t vfo_lookup(const char vfo);
 extern const char *vfo_name(rr_vfo_t vfo);
 extern rr_mode_t vfo_parse_mode(const char *mode);

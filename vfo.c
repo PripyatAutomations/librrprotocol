@@ -37,8 +37,8 @@ static const char vfo_mode_ft4[] = "FT4";
 static const char vfo_mode_ft8[] = "FT8";
 
 // This should be called by CAT to set the backend appropriately
-bool set_vfo_frequency(rr_vfo_type_t vfo_type, uint32_t input, float freq) {
-   Log(LOG_INFO, "vfo", "Setting VFO (type: %d) input #%d to %f", vfo_type, input, freq);
+bool set_vfo_frequency(rr_vfo_type_t vfo_type, uint32_t input, long freq) {
+   Log(LOG_INFO, "vfo", "Setting VFO (type: %d) input #%d to %l", vfo_type, input, freq);
 
    // We should call into the backend here to set the frequency
    return true;

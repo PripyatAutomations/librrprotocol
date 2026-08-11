@@ -115,7 +115,7 @@ extern void ws_handler(struct mg_connection *c, int ev, void *ev_data);
 // Send messages
 extern bool ws_send_ptt_cmd(struct mg_connection *c, const char *vfo, bool ptt);
 extern bool ws_send_mode_cmd(struct mg_connection *c, const char *vfo, const char *mode);
-extern bool ws_send_freq_cmd(struct mg_connection *c, const char *vfo, float freq);
+extern bool ws_send_freq_cmd(struct mg_connection *c, const char *vfo, int freq);
 extern bool ws_send_error(http_client_t *cptr, const char *fmt, ...);
 extern bool ws_send_alert(http_client_t *cptr, const char *fmt, ...);
 extern bool ws_send_notice(struct mg_connection *c, const char *fmt, ...);
