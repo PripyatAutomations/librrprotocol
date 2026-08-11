@@ -10,6 +10,7 @@
 #include <librustyaxe/event-bus.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/rrclient.h>
+#include <rrclient/ui.h>
 extern struct mg_mgr mgr;
 struct mg_connection *ws_conn = NULL;
 bool ws_connected = false;
@@ -64,7 +65,6 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
    } else if (ev == MG_EV_WS_OPEN) {
       ws_connected = true;
       event_emit("connected", NULL, NULL);
-      tui_print_win(tui_window_find("status"), "Connected to server");
 
       login_user = cfg_get_exp("server.user");
 
@@ -80,7 +80,6 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
    } else if (ev == MG_EV_CLOSE) {
       ws_connected = false;
       event_emit("goodbye", NULL, NULL);
-      tui_print_win(tui_window_find("status"), "Disconnected from server");
    }
 }
 
@@ -88,11 +87,11 @@ bool rrclient_connect(const char *url) {
    if (!url) {
       return true;
    }
-   tui_print_win(tui_window_find("status"), "Connecting to %s", url);
+   event_emit("connecting", NULL, NULL);
    ws_conn = mg_ws_connect(&mgr, url, rrclient_ws_handler, NULL, NULL);
 
    if (!ws_conn) {
-      tui_print_win(tui_window_find("status"), "Connection failed");
+      event_emit("http.error", NULL, NULL);
 
       return true;
    }

@@ -141,7 +141,7 @@ bool rrproto_connect_server(const char *server) {
       url ? url : "(null)");
 
    if (!url) {
-      ui_print("[%s] * Server '%s' does not have a server.url configured!", server, server);
+//      ui_print("[%s] * Server '%s' does not have a server.url configured!", server, server);
 
       return true;
    }
@@ -151,7 +151,7 @@ bool rrproto_connect_server(const char *server) {
    ws_conn = mg_ws_connect(&mgr, url, http_handler, NULL, NULL);
 
    if (!ws_conn) {
-      ui_print( "%s Socket connect error", get_chat_ts(now) );
+//      ui_print( "%s Socket connect error", get_chat_ts(now) );
 
       return true;
    }
@@ -178,7 +178,7 @@ void rrproto_connman_autoconnect(void) {
       char this_server[256];
       memset( this_server, 0, sizeof(this_server) );
       snprintf(this_server, sizeof(this_server), "%s", sp);
-      ui_print("* Autoconnecting to profile: %s *", this_server);
+//      ui_print("* Autoconnecting to profile: %s *", this_server);
       rrproto_connect_server(this_server);
       sp = strtok(NULL, ",");
    }

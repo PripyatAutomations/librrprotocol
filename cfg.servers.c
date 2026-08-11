@@ -176,18 +176,12 @@ bool autoconnect(void) {
          char this_network[256];
          memset( this_network, 0, sizeof(this_network) );
          snprintf(this_network, sizeof(this_network), "%s", sp);
-//         tui_print_win(tui_window_find("status"), "autoconnect network: %s",
-// sp);
+         event_emit("autoconnect", NULL, NULL);
          rrlist_t *temp_list = NULL;   // head of temporary list
 
          server_cfg_t *srvp = server_list;
          while (srvp) {
             if (strcasecmp(srvp->network, this_network) == 0) {
-// XXX: Implement this as messages
-//               tui_print_win(tui_window_find("status"),
-//                  "=> Add server: %s://%s:%d with priority %d", (srvp->tls ?
-// "ircs" : "irc"),
-//                  srvp->host, srvp->port, srvp->priority);
                // Wrap server pointer in a list node
                rrlist_t *node = malloc( sizeof(rrlist_t) );
 
@@ -232,11 +226,6 @@ bool autoconnect(void) {
          while (node) {
             server_cfg_t *srv = node->ptr;
             event_emit("connecting", NULL, NULL);
-//            tui_print_win(tui_window_find("status"), "Trying %s://%s@%s:%d
-// priority=%d",
-//               (srv->tls ? "ircs" : "irc"), srv->nick, srv->host, srv->port,
-// srv->priority);
-
 #if     0
             rrconn_t *cli;
 

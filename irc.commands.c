@@ -10,8 +10,8 @@ bool irc_builtin_error_cb(rrconn_t *cptr, irc_message_t *mp) {
    Log( LOG_CRIT, "irc", "[%s] Got ERROR from server: |%s|", irc_name(cptr),
       (mp->argv[1] ? mp->argv[1] : "(null)") );
    event_emit("irc.error", cptr, mp);
-   tui_print_win(tui_active_window(), "{red}>>> {bright-red}ERROR:{bright-cyan} %s {red}<<<{reset}",
-      mp->argv[1]);
+//   ui_print(NULL, "{red}>>> {bright-red}ERROR:{bright-cyan} %s {red}<<<{reset}",
+//      mp->argv[1]);
 
    return false;
 }
@@ -46,9 +46,9 @@ bool irc_builtin_join_cb(rrconn_t *cptr, irc_message_t *mp) {
    tui_window_focus(mp->argv[1]);
 
    Log(LOG_INFO, "irc", "[%s] * %s joined %s", network, tmp_nick, mp->argv[1]);
-   tui_print_win(tw,
-      "%s [{green}%s{reset}] * {bright-cyan}%s{reset} joined {bright-magenta}%s{reset}",
-      get_chat_ts(0), network, tmp_nick, mp->argv[1]);
+//   ui_print(tw,
+//      "%s [{green}%s{reset}] * {bright-cyan}%s{reset} joined {bright-magenta}%s{reset}",
+//      get_chat_ts(0), network, tmp_nick, mp->argv[1]);
 
    // XXX: We need to embed this into the parser, so unknown commands will pass
    // through too...
@@ -88,8 +88,8 @@ bool irc_builtin_notice_cb(rrconn_t *cptr, irc_message_t *mp) {
    tui_window_t *tw = tui_window_find(win_title);
 
    Log(LOG_INFO, "irc", "*notice* %s <%s> %s", irc_name(cptr), mp->argv[1], tmp_nick, mp->argv[2]);
-   tui_print_win(tui_window_find("status"), "[%s] *%s* <%s> %s", network, mp->argv[1], tmp_nick,
-      mp->argv[2]);
+//   ui_print("status", "[%s] *%s* <%s> %s", network, mp->argv[1], tmp_nick,
+//      mp->argv[2]);
    event_emit("irc.notice", cptr, mp);
 
    return false;
@@ -130,13 +130,13 @@ bool irc_builtin_part_cb(rrconn_t *cptr, irc_message_t *mp) {
       if (w) {
          tui_window_destroy(w);
       }
-      tui_print_win(tui_window_find("status"),
-         "%s [{green}%s{reset}] * {bright-cyan}%s{reset} left {bright-magenta}%s{reset}",
-         get_chat_ts(0), network, tmp_nick, win_title);
-   } else {
-      tui_print_win(tui_window_find(win_title),
-         "%s [{green}%s{reset}] * {bright-cyan}%s{reset} left {bright-magenta}%s{reset}",
-         get_chat_ts(0), network, tmp_nick, win_title);
+//      ui_print("status",
+//         "%s [{green}%s{reset}] * {bright-cyan}%s{reset} left {bright-magenta}%s{reset}",
+//         get_chat_ts(0), network, tmp_nick, win_title);
+//   } else {
+//      ui_print(tui_window_find(win_title),
+//         "%s [{green}%s{reset}] * {bright-cyan}%s{reset} left {bright-magenta}%s{reset}",
+//         get_chat_ts(0), network, tmp_nick, win_title);
    }
    event_emit("irc.part", cptr, mp);
 
@@ -150,7 +150,7 @@ bool irc_builtin_ping_cb(rrconn_t *cptr, irc_message_t *mp) {
    // reply with the message data
    if (data) {
       Log(LOG_DEBUG, "irc.parser", "[%s] Ping? Pong! |%s|", irc_name(cptr), data);
-//      tui_print_win(tui_window_find("status"), "[{green}%s{reset}]
+//      ui_print("status", "[{green}%s{reset}]
 // {green}Ping? {red}Pong!{reset} %s", irc_name(cptr), data);
       irc_send(cptr, "PONG :%s", data);
    } else {
@@ -194,7 +194,7 @@ bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
    tui_window_t *wp = tui_window_find(win_title);
 
    if (!wp) {
-      wp = tui_active_window();
+      wp = NULL;
    }
 
    if (*mp->argv[2] == '\001') {
@@ -226,27 +226,27 @@ bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
       }
 
       // CTCP handling
-//      tui_print_win(tui_window_find("status"), "%s {bright-yellow}***
+//      ui_print("status", "%s {bright-yellow}***
 // CTCP{reset} from {bright-cyan}%s{reset} cmd: %s data: %s
 // {bright-yellow}***{reset} ", get_chat_ts(0), tmp_nick, cmd, data);
       if (strcasecmp(cmd, "ACTION") == 0) {
          // action is technically a CTCP
          Log(LOG_INFO, "irc", "[%s] * %s / %s %s", network, win_title, tmp_nick, data);
-         tui_print_win(wp, "%s * %s %s", get_chat_ts(0), tmp_nick, data);
+//         ui_print(wp, "%s * %s %s", get_chat_ts(0), tmp_nick, data);
       } else if (strcasecmp(cmd, "PING") == 0) {
-         tui_print_win(tui_active_window(),
-            "%s [{green}%s{reset} %s {bright-yellow}*PING*{reset} %s", get_chat_ts(0), network,
-            tmp_nick, data);
+//         ui_print(NULL,
+//            "%s [{green}%s{reset} %s {bright-yellow}*PING*{reset} %s", get_chat_ts(0), network,
+//            tmp_nick, data);
          irc_send(cptr, "NOTICE %s :\001PING %s\001", tmp_nick, data);
       } else if (strcasecmp(cmd, "RRCALL") == 0) {
          Log(LOG_INFO, "irc", "[%s] CTCP RRCALL from %s: %s", network, tmp_nick, data);
-         tui_print_win(tui_active_window(),
-            "%s [{green}%s{reset}] {bright-yellow}*RRCALL*{reset} from %s: %s", get_chat_ts(0),
-            network, tmp_nick, data);
+//         ui_print(NULL,
+//            "%s [{green}%s{reset}] {bright-yellow}*RRCALL*{reset} from %s: %s", get_chat_ts(0),
+//            network, tmp_nick, data);
       } else if (strcasecmp(cmd, "VERSION") == 0) {
-         tui_print_win(tui_window_find("status"),
-            "%s [[green}%s{reset}] %s {bright-yellow}*VERSION*{reset} ", get_chat_ts(0), network,
-            tmp_nick);
+//         ui_print("status",
+//            "%s [[green}%s{reset}] %s {bright-yellow}*VERSION*{reset} ", get_chat_ts(0), network,
+//            tmp_nick);
          Log(LOG_INFO, "irc", "[%s] CTCP VERSION from %s", network, tmp_nick);
          irc_send(cptr, "NOTICE %s :\001VERSION rustyrig %s\001", tmp_nick, VERSION);
       }
@@ -254,7 +254,7 @@ bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
       event_emit("irc.ctcp", cptr, mp);
    } else {
       // Normal messages
-//      tui_print_win(tui_window_find("status"), "%s {bright-yellow}***
+//      ui_print("status", "%s {bright-yellow}***
 // PRIVMSG{reset} from {bright-cyan}%s{reset} msg: %s {bright-yellow}***{reset}
 // ", get_chat_ts(0), tmp_nick, mp->argv[2]);
       event_emit("irc.privmsg", cptr, mp);
@@ -288,13 +288,13 @@ bool irc_builtin_quit_cb(rrconn_t *cptr, irc_message_t *mp) {
    // status
    // XXX: We should loop over the screen buffers & see if this user is a
    // member; if so, display the message in that window
-//   for (int i = 0; i < TUI_MAX_WINDOWS; i++) {
-//      tui_window_t *wp = tui_windows[i];
-   tui_window_t *wp = tui_window_find("status");
-   tui_print_win( wp,
-      "[{green}%s{reset}] {red}* {bright-cyan}%s{cyan} has disconnected.{reset}: \"%s\"", network,
-      tmp_nick, (mp->argv[1] ? mp->argv[1] : "No reason given.") );
-//   }
+////   for (int i = 0; i < TUI_MAX_WINDOWS; i++) {
+////      tui_window_t *wp = tui_windows[i];
+   tui_window_t *wp = "status";
+//   ui_print( wp,
+//      "[{green}%s{reset}] {red}* {bright-cyan}%s{cyan} has disconnected.{reset}: \"%s\"", network,
+//      tmp_nick, (mp->argv[1] ? mp->argv[1] : "No reason given.") );
+////   }
 
    return false;
 }

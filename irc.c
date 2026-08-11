@@ -178,8 +178,8 @@ void irc_io_cb(EV_P_ ev_io *w, int revents) {
 
          // send login on first server message
          if (!cptr->sent_login) {
-            tui_print_win(tui_active_window(),
-               "[{green}%s{reset}] {bright-cyan}***{reset} Sending login {bright-cyan}***{reset} ");
+//            ui_print(NULL,
+//               "[{green}%s{reset}] {bright-cyan}***{reset} Sending login {bright-cyan}***{reset} ");
 
             if (cptr->server->pass[0]) {
                if (cptr->server->account[0]) {
