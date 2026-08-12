@@ -86,14 +86,14 @@ static bool http_backup_authdb(void) {
       }
       prepare_msg(new_path, sizeof(new_path), "%s.bak-%s.%d", HTTP_AUTHDB_PATH, date_str, index);
       index++;
-   } while ( file_exists(new_path) );
+   } while (file_exists(new_path) );
 
    // Rename the file
    if (rename(HTTP_AUTHDB_PATH, new_path) == 0) {
       Log(LOG_INFO, "http.core", "* Renamed old config (%s) to %s", HTTP_AUTHDB_PATH, new_path);
    } else {
-      Log( LOG_CRIT, "http.core", "* Error renaming old config (%s) to %s: %d:%s", HTTP_AUTHDB_PATH,
-         new_path, errno, strerror(errno) );
+      Log( LOG_CRIT, "http.core", "* Error renaming old config (%s) to %s: %d:%s", HTTP_AUTHDB_PATH, new_path, errno,
+         strerror(errno) );
 
       return true;
    }
@@ -106,7 +106,7 @@ bool http_save_users(const char *filename) {
       return true;
    }
 
-   if ( http_backup_authdb() ) {
+   if (http_backup_authdb() ) {
       return true;
    }
    int users_saved = 0;
@@ -114,8 +114,7 @@ bool http_save_users(const char *filename) {
    FILE *file = fopen(filename, "w");
 
    if (!file) {
-      Log( LOG_CRIT, "auth", "Error saving user database to %s: %d:%s", filename, errno,
-         strerror(errno) );
+      Log( LOG_CRIT, "auth", "Error saving user database to %s: %d:%s", filename, errno, strerror(errno) );
 
       return true;
    }
@@ -129,8 +128,8 @@ bool http_save_users(const char *filename) {
       }
 
       if (up->name[0] != '\0' && up->pass[0] != '\0') {
-         Log(LOG_DEBUG, "auth", " => %s %sabled with privileges: %s", up->name,
-            (up->enabled ? "en" : "dis"), up->privs);
+         Log(LOG_DEBUG, "auth", " => %s %sabled with privileges: %s", up->name, (up->enabled ? "en" : "dis"),
+            up->privs);
          fprintf( file, "%d:%s:%d:%s:%s\n", up->uid, up->name, up->enabled, up->pass,
             (up->privs[0] != '\0' ? up->privs : "none") );
          users_saved++;
@@ -168,12 +167,12 @@ int http_load_users(const char *filename) {
 
       // Skip comments and empty lines
       if (line[0] == '#' || line[0] == ';' ||
-          ( strlen(line) > 1 && (line[0] == '/' && line[1] == '/') ) || line[0] == '\n') {
+          (strlen(line) > 1 && (line[0] == '/' && line[1] == '/') ) || line[0] == '\n') {
          continue;
       }
       // Remove trailing \r or \n characters
       char *end = line + strlen(line) - 1;
-      while ( end >= line && (*end == '\r' || *end == '\n') ) {
+      while (end >= line && (*end == '\r' || *end == '\n') ) {
          *end = '\0';
          end--;
       }
@@ -225,9 +224,8 @@ int http_load_users(const char *filename) {
                int val = atoi(token);
 
                if (val < 0 || val > HTTP_MAX_SESSIONS) {
-                  Log(LOG_CRIT, "auth.core",
-                     "Loading user %s has invalid maxclones: %d (min: 1, max: %d)", up->name, val,
-                     HTTP_MAX_SESSIONS);
+                  Log(LOG_CRIT, "auth.core", "Loading user %s has invalid maxclones: %d (min: 1, max: %d)", up->name,
+                     val, HTTP_MAX_SESSIONS);
                }
                up->max_clones = val;
                break;
@@ -235,11 +233,9 @@ int http_load_users(const char *filename) {
             case 6: {
                // Privileges
                strlcpy( up->privs, token, sizeof(up->privs) );
-               Log(LOG_DEBUG, "auth",
-                  "load_users: uid=%d, user=%s, email=%s, enabled=%s, privs=%s, max_clones=%d", uid,
-                  (up->name[0] != '\0' ? up->name : "none"),
-                  (up->email[0] != '\0' ? up->email : "none"), (up->enabled ? "true" : "false"),
-                  (up->privs[0] != '\0' ? up->privs : "none"), up->max_clones);
+               Log(LOG_DEBUG, "auth", "load_users: uid=%d, user=%s, email=%s, enabled=%s, privs=%s, max_clones=%d", uid,
+                  (up->name[0] != '\0' ? up->name : "none"), (up->email[0] != '\0' ? up->email : "none"),
+                  (up->enabled ? "true" : "false"), (up->privs[0] != '\0' ? up->privs : "none"), up->max_clones);
                break;
             }
          }
@@ -298,7 +294,7 @@ bool match_priv(const char *user_privs, const char *priv) {
 
       char token[64];
 
-      if ( len >= sizeof(token) ) {
+      if (len >= sizeof(token) ) {
          len = sizeof(token) - 1;
       }
       memcpy(token, start, len);
@@ -334,7 +330,7 @@ bool has_privs(struct rr_user *cptr, const char *priv) {
 }
 
 bool has_priv(int uid, const char *priv) {
-   if ( priv == NULL || uid < 0 || (uid > HTTP_MAX_USERS - 1) ) {
+   if (priv == NULL || uid < 0 || (uid > HTTP_MAX_USERS - 1) ) {
       return false;
    }
    const char *p = priv;
@@ -344,7 +340,7 @@ bool has_priv(int uid, const char *priv) {
 
       char tmp[64];   // adjust size as needed
 
-      if ( len >= sizeof(tmp) ) {
+      if (len >= sizeof(tmp) ) {
          len = sizeof(tmp) - 1;
       }
       memcpy(tmp, p, len);
@@ -354,7 +350,7 @@ bool has_priv(int uid, const char *priv) {
          return false;
       }
 
-      if ( match_priv(http_users[uid].privs, tmp) ) {
+      if (match_priv(http_users[uid].privs, tmp) ) {
          return true;
       }
       p = sep ? sep + 1 : NULL;
@@ -381,8 +377,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    }
 
    if (msg->data.buf == NULL) {
-      Log(LOG_WARN, "http.ws",
-         "auth_msg: got msg from msg_conn:<%p> from %s:%d -- msg:<%p> with no data ptr", c, ip,
+      Log(LOG_WARN, "http.ws", "auth_msg: got msg from msg_conn:<%p> from %s:%d -- msg:<%p> with no data ptr", c, ip,
          port, msg);
 
       return true;
@@ -402,20 +397,18 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    char *temp_pw = NULL;
 
    // Must always send a command and username during auth
-   if ( !cmd || (!user && !token) ) {
+   if (!cmd || (!user && !token) ) {
       return true;
    }
 
    if (strcasecmp(cmd, "login") == 0) {
       char resp_buf[HTTP_WS_MAX_MSG + 1];
-      Log(LOG_AUDIT, "auth", "Login request from user %s on mg_conn:<%p> from %s:%d", user, c, ip,
-         port);
+      Log(LOG_AUDIT, "auth", "Login request from user %s on mg_conn:<%p> from %s:%d", user, c, ip, port);
 
       http_client_t *cptr = http_find_client_by_c(c);
 
       if (cptr == NULL) {
-         Log(LOG_CRIT, "auth",
-            "Discarding login request on mg_conn:<%p> from %s:%d due to NULL cptr?!?!!?", c, ip,
+         Log(LOG_CRIT, "auth", "Discarding login request on mg_conn:<%p> from %s:%d due to NULL cptr?!?!!?", c, ip,
             port);
          dict_free(d);
 
@@ -441,8 +434,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
       int curr_clients = http_count_clients();
 
       if (curr_clients > HTTP_MAX_SESSIONS) {
-         Log(LOG_AUDIT, "auth.users", "Server is full! %d clients exceeds max %d", curr_clients,
-            HTTP_MAX_SESSIONS);
+         Log(LOG_AUDIT, "auth.users", "Server is full! %d clients exceeds max %d", curr_clients, HTTP_MAX_SESSIONS);
          // kick the user
          ws_kick_client(cptr, "Server full! Try again later.");
          dict_free(d);
@@ -452,8 +444,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
       if (cptr->user) {
          if (cptr->user->clones + 1 > cptr->user->max_clones) {
-            Log(LOG_AUDIT, "auth.users",
-               "User clone limit reached for %s: %d clones exceeds max %d", cptr->user->name,
+            Log(LOG_AUDIT, "auth.users", "User clone limit reached for %s: %d clones exceeds max %d", cptr->user->name,
                cptr->user->clones, cptr->user->max_clones);
             // Kick the client
             ws_kick_client(cptr, "Too many clones");
@@ -464,12 +455,12 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
       } else {
          Log(LOG_CRIT, "auth.users", "login request has no cptr->user for cptr:<%p>?!", cptr);
       }
-      const char *jp = dict2json_mkstr(VAL_STR, "auth.cmd", "challenge", VAL_STR, "auth.nonce",
-         cptr->nonce, VAL_STR, "auth.user", user, VAL_STR, "auth.token", cptr->token);
+      const char *jp = dict2json_mkstr(VAL_STR, "auth.cmd", "challenge", VAL_STR, "auth.nonce", cptr->nonce, VAL_STR,
+         "auth.user", user, VAL_STR, "auth.token", cptr->token);
       mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
       free( (char *)jp );
-      Log(LOG_CRAZY, "auth", "Sending login challenge |%s| to user at cptr <%p> with token |%s|",
-         cptr->nonce, cptr, cptr->token);
+      Log(LOG_CRAZY, "auth", "Sending login challenge |%s| to user at cptr <%p> with token |%s|", cptr->nonce, cptr,
+         cptr->token);
    } else if (strcasecmp(cmd, "logout") == 0 || strcasecmp(cmd, "quit") == 0) {
       http_client_t *cptr = http_find_client_by_c(c);
       Log(LOG_DEBUG, "auth", "Logout request from %s (cptr:<%p> mg_conn:<%p>",
@@ -479,8 +470,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
       bool guest = false;
 
       if (pass == NULL || token == NULL) {
-         Log(LOG_DEBUG, "auth", "auth pass command without password <%p> / token <%p>", pass,
-            token);
+         Log(LOG_DEBUG, "auth", "auth pass command without password <%p> / token <%p>", pass, token);
          ws_kick_client_by_c(c, "auth.pass message incomplete/invalid. Goodbye");
          dict_free(d);
 
@@ -506,8 +496,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
       }
 
       if (cptr->user == NULL) {
-         Log(LOG_WARN, "auth", "cptr-> user == NULL handling conn from ip %s:%d, Kicking!", ip,
-            port);
+         Log(LOG_WARN, "auth", "cptr-> user == NULL handling conn from ip %s:%d, Kicking!", ip, port);
          ws_kick_client(cptr, "Invalid login/password");
          dict_free(d);
 
@@ -516,8 +505,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
       int login_uid = cptr->user->uid;
 
       if (login_uid < 0 || login_uid > HTTP_MAX_USERS) {
-         Log(LOG_WARN, "auth", "Invalid uid for username |%s| from IP %s:%d", cptr->chatname, ip,
-            port);
+         Log(LOG_WARN, "auth", "Invalid uid for username |%s| from IP %s:%d", cptr->chatname, ip, port);
          ws_kick_client(cptr, "Invalid login/passowrd");
          dict_free(d);
 
@@ -543,14 +531,12 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
       temp_pw = compute_wire_password(up->pass, nonce);
 
       if (temp_pw == NULL) {
-         Log(LOG_WARN, "auth",
-            "Got NULL return from compute_wire_password for mg_conn:<%p>, kicking!", c);
+         Log(LOG_WARN, "auth", "Got NULL return from compute_wire_password for mg_conn:<%p>, kicking!", c);
          dict_free(d);
 
          return true;
       }
-      Log(LOG_CRAZY, "auth", "Saved: |%s|, hashed (server): |%s|, received: |%s|", up->pass, temp_pw,
-         pass);
+      Log(LOG_CRAZY, "auth", "Saved: |%s|, hashed (server): |%s|, received: |%s|", up->pass, temp_pw, pass);
 
       if (strcmp(temp_pw, pass) == 0) {
          // special handling for guests; we generate a random suffix
@@ -576,25 +562,25 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          ////////////////////
          // Set user flags //
          ////////////////////
-         if ( has_priv(cptr->user->uid, "owner|syslog") ) {
+         if (has_priv(cptr->user->uid, "owner|syslog") ) {
             client_set_flag(cptr, FLAG_SYSLOG);
          }
 
-         if ( has_priv(cptr->user->uid, "admin|owner") ) {
+         if (has_priv(cptr->user->uid, "admin|owner") ) {
             client_set_flag(cptr, FLAG_STAFF);
          }
 
-         if ( has_priv(cptr->user->uid, "tx") ) {
+         if (has_priv(cptr->user->uid, "tx") ) {
             client_set_flag(cptr, FLAG_CAN_TX);
          }
 
          // client cannot transmit unless a user with elmer flag is logged in
-         if ( has_priv(cptr->user->uid, "noob") ) {
+         if (has_priv(cptr->user->uid, "noob") ) {
             client_set_flag(cptr, FLAG_NOOB);
          }
 
          // client is an elmer and can allow noobs to control rig
-         if ( has_priv(cptr->user->uid, "elmer") ) {
+         if (has_priv(cptr->user->uid, "elmer") ) {
             client_set_flag(cptr, FLAG_ELMER);
          }
          // Send a ping to the user and expect them to reply within
@@ -603,19 +589,16 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
          // Send last message (AUTHORIZED) of the login sequence to let client
          // know they are logged in
-         const char *jp = dict2json_mkstr(VAL_STR, "auth.cmd", "authorized", VAL_STR, "auth.privs",
-            cptr->user->privs, VAL_STR, "auth.token", token, VAL_ULONG, "auth.ts", now, VAL_STR,
-            "auth.user", cptr->chatname);
+         const char *jp = dict2json_mkstr(VAL_STR, "auth.cmd", "authorized", VAL_STR, "auth.privs", cptr->user->privs,
+            VAL_STR, "auth.token", token, VAL_ULONG, "auth.ts", now, VAL_STR, "auth.user", cptr->chatname);
          mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
          free( (char *)jp );
 
          // send a ping, XXX: this might be a duplicate, confirm?
          ws_send_ping(cptr);
 
-         Log(LOG_AUDIT, "auth",
-            "User %s on cptr <%p> logged in from IP %s:%d (clone #%d/%d) with privs: %s",
-            cptr->chatname, cptr, ip, port, cptr->user->clones, cptr->user->max_clones,
-            cptr->user->privs);
+         Log(LOG_AUDIT, "auth", "User %s on cptr <%p> logged in from IP %s:%d (clone #%d/%d) with privs: %s",
+            cptr->chatname, cptr, ip, port, cptr->user->clones, cptr->user->max_clones, cptr->user->privs);
 
          // Send our capabilities
          const char *my_codecs = cfg_get_exp("codecs.allowed");
@@ -632,15 +615,15 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          // XXX: We should move this out to it's own function like
          // join_channel(cptr, "&localrig");
          // blorp out a join to all chat users
-         jp = dict2json_mkstr(VAL_STR, "talk.cmd", "join", VAL_STR, "talk.target", "&localrig",
-            VAL_STR, "talk.user", cptr->chatname, VAL_ULONG, "talk.ts", now, VAL_STR, "talk.ip", ip,
-            VAL_STR, "talk.privs", cptr->user->privs, VAL_BOOL, "talk.muted", cptr->user->is_muted,
-            VAL_INT, "talk.clones", cptr->user->clones);
+         jp = dict2json_mkstr(VAL_STR, "talk.cmd", "join", VAL_STR, "talk.target", "&localrig", VAL_STR, "talk.user",
+            cptr->chatname, VAL_ULONG, "talk.ts", now, VAL_STR, "talk.ip", ip, VAL_STR, "talk.privs", cptr->user->privs,
+            VAL_BOOL, "talk.muted", cptr->user->is_muted, VAL_INT, "talk.clones", cptr->user->clones);
          struct mg_str ms = mg_str(jp);
          ws_broadcast(NULL, &ms, WEBSOCKET_OP_TEXT);
          free( (char *)jp );
 
-         // XXX: Do we need to do this twice? Shouldn't NULL send it to this user too?
+         // XXX: Do we need to do this twice? Shouldn't NULL send it to this
+         // user too?
          // Send userlist update to all users
          ws_send_users(NULL);
 
@@ -651,8 +634,8 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          // Send chat replay to the user
 //         db_send_chat_replay(cptr, channel);
       } else {
-         Log(LOG_AUDIT, "auth", "User %s on cptr <%p> from IP %s:%d gave wrong password. Kicking!",
-            cptr->user, cptr, ip, port);
+         Log(LOG_AUDIT, "auth", "User %s on cptr <%p> from IP %s:%d gave wrong password. Kicking!", cptr->user, cptr,
+            ip, port);
          ws_kick_client(cptr, "Invalid login/password");
       }
       free(temp_pw);

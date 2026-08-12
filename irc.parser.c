@@ -154,8 +154,7 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
    }
 
    if (!irc_callbacks) {
-      Log(LOG_CRIT, "irc.parser", "%s: no callbacks configured while searching for |%s|",
-         __FUNCTION__, mp->argv[0]);
+      Log(LOG_CRIT, "irc.parser", "%s: no callbacks configured while searching for |%s|", __FUNCTION__, mp->argv[0]);
 
       return true;
    }
@@ -170,12 +169,12 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
    bool is_numeric = false;
    int parsed_numeric = 0;
 
-   if ( mp->argv[0] && isdigit(mp->argv[0][0]) ) {
+   if (mp->argv[0] && isdigit(mp->argv[0][0]) ) {
       parsed_numeric = atoi(mp->argv[0]);
 
       if (!parsed_numeric) {
-         Log(LOG_CRIT, "irc.parser", "is_numeric but failed to parse numeric |%s|; got %d",
-            mp->argv[0], parsed_numeric);
+         Log(LOG_CRIT, "irc.parser", "is_numeric but failed to parse numeric |%s|; got %d", mp->argv[0],
+            parsed_numeric);
 
          return true;
       } else {
@@ -184,8 +183,7 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
    }
    while (p) {
       nc++;
-      Log(LOG_CRAZY, "dispatcher", "CB <%p> cmd: <%p> numeric: %d mp: <%p>", p->cb, p->cmd,
-         p->numeric, mp->argv);
+      Log(LOG_CRAZY, "dispatcher", "CB <%p> cmd: <%p> numeric: %d mp: <%p>", p->cb, p->cmd, p->numeric, mp->argv);
 
       if (is_numeric) {
          if (!p->numeric) {
@@ -196,15 +194,13 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
 
          if (parsed_numeric == p->numeric) {
             if (p->cb) {
-               Log(LOG_CRAZY, "dispatcher", "Callback for %s is <%p>, passing %d args", mp->argv[0],
-                  p->cb, mp->argc);
+               Log(LOG_CRAZY, "dispatcher", "Callback for %s is <%p>, passing %d args", mp->argv[0], p->cb, mp->argc);
                nm++;
                p->cb(cptr, mp);
             } else {
-               Log(LOG_WARN, "dispatcher", "Callback in irc_callbacks:<%p> has no target fn for %s",
-                  p, mp->argv[0]);
-                  
-               char *data = dict2json_mkstr(VAL_STR, "msg.cmd", mp->argv[0], VAL_STR, "msg.from", irc_name(cptr));
+               Log(LOG_WARN, "dispatcher", "Callback in irc_callbacks:<%p> has no target fn for %s", p, mp->argv[0]);
+
+               char *data = dict2json_mkstr( VAL_STR, "msg.cmd", mp->argv[0], VAL_STR, "msg.from", irc_name(cptr) );
                event_emit("unsupported-msg", NULL, data);
                free(data);
             }
@@ -215,14 +211,12 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
          // commands
          if (strcasecmp(p->cmd, mp->argv[0]) == 0) {
             if (p->cb) {
-               Log(LOG_CRAZY, "dispatcher", "Callback for %s is <%p>, passing %d args", mp->argv[0],
-                  p->cb, mp->argc);
+               Log(LOG_CRAZY, "dispatcher", "Callback for %s is <%p>, passing %d args", mp->argv[0], p->cb, mp->argc);
                nm++;
                p->cb(cptr, mp);
             } else {
-               Log(LOG_CRAZY, "dispatcher",
-                  "Callback in irc_callbacks:<%p> has no target fn for %s", p, mp->argv[0]);
-               char *data = dict2json_mkstr(VAL_STR, "msg.cmd", mp->argv[0], VAL_STR, "msg.from", irc_name(cptr));
+               Log(LOG_CRAZY, "dispatcher", "Callback in irc_callbacks:<%p> has no target fn for %s", p, mp->argv[0]);
+               char *data = dict2json_mkstr( VAL_STR, "msg.cmd", mp->argv[0], VAL_STR, "msg.from", irc_name(cptr) );
                event_emit("unsupported-msg", NULL, data);
                free(data);
             }
@@ -328,8 +322,7 @@ bool irc_register_callback(irc_callback_t *cb) {
       if (p == cb) {
          // already in the list, free the old entry and replace it
          Log(LOG_CRIT, "irc.parser",
-            "irc_register_callback: callback at <%p> for message |%s| already registered, replacing!",
-            cb, p->cmd);
+            "irc_register_callback: callback at <%p> for message |%s| already registered, replacing!", cb, p->cmd);
 
          if (p->event_key) {
             // free event-key, if strdup()'d
@@ -400,7 +393,7 @@ bool irc_register_default_callbacks(void) {
          cb->event_key = strdup(cmd->event_key);
       }
 
-      if ( irc_register_callback(cb) ) {
+      if (irc_register_callback(cb) ) {
          Log(LOG_CRIT, "irc", "Failed to register callback for %s", cmd->name);
          free(cb->cmd);
          free(cb);
@@ -408,8 +401,7 @@ bool irc_register_default_callbacks(void) {
          return false;
       } else {
          if (cmd->cb) {
-            Log(LOG_CRAZY, "irc", "Registered handler for command %s: %s at <%p>", cmd->name,
-               cmd->desc, cmd->cb);
+            Log(LOG_CRAZY, "irc", "Registered handler for command %s: %s at <%p>", cmd->name, cmd->desc, cmd->cb);
          }
       }
       cmd++;
@@ -450,15 +442,15 @@ bool irc_register_default_numeric_callbacks(void) {
          cb->event_key = strdup(numeric->event_key);
       }
 
-      if ( irc_register_callback(cb) ) {
+      if (irc_register_callback(cb) ) {
          Log(LOG_CRIT, "irc", "Failed to register numeric %03d (%s)", numeric->code, numeric->name);
          free(cb->cmd);
          free(cb);
 
          return false;
       } else {
-         Log(LOG_CRAZY, "irc", "Registered numeric handler for %03d (%s): %s at <%p>",
-            numeric->code, numeric->name, numeric->desc, numeric->cb);
+         Log(LOG_CRAZY, "irc", "Registered numeric handler for %03d (%s): %s at <%p>", numeric->code, numeric->name,
+            numeric->desc, numeric->cb);
       }
       numeric++;
    }

@@ -53,8 +53,7 @@ static void ws_send_file(struct mg_connection *c, const char *path, const char *
    FILE *fp = fopen(path, "rb");
 
    if (!fp) {
-      Log( LOG_CRIT, "ws.file-xfer", "Failed opening file %s - %d:%s", path, errno,
-         strerror(errno) );
+      Log( LOG_CRIT, "ws.file-xfer", "Failed opening file %s - %d:%s", path, errno, strerror(errno) );
 
       return;
    }
@@ -63,13 +62,13 @@ static void ws_send_file(struct mg_connection *c, const char *path, const char *
    fseeko(fp, 0, SEEK_SET);
 
    uint64_t id = gen_id();
-   uint32_t total = (uint32_t)( (fsize + CHUNK - 1) / CHUNK );
+   uint32_t total = (uint32_t)( (fsize + CHUNK - 1) / CHUNK);
 
    // meta (text frame)
    mg_ws_printf(c, WEBSOCKET_OP_TEXT,
       "{\"type\":\"file_meta\",\"id\":\"%llx\",\"name\":\"%s\",\"mime\":\"%s\",\"size\":%llu,\"chunk\":%u,\"total\":%u}",
-      (unsigned long long) id, rr_basename(path), mime ? mime : "application/octet-stream",
-      (unsigned long long) fsize, (unsigned) CHUNK, (unsigned) total);
+      (unsigned long long) id, rr_basename(path), mime ? mime : "application/octet-stream", (unsigned long long) fsize,
+      (unsigned) CHUNK, (unsigned) total);
 
    // chunk buffer: header(24) + payload
    uint8_t *buf = (uint8_t *) malloc(24 + CHUNK);

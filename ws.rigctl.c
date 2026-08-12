@@ -29,8 +29,8 @@ bool rr_set_mode(rr_vfo_t vfo, rr_mode_t mode) {
 
 extern time_t now;
 
-#define	WS_RIGCTL_FORCE_INTERVAL 60                   // every 60 seconds,
-                                                       // send a full update
+#define	WS_RIGCTL_FORCE_INTERVAL 60                // every 60 seconds,
+                                                    // send a full update
 
 // XXX: Merge with existing rr_vfo_data_t
 // This ugly mess needs sorted out asap ;)
@@ -177,8 +177,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    char *state = dict_get(d, "cat.state", NULL);
 
    if (cptr->user->is_muted) {
-      Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they are muted!", cmd,
-         cptr->chatname);
+      Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they are muted!", cmd, cptr->chatname);
       // XXX: Inform the user they are muted and can't use rigctl
       dict_free(d);
 
@@ -189,9 +188,8 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    // present
    // XXX: Add support for per noob Elmer (link from noob to elmer(s) who have
    // approved their use)
-   if ( client_has_flag(cptr, FLAG_NOOB) && !is_elmer_online() ) {
-      Log(LOG_AUDIT, "ws.rigctl",
-         "Ignoring %s command from %s as they're a noob and no elmers are online", cmd,
+   if (client_has_flag(cptr, FLAG_NOOB) && !is_elmer_online() ) {
+      Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they're a noob and no elmers are online", cmd,
          cptr->chatname);
       dict_free(d);
 
@@ -258,21 +256,20 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
          if (!cptr->ptt_session) {
             const char *recording = au_recording_start(channel);
-            cptr->ptt_session = db_ptt_start(masterdb, cptr->user->name, dp->freq, mode_name,
-               dp->width, dp->power, recording);
+            cptr->ptt_session = db_ptt_start(masterdb, cptr->user->name, dp->freq, mode_name, dp->width, dp->power,
+               recording);
          } else {
             db_ptt_stop(masterdb, cptr->ptt_session);
          }
 #endif
 
          // Send to log file & consoles
-         Log(LOG_AUDIT, "ptt", "User %s set PTT to %s on vfo %s", cptr->chatname,
-            (c_state ? "true" : "false"), vfo);
+         Log(LOG_AUDIT, "ptt", "User %s set PTT to %s on vfo %s", cptr->chatname, (c_state ? "true" : "false"), vfo);
 
-         const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "ptt", VAL_LONG, "cat.freq",
-            dp->freq, VAL_STR, "cat.mode", mode_name, VAL_FLOATP, "cat.power", dp->power,
-            VAL_STR, "cat.ptt", ptt_state, VAL_STR, "cat.user", cptr->chatname, VAL_STR, "cat.vfo",
-            vfo, VAL_INT, "cat.width", dp->width, VAL_LONG, "cat.ts", now);
+         const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "ptt", VAL_LONG, "cat.freq", dp->freq, VAL_STR,
+            "cat.mode", mode_name, VAL_FLOATP, "cat.power", dp->power, VAL_STR, "cat.ptt", ptt_state, VAL_STR,
+            "cat.user", cptr->chatname, VAL_STR, "cat.vfo", vfo, VAL_INT, "cat.width", dp->width, VAL_LONG, "cat.ts",
+            now);
 
 #if     defined(USE_MONGOOSE)
          struct mg_str mp = mg_str(jp);
@@ -308,9 +305,8 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          cptr->last_heard = now;
 
          // tell everyone about it
-         const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "freq", VAL_LONG, "cat.freq",
-            new_freq, VAL_LONG, "cat.ts", now, VAL_STR, "cat.user", cptr->chatname, VAL_STR,
-            "cat.vfo", vfo);
+         const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "freq", VAL_LONG, "cat.freq", new_freq, VAL_LONG,
+            "cat.ts", now, VAL_STR, "cat.user", cptr->chatname, VAL_STR, "cat.vfo", vfo);
 
          struct mg_str mp = mg_str(jp);
          ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
@@ -342,8 +338,8 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          cptr->last_heard = now;
 
          // tell everyone about it
-         const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "mode", VAL_STR, "cat.mode", mode,
-            VAL_STR, "cat.user", cptr->chatname, VAL_STR, "cat.vfo", vfo, VAL_LONG, "cat.ts", now);
+         const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "mode", VAL_STR, "cat.mode", mode, VAL_STR, "cat.user",
+            cptr->chatname, VAL_STR, "cat.vfo", vfo, VAL_LONG, "cat.ts", now);
 
          struct mg_str mp = mg_str(jp);
          ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);

@@ -41,8 +41,7 @@ bool ws_handle_notice_msg(struct mg_connection *c, struct mg_ws_message *msg) {
    }
 
    if (!msg->data.buf) {
-      Log(LOG_WARN, "http.ws",
-         "notice_msg: got msg from msg_conn:<%p> from %s:%d -- msg:<%p> with no data ptr", c, ip,
+      Log(LOG_WARN, "http.ws", "notice_msg: got msg from msg_conn:<%p> from %s:%d -- msg:<%p> with no data ptr", c, ip,
          port, msg);
 
       return true;

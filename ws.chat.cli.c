@@ -53,8 +53,8 @@ bool ws_handle_talk_msg(struct mg_connection *c, dict *d) {
          rv = true;
          goto cleanup;
       }
-      Log(LOG_DEBUG, "ws.talk", "UserInfo: %s has privs '%s' (TX: %s, Muted: %s, clones: %.0f)",
-         user, privs, (tx ? "true" : "false"), muted, clones);
+      Log(LOG_DEBUG, "ws.talk", "UserInfo: %s has privs '%s' (TX: %s, Muted: %s, clones: %.0f)", user, privs,
+         (tx ? "true" : "false"), muted, clones);
       event_emit_dict("userinfo", NULL, d);
    } else if (cmd && strcasecmp(cmd, "msg") == 0) {
       char *from = dict_get(d, "talk.from", NULL);

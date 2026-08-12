@@ -219,8 +219,7 @@ bool ws_binframe_process(const char *data, size_t len) {
 #if     defined(USE_MONGOOSE)
 bool ws_handle_cli(struct mg_connection *c, struct mg_ws_message *msg) {
    if (!c || !msg || !msg->data.buf) {
-      Log( LOG_DEBUG, "http.ws", "ws_handle got c <%p> msg <%p> data <%p>", c, msg,
-         (msg ? msg->data.buf : NULL) );
+      Log( LOG_DEBUG, "http.ws", "ws_handle got c <%p> msg <%p> data <%p>", c, msg, (msg ? msg->data.buf : NULL) );
 
       return true;
    }
@@ -289,8 +288,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 
          return;
       }
-      const char *jp = dict2json_mkstr(VAL_STR, "auth.user", login_user, VAL_STR, "auth.server",
-         server_name);
+      const char *jp = dict2json_mkstr(VAL_STR, "auth.user", login_user, VAL_STR, "auth.server", server_name);
       event_emit("connected", NULL, (char *)jp);
       free( (void *)jp );
       ws_send_hello(c);
@@ -313,8 +311,8 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 void ws_client_init(void) {
    const char *debug = cfg_get_exp("debug.http");
 
-   if ( debug && (strcasecmp(debug, "true") == 0 ||
-                  strcasecmp(debug, "yes") == 0) ) {
+   if (debug && (strcasecmp(debug, "true") == 0 ||
+                 strcasecmp(debug, "yes") == 0) ) {
 #if     defined(USE_MONGOOSE)
       mg_log_set(MG_LL_DEBUG);   // or MG_LL_VERBOSE for even more
 #endif
@@ -326,8 +324,8 @@ void ws_client_init(void) {
    free( (void *)debug );
    const char *debug_crazy = cfg_get_exp("debug.http.crazy");
 
-   if ( debug_crazy && (strcasecmp(debug_crazy, "true") == 0 ||
-                        strcasecmp(debug_crazy, "yes") == 0) ) {
+   if (debug_crazy && (strcasecmp(debug_crazy, "true") == 0 ||
+                       strcasecmp(debug_crazy, "yes") == 0) ) {
       cfg_http_debug_crazy = true;
    }
    free( (void *)debug_crazy );
@@ -347,8 +345,8 @@ void ws_client_init(void) {
 #if     defined(USE_MONGOOSE)
       // turn it into a mongoose string
       tls_ca_path_str = mg_str(tls_ca_path);
-      Log(LOG_DEBUG, "ws", "Setting TLS CA path to <%p> %s with target mg_str at <%p>", tls_ca_path,
-         tls_ca_path, tls_ca_path_str);
+      Log(LOG_DEBUG, "ws", "Setting TLS CA path to <%p> %s with target mg_str at <%p>", tls_ca_path, tls_ca_path,
+         tls_ca_path_str);
 #endif
    } else {
       Log(LOG_CRIT, "ws", "unable to find TLS CA file");
@@ -396,8 +394,7 @@ bool ws_init(struct mg_mgr *mgr) {
 }
 
 // Send to a specific, authenticated websocket session
-void ws_send_to_cptr(struct mg_connection *sender, http_client_t *cptr, struct mg_str *msg_data,
-                     int data_type) {
+void ws_send_to_cptr(struct mg_connection *sender, http_client_t *cptr, struct mg_str *msg_data, int data_type) {
    if (!cptr || !msg_data) {
       return;
    }
@@ -405,19 +402,17 @@ void ws_send_to_cptr(struct mg_connection *sender, http_client_t *cptr, struct m
 }
 
 // Send to all logged in instances of the user
-void ws_send_to_name(struct mg_connection *sender, const char *username, struct mg_str *msg_data,
-                     int data_type) {
+void ws_send_to_name(struct mg_connection *sender, const char *username, struct mg_str *msg_data, int data_type) {
    if (!sender || !username || !msg_data) {
-      Log(LOG_CRIT, "ws",
-         "ws_send_to_name passed incomplete data; sender:<%p>, username:<%p>, msg_data:<%p>",
-         sender, username, msg_data);
+      Log(LOG_CRIT, "ws", "ws_send_to_name passed incomplete data; sender:<%p>, username:<%p>, msg_data:<%p>", sender,
+         username, msg_data);
 
       return;
    }
    http_client_t *current = http_client_list;
    while (current) {
       // Messages from the server will have NULL sender
-      if ( !sender || (current->is_ws && current->conn != sender) ) {
+      if (!sender || (current->is_ws && current->conn != sender) ) {
          ws_send_to_cptr(sender, current, msg_data, data_type);
       }
       current = current->next;
@@ -462,8 +457,7 @@ bool ws_kick_by_uid(int uid, const char *reason) {
 bool ws_kick_client(http_client_t *cptr, const char *reason) {
    // skip freeing resources if no client structure
    if (!cptr) {
-      Log( LOG_DEBUG, "auth", "ws_kick_client with NULL cptr and reason: %s",
-         (reason ? reason : "(none)") );
+      Log( LOG_DEBUG, "auth", "ws_kick_client with NULL cptr and reason: %s", (reason ? reason : "(none)") );
 
       return true;
    }
@@ -498,9 +492,8 @@ bool ws_kick_client(http_client_t *cptr, const char *reason) {
          // XXX: replace with ws_broadcast_quit(cptr);
 
          // blorp out a quit to all connected users
-         const char *jp = dict2json_mkstr(VAL_STR, "talk.cmd", "quit", VAL_STR, "talk.user",
-            cptr->chatname, VAL_STR, "talk.reason", reason, VAL_ULONG, "talk.ts", now, VAL_INT,
-            "talk.clones", cptr->user->clones - 1);
+         const char *jp = dict2json_mkstr(VAL_STR, "talk.cmd", "quit", VAL_STR, "talk.user", cptr->chatname, VAL_STR,
+            "talk.reason", reason, VAL_ULONG, "talk.ts", now, VAL_INT, "talk.clones", cptr->user->clones - 1);
          struct mg_str ms = mg_str(jp);
          ws_broadcast(NULL, &ms, WEBSOCKET_OP_TEXT);
          free( (void *)jp );
@@ -521,8 +514,7 @@ bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
       return true;
    }
    // Tell their client they've been disconnected
-   prepare_msg( resp_buf, sizeof(resp_buf), "Client kicked: %s",
-      (reason ? reason : "no reason given") );
+   prepare_msg( resp_buf, sizeof(resp_buf), "Client kicked: %s", (reason ? reason : "no reason given") );
    const char *jp = dict2json_mkstr(VAL_STR, "auth.error", resp_buf);
    mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
    free( (void *)jp );
@@ -538,8 +530,7 @@ static bool ws_handle_pong(struct mg_ws_message *msg, struct mg_connection *c) {
    char *ts = NULL;
 
    if (!c || !msg || !msg->data.buf) {
-      Log( LOG_CRAZY, "http.ws", "ws_handle_pong got msg <%p> c <%p> data <%p>", msg, c,
-         (msg ? msg->data.buf : NULL) );
+      Log( LOG_CRAZY, "http.ws", "ws_handle_pong got msg <%p> c <%p> data <%p>", msg, c, (msg ? msg->data.buf : NULL) );
       rv = true;
       goto cleanup;
    }
@@ -556,15 +547,14 @@ static bool ws_handle_pong(struct mg_ws_message *msg, struct mg_connection *c) {
    if (!cptr) {
       char msgbuf[512];
 
-      prepare_msg(msgbuf, sizeof(msgbuf), "Kicking client from %s:%d who has no cptr?!?!!?", ip,
-         port);
+      prepare_msg(msgbuf, sizeof(msgbuf), "Kicking client from %s:%d who has no cptr?!?!!?", ip, port);
       ws_kick_client_by_c(c, msgbuf);
       rv = true;
       goto cleanup;
    }
    struct mg_str msg_data = msg->data;
 
-   if ( !( ts = mg_json_get_str(msg_data, "$.pong.ts") ) ) {
+   if (!(ts = mg_json_get_str(msg_data, "$.pong.ts") ) ) {
       Log(LOG_WARN, "http.ws", "ws_handle_pong: PONG from user with no timestamp");
       rv = true;
       goto cleanup;
@@ -583,10 +573,10 @@ static bool ws_handle_pong(struct mg_ws_message *msg, struct mg_connection *c) {
    }
    time_t ping_expiry = ts_t + HTTP_PING_TIME;
 
-   if ( (ping_expiry) < now ) {
+   if ( (ping_expiry) < now) {
       Log(LOG_AUDIT, "http.pong",
-         "Late ping for mg_conn:<%p> on cptr:<%p> from %s:%d ts: %li + %li (timeout) < now %li", c,
-         cptr, ip, port, ts_t, HTTP_PING_TIMEOUT, now);
+         "Late ping for mg_conn:<%p> on cptr:<%p> from %s:%d ts: %li + %li (timeout) < now %li", c, cptr, ip, port,
+         ts_t, HTTP_PING_TIMEOUT, now);
       ws_kick_client(cptr, "Network Error: PING expired");
       rv = true;
       goto cleanup;
@@ -611,8 +601,7 @@ bool ws_binframe_process_mg(struct mg_connection *c, const char *buf, size_t len
    http_client_t *cptr = http_find_client_by_c(c);
 
    if (!cptr) {
-      Log(LOG_CRIT, "ws.binframe",
-         "Binary frame from client at <%p> with no http session. Ignoring!");
+      Log(LOG_CRIT, "ws.binframe", "Binary frame from client at <%p> with no http session. Ignoring!");
 
       return true;
    }
@@ -741,13 +730,11 @@ static bool ws_txtframe_process(struct mg_ws_message *msg, struct mg_connection 
                "Client %s <%p> supported codecs: %s, my preferred codecs: %s, common codecs: %s, negotiated default codec: %s",
                cptr->chatname, cptr, media_codecs, cfg_get("codecs.allowed"), common, def_codec);
             char msgbuf[HTTP_WS_MAX_MSG + 1];
-            const char *jp = dict2json_mkstr(VAL_STR, "media.cmd", "isupport", VAL_STR,
-               "media.codecs", common, VAL_STR, "media.preferred", def_codec, VAL_ULONG, "media.ts",
-               now);
+            const char *jp = dict2json_mkstr(VAL_STR, "media.cmd", "isupport", VAL_STR, "media.codecs", common, VAL_STR,
+               "media.preferred", def_codec, VAL_ULONG, "media.ts", now);
             mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
             free( (void *)jp );
-            Log(LOG_DEBUG, "ws.media",
-               "Sending supported codecs |%s| with preferred |%s| to client |%s|", common,
+            Log(LOG_DEBUG, "ws.media", "Sending supported codecs |%s| with preferred |%s| to client |%s|", common,
                def_codec, cptr->chatname);
             free(common);
          } else {
@@ -762,8 +749,8 @@ static bool ws_txtframe_process(struct mg_ws_message *msg, struct mg_connection 
          char *media_channel = dict_get(d, "media.channel", NULL);
 
          if (media_codec && strlen(media_codec) == 4) {
-            Log(LOG_DEBUG, "ws.media", "Selected %s codec %s.%s for user %s at cptr:<%p>",
-               media_channel, media_codec, media_channel, cptr->chatname, cptr);
+            Log(LOG_DEBUG, "ws.media", "Selected %s codec %s.%s for user %s at cptr:<%p>", media_channel, media_codec,
+               media_channel, cptr->chatname, cptr);
             struct fwdsp_subproc *codec_tx_subproc = NULL;
             struct fwdsp_subproc *codec_rx_subproc = NULL;
 
@@ -780,8 +767,7 @@ static bool ws_txtframe_process(struct mg_ws_message *msg, struct mg_connection 
                   memset( cptr->codec_tx, 0, sizeof(cptr->codec_tx) );
                   memcpy(cptr->codec_tx, media_codec, 4);
                   codec_tx_subproc = fwdsp_find_or_create(cptr->codec_tx, FW_IO_STDIO, true);
-                  Log(LOG_DEBUG, "ws.media", "Started fwdsp %s.tx at %p", cptr->codec_tx,
-                     codec_tx_subproc);
+                  Log(LOG_DEBUG, "ws.media", "Started fwdsp %s.tx at %p", cptr->codec_tx, codec_tx_subproc);
                } else if (strcasecmp(media_channel, "rx") == 0) {
                   if (cptr->codec_rx[0] != '\0') {
                      // XXX: Decrease refcnt on old codec
@@ -789,15 +775,14 @@ static bool ws_txtframe_process(struct mg_ws_message *msg, struct mg_connection 
                   memset( cptr->codec_rx, 0, sizeof(cptr->codec_rx) );
                   memcpy(cptr->codec_rx, media_codec, 4);
                   codec_rx_subproc = fwdsp_find_or_create(cptr->codec_rx, FW_IO_STDIO, false);
-                  Log(LOG_DEBUG, "ws.media", "Started fwdsp %s.rx at %p", cptr->codec_rx,
-                     codec_rx_subproc);
+                  Log(LOG_DEBUG, "ws.media", "Started fwdsp %s.rx at %p", cptr->codec_rx, codec_rx_subproc);
                } else if (strcasecmp(media_channel, "video-rx") == 0) {
                   // NYI
                } else if (strcasecmp(media_channel, "video-tx") == 0) {
                   // NYI
                } else {
-                  Log(LOG_CRIT, "ws.media", "invalid channel '%s' for codec message from cptr:<%p>",
-                     media_channel, cptr);
+                  Log(LOG_CRIT, "ws.media", "invalid channel '%s' for codec message from cptr:<%p>", media_channel,
+                     cptr);
                }
             }
          } else {
@@ -821,8 +806,7 @@ cleanup:
 //
 bool ws_handle(struct mg_ws_message *msg, struct mg_connection *c) {
    if (!c || !msg || !msg->data.buf) {
-      Log( LOG_DEBUG, "http.ws", "ws_handle got msg <%p> c <%p> data <%p>", msg, c,
-         (msg ? msg->data.buf : NULL) );
+      Log( LOG_DEBUG, "http.ws", "ws_handle got msg <%p> c <%p> data <%p>", msg, c, (msg ? msg->data.buf : NULL) );
 
       return true;
    }
@@ -876,11 +860,11 @@ bool ws_send_ping(http_client_t *cptr) {
    // only bother making noise if the first attempt failed, send the first ping
    // to crazy level log
    if (cptr->ping_attempts > 1) {
-      Log(LOG_DEBUG, "ping", "sending ping to user %s on cptr:<%p> with ts:[%li] attempt %d",
-         cptr->chatname, cptr, now, cptr->ping_attempts);
+      Log(LOG_DEBUG, "ping", "sending ping to user %s on cptr:<%p> with ts:[%li] attempt %d", cptr->chatname, cptr, now,
+         cptr->ping_attempts);
    } else {
-      Log(LOG_CRAZY, "ping", "sending ping to user %s on cptr:<%p> with ts:[%li] attempt %d",
-         cptr->chatname, cptr, now, cptr->ping_attempts);
+      Log(LOG_CRAZY, "ping", "sending ping to user %s on cptr:<%p> with ts:[%li] attempt %d", cptr->chatname, cptr, now,
+         cptr->ping_attempts);
    }
    char ping_buf[64];
    snprintf(ping_buf, sizeof(ping_buf), "{\"ping\":{\"ts\":%li}}", now);
@@ -958,8 +942,7 @@ bool ws_send_notice(struct mg_connection *c, const char *fmt, ...) {
    vsnprintf(fullmsg, sizeof(fullmsg), fmt, ap);
    va_end(ap);
    char *escaped_msg = escape_html(fullmsg);
-   const char *jp = dict2json_mkstr(VAL_STR, "notice.msg", escaped_msg, VAL_ULONG, "notice.ts",
-      now);
+   const char *jp = dict2json_mkstr(VAL_STR, "notice.msg", escaped_msg, VAL_ULONG, "notice.ts", now);
 
    mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
    free( (char *)jp );

@@ -38,7 +38,7 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
    }
    time_t ts = dict_get_time_t(d, "cat.ts", now);
 
-   if ( dict_get(d, "cat.state.mode", NULL) ) {
+   if (dict_get(d, "cat.state.mode", NULL) ) {
       if (poll_block_expire < now) {
          char *vfo = dict_get(d, "cat.state.vfo", NULL);
          char *mode = dict_get(d, "cat.state.mode", NULL);
@@ -115,8 +115,8 @@ bool ws_send_ptt_cmd(struct mg_connection *c, const char *vfo, bool ptt) {
    if (!c || !vfo) {
       return true;
    }
-   const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "ptt", VAL_STR, "cat.vfo", vfo, VAL_BOOL,
-      "cat.ptt", ptt, VAL_ULONG, "cat.ts", now);
+   const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "ptt", VAL_STR, "cat.vfo", vfo, VAL_BOOL, "cat.ptt", ptt,
+      VAL_ULONG, "cat.ts", now);
 
    Log(LOG_CRAZY, "ws.cat", "Sending: %s", jp);
    int ret = mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
@@ -137,8 +137,8 @@ bool ws_send_mode_cmd(struct mg_connection *c, const char *vfo, const char *mode
    }
    char msgbuf[512];
    memset(msgbuf, 0, 512);
-   const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "mode", VAL_STR, "cat.vfo", vfo, VAL_STR,
-      "cat.mode", mode, VAL_ULONG, "cat.ts", now);
+   const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "mode", VAL_STR, "cat.vfo", vfo, VAL_STR, "cat.mode", mode,
+      VAL_ULONG, "cat.ts", now);
 
    Log(LOG_CRAZY, "ws.cat", "Sending: %s", jp);
    int ret = mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
@@ -159,8 +159,8 @@ bool ws_send_freq_cmd(struct mg_connection *c, const char *vfo, long freq) {
    }
    char msgbuf[512];
    memset(msgbuf, 0, 512);
-   const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "freq", VAL_STR, "cat.vfo", vfo, VAL_LONG,
-      "cat.freq", freq, VAL_ULONG, "cat.ts", now);
+   const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "freq", VAL_STR, "cat.vfo", vfo, VAL_LONG, "cat.freq", freq,
+      VAL_ULONG, "cat.ts", now);
    Log(LOG_CRAZY, "ws.cat", "Sending: %s", jp);
    int ret = mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
    free( (char *)jp );

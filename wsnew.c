@@ -131,7 +131,7 @@ ws_proto_handler_t ws_proto_handlers[] = {
 // validator who will send it on or throw an error
 bool ws_proto_dispatch(rrconn_t *cptr, dict *msg) {
 
-   int h = (sizeof(ws_proto_handlers) / sizeof(ws_proto_handler_t) );
+   int h = ( sizeof(ws_proto_handlers) / sizeof(ws_proto_handler_t) );
 
    for (int i = 0 ; i < h ; i++) {
       ws_proto_handler_t *wp = &ws_proto_handlers[i];

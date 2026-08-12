@@ -32,7 +32,7 @@ bool is_admin_online(void) {
          return false;
       }
 
-      if ( has_priv(curr->user->uid, "admin|owner") ) {
+      if (has_priv(curr->user->uid, "admin|owner") ) {
          return true;
       }
       curr = curr->next;
@@ -51,9 +51,8 @@ bool is_elmer_online(void) {
          continue;
       }
 
-      if ( client_has_flag(curr, FLAG_ELMER) ) {
-         Log(LOG_CRAZY, "auth", "is_elmer_online: returning cptr:<%x> - |%s|", curr,
-            curr->chatname);
+      if (client_has_flag(curr, FLAG_ELMER) ) {
+         Log(LOG_CRAZY, "auth", "is_elmer_online: returning cptr:<%x> - |%s|", curr, curr->chatname);
 
          return true;
       }

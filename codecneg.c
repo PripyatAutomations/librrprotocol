@@ -42,8 +42,7 @@ const char *media_capab_prepare(const char *codecs) {
    }
    // emit codec message
    char msgbuf[1024];
-   snprintf(msgbuf, sizeof(msgbuf), "{ \"media\": { \"cmd\": \"capab\", \"codecs\": \"%s\" } }",
-      codecs);
+   snprintf(msgbuf, sizeof(msgbuf), "{ \"media\": { \"cmd\": \"capab\", \"codecs\": \"%s\" } }", codecs);
 
    return strdup(msgbuf);
 }
@@ -53,8 +52,8 @@ char *codec_filter_common(const char *preferred, const char *available) {
    size_t res_sz = 0;
 
    if (!preferred || !available) {
-      Log(LOG_WARN, "codecneg", "codec_filter_common: empty list -- preferred:<%p> available:<%p>",
-         preferred, available);
+      Log(LOG_WARN, "codecneg", "codec_filter_common: empty list -- preferred:<%p> available:<%p>", preferred,
+         available);
 
       return NULL;
    }
@@ -110,8 +109,7 @@ char *codec_filter_common(const char *preferred, const char *available) {
    if (res_sz > 0 && result[res_sz - 1] == ' ') {
       result[--res_sz] = 0;
    }
-   Log(LOG_CRAZY, "codecneg", "codec_filter_common(|%s|, |%s|) returned |%s|", preferred, available,
-      result);
+   Log(LOG_CRAZY, "codecneg", "codec_filter_common(|%s|, |%s|) returned |%s|", preferred, available, result);
 
    return result;
 }

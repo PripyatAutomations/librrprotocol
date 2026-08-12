@@ -21,6 +21,8 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
+#define	IRC_MSGLEN 512
+
 bool irc_init(void) {
    // XXX: These need to go into the irc_init() or
    // irc_client_init/irc_server_init functions as appropriate!
@@ -63,7 +65,7 @@ static void irc_try_send(rrconn_t *cptr) {
    char *p = cptr->sendq;
 
    // find how much of sendq is complete messages ending with \r\n
-   while ( ( p = strstr(p, "\r\n") ) ) {
+   while ( (p = strstr(p, "\r\n") ) ) {
       len = (p - cptr->sendq) + 2;
       p += 2;
    }
@@ -72,8 +74,7 @@ static void irc_try_send(rrconn_t *cptr) {
       return;
    }
    ssize_t n = send(cptr->fd, cptr->sendq, len, 0);
-   Log(LOG_CRIT, "irc", "send(%d) to cptr:<%p>: %d bytes: %.*s", cptr->fd, cptr, (int)n, (int)len,
-      cptr->sendq);
+   Log(LOG_CRIT, "irc", "send(%d) to cptr:<%p>: %d bytes: %.*s", cptr->fd, cptr, (int)n, (int)len, cptr->sendq);
 
    if (n < 0) {
       if (errno != EAGAIN && errno != EWOULDBLOCK) {
@@ -85,7 +86,7 @@ static void irc_try_send(rrconn_t *cptr) {
       return;
    }
 
-   if ( (size_t)n < len ) {
+   if ( (size_t)n < len) {
       // partial send, move remaining to front
       memmove(cptr->sendq, cptr->sendq + n, len - n);
       cptr->sendq[len - n] = '\0';
@@ -105,7 +106,7 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
    if (!cptr || !fmt || cptr->fd <= 0) {
       return false;
    }
-   char msg[512];
+   char msg[IRC_MSGLEN];
    va_list ap;
    va_start(ap, fmt);
    vsnprintf(msg, sizeof(msg), fmt, ap);
@@ -141,10 +142,10 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
 }
 
 void irc_io_cb(EV_P_ ev_io *w, int revents) {
-   rrconn_t *cptr = (rrconn_t *)( ( (char*)w ) - offsetof(rrconn_t, io_watcher) );
+   rrconn_t *cptr = (rrconn_t *)( ( (char*)w) - offsetof(rrconn_t, io_watcher) );
 
    if (revents & EV_READ) {
-      char buf[512];
+      char buf[IRC_MSGLEN];
       ssize_t n = recv(cptr->fd, buf, sizeof(buf), 0);
 
       if (n <= 0) {
@@ -171,7 +172,7 @@ void irc_io_cb(EV_P_ ev_io *w, int revents) {
       // process complete lines
       char *start = cptr->recvq;
       char *end;
-      while ( ( end = strstr(start, "\r\n") ) ) {
+      while ( (end = strstr(start, "\r\n") ) ) {
          *end = '\0';
          Log(LOG_DEBUG, "net", "processing line: [%s]", start);
          irc_process_message(cptr, start);
@@ -179,7 +180,8 @@ void irc_io_cb(EV_P_ ev_io *w, int revents) {
          // send login on first server message
          if (!cptr->sent_login) {
 //            ui_print(NULL,
-//               "[{green}%s{reset}] {bright-cyan}***{reset} Sending login {bright-cyan}***{reset} ");
+//               "[{green}%s{reset}] {bright-cyan}***{reset} Sending login
+// {bright-cyan}***{reset} ");
 
             if (cptr->server->pass[0]) {
                if (cptr->server->account[0]) {

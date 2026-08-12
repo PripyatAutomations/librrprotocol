@@ -140,8 +140,8 @@ http_client_t *http_find_client_by_c(struct mg_connection *c) {
 
    while (cptr) {
       if (cptr->conn == c) {
-         Log( LOG_CRAZY, "http.core", "find_client_by_c <%p> returning index %i: %p |%s|", c, i,
-            cptr, (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
+         Log( LOG_CRAZY, "http.core", "find_client_by_c <%p> returning index %i: %p |%s|", c, i, cptr,
+            (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
 
          return cptr;
       }
@@ -167,8 +167,8 @@ http_client_t *http_find_client_by_token(const char *token) {
       }
 
       if (memcmp( cptr->token, token, strlen(cptr->token) ) == 0) {
-         Log( LOG_CRAZY, "http.core", "find_client_by_token |%s| returning index %i: %p |%s|",
-            token, i, cptr, (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
+         Log( LOG_CRAZY, "http.core", "find_client_by_token |%s| returning index %i: %p |%s|", token, i, cptr,
+            (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
 
          return cptr;
       }
@@ -208,27 +208,25 @@ http_client_t *http_find_client_by_name(const char *name) {
       return NULL;
    }
    while (cptr) {
-      Log(LOG_CRAZY, "http.core", "find client by name: i: %d user:<%p> chatname: %s", i,
-         cptr->user, cptr->chatname);
+      Log(LOG_CRAZY, "http.core", "find client by name: i: %d user:<%p> chatname: %s", i, cptr->user, cptr->chatname);
 
       // incomplete entry
-      if ( !cptr->user || (cptr->chatname[0] == '\0') ) {
+      if (!cptr->user || (cptr->chatname[0] == '\0') ) {
          cptr = cptr->next;
          continue;
       }
 
       // match?
       if (strcasecmp(cptr->chatname, name) == 0) {
-         Log( LOG_CRAZY, "http.core", "find client by name |%s| found match at index %d: <%p> |%s|",
-            name, i, cptr, (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
+         Log( LOG_CRAZY, "http.core", "find client by name |%s| found match at index %d: <%p> |%s|", name, i, cptr,
+            (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
 
          return cptr;
       }
       i++;
       cptr = cptr->next;
    }
-   Log(LOG_DEBUG, "http.core", "find client by name found no results for %s, index was %d", name,
-      i);
+   Log(LOG_DEBUG, "http.core", "find client by name found no results for %s, index was %d", name, i);
 
    return NULL;
 }
@@ -239,8 +237,8 @@ void http_dump_clients(void) {
 
    while (cptr) {
 #if     defined(USE_MONGOOSE)
-      Log(LOG_DEBUG, "http", " => %d at <%p> %sactive %swebsocket, conn: <%p>, next: <%p> ", i,
-         cptr, (cptr->active ? "" : "in"), (cptr->is_ws ? "" : "NOT "), cptr->conn, cptr->next);
+      Log(LOG_DEBUG, "http", " => %d at <%p> %sactive %swebsocket, conn: <%p>, next: <%p> ", i, cptr,
+         (cptr->active ? "" : "in"), (cptr->is_ws ? "" : "NOT "), cptr->conn, cptr->next);
 #endif // defined(USE_MONGOOSE)
       i++;
       cptr = cptr->next;
@@ -252,7 +250,7 @@ const char *http_content_type(const char *type) {
    if (!type) {
       return NULL;
    }
-   int items = ( sizeof(http_res_types) / sizeof(struct http_res_types) );
+   int items = (sizeof(http_res_types) / sizeof(struct http_res_types) );
 
    for (int i = 0 ; i <= items ; i++) {
 //      printf("hct: %s, checking %d: %s\n",
@@ -308,8 +306,8 @@ void http_tls_init(void) {
       tls_opts.cert = tls_cert;
       tls_opts.key = tls_key;
       tls_opts.skip_verification = 1;
-      Log(LOG_INFO, "http.tls", "TLS initialized succesfully, |cert: <%lu @ %p>| |key: <%lu @ %p>",
-         tls_cert.len, tls_cert, tls_key.len, tls_key.buf);
+      Log(LOG_INFO, "http.tls", "TLS initialized succesfully, |cert: <%lu @ %p>| |key: <%lu @ %p>", tls_cert.len,
+         tls_cert, tls_key.len, tls_key.buf);
    }
 }
 #endif // HTTP_USE_TLS
@@ -339,11 +337,11 @@ bool http_static(struct mg_http_message *msg, struct mg_connection *c) {
    }
    snprintf(real_path, sizeof(real_path), "%s/%s", www_root, path);
 
-   if ( file_exists(real_path) ) {
+   if (file_exists(real_path) ) {
       // Find last '.' in the path for the extension
       const char *ext = strrchr(path, '.');
 
-      if ( ext && *(ext + 1) ) {
+      if (ext && *(ext + 1) ) {
          // lookup the mime type based on extension
          const char *ctype = http_content_type(ext + 1);
          char typebuf[256];
@@ -357,7 +355,7 @@ bool http_static(struct mg_http_message *msg, struct mg_connection *c) {
 
          return false;
       }
-   } else if ( is_dir(real_path) ) {
+   } else if (is_dir(real_path) ) {
       mg_http_serve_dir(c, msg, &opts);
 
       return false;
@@ -389,7 +387,7 @@ static void http_cb(struct mg_connection *c, int ev, void *ev_data) {
    }
 
    if (ev == MG_EV_OPEN) {
-      if ( cfg_get_bool("net.http.hex-dump", false) ) {
+      if (cfg_get_bool("net.http.hex-dump", false) ) {
          c->is_hexdumping = 1;
       }
    } else if (ev == MG_EV_CONNECT) {
@@ -435,8 +433,8 @@ static void http_cb(struct mg_connection *c, int ev, void *ev_data) {
                }
                memset(cptr->user_agent, 0, ua_len);
                memcpy(cptr->user_agent, ua_hdr->buf, ua_len);
-               Log(LOG_DEBUG, "http.core", "New session c:<%p> cptr:<%p> User-Agent: %s (%d)", c,
-                  cptr, (cptr->user_agent ? cptr->user_agent : "none"), ua_len);
+               Log(LOG_DEBUG, "http.core", "New session c:<%p> cptr:<%p> User-Agent: %s (%d)", c, cptr,
+                  (cptr->user_agent ? cptr->user_agent : "none"), ua_len);
             }
          }
       }
@@ -451,17 +449,14 @@ static void http_cb(struct mg_connection *c, int ev, void *ev_data) {
       http_client_t *cptr = http_find_client_by_c(c);
 
       if (cptr) {
-         Log(LOG_DEBUG, "http", "Conn mg_conn:<%p> from %s:%d upgraded to ws with cptr:<%p>", c, ip,
-            port, cptr);
+         Log(LOG_DEBUG, "http", "Conn mg_conn:<%p> from %s:%d upgraded to ws with cptr:<%p>", c, ip, port, cptr);
          cptr->is_ws = true;
          char msgbuf[512];
          memset( msgbuf, 0, sizeof(msgbuf) );
-         snprintf(msgbuf, sizeof(msgbuf), "{ \"hello\": \"rustyrig %s on %s\" }", VERSION,
-            HARDWARE);
+         snprintf(msgbuf, sizeof(msgbuf), "{ \"hello\": \"rustyrig %s on %s\" }", VERSION, HARDWARE);
          mg_ws_send(c, msgbuf, strlen(msgbuf), WEBSOCKET_OP_TEXT);
       } else {
-         Log(LOG_CRIT, "http", "Conn mg_conn:<%p> from %s:%d kicked: No cptr but tried to start ws",
-            c, ip, port);
+         Log(LOG_CRIT, "http", "Conn mg_conn:<%p> from %s:%d kicked: No cptr but tried to start ws", c, ip, port);
          ws_kick_client_by_c(c, "Socket error 314");
       }
    } else if (ev == MG_EV_WS_MSG) {
@@ -492,24 +487,22 @@ static void http_cb(struct mg_connection *c, int ev, void *ev_data) {
             cptr->cli_version = NULL;
          }
          // reduce the # of clones for the user / reset to 0
-         Log(LOG_CRAZY, "http", "Departing user %s had %d clones", cptr->chatname,
-            cptr->user->clones);
+         Log(LOG_CRAZY, "http", "Departing user %s had %d clones", cptr->chatname, cptr->user->clones);
 
          if (cptr->active) {
             // blorp out a quit to all connected users
-            const char *jp = dict2json_mkstr(VAL_STR, "talk.cmd", "quit", VAL_STR, "talk.user",
-               cptr->chatname, VAL_ULONG, "talk.ts", now, VAL_STR, "talk.reason",
-               "connection closed", VAL_INT, "talk.clones", cptr->user->clones);
+            const char *jp = dict2json_mkstr(VAL_STR, "talk.cmd", "quit", VAL_STR, "talk.user", cptr->chatname,
+               VAL_ULONG, "talk.ts", now, VAL_STR, "talk.reason", "connection closed", VAL_INT, "talk.clones",
+               cptr->user->clones);
             struct mg_str ms = mg_str(jp);
             ws_broadcast(NULL, &ms, WEBSOCKET_OP_TEXT);
             free( (char *)jp );
-            Log(LOG_AUDIT, "auth", "User %s on mg_conn:<%p> cptr:<%p> from %s:%d disconnected",
-               cptr->chatname, c, cptr, ip, port);
+            Log(LOG_AUDIT, "auth", "User %s on mg_conn:<%p> cptr:<%p> from %s:%d disconnected", cptr->chatname, c, cptr,
+               ip, port);
          }
       } else {
          // This one makes a BUNCH of noise due to webui loading
-         Log(LOG_CRAZY, "auth.extreme",
-            "Unauthenticated client on mg_conn:<%p> from %s:%d disconnected", c, ip, port);
+         Log(LOG_CRAZY, "auth.extreme", "Unauthenticated client on mg_conn:<%p> from %s:%d disconnected", c, ip, port);
       }
       http_remove_client(c);
    }
@@ -578,7 +571,7 @@ bool http_init(struct mg_mgr *mgr) {
 
    const char *s = cfg_get("net.http.bind");
 
-   if ( !s || !inet_aton(s, &sa_bind) ) {
+   if (!s || !inet_aton(s, &sa_bind) ) {
 #if     defined(USE_EEPROM)
       eeprom_get_ip4("net/http/bind", &sa_bind);
 #endif
@@ -586,7 +579,7 @@ bool http_init(struct mg_mgr *mgr) {
    free( (char *)s );
    prepare_msg(listen_addr, sizeof(listen_addr), "http://%s:%d", inet_ntoa(sa_bind), bind_port);
 
-   if ( !mg_http_listen(mgr, listen_addr, http_cb, NULL) ) {
+   if (!mg_http_listen(mgr, listen_addr, http_cb, NULL) ) {
       Log(LOG_CRIT, "http", "Failed to start http listener");
       exit(1);
    }
@@ -595,7 +588,7 @@ bool http_init(struct mg_mgr *mgr) {
 
 #if     defined(HTTP_USE_TLS)
 
-   if ( cfg_get_bool("net.http.tls-enabled", false) ) {
+   if (cfg_get_bool("net.http.tls-enabled", false) ) {
       int tls_bind_port = cfg_get_int("net.http.tls-port", 0);
 
 #if     defined(USE_EEPROM)
@@ -608,7 +601,7 @@ bool http_init(struct mg_mgr *mgr) {
       struct in_addr sa_tls_bind;
       s = cfg_get_exp("net.http.tls-bind");
 
-      if ( !s || !inet_aton(s, &sa_tls_bind) ) {
+      if (!s || !inet_aton(s, &sa_tls_bind) ) {
 #if     defined(USE_EEPROM)
          eeprom_get_ip4("net/http/bind", &sa_tls_bind);
 #endif
@@ -617,11 +610,10 @@ bool http_init(struct mg_mgr *mgr) {
       s = NULL;
 
       char tls_listen_addr[255];
-      prepare_msg(tls_listen_addr, sizeof(tls_listen_addr), "https://%s:%d", inet_ntoa(sa_tls_bind),
-         tls_bind_port);
+      prepare_msg(tls_listen_addr, sizeof(tls_listen_addr), "https://%s:%d", inet_ntoa(sa_tls_bind), tls_bind_port);
       http_tls_init();
 
-      if ( !mg_http_listen(mgr, tls_listen_addr, http_cb, NULL) ) {
+      if (!mg_http_listen(mgr, tls_listen_addr, http_cb, NULL) ) {
          Log(LOG_CRIT, "http", "Failed to start https listener");
          exit(1);
       }
@@ -647,8 +639,8 @@ http_client_t *http_add_client(struct mg_connection *c, bool is_ws) {
    // create some randomness for login hashing and session
    generate_nonce( cptr->token, sizeof(cptr->token) );
    generate_nonce( cptr->nonce, sizeof(cptr->nonce) );
-   Log(LOG_CRAZY, "http", "add_client: token:<%p> |%s|, nonce:<%p> |%s|", cptr->token, cptr->token,
-      cptr->nonce, cptr->nonce);
+   Log(LOG_CRAZY, "http", "add_client: token:<%p> |%s|, nonce:<%p> |%s|", cptr->token, cptr->token, cptr->nonce,
+      cptr->nonce);
    cptr->connected = now;
    cptr->authenticated = false;
    cptr->active = true;
@@ -661,8 +653,8 @@ http_client_t *http_add_client(struct mg_connection *c, bool is_ws) {
    cptr->next = http_client_list;
    http_client_list = cptr;
 
-   Log( LOG_DEBUG, "http", "Added new client at cptr:<%p> (%d clients and %d sessions total now)",
-      cptr, http_count_connections(), http_count_clients() );
+   Log( LOG_DEBUG, "http", "Added new client at cptr:<%p> (%d clients and %d sessions total now)", cptr,
+      http_count_connections(), http_count_clients() );
 
    return cptr;
 }
@@ -689,8 +681,7 @@ void http_remove_client(struct mg_connection *c) {
          } else {
             prev->next = current->next;
          }
-         Log( LOG_CRAZY, "http",
-            "Removing client at cptr:<%p> with mgconn:<%p> (%d connections / %d users remain)",
+         Log( LOG_CRAZY, "http", "Removing client at cptr:<%p> with mgconn:<%p> (%d connections / %d users remain)",
             current, c, http_count_connections(), http_count_clients() );
 
          if (current->user) {
@@ -699,8 +690,7 @@ void http_remove_client(struct mg_connection *c) {
             }
 
             if (current->user->clones < 0) {
-               Log(LOG_WARN, "http", "Client at cptr:<%p> has %d clones??", current,
-                  current->user->clones);
+               Log(LOG_WARN, "http", "Client at cptr:<%p> has %d clones??", current, current->user->clones);
                current->user->clones = 0;
             }
          }
@@ -730,8 +720,8 @@ void http_expire_sessions(void) {
             expired++;
             time_t last_heard = now - cptr->last_heard;
             Log(LOG_AUDIT, "http.auth",
-               "Kicking expired session on cptr:<%p> (%lu sec old, last heard %lu sec ago) for user %s",
-               cptr, HTTP_SESSION_LIFETIME, last_heard, cptr->chatname);
+               "Kicking expired session on cptr:<%p> (%lu sec old, last heard %lu sec ago) for user %s", cptr,
+               HTTP_SESSION_LIFETIME, last_heard, cptr->chatname);
 #if     defined(USE_MONGOOSE)
             ws_kick_client(cptr, "Login session expired!");
 #endif // defined(USE_MONGOOSE)
@@ -741,8 +731,7 @@ void http_expire_sessions(void) {
          // Check for ping timeout & retry
          if (cptr->last_ping != 0 && (now - cptr->last_ping) > HTTP_PING_TIMEOUT) {
             if (cptr->ping_attempts >= HTTP_PING_TRIES) {
-               Log(LOG_AUDIT, "http.auth",
-                  "Client conn at cptr:<%p> for user %s ping timed out, disconnecting", cptr,
+               Log(LOG_AUDIT, "http.auth", "Client conn at cptr:<%p> for user %s ping timed out, disconnecting", cptr,
                   cptr->chatname);
 #if     defined(USE_MONGOOSE)
                ws_kick_client(cptr, "Ping timeout");

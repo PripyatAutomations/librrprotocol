@@ -18,7 +18,7 @@ extern struct mg_mgr mgr;  // provided by the application that uses mongoose
 #endif
 
 // Shared state
-char active_server[512] = {
+char active_server[SERVERLEN] = {
    0
 };
 rr_connection_t *active_connections = NULL;
@@ -59,17 +59,17 @@ bool connection_create(const char *server) {
       return true;
    }
    // Create a basic connection object and add it to the list
-   rr_connection_t *n = calloc( 1, sizeof(*n) );
+   rr_connection_t *new_conn = calloc( 1, sizeof(rr_connection_t) );
 
-   if (!n) {
+   if (!new_conn) {
       return true;
    }
-   snprintf(n->name, sizeof(n->name), "%s", server);
-   n->connected = false;
-   n->ptt_active = false;
-   n->conn_type = NULL;
-   n->next = active_connections;
-   active_connections = n;
+   snprintf(new_conn->name, sizeof(new_conn->name), "%s", server);
+   new_conn->connected = false;
+   new_conn->ptt_active = false;
+   new_conn->conn_type = NULL;
+   new_conn->next = active_connections;
+   active_connections = new_conn;
 
    return false;
 }
@@ -80,15 +80,15 @@ bool connection_remove(rr_connection_t *conn) {
 
       return true;
    }
-   rr_connection_t **p = &active_connections;
-   while (*p) {
-      if (*p == conn) {
-         *p = conn->next;
+   rr_connection_t **this_conn = &active_connections;
+   while (*this_conn) {
+      if (*this_conn == conn) {
+         *this_conn = conn->next;
          free(conn);
 
          return false;
       }
-      p = &(*p)->next;
+      this_conn = &(*this_conn)->next;
    }
    return true;
 }
@@ -99,7 +99,7 @@ const char *get_server_property(const char *server, const char *prop) {
 
       return NULL;
    }
-   char fullkey[1024];
+   char fullkey[KEYLEN];
    memset( fullkey, 0, sizeof(fullkey) );
    snprintf(fullkey, sizeof(fullkey), "server:%s.%s", server, prop);
 
@@ -111,10 +111,9 @@ bool rrproto_disconnect_server(const char *server) {
    Log(LOG_DEBUG, "connman", "rrproto_disconnect_server: |%s|", server ? server : "(null)");
 
 #if defined(USE_MONGOOSE)
+
    // If a websocket connection exists, mark it closing. Actual mg loop will
    // close.
-   extern struct mg_connection *ws_conn, *ws_tx_conn;
-
    if (ws_conn) {
       ws_conn->is_closing = 1;
    }
@@ -125,7 +124,6 @@ bool rrproto_disconnect_server(const char *server) {
 #endif
    ws_connected = false;
    event_emit("goodbye", NULL, NULL);
-   userlist_clear_all();
 
    return false;
 }
@@ -137,16 +135,15 @@ bool rrproto_connect_server(const char *server) {
       return true;
    }
    const char *url = get_server_property(server, "server.url");
-   Log(LOG_DEBUG, "connman", "rrproto_connect server: |%s| url: |%s|", server,
-      url ? url : "(null)");
+   Log(LOG_DEBUG, "connman", "rrproto_connect server: |%s| url: |%s|", server, url ? url : "(null)");
 
    if (!url) {
-//      ui_print("[%s] * Server '%s' does not have a server.url configured!", server, server);
+//      ui_print("[%s] * Server '%s' does not have a server.url configured!",
+// server, server);
 
       return true;
    }
 #if defined(USE_MONGOOSE)
-   extern struct mg_connection *ws_conn, *ws_tx_conn;
    extern void http_handler(struct mg_connection *c, int ev, void *ev_data);
    ws_conn = mg_ws_connect(&mgr, url, http_handler, NULL, NULL);
 
@@ -160,7 +157,7 @@ bool rrproto_connect_server(const char *server) {
 #else
    // No mongoose transport available; emit event for higher-level code to
    // handle
-   event_emit("http.connect.request", NULL, (void *)url);
+   event_emit("connect.request", NULL, (void *)url);
 #endif
 
    return false;
@@ -172,16 +169,16 @@ void rrproto_connman_autoconnect(void) {
    if (!autoconnect) {
       return;
    }
-   char *tv = strdup(autoconnect);
-   char *sp = strtok(tv, ",");
-   while (sp) {
-      char this_server[256];
+   char *ac_temp = strdup(autoconnect);
+   char *server_name = strtok(ac_temp, ",");
+   while (server_name) {
+      char this_server[SERVERLEN];
       memset( this_server, 0, sizeof(this_server) );
-      snprintf(this_server, sizeof(this_server), "%s", sp);
-//      ui_print("* Autoconnecting to profile: %s *", this_server);
+      snprintf(this_server, sizeof(this_server), "%s", server_name);
+      event_emit("autoconnecting", NULL, NULL);
       rrproto_connect_server(this_server);
-      sp = strtok(NULL, ",");
+      server_name = strtok(NULL, ",");
    }
-   free(tv);
+   free( (void *)ac_temp );
    free( (void *)autoconnect );
 }

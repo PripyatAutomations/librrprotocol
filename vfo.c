@@ -124,11 +124,9 @@ rr_mode_t vfo_parse_mode(const char *mode) {
       return MODE_DSB;
    } else if (strcasecmp(mode, vfo_mode_fm) == 0) {
       return MODE_FM;
-   } else if (strcasecmp(mode, vfo_mode_dl) == 0 || strcasecmp(mode, "dl") == 0 || strcasecmp(mode,
-      "PKTLSB") == 0) {
+   } else if (strcasecmp(mode, vfo_mode_dl) == 0 || strcasecmp(mode, "dl") == 0 || strcasecmp(mode, "PKTLSB") == 0) {
       return MODE_DL;
-   } else if (strcasecmp(mode, vfo_mode_du) == 0 || strcasecmp(mode, "du") == 0 || strcasecmp(mode,
-      "PKTUSB") == 0) {
+   } else if (strcasecmp(mode, vfo_mode_du) == 0 || strcasecmp(mode, "du") == 0 || strcasecmp(mode, "PKTUSB") == 0) {
       return MODE_DU;
    } else if (strcasecmp(mode, vfo_mode_ft4) == 0) {
       return MODE_FT4;
@@ -195,13 +193,13 @@ const char *vfo_mode_name(rr_mode_t mode) {
 }
 
 long parse_freq(const char *str) {
-   while ( isspace(*str) ) {
+   while (isspace(*str) ) {
       str++;
    }
    char *end = NULL;
    double val = strtod(str, &end);
 
-   while ( isspace(*end) ) {
+   while (isspace(*end) ) {
       end++;
    }
 

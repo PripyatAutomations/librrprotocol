@@ -89,8 +89,7 @@ cleanup:
 
 bool ws_send_login(struct mg_connection *c, const char *login_user) {
    if (!c || !login_user) {
-      Log(LOG_DEBUG, "ws.auth", "send_login c:<%p> login_user:<%p> |%s|", c, login_user,
-         login_user);
+      Log(LOG_DEBUG, "ws.auth", "send_login c:<%p> login_user:<%p> |%s|", c, login_user, login_user);
 
       return true;
    }
@@ -110,11 +109,9 @@ bool ws_send_login(struct mg_connection *c, const char *login_user) {
 }
 
 // Hashes the user stored password with the server nonce and returns it
-bool ws_send_passwd(struct mg_connection *c, const char *user, const char *passwd,
-                    const char *nonce) {
+bool ws_send_passwd(struct mg_connection *c, const char *user, const char *passwd, const char *nonce) {
    if (!c || !user || !passwd || !nonce) {
-      Log(LOG_CRIT, "auth",
-         "ws_send_passwd with invalid parameters, c:<%p> user:<%p> passwd:<%p> nonce:<%p>", c, user,
+      Log(LOG_CRIT, "auth", "ws_send_passwd with invalid parameters, c:<%p> user:<%p> passwd:<%p> nonce:<%p>", c, user,
          passwd, nonce);
 
       return true;
@@ -126,8 +123,8 @@ bool ws_send_passwd(struct mg_connection *c, const char *user, const char *passw
 
       return true;
    }
-   const char *jp = dict2json_mkstr(VAL_STR, "auth.cmd", "pass", VAL_STR, "auth.user", user,
-      VAL_STR, "auth.pass", temp_pw, VAL_STR, "auth.token", session_token);
+   const char *jp = dict2json_mkstr(VAL_STR, "auth.cmd", "pass", VAL_STR, "auth.user", user, VAL_STR, "auth.pass",
+      temp_pw, VAL_STR, "auth.token", session_token);
    mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
    free( (char *)jp );
    free(temp_pw);
@@ -143,8 +140,8 @@ bool ws_send_logout(struct mg_connection *c, const char *user, const char *token
    }
    char msgbuf[512];
    memset(msgbuf, 0, 512);
-   const char *jp = dict2json_mkstr(VAL_STR, "auth.cmd", "logout", VAL_STR, "auth.user", user,
-      VAL_STR, "auth.token", token);
+   const char *jp = dict2json_mkstr(VAL_STR, "auth.cmd", "logout", VAL_STR, "auth.user", user, VAL_STR, "auth.token",
+      token);
    mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
    free( (char *)jp );
 

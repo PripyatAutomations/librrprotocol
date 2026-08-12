@@ -81,8 +81,7 @@ char *compute_wire_password(const char *password, const char *nonce) {
 #endif // USE_MONGOOSE
 
    if (password == NULL || nonce == NULL) {
-      Log(LOG_CRIT, "auth", "wtf compute_wire_password called with NULL password<%p> or nonce<%p>",
-         password, nonce);
+      Log(LOG_CRIT, "auth", "wtf compute_wire_password called with NULL password<%p> or nonce<%p>", password, nonce);
 
       return NULL;
    }

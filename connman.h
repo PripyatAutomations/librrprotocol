@@ -12,13 +12,11 @@
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
-
-#if defined(USE_MONGOOSE)
-#include "ext/libmongoose/mongoose.h"
-#endif
-
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+
+#define	SERVERLEN 512
+#define	KEYLEN 256
 
 enum rr_conn_type {
    RR_CONN_NONE = 0,
@@ -49,16 +47,11 @@ extern bool connect_server(const char *server);
 extern bool ws_connected;
 extern bool ws_tx_connected;
 #if defined(USE_MONGOOSE)
-extern struct mg_connection *ws_conn, *ws_tx_conn;
+extern struct mg_connection *ws_conn;
+extern struct mg_connection *ws_tx_conn;
 #endif
 extern bool server_ptt_state;
 extern const char *get_server_property(const char *server, const char *prop);
-
-#if defined(USE_GTK)
-/* GtkButton is only referenced when building GTK UI code */
-#include <gtk/gtk.h>
-extern bool connect_or_disconnect(const char *server, GtkButton *button);
-#endif
 
 extern void connman_autoconnect(void);
 

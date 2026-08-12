@@ -21,8 +21,7 @@ bool irc_builtin_num_print(rrconn_t *cptr, irc_message_t *mp) {
    size_t pos = 0;
 
    for (int i = 2 ; i < mp->argc ; i++) {
-      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 2 ? " " : ""),
-         mp->argv[i] ? mp->argv[i] : "");
+      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 2 ? " " : ""), mp->argv[i] ? mp->argv[i] : "");
 
       if (n < 0 || (size_t)n >= sizeof(buf) - pos) {
          break;
@@ -30,8 +29,7 @@ bool irc_builtin_num_print(rrconn_t *cptr, irc_message_t *mp) {
       pos += n;
    }
 
-   Log(LOG_DEBUG, "irc", "[%s] %s *** %s ***", irc_name(cptr), (mp->argc > 0 ? mp->argv[1] : "?"),
-      buf);
+   Log(LOG_DEBUG, "irc", "[%s] %s *** %s ***", irc_name(cptr), (mp->argc > 0 ? mp->argv[1] : "?"), buf);
 //   ui_print("status", "%s [{green}%s{reset}] *** %s ***", get_chat_ts(0),
 //      irc_name(cptr), buf);
 
@@ -65,7 +63,7 @@ bool irc_builtin_num001(rrconn_t *cptr, irc_message_t *mp) {
       char *aj = strdup(cptr->server->autojoin);   // safe copy to modify
       char *tok, *saveptr = NULL;
 
-      for ( tok = strtok_r(aj, ",", &saveptr) ; tok ; tok = strtok_r(NULL, ",", &saveptr) ) {
+      for (tok = strtok_r(aj, ",", &saveptr) ; tok ; tok = strtok_r(NULL, ",", &saveptr) ) {
          char *chan = tok;
          char *key = strchr(tok, ':');
 
@@ -90,7 +88,7 @@ bool irc_builtin_num001(rrconn_t *cptr, irc_message_t *mp) {
       char *aj = strdup(net_aj);   // safe copy to modify
       char *tok, *saveptr = NULL;
 
-      for ( tok = strtok_r(aj, ",", &saveptr) ; tok ; tok = strtok_r(NULL, ",", &saveptr) ) {
+      for (tok = strtok_r(aj, ",", &saveptr) ; tok ; tok = strtok_r(NULL, ",", &saveptr) ) {
          char *chan = tok;
          char *key = strchr(tok, ':');
 
@@ -104,7 +102,8 @@ bool irc_builtin_num001(rrconn_t *cptr, irc_message_t *mp) {
 
       free(aj);
 //   } else {
-//      ui_print(tui_active_window(), "net_aj: key %s returned %s", key, net_aj);
+//      ui_print(tui_active_window(), "net_aj: key %s returned %s", key,
+// net_aj);
    }
    free( (char *)net_aj );
 
@@ -112,7 +111,9 @@ bool irc_builtin_num001(rrconn_t *cptr, irc_message_t *mp) {
    irc_send(cptr, "WHOIS %s", cptr->nick);
 
 //   ui_print("status",
-//      "%s {bright-cyan}>>>{reset} Attached to rig {bright-cyan}%s.%s{reset} via {bright-magenta}IRC{reset} transport [{green}%s{reset}] {bright-cyan}<<<{reset}",
+//      "%s {bright-cyan}>>>{reset} Attached to rig {bright-cyan}%s.%s{reset}
+// via {bright-magenta}IRC{reset} transport [{green}%s{reset}]
+// {bright-cyan}<<<{reset}",
 //      get_chat_ts(0), site_id, rig_id, cptr->server->network);
 
    return false;
@@ -135,8 +136,7 @@ bool irc_builtin_num005(rrconn_t *cptr, irc_message_t *mp) {
    size_t pos = 0;
 
    for (int i = 2 ; i < mp->argc ; i++) {
-      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 2 ? " " : ""),
-         mp->argv[i] ? mp->argv[i] : "");
+      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 2 ? " " : ""), mp->argv[i] ? mp->argv[i] : "");
 
       if (n < 0 || (size_t)n >= sizeof(buf) - pos) {
          break;
@@ -144,8 +144,7 @@ bool irc_builtin_num005(rrconn_t *cptr, irc_message_t *mp) {
       pos += n;
    }
 
-   Log(LOG_DEBUG, "irc", "[%s] %s *** %s ***", irc_name(cptr), (mp->argc > 0 ? mp->argv[1] : "?"),
-      buf);
+   Log(LOG_DEBUG, "irc", "[%s] %s *** %s ***", irc_name(cptr), (mp->argc > 0 ? mp->argv[1] : "?"), buf);
 //   ui_print("status", "%s [{green}%s{reset}] *** %s ***", get_chat_ts(0),
 //      irc_name(cptr), buf);
 
@@ -164,8 +163,7 @@ bool irc_builtin_num251(rrconn_t *cptr, irc_message_t *mp) {
    size_t pos = 0;
 
    for (int i = 2 ; i < mp->argc ; i++) {
-      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 2 ? " " : ""),
-         mp->argv[i] ? mp->argv[i] : "");
+      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 2 ? " " : ""), mp->argv[i] ? mp->argv[i] : "");
 
       if (n < 0 || (size_t)n >= sizeof(buf) - pos) {
          break;
@@ -189,7 +187,8 @@ bool irc_builtin_num311(rrconn_t *cptr, irc_message_t *mp) {
    char *host = mp->argv[4];
    char *realname = mp->argv[6];
    Log(LOG_DEBUG, "irc", "[%s] whois: %s!%s@%s <%s>", irc_name(cptr), nick, ident, host, realname);
-//   ui_print(tui_active_window(), "%s [{green}%s{reset}] * %s!%s@%s <%s>", get_chat_ts(0),
+//   ui_print(tui_active_window(), "%s [{green}%s{reset}] * %s!%s@%s <%s>",
+// get_chat_ts(0),
 //      irc_name(cptr), nick, ident, host, realname);
 
    return false;
@@ -207,8 +206,7 @@ bool irc_builtin_num312(rrconn_t *cptr, irc_message_t *mp) {
    size_t pos = 0;
 
    for (int i = 2 ; i < mp->argc ; i++) {
-      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 2 ? " " : ""),
-         mp->argv[i] ? mp->argv[i] : "");
+      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 2 ? " " : ""), mp->argv[i] ? mp->argv[i] : "");
 
       if (n < 0 || (size_t)n >= sizeof(buf) - pos) {
          break;
@@ -217,7 +215,8 @@ bool irc_builtin_num312(rrconn_t *cptr, irc_message_t *mp) {
    }
 
    Log(LOG_DEBUG, "irc", "[%s] whois: %s is on server %s: %s", irc_name(cptr), nick, server, info);
-//   ui_print(tui_active_window(), "%s [{green}%s{reset}] * %s is on server %s: %s",
+//   ui_print(tui_active_window(), "%s [{green}%s{reset}] * %s is on server %s:
+// %s",
 //      get_chat_ts(0), irc_name(cptr), nick, server, info);
 
    return false;
@@ -231,8 +230,7 @@ bool irc_builtin_num313(rrconn_t *cptr, irc_message_t *mp) {
    size_t pos = 0;
 
    for (int i = 2 ; i < mp->argc ; i++) {
-      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 2 ? " " : ""),
-         mp->argv[i] ? mp->argv[i] : "");
+      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 2 ? " " : ""), mp->argv[i] ? mp->argv[i] : "");
 
       if (n < 0 || (size_t)n >= sizeof(buf) - pos) {
          break;
@@ -241,7 +239,8 @@ bool irc_builtin_num313(rrconn_t *cptr, irc_message_t *mp) {
    }
 
    Log( LOG_DEBUG, "irc", "[%s] whois: {green}%s{reset}", buf, irc_name(cptr) );
-//   ui_print( tui_active_window(), "%s [{green}%s{reset}] *** 313 %s ***", get_chat_ts(0), buf,
+//   ui_print( tui_active_window(), "%s [{green}%s{reset}] *** 313 %s ***",
+// get_chat_ts(0), buf,
 //      irc_name(cptr) );
 
    return false;
@@ -261,10 +260,10 @@ bool irc_builtin_num317(rrconn_t *cptr, irc_message_t *mp) {
    memset( signon_date, 0, sizeof(signon_date) );
    format_timestamp( signon_t, signon_date, sizeof(signon_date) );
 
-   Log(LOG_DEBUG, "irc", "[%s] whois: %s connected at %s (idle %s)", irc_name(cptr), nick,
-      signon_date, idle_ts);
+   Log(LOG_DEBUG, "irc", "[%s] whois: %s connected at %s (idle %s)", irc_name(cptr), nick, signon_date, idle_ts);
 //   ui_print(tui_active_window(),
-//      "%s [{green}%s{reset}] * {bright-cyan}%s{reset} connected at {green}%s{reset} (idle {green}%s{reset})",
+//      "%s [{green}%s{reset}] * {bright-cyan}%s{reset} connected at
+// {green}%s{reset} (idle {green}%s{reset})",
 //      get_chat_ts(0), irc_name(cptr), nick, signon_date, idle_ts);
    free(idle_ts);
 
@@ -277,7 +276,8 @@ bool irc_builtin_num318(rrconn_t *cptr, irc_message_t *mp) {
    }
    Log(LOG_DEBUG, "irc", "[%s] whois: End of whois for %s", irc_name(cptr), mp->argv[1]);
 //   ui_print(tui_active_window(),
-//      "%s [{green}%s{reset}] *** End of WHOIS {bright-cyan}%s{reset} ***", get_chat_ts(0),
+//      "%s [{green}%s{reset}] *** End of WHOIS {bright-cyan}%s{reset} ***",
+// get_chat_ts(0),
 //      irc_name(cptr), mp->argv[1]);
 
    return false;
@@ -292,8 +292,7 @@ bool irc_builtin_num319(rrconn_t *cptr, irc_message_t *mp) {
    size_t pos = 0;
 
    for (int i = 3 ; i < mp->argc ; i++) {
-      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 3 ? " " : ""),
-         mp->argv[i] ? mp->argv[i] : "");
+      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 3 ? " " : ""), mp->argv[i] ? mp->argv[i] : "");
 
       if (n < 0 || (size_t)n >= sizeof(buf) - pos) {
          break;
@@ -303,7 +302,8 @@ bool irc_builtin_num319(rrconn_t *cptr, irc_message_t *mp) {
 
    Log(LOG_DEBUG, "irc", "[%s] whois: %s is in channels: %s", irc_name(cptr), nick, buf);
 //   ui_print(tui_active_window(),
-//      "%s [{green}%s{reset}] * %s is in channels: {bright-black}|{bright-magenta}%s{bright-black}|{reset} ",
+//      "%s [{green}%s{reset}] * %s is in channels:
+// {bright-black}|{bright-magenta}%s{bright-black}|{reset} ",
 //      get_chat_ts(0), irc_name(cptr), nick, buf);
 
    return false;
@@ -321,8 +321,7 @@ bool irc_builtin_num332(rrconn_t *cptr, irc_message_t *mp) {
    size_t pos = 0;
 
    for (int i = 3 ; i < mp->argc ; i++) {
-      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 3 ? " " : ""),
-         mp->argv[i] ? mp->argv[i] : "");
+      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 3 ? " " : ""), mp->argv[i] ? mp->argv[i] : "");
 
       if (n < 0 || (size_t)n >= sizeof(buf) - pos) {
          break;
@@ -352,8 +351,7 @@ bool irc_builtin_num353(rrconn_t *cptr, irc_message_t *mp) {
    size_t pos = 0;
 
    for (int i = 2 ; i < mp->argc ; i++) {
-      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 2 ? " " : ""),
-         mp->argv[i] ? mp->argv[i] : "");
+      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 2 ? " " : ""), mp->argv[i] ? mp->argv[i] : "");
 
       if (n < 0 || (size_t)n >= sizeof(buf) - pos) {
          break;
@@ -362,7 +360,8 @@ bool irc_builtin_num353(rrconn_t *cptr, irc_message_t *mp) {
    }
 
    Log(LOG_DEBUG, "irc", "[%s] names: %s", irc_name(cptr), buf);
-//   ui_print(tui_window_find(mp->argv[3]), "%s [{green}%s{reset}] *** %s ***", get_chat_ts(0),
+//   ui_print(tui_window_find(mp->argv[3]), "%s [{green}%s{reset}] *** %s ***",
+// get_chat_ts(0),
 //      irc_name(cptr), buf);
 
    return false;
@@ -381,7 +380,8 @@ bool irc_builtin_num366(rrconn_t *cptr, irc_message_t *mp) {
 //   chptr = irc_channel_find(chan);
    Log(LOG_DEBUG, "irc", "[%s] End of names for %s", irc_name(cptr), chan);
 //   ui_print(tui_window_find(mp->argv[2]),
-//      "%s [{green}%s{reset}] *** End of NAMES {bright-magenta}%s{reset} ***", get_chat_ts(0),
+//      "%s [{green}%s{reset}] *** End of NAMES {bright-magenta}%s{reset} ***",
+// get_chat_ts(0),
 //      irc_name(cptr), chan);
 
    if (chptr) {
@@ -424,7 +424,8 @@ bool irc_builtin_num401(rrconn_t *cptr, irc_message_t *mp) {
    }
    Log(LOG_DEBUG, "irc", "[%s] No such nickname: %s", irc_name(cptr), mp->argv[2]);
 //   ui_print(tui_active_window(),
-//      "%s [{green}%s{reset}] No such nickname: {bright-cyan}%s{reset}.", get_chat_ts(0),
+//      "%s [{green}%s{reset}] No such nickname: {bright-cyan}%s{reset}.",
+// get_chat_ts(0),
 //      irc_name(cptr), mp->argv[2]);
 
    return false;
@@ -436,7 +437,8 @@ bool irc_builtin_num403(rrconn_t *cptr, irc_message_t *mp) {
    }
    Log(LOG_DEBUG, "irc", "[%s] No such channel: %s", irc_name(cptr), mp->argv[2]);
 //   ui_print(tui_active_window(),
-//      "%s [{green}%s{reset}] No such channel: {bright-magenta}%s{reset}.", get_chat_ts(0),
+//      "%s [{green}%s{reset}] No such channel: {bright-magenta}%s{reset}.",
+// get_chat_ts(0),
 //      irc_name(cptr), mp->argv[2]);
 
    return false;
@@ -451,8 +453,7 @@ bool irc_builtin_num421(rrconn_t *cptr, irc_message_t *mp) {
    size_t pos = 0;
 
    for (int i = 3 ; i < mp->argc ; i++) {
-      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 3 ? " " : ""),
-         mp->argv[i] ? mp->argv[i] : "");
+      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s%s", (i > 3 ? " " : ""), mp->argv[i] ? mp->argv[i] : "");
 
       if (n < 0 || (size_t)n >= sizeof(buf) - pos) {
          break;
@@ -473,7 +474,8 @@ bool irc_builtin_num433(rrconn_t *cptr, irc_message_t *mp) {
    }
    Log(LOG_DEBUG, "irc", "[%s] Nickname already in use: %s", irc_name(cptr), mp->argv[2]);
 //   ui_print("status",
-//      "%s [{green}%s{reset}] *** Nickname already in use: {bright-cyan}%s{reset}  ***",
+//      "%s [{green}%s{reset}] *** Nickname already in use:
+// {bright-cyan}%s{reset}  ***",
 //      get_chat_ts(0), irc_name(cptr), mp->argv[2]);
 
    return false;
@@ -485,7 +487,8 @@ bool irc_builtin_num461(rrconn_t *cptr, irc_message_t *mp) {
    }
    Log(LOG_DEBUG, "irc", "[%s] Not enough parameters:: %s", irc_name(cptr), mp->argv[2]);
 //   ui_print(tui_active_window(),
-//      "%s [{green}%s{reset}] Not enough parameters: {bright-magenta}%s{reset} ", get_chat_ts(0),
+//      "%s [{green}%s{reset}] Not enough parameters: {bright-magenta}%s{reset}
+// ", get_chat_ts(0),
 //      irc_name(cptr), mp->argv[2]);
 
    return false;
@@ -500,8 +503,7 @@ bool irc_builtin_num482(rrconn_t *cptr, irc_message_t *mp) {
    size_t pos = 0;
 
    for (int i = 3 ; i < mp->argc ; i++) {
-      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s{%d}%s", (i > 3 ? " " : ""), i,
-         mp->argv[i] ? mp->argv[i] : "");
+      int n = snprintf(buf + pos, sizeof(buf) - pos, "%s{%d}%s", (i > 3 ? " " : ""), i, mp->argv[i] ? mp->argv[i] : "");
 
       if (n < 0 || (size_t)n >= sizeof(buf) - pos) {
          break;
@@ -511,7 +513,8 @@ bool irc_builtin_num482(rrconn_t *cptr, irc_message_t *mp) {
 
    Log(LOG_DEBUG, "irc", "[%s]: %s: %s", irc_name(cptr), target, buf);
 //   ui_print(tui_window_find(target),
-//      "%s [{green}%s{reset}] * You're not a channel operator: %s", get_chat_ts(0), irc_name(cptr),
+//      "%s [{green}%s{reset}] * You're not a channel operator: %s",
+// get_chat_ts(0), irc_name(cptr),
 //      target, buf);
 
    return false;

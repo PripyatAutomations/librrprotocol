@@ -39,16 +39,15 @@ void ws_broadcast(struct mg_connection *sender, struct mg_str *msg_data, int dat
 
 // Broadcast a message to all WebSocket clients with matching flags (using
 // http_client_list)
-void ws_broadcast_with_flags(u_int32_t flags, struct mg_connection *sender, struct mg_str *msg_data,
-                             int data_type) {
+void ws_broadcast_with_flags(u_int32_t flags, struct mg_connection *sender, struct mg_str *msg_data, int data_type) {
    if (!msg_data) {
       return;
    }
    http_client_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
-      if ( current && (current->is_ws && current->authenticated) && (current->conn != sender) ) {
-         if ( client_has_flag(current, flags) ) {
+      if (current && (current->is_ws && current->authenticated) && (current->conn != sender) ) {
+         if (client_has_flag(current, flags) ) {
             mg_ws_send(current->conn, msg_data->buf, msg_data->len, data_type);
          }
       }
@@ -56,8 +55,7 @@ void ws_broadcast_with_flags(u_int32_t flags, struct mg_connection *sender, stru
    }
 }
 
-void ws_broadcast_audio(struct mg_connection *sender, struct mg_str *msg_data, int data_type,
-                        u_int32_t channel) {
+void ws_broadcast_audio(struct mg_connection *sender, struct mg_str *msg_data, int data_type, u_int32_t channel) {
    if (!msg_data) {
       return;
    }
@@ -81,8 +79,8 @@ bool send_global_alert(const char *sender, const char *data) {
    }
    const char *escaped_msg = escape_html(data);
 
-   const char *jp = dict2json_mkstr(VAL_STR, "alert.from", sender, VAL_STR, "alert.msg",
-      escaped_msg, VAL_LONG, "alert.ts", now);
+   const char *jp = dict2json_mkstr(VAL_STR, "alert.from", sender, VAL_STR, "alert.msg", escaped_msg, VAL_LONG,
+      "alert.ts", now);
 
 #if     defined(USE_MONGOOSE)
    struct mg_str mp = mg_str(jp);

@@ -7,10 +7,10 @@
 #include <librrprotocol/rrprotocol.h>
 
 bool irc_builtin_error_cb(rrconn_t *cptr, irc_message_t *mp) {
-   Log( LOG_CRIT, "irc", "[%s] Got ERROR from server: |%s|", irc_name(cptr),
-      (mp->argv[1] ? mp->argv[1] : "(null)") );
+   Log( LOG_CRIT, "irc", "[%s] Got ERROR from server: |%s|", irc_name(cptr), (mp->argv[1] ? mp->argv[1] : "(null)") );
    event_emit("irc.error", cptr, mp);
-//   ui_print(NULL, "{red}>>> {bright-red}ERROR:{bright-cyan} %s {red}<<<{reset}",
+//   ui_print(NULL, "{red}>>> {bright-red}ERROR:{bright-cyan} %s
+// {red}<<<{reset}",
 //      mp->argv[1]);
 
    return false;
@@ -47,7 +47,8 @@ bool irc_builtin_join_cb(rrconn_t *cptr, irc_message_t *mp) {
 
    Log(LOG_INFO, "irc", "[%s] * %s joined %s", network, tmp_nick, mp->argv[1]);
 //   ui_print(tw,
-//      "%s [{green}%s{reset}] * {bright-cyan}%s{reset} joined {bright-magenta}%s{reset}",
+//      "%s [{green}%s{reset}] * {bright-cyan}%s{reset} joined
+// {bright-magenta}%s{reset}",
 //      get_chat_ts(0), network, tmp_nick, mp->argv[1]);
 
    // XXX: We need to embed this into the parser, so unknown commands will pass
@@ -116,7 +117,7 @@ bool irc_builtin_part_cb(rrconn_t *cptr, irc_message_t *mp) {
    if (nick_end) {
       size_t nicklen = nick_end - mp->prefix;
 
-      if ( nicklen > 0 && nicklen < sizeof(tmp_nick) ) {
+      if (nicklen > 0 && nicklen < sizeof(tmp_nick) ) {
          snprintf(tmp_nick, sizeof(tmp_nick), "%.*s", (int)nicklen, mp->prefix);
       }
    }
@@ -131,11 +132,13 @@ bool irc_builtin_part_cb(rrconn_t *cptr, irc_message_t *mp) {
          tui_window_destroy(w);
       }
 //      ui_print("status",
-//         "%s [{green}%s{reset}] * {bright-cyan}%s{reset} left {bright-magenta}%s{reset}",
+//         "%s [{green}%s{reset}] * {bright-cyan}%s{reset} left
+// {bright-magenta}%s{reset}",
 //         get_chat_ts(0), network, tmp_nick, win_title);
 //   } else {
 //      ui_print(tui_window_find(win_title),
-//         "%s [{green}%s{reset}] * {bright-cyan}%s{reset} left {bright-magenta}%s{reset}",
+//         "%s [{green}%s{reset}] * {bright-cyan}%s{reset} left
+// {bright-magenta}%s{reset}",
 //         get_chat_ts(0), network, tmp_nick, win_title);
    }
    event_emit("irc.part", cptr, mp);
@@ -162,8 +165,7 @@ bool irc_builtin_ping_cb(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_pong_cb(rrconn_t *cptr, irc_message_t *mp) {
-   Log( LOG_CRAZY, "irc", "[%s] Got PONG from server: |%s|", irc_name(cptr),
-      (mp->argv[1] ? mp->argv[1] : "(null)") );
+   Log( LOG_CRAZY, "irc", "[%s] Got PONG from server: |%s|", irc_name(cptr), (mp->argv[1] ? mp->argv[1] : "(null)") );
    event_emit("irc.pong", cptr, mp);
 
    return false;
@@ -235,17 +237,20 @@ bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
 //         ui_print(wp, "%s * %s %s", get_chat_ts(0), tmp_nick, data);
       } else if (strcasecmp(cmd, "PING") == 0) {
 //         ui_print(NULL,
-//            "%s [{green}%s{reset} %s {bright-yellow}*PING*{reset} %s", get_chat_ts(0), network,
+//            "%s [{green}%s{reset} %s {bright-yellow}*PING*{reset} %s",
+// get_chat_ts(0), network,
 //            tmp_nick, data);
          irc_send(cptr, "NOTICE %s :\001PING %s\001", tmp_nick, data);
       } else if (strcasecmp(cmd, "RRCALL") == 0) {
          Log(LOG_INFO, "irc", "[%s] CTCP RRCALL from %s: %s", network, tmp_nick, data);
 //         ui_print(NULL,
-//            "%s [{green}%s{reset}] {bright-yellow}*RRCALL*{reset} from %s: %s", get_chat_ts(0),
+//            "%s [{green}%s{reset}] {bright-yellow}*RRCALL*{reset} from %s:
+// %s", get_chat_ts(0),
 //            network, tmp_nick, data);
       } else if (strcasecmp(cmd, "VERSION") == 0) {
 //         ui_print("status",
-//            "%s [[green}%s{reset}] %s {bright-yellow}*VERSION*{reset} ", get_chat_ts(0), network,
+//            "%s [[green}%s{reset}] %s {bright-yellow}*VERSION*{reset} ",
+// get_chat_ts(0), network,
 //            tmp_nick);
          Log(LOG_INFO, "irc", "[%s] CTCP VERSION from %s", network, tmp_nick);
          irc_send(cptr, "NOTICE %s :\001VERSION rustyrig %s\001", tmp_nick, VERSION);
@@ -292,7 +297,8 @@ bool irc_builtin_quit_cb(rrconn_t *cptr, irc_message_t *mp) {
 ////      tui_window_t *wp = tui_windows[i];
    tui_window_t *wp = "status";
 //   ui_print( wp,
-//      "[{green}%s{reset}] {red}* {bright-cyan}%s{cyan} has disconnected.{reset}: \"%s\"", network,
+//      "[{green}%s{reset}] {red}* {bright-cyan}%s{cyan} has
+// disconnected.{reset}: \"%s\"", network,
 //      tmp_nick, (mp->argv[1] ? mp->argv[1] : "No reason given.") );
 ////   }
 

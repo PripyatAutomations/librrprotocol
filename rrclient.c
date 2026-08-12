@@ -47,17 +47,16 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
          char *ping_ts = dict_get(d, "ping.ts", NULL);
 
          if (ping_ts) {
-            const char *jp = dict2json_mkstr( VAL_STR, "type", "pong", VAL_ULONG, "ts",
-               atol(ping_ts) );
+            const char *jp = dict2json_mkstr( VAL_STR, "type", "pong", VAL_ULONG, "ts", atol(ping_ts) );
             mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
             free( (void *)jp );
          } else if (pong_ts) {
             Log(LOG_CRAZY, "http.pong", "Received pong ts:%s", pong_ts);
          } else if (cmd && strcasecmp(cmd, "msg") == 0) {
             event_emit_dict("talk.msg", NULL, d);
-         } else if ( dict_get(d, "hello", NULL) ) {
+         } else if (dict_get(d, "hello", NULL) ) {
             Log(LOG_DEBUG, "ws", "Got hello from server");
-         } else if ( dict_get(d, "auth.cmd", NULL) ) {
+         } else if (dict_get(d, "auth.cmd", NULL) ) {
             Log(LOG_DEBUG, "ws", "Got auth message");
          }
          dict_free(d);
@@ -103,8 +102,8 @@ bool rrclient_send_chat(const char *data) {
    if (!ws_conn || !data) {
       return true;
    }
-   const char *jp = dict2json_mkstr(VAL_STR, "talk.cmd", "msg", VAL_STR, "talk.data", data, VAL_STR,
-      "talk.msg_type", "pub");
+   const char *jp = dict2json_mkstr(VAL_STR, "talk.cmd", "msg", VAL_STR, "talk.data", data, VAL_STR, "talk.msg_type",
+      "pub");
    mg_ws_send(ws_conn, jp, strlen(jp), WEBSOCKET_OP_TEXT);
    free( (void *)jp );
 

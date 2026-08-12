@@ -73,9 +73,8 @@ static bool http_help(struct mg_http_message *msg, struct mg_connection *c) {
    }
 
    // Sanity check the topic doesnt contain illegal characters like .. or /
-   if ( check_url(topic) ) {
-      Log(LOG_AUDIT, "http.api", "Topic |%s| contains sketch characters, bailing from http_help",
-         help_path);
+   if (check_url(topic) ) {
+      Log(LOG_AUDIT, "http.api", "Topic |%s| contains sketch characters, bailing from http_help", help_path);
 
       return true;
    }
@@ -111,8 +110,8 @@ static bool http_api_ws(struct mg_http_message *msg, struct mg_connection *c) {
 }
 
 static bool http_api_version(struct mg_http_message *msg, struct mg_connection *c) {
-   mg_http_reply(c, 200, http_content_type("json"),
-      "{ \"version\": { \"firmware\": \"%s\", \"hardware\": \"%s\" } }", VERSION, HARDWARE);
+   mg_http_reply(c, 200, http_content_type("json"), "{ \"version\": { \"firmware\": \"%s\", \"hardware\": \"%s\" } }",
+      VERSION, HARDWARE);
 
    return false;
 }
@@ -125,8 +124,8 @@ static bool http_api_stats(struct mg_http_message *msg, struct mg_connection *c)
 
    for (t = c->mgr->conns ; t ; t = t->next) {
       mg_http_printf_chunk(c, "%-3lu %4s %s %M %M\n", t->id, t->is_udp ? "UDP" : "TCP",
-         t->is_listening ? "LISTENING" : t->is_accepted ? "ACCEPTED " : "CONNECTED", mg_print_ip,
-         &t->loc, mg_print_ip, &t->rem);
+         t->is_listening ? "LISTENING" : t->is_accepted ? "ACCEPTED " : "CONNECTED", mg_print_ip, &t->loc, mg_print_ip,
+         &t->rem);
    }
 
    mg_http_printf_chunk(c, "");   // Don't forget the last empty chunk
@@ -172,7 +171,7 @@ bool http_dispatch_route(struct mg_http_message *msg, struct mg_connection *c) {
    if (!c || !msg) {
       return true;
    }
-   int items = ( sizeof(http_routes) / sizeof(http_route_t) ) - 1;
+   int items = (sizeof(http_routes) / sizeof(http_route_t) ) - 1;
 
    for (int i = 0 ; i < items ; i++) {
       int rv = 0;
@@ -189,8 +188,8 @@ bool http_dispatch_route(struct mg_http_message *msg, struct mg_connection *c) {
  *     }
  */
       if (strncmp(msg->uri.buf, http_routes[i].match, match_len) == 0) {
-         Log(LOG_CRAZY, "http.req", "Matched %s with request URI %.*s [length: %d]",
-            http_routes[i].match, (int)msg->uri.len, msg->uri.buf, match_len);
+         Log(LOG_CRAZY, "http.req", "Matched %s with request URI %.*s [length: %d]", http_routes[i].match,
+            (int)msg->uri.len, msg->uri.buf, match_len);
 
          // Strip trailing slash if it's there
          if (msg->uri.len > 0 && msg->uri.buf[msg->uri.len - 1] == '/') {
@@ -200,8 +199,8 @@ bool http_dispatch_route(struct mg_http_message *msg, struct mg_connection *c) {
 
          return false;
       } else {
-         Log(LOG_CRAZY, "http.req", "Failed to match %.*s: %d: %s", (int)msg->uri.len, msg->uri.buf,
-            i, http_routes[i].match);
+         Log(LOG_CRAZY, "http.req", "Failed to match %.*s: %d: %s", (int)msg->uri.len, msg->uri.buf, i,
+            http_routes[i].match);
       }
    }
 
