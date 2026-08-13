@@ -1,4 +1,4 @@
-// is.c
+// is.c: is_* - various conditional checks that are used often
 //    This is part of rustyrig-fw.
 // https://github.com/pripyatautomations/rustyrig-fw
 //

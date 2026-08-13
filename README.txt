@@ -11,7 +11,7 @@ Please note that the protocol is subject to change at any time and
 that you should always use the latest version of the library in your
 projects.
 
-To use this mess, link -lrustyaxe -lrrprotocol and all event_on() to
+To use this mess, link -lrustyaxe -lrrprotocol and add event_on() to
 register your callbacks.
 
 See rustyrig-fw/doc/EVENT_REGISTRY for a list of supported and their
