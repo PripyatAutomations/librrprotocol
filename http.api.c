@@ -21,7 +21,7 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-#if     defined(FEATURE_HTTP)
+#if     defined(USE_HTTP)
 #if     defined(HOST_POSIX)
 #define	HTTP_MAX_ROUTES 64
 #else
@@ -207,4 +207,4 @@ bool http_dispatch_route(struct mg_http_message *msg, struct mg_connection *c) {
    return true;  // No match found, let static handler take over
 }
 #endif // defined(USE_MONGOOSE)
-#endif // defined(FEATURE_HTTP)
+#endif // defined(USE_HTTP)

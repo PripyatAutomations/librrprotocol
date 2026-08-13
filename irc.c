@@ -20,8 +20,7 @@
 #include <errno.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
-
-#define	IRC_MSGLEN 512
+#include <ev.h>
 
 bool irc_init(void) {
    // XXX: These need to go into the irc_init() or

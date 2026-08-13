@@ -46,6 +46,10 @@ enum rr_mode {
    MODE_FM,
    MODE_DU,
    MODE_DL,
+   MODE_P25,
+   MODE_DMR,
+   MODE_NXDN,
+   MODE_DSTAR,
    MODE_FT4,                    // ft8lib?
    MODE_FT8                     // ft8lib?
 };

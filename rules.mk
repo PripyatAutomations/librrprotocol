@@ -7,11 +7,13 @@ librrprotocol_objs += auth.hash.o
 librrprotocol_objs += codecneg.o
 librrprotocol_objs += cfg.servers.o
 librrprotocol_objs += http.o
+# XXX: This needs updated to use *either* ev or mongoose as configured.
 #librrprotocol_objs += irc.o
 #librrprotocol_objs += irc.capab.o
 #librrprotocol_objs += irc.channel.o
 #librrprotocol_objs += irc.client.o
 #librrprotocol_objs += irc.commands.o
+#librrprotocol_objs += irc.event.o
 #librrprotocol_objs += irc.modes.o
 #librrprotocol_objs += irc.numerics.o
 #librrprotocol_objs += irc.parser.o

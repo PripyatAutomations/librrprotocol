@@ -1,5 +1,5 @@
 //
-// rrclient/ws.alert.c
+// rrclient/ws.alert.c: Handle alerts in client side
 //    This is part of rustyrig-fw.
 // https://github.com/pripyatautomations/rustyrig-fw
 //

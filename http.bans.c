@@ -7,7 +7,7 @@
 // The software is not for sale. It is freely available, always.
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
-#if     defined(FEATURE_HTTP)
+#if     defined(USE_HTTP)
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>
@@ -116,4 +116,4 @@ bool load_http_ua_bans(const char *path) {
    return false;
 }
 
-#endif // defined(FEATURE_HTTP)
+#endif // defined(USE_HTTP)
