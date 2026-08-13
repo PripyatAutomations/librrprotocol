@@ -117,10 +117,11 @@ bool rrproto_disconnect_server(const char *server) {
    if (ws_conn) {
       ws_conn->is_closing = 1;
    }
-
+/*
    if (ws_tx_conn) {
       ws_tx_conn->is_closing = 1;
    }
+*/
 #endif
    ws_connected = false;
    event_emit("goodbye", NULL, NULL);

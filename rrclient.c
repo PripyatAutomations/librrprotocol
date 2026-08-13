@@ -13,23 +13,12 @@
 #include <rrclient/ui.h>
 extern struct mg_mgr mgr;
 struct mg_connection *ws_conn = NULL;
-bool ws_connected = false;
+extern bool ws_connected;
 extern char session_token[HTTP_TOKEN_LEN + 1];
 const char *login_user = NULL;
 
-const char *get_server_property(const char *server, const char *prop) {
-   if (!server || !prop) {
-      return NULL;
-   }
-   char fullkey[1024];
-   snprintf(fullkey, sizeof(fullkey), "server:%s.%s", server, prop);
-
-   return cfg_get_exp(fullkey);
-}
 
 static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) {
-   (void)c;
-
    if (ev == MG_EV_WS_MSG) {
       struct mg_ws_message *msg = (struct mg_ws_message *)ev_data;
 

@@ -25,3 +25,6 @@ improve security probably.
 Don't expose this to the internet. Only use it over VPN, even with TLS
 enabled. Do not trust the software to be secure. There are many bugs known
 and unknown.... I'm only one person with limited time :(
+
+
+IRC stuff isn't currently usable, i've left it so i can integrate it later!

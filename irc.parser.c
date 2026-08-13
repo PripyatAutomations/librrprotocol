@@ -1,7 +1,7 @@
 //
-// irc.parser.c
-//    This is part of rustyrig-fw.
-// https://github.com/pripyatautomations/rustyrig-fw
+// irc.parser.c: handle IRC messages and dispatch them to the registered callback
+//
+//    This is part of librrprotocol @ https://github.com/pripyatautomations/librrprotocol
 //
 // Do not pay money for this, except donations to the project, if you wish to.
 // The software is not for sale. It is freely available, always.

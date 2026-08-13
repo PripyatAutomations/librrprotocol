@@ -1,0 +1,76 @@
+//
+// rrgtk/srv.ping.c: Server side ping handling
+//    This is part of rustyrig-fw.
+// https://github.com/pripyatautomations/rustyrig-fw
+//
+// Do not pay money for this, except donations to the project, if you wish to.
+// The software is not for sale. It is freely available, always.
+//
+// Licensed under MIT license, if built without mongoose or GPL if built with.
+#include <stddef.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <string.h>
+#include <time.h>
+#include <limits.h>
+#include <librustyaxe/core.h>
+#include <librrprotocol/rrprotocol.h>
+
+extern time_t now;
+extern dict *cfg;                                // config.c
+#if     defined(USE_MONGOOSE)
+extern struct mg_mgr mgr;
+#endif
+bool cfg_show_pings = true;          // cfg:ui.show-pings=false in rrserver.cfg
+extern bool ws_connected;
+extern const char *get_server_property(const char *server, const char *prop);
+extern bool cfg_http_debug_crazy;
+
+bool ws_send_ping(http_client_t *cptr) {
+   if (!cptr || !cptr->is_ws) {
+      return true;
+   }
+   // XXX: Send a ping, so they'll have something to respond to, to acknowledge
+   // life
+   char resp_buf[HTTP_WS_MAX_MSG + 1];
+
+   if (!cptr) {
+      Log(LOG_DEBUG, "auth", "ws_send_ping for null cptr!");
+
+      return true;
+   }
+#if     defined(USE_MONGOOSE)
+
+   if (!cptr->conn) {
+      Log( LOG_DEBUG, "auth", "ws_send_ping for cptr:<%p> has mg_conn:<%p> and is invalid", cptr,
+         (cptr ? cptr->conn : NULL) );
+
+      return true;
+   }
+#endif // defined(USE_MONGOOSE)
+
+   // Make sure that timeout will happen if no response
+   cptr->last_ping = now;
+   cptr->ping_attempts++;
+
+   // only bother making noise if the first attempt failed, send the first ping
+   // to crazy level log
+   if (cptr->ping_attempts > 1) {
+      Log(LOG_DEBUG, "ping", "sending ping to user %s on cptr:<%p> with ts:[%li] attempt %d", cptr->chatname, cptr, now,
+         cptr->ping_attempts);
+   } else {
+      Log(LOG_CRAZY, "ping", "sending ping to user %s on cptr:<%p> with ts:[%li] attempt %d", cptr->chatname, cptr, now,
+         cptr->ping_attempts);
+   }
+   char ping_buf[64];
+   snprintf(ping_buf, sizeof(ping_buf), "{\"ping\":{\"ts\":%li}}", now);
+#if     defined(USE_MONGOOSE)
+   struct mg_connection *c = cptr->conn;
+   mg_ws_send(c, ping_buf, strlen(ping_buf), WEBSOCKET_OP_TEXT);
+#endif // defined(USE_MONGOOSE)
+
+   return false;
+}

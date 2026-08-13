@@ -24,8 +24,8 @@
 
 // core protocol parser
 #include <librrprotocol/irc.parser.h>
-#include <librrprotocol/irc.client.h>
-#include <librrprotocol/irc.server.h>
+#include <librrprotocol/cli.irc.h>
+#include <librrprotocol/srv.irc.core.h>
 
 // Channel stuff
 #include <librrprotocol/irc.channel.h>

@@ -48,6 +48,7 @@ void irc_build_message(const irc_message_t *mp, char *msg, size_t msglen) {
    }
 }
 
+#if	0
 bool irc_sendto_all(rrlist_t *conn_list, rrconn_t *cptr, irc_message_t *mp) {
    if (!mp) {
       // This message isn't valid
@@ -89,3 +90,4 @@ bool irc_sendto_all(rrlist_t *conn_list, rrconn_t *cptr, irc_message_t *mp) {
    }
    return false;
 }
+#endif

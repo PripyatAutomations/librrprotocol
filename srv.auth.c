@@ -1,5 +1,5 @@
 //
-// auth.c
+// srv.auth.c: Server authentication stuff
 //    This is part of rustyrig-fw.
 // https://github.com/pripyatautomations/rustyrig-fw
 //
@@ -34,220 +34,36 @@
 
 extern bool dying;
 extern time_t now;
+extern char session_token[HTTP_TOKEN_LEN + 1];
+extern http_user_t http_users[HTTP_MAX_USERS];
 
-/////////////////////////////////////
-char session_token[HTTP_TOKEN_LEN + 1] = {
-   0
-};
-
-
-//
-// HTTP Basic-auth user
-//
-http_user_t http_users[HTTP_MAX_USERS];
-
-// This is used in ws.* too, so not static
-int http_getuid(const char *user) {
-   if (!user) {
+static int generate_random_guest_id(int digits) {
+   if (digits < 4) {
       return -1;
    }
+   int num = 0, prev_digit = -1;
 
-   for (int i = 0 ; i < HTTP_MAX_USERS ; i++) {
-      http_user_t *up = &http_users[i];
+try_again:
 
-      if (up->name[0] == '\0' || up->pass[0] == '\0') {
-         continue;
-      }
+   for (int i = 0 ; i < digits ; i++) {
+      int digit;
+      do{
+         digit = rand() % 10;
+      } while (digit == prev_digit);   // Ensure no consecutive repeats
 
-      if (strcasecmp(up->name, user) == 0) {
-         Log(LOG_CRAZY, "auth", "Found uid [%d] for username |%s|", i, up->name);
-
-         return i;
-      }
+      num = num * 10 + digit;
+      prev_digit = digit;
    }
 
-   Log(LOG_CRAZY, "auth", "http_getuid(%s) returns not-found!", user);
-
-   return -1;
-}
-
-static bool http_backup_authdb(void) {
-   char new_path[256];
-   struct tm *tm_info = localtime(&now);
-   char date_str[9];  // YYYYMMDD + null terminator
-   int index = 0;
-
-   strftime(date_str, sizeof(date_str), "%Y%m%d", tm_info);
-
-   // Find the next seqnum for the backup
-   do{
-      if (index > MAX_AUTHDB_BK_INDEX) {
-         return true;
+   http_client_t *cptr = http_client_list;
+   while (cptr) {
+      // if we match an existing number, start over
+      if (cptr->guest_id == num) {
+         goto try_again;
       }
-      prepare_msg(new_path, sizeof(new_path), "%s.bak-%s.%d", HTTP_AUTHDB_PATH, date_str, index);
-      index++;
-   } while (file_exists(new_path) );
-
-   // Rename the file
-   if (rename(HTTP_AUTHDB_PATH, new_path) == 0) {
-      Log(LOG_INFO, "http.core", "* Renamed old config (%s) to %s", HTTP_AUTHDB_PATH, new_path);
-   } else {
-      Log( LOG_CRIT, "http.core", "* Error renaming old config (%s) to %s: %d:%s", HTTP_AUTHDB_PATH, new_path, errno,
-         strerror(errno) );
-
-      return true;
+      cptr = cptr->next;
    }
-
-   return false;
-}
-
-bool http_save_users(const char *filename) {
-   if (!filename) {
-      return true;
-   }
-
-   if (http_backup_authdb() ) {
-      return true;
-   }
-   int users_saved = 0;
-
-   FILE *file = fopen(filename, "w");
-
-   if (!file) {
-      Log( LOG_CRIT, "auth", "Error saving user database to %s: %d:%s", filename, errno, strerror(errno) );
-
-      return true;
-   }
-   Log(LOG_INFO, "auth", "Saving HTTP user database");
-
-   for (int i = 0 ; i < HTTP_MAX_USERS ; i++) {
-      http_user_t *up = &http_users[i];
-
-      if (!up) {
-         return true;
-      }
-
-      if (up->name[0] != '\0' && up->pass[0] != '\0') {
-         Log(LOG_DEBUG, "auth", " => %s %sabled with privileges: %s", up->name, (up->enabled ? "en" : "dis"),
-            up->privs);
-         fprintf( file, "%d:%s:%d:%s:%s\n", up->uid, up->name, up->enabled, up->pass,
-            (up->privs[0] != '\0' ? up->privs : "none") );
-         users_saved++;
-      }
-   }
-
-   fclose(file);
-   Log(LOG_INFO, "auth", "Saved %d users to %s", users_saved, filename);
-
-   return true;
-}
-
-// Load users from the file into the global array
-int http_load_users(const char *filename) {
-   if (!filename) {
-      return -1;
-   }
-   Log(LOG_INFO, "auth", "Loading static users from %s", filename);
-   FILE *file = fopen(filename, "r");
-
-   if (!file) {
-      return -1;
-   }
-   memset( http_users, 0, sizeof(http_users) );
-   char line[HTTP_WS_MAX_MSG + 1];
-   int user_count = 0;
-
-   while (fgets(line, sizeof(line), file) && user_count < HTTP_MAX_USERS) {
-      // Trim leading spaces
-      char *start = line + strspn(line, " \t\r\n");
-
-      if (start != line) {
-         memmove(line, start, strlen(start) + 1);
-      }
-
-      // Skip comments and empty lines
-      if (line[0] == '#' || line[0] == ';' ||
-          (strlen(line) > 1 && (line[0] == '/' && line[1] == '/') ) || line[0] == '\n') {
-         continue;
-      }
-      // Remove trailing \r or \n characters
-      char *end = line + strlen(line) - 1;
-      while (end >= line && (*end == '\r' || *end == '\n') ) {
-         *end = '\0';
-         end--;
-      }
-      // Trim leading spaces (again)
-      start = line + strspn(line, " \t\r\n");
-
-      if (start != line) {
-         memmove(line, start, strlen(start) + 1);
-      }
-
-      if (line[0] == '\n' || line[0] == '\0') {
-         continue;
-      }
-      http_user_t *up = NULL;
-      char *token = strtok(line, ":");
-      int i = 0, uid = -1;
-
-      while (token && i < 7) {
-         switch (i) {
-            case 0: {
-               // uid
-               uid = atoi(token);
-               up = &http_users[uid];
-               up->uid = uid;
-               break;
-            }
-            case 1: {
-               // Username
-               strlcpy( up->name, token, sizeof(up->name) );
-               break;
-            }
-            case 2: {
-               // Enabled flag
-               up->enabled = atoi(token);
-               break;
-            }
-            case 3: {
-               // Password hash
-               strlcpy( up->pass, token, sizeof(up->pass) );
-               break;
-            }
-            case 4: {
-               // Email
-               strlcpy( up->email, token, sizeof(up->email) );
-               break;
-            }
-            case 5: {
-               // max_clones limit
-               int val = atoi(token);
-
-               if (val < 0 || val > HTTP_MAX_SESSIONS) {
-                  Log(LOG_CRIT, "auth.core", "Loading user %s has invalid maxclones: %d (min: 1, max: %d)", up->name,
-                     val, HTTP_MAX_SESSIONS);
-               }
-               up->max_clones = val;
-               break;
-            }
-            case 6: {
-               // Privileges
-               strlcpy( up->privs, token, sizeof(up->privs) );
-               Log(LOG_DEBUG, "auth", "load_users: uid=%d, user=%s, email=%s, enabled=%s, privs=%s, max_clones=%d", uid,
-                  (up->name[0] != '\0' ? up->name : "none"), (up->email[0] != '\0' ? up->email : "none"),
-                  (up->enabled ? "true" : "false"), (up->privs[0] != '\0' ? up->privs : "none"), up->max_clones);
-               break;
-            }
-         }
-         token = strtok(NULL, ":");
-         i++;
-      }
-      user_count++;
-   }
-   Log(LOG_INFO, "auth", "Loaded %d static users from %s", user_count, filename);
-   fclose(file);
-
-   return 0;
+   return num;
 }
 
 // find by login challenge
@@ -322,13 +138,7 @@ bool match_priv(const char *user_privs, const char *priv) {
    return false;
 }
 
-bool has_privs(struct rr_user *cptr, const char *priv) {
-   (void)cptr;
-   (void)priv;
-
-   return false;
-}
-
+//bool has_privs(struct rr_user *cptr, const char *priv) {
 bool has_priv(int uid, const char *priv) {
    if (priv == NULL || uid < 0 || (uid > HTTP_MAX_USERS - 1) ) {
       return false;
@@ -358,6 +168,7 @@ bool has_priv(int uid, const char *priv) {
    return false;
 }
 
+///////////////////////////////////////
 #if     defined(USE_MONGOOSE)
 bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    bool rv = false;
@@ -646,32 +457,3 @@ cleanup:
    return rv;
 }
 #endif // USE_MONGOOSE
-
-int generate_random_guest_id(int digits) {
-   if (digits < 4) {
-      return -1;
-   }
-   int num = 0, prev_digit = -1;
-
-try_again:
-
-   for (int i = 0 ; i < digits ; i++) {
-      int digit;
-      do{
-         digit = rand() % 10;
-      } while (digit == prev_digit);   // Ensure no consecutive repeats
-
-      num = num * 10 + digit;
-      prev_digit = digit;
-   }
-
-   http_client_t *cptr = http_client_list;
-   while (cptr) {
-      // if we match an existing number, start over
-      if (cptr->guest_id == num) {
-         goto try_again;
-      }
-      cptr = cptr->next;
-   }
-   return num;
-}

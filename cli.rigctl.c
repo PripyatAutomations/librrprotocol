@@ -21,7 +21,6 @@
 
 extern time_t poll_block_expire, poll_block_delay;
 extern dict *cfg;                // config.c
-extern bool server_ptt_state;
 extern time_t now;
 //extern gulong freq_changed_handler_id;
 
@@ -39,14 +38,15 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
    time_t ts = dict_get_time_t(d, "cat.ts", now);
 
    if (dict_get(d, "cat.state.mode", NULL) ) {
-      if (poll_block_expire < now) {
+/*      if (poll_block_expire < now) { */
          char *vfo = dict_get(d, "cat.state.vfo", NULL);
          char *mode = dict_get(d, "cat.state.mode", NULL);
          long freq = dict_get_long(d, "cat.state.freq", 0);
          int width = dict_get_int(d, "cat.state.width", 0);
          int power = dict_get_int(d, "cat.state.power", 0);
          bool ptt = dict_get_bool(d, "cat.state.ptt", false);
-         server_ptt_state = ptt;
+         // XXX: send the PTT status in here as a json
+         event_emit("rig.ptt", NULL, NULL);
 
          int ts = dict_get_int(d, "cat.ts", 0);
          char *user = dict_get(d, "cat.user", NULL);
@@ -60,7 +60,7 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
 // (cptr->is_ptt ? "true" : "false"), cptr);
 //               cptr->is_ptt = ptt;
 //            }
-         }
+/*         } */
 
          if (freq > 0) {
             event_emit_dict("rig.freq", NULL, d);

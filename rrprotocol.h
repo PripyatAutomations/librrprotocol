@@ -23,4 +23,6 @@
 #include <librrprotocol/state.h>
 #include <librrprotocol/client-flags.h>
 
+extern const char *server_name;
+
 #endif // !defined(__rrprotocol_h)
