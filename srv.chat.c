@@ -19,9 +19,9 @@
 #include <librrprotocol/rrprotocol.h>
 #include <rrserver/backend.h>
 
-
 // minimum reason length for kick/ban/etc
 #define	CHAT_MIN_REASON_LEN 10
+
 extern time_t now;
 extern bool dying, restarting;
 
@@ -325,7 +325,6 @@ static bool ws_chat_cmd_syslog(http_client_t *cptr, const char *state) {
    return false;
 }
 
-#if     defined(USE_MONGOOSE)
 // Send the updated userinfo for a single user; see ws_send_users below for
 // everyone
 bool ws_send_userinfo(http_client_t *cptr, http_client_t *acptr) {
@@ -336,6 +335,7 @@ bool ws_send_userinfo(http_client_t *cptr, http_client_t *acptr) {
       VAL_BOOL, "talk.muted", cptr->user->is_muted, VAL_STR, "talk.privs", cptr->user->privs, VAL_STR, "talk.user",
       cptr->chatname, VAL_LONG, "talk.ts", now, VAL_BOOL, "talk.tx", cptr->is_ptt);
 
+#if     defined(USE_MONGOOSE)
    struct mg_str mp = mg_str(jp);
 
    if (acptr) {
@@ -343,12 +343,12 @@ bool ws_send_userinfo(http_client_t *cptr, http_client_t *acptr) {
    } else {
       ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
    }
+#endif
+
    free( (char *)jp );
 
    return false;
 }
-#endif
-
 // Send info on all online users to the user
 bool ws_send_users(http_client_t *cptr) {
    if (!cptr) {
@@ -359,15 +359,12 @@ bool ws_send_users(http_client_t *cptr) {
    // iterate over all the users
    while (current) {
       // should this be sent to a single user?
-#if     defined(USE_MONGOOSE)
-
       if (cptr) {
          ws_send_userinfo(current, cptr);
       } else {
          // nope, broadcast it
          ws_send_userinfo(current, NULL);
       }
-#endif
 
       if (!current->next) {
          return false;

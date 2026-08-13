@@ -45,13 +45,13 @@ bool ws_handle_talk_msg(struct mg_connection *c, dict *d) {
 
    if (!cmd) {
       rv = true;
-      goto cleanup;
+      return true;
    }
 
    if (cmd && strcasecmp(cmd, "userinfo") == 0) {
       if (!user) {
          rv = true;
-         goto cleanup;
+         return true;
       }
       Log(LOG_DEBUG, "ws.talk", "UserInfo: %s has privs '%s' (TX: %s, Muted: %s, clones: %.0f)", user, privs,
          (tx ? "true" : "false"), muted, clones);
@@ -73,40 +73,27 @@ bool ws_handle_talk_msg(struct mg_connection *c, dict *d) {
          event_emit_dict("talk.msg", NULL, d);
       }
    } else if (cmd && strcasecmp(cmd, "join") == 0) {
-      char *ip = dict_get(d, "talk.ip", NULL);
-      time_t ts = dict_get_time_t(d, "talk.ts", now);
-
-      if (!user || !ip) {
-         goto cleanup;
+      if (!user) {
+         return true;
       }
       event_emit_dict("join", NULL, d);
    } else if (cmd && strcasecmp(cmd, "quit") == 0) {
-      char *reason = dict_get(d, "talk.reason", NULL);
-
-      if (!user || !reason) {
-         goto cleanup;
+      if (!user) {
+         return true;
       }
-      time_t ts = dict_get_time_t(d, "talk.ts", now);
-//      ui_print("[%s] >>> %s disconnected from the radio: %s (%.0f clones
-// left)<<<", get_chat_ts(ts), user, reason ? reason : "No reason given",
-// --clones);
       char *quit_user = strdup(user);
 
       if (!quit_user) {
-         goto cleanup;
+         return true;
       }
-      event_emit("quit", NULL, quit_user);
+      event_emit_dict("quit", NULL, d);
+      Log(LOG_INFO, "ws.chat", "talk: sending quit for %s", quit_user);
       free(quit_user);
    } else if (cmd && strcasecmp(cmd, "whois") == 0) {
       const char *whois_msg = dict_get(d, "talk.data", NULL);
 
-      if (whois_msg) {
-         event_emit("whois", NULL, (void *)whois_msg);
-      }
-//      ui_print("[%s] >>> WHOIS %s", user);
-//      ui_print("[%s]   %s", whois_msg);
+      event_emit_dict("whois", NULL, d);
    }
-cleanup:
 
    return false;
 }

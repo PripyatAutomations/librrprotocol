@@ -466,7 +466,7 @@ bool http_init(struct mg_mgr *mgr) {
    prepare_msg(listen_addr, sizeof(listen_addr), "http://%s:%d", inet_ntoa(sa_bind), bind_port);
 
    if (!mg_http_listen(mgr, listen_addr, http_cb, NULL) ) {
-      Log(LOG_CRIT, "http", "Failed to start http listener");
+      Log(LOG_CRIT, "http", "Failed to start http listener -- is program already running or something else listening on port %d?", bind_port);
       exit(1);
    }
    Log( LOG_INFO, "http", "HTTP listening at %s with www-root at %s", listen_addr,
@@ -500,7 +500,7 @@ bool http_init(struct mg_mgr *mgr) {
       http_tls_init();
 
       if (!mg_http_listen(mgr, tls_listen_addr, http_cb, NULL) ) {
-         Log(LOG_CRIT, "http", "Failed to start https listener");
+         Log(LOG_CRIT, "http", "Failed to start https listener -- is program already running or something else listening on port %d?", tls_bind_port);
          exit(1);
       }
       Log( LOG_INFO, "http", "HTTPS listening at %s with www-root at %s", tls_listen_addr,
