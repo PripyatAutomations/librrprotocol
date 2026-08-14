@@ -107,10 +107,15 @@ bool ws_handle_hello_msg(struct mg_connection *c, dict *d) {
 
       return true;
    }
-   char *hello = dict_get(d, "hello", NULL);
+   char *h_swver = dict_get(d, "hello.swver", NULL);
+   char *h_hwver = dict_get(d, "hello.hwver", NULL);
 
-   if (hello) {
-//      ui_print("[%s] *** Server version: %s ***", get_chat_ts(now), hello);
+   if (h_swver && h_hwver) {
+      Log(LOG_INFO, "ws.auth", "%s *** client is running %s on %s ***", get_chat_ts(now), h_swver, h_hwver);
+   } else {
+      const char *jp = dict2json(d);
+      Log(LOG_INFO, "ws.auth", "%s *** client sent unparsable hello: %s", get_chat_ts(now), jp);
+      free( (void *)jp );
    }
 
    return false;

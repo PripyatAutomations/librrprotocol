@@ -486,7 +486,6 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
                      } else if (strcasecmp(cmd, "freq") == 0) {
                         long real_freq = parse_freq(arg);
                         Log(LOG_DEBUG, "ws.chat", "Got !freq %lu (%s) from %s", real_freq, arg, cptr->chatname);
-// XXX: Fix this to be an event
 //                        rr_freq_set(active_vfo, real_freq);
                      } else if (strcasecmp(cmd, "mode") == 0) {
                         Log(LOG_DEBUG, "ws.chat", "Got !mode %s from %s", arg, cptr->chatname);
@@ -550,7 +549,6 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
 
             return true;
          }
-// XXX: These don't belong here?
       } else if (strcasecmp(cmd, "die") == 0) {
          ws_chat_cmd_die(cptr, reason);
       } else if (strcasecmp(cmd, "kick") == 0) {

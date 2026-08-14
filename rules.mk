@@ -37,6 +37,7 @@ librrprotocol_objs += srv.auth.passdb.o
 librrprotocol_objs += srv.chat.o
 librrprotocol_objs += srv.chat.error.o
 librrprotocol_objs += srv.http.o
+librrprotocol_objs += srv.http.listeners.o
 librrprotocol_objs += srv.client.o
 librrprotocol_objs += srv.session.o
 librrprotocol_objs += srv.irc.core.o
