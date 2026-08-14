@@ -110,7 +110,7 @@ bool match_priv(const char *user_privs, const char *priv) {
 
       char token[64];
 
-      if (len >= sizeof(token) ) {
+      if ( len >= sizeof(token) ) {
          len = sizeof(token) - 1;
       }
       memcpy(token, start, len);
@@ -140,7 +140,7 @@ bool match_priv(const char *user_privs, const char *priv) {
 
 //bool has_privs(struct rr_user *cptr, const char *priv) {
 bool has_priv(int uid, const char *priv) {
-   if (priv == NULL || uid < 0 || (uid > HTTP_MAX_USERS - 1) ) {
+   if ( priv == NULL || uid < 0 || (uid > HTTP_MAX_USERS - 1) ) {
       return false;
    }
    const char *p = priv;
@@ -150,7 +150,7 @@ bool has_priv(int uid, const char *priv) {
 
       char tmp[64];   // adjust size as needed
 
-      if (len >= sizeof(tmp) ) {
+      if ( len >= sizeof(tmp) ) {
          len = sizeof(tmp) - 1;
       }
       memcpy(tmp, p, len);
@@ -160,7 +160,7 @@ bool has_priv(int uid, const char *priv) {
          return false;
       }
 
-      if (match_priv(http_users[uid].privs, tmp) ) {
+      if ( match_priv(http_users[uid].privs, tmp) ) {
          return true;
       }
       p = sep ? sep + 1 : NULL;
@@ -208,7 +208,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    char *temp_pw = NULL;
 
    // Must always send a command and username during auth
-   if (!cmd || (!user && !token) ) {
+   if ( !cmd || (!user && !token) ) {
       return true;
    }
 
@@ -373,25 +373,25 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          ////////////////////
          // Set user flags //
          ////////////////////
-         if (has_priv(cptr->user->uid, "owner|syslog") ) {
+         if ( has_priv(cptr->user->uid, "owner|syslog") ) {
             client_set_flag(cptr, FLAG_SYSLOG);
          }
 
-         if (has_priv(cptr->user->uid, "admin|owner") ) {
+         if ( has_priv(cptr->user->uid, "admin|owner") ) {
             client_set_flag(cptr, FLAG_STAFF);
          }
 
-         if (has_priv(cptr->user->uid, "tx") ) {
+         if ( has_priv(cptr->user->uid, "tx") ) {
             client_set_flag(cptr, FLAG_CAN_TX);
          }
 
          // client cannot transmit unless a user with elmer flag is logged in
-         if (has_priv(cptr->user->uid, "noob") ) {
+         if ( has_priv(cptr->user->uid, "noob") ) {
             client_set_flag(cptr, FLAG_NOOB);
          }
 
          // client is an elmer and can allow noobs to control rig
-         if (has_priv(cptr->user->uid, "elmer") ) {
+         if ( has_priv(cptr->user->uid, "elmer") ) {
             client_set_flag(cptr, FLAG_ELMER);
          }
          // Send a ping to the user and expect them to reply within

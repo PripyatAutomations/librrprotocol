@@ -29,8 +29,8 @@ bool rr_set_mode(rr_vfo_t vfo, rr_mode_t mode) {
 
 extern time_t now;
 
-#define	WS_RIGCTL_FORCE_INTERVAL 60                // every 60 seconds,
-                                                    // send a full update
+#define	WS_RIGCTL_FORCE_INTERVAL 60               // every 60 seconds,
+                                                   // send a full update
 
 // XXX: Merge with existing rr_vfo_data_t
 // This ugly mess needs sorted out asap ;)
@@ -188,7 +188,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    // present
    // XXX: Add support for per noob Elmer (link from noob to elmer(s) who have
    // approved their use)
-   if (client_has_flag(cptr, FLAG_NOOB) && !is_elmer_online() ) {
+   if ( client_has_flag(cptr, FLAG_NOOB) && !is_elmer_online() ) {
       Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they're a noob and no elmers are online", cmd,
          cptr->chatname);
       dict_free(d);

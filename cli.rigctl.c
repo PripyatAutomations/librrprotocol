@@ -37,23 +37,23 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
    }
    time_t ts = dict_get_time_t(d, "cat.ts", now);
 
-   if (dict_get(d, "cat.state.mode", NULL) ) {
+   if ( dict_get(d, "cat.state.mode", NULL) ) {
 /*      if (poll_block_expire < now) { */
-         char *vfo = dict_get(d, "cat.state.vfo", NULL);
-         char *mode = dict_get(d, "cat.state.mode", NULL);
-         long freq = dict_get_long(d, "cat.state.freq", 0);
-         int width = dict_get_int(d, "cat.state.width", 0);
-         int power = dict_get_int(d, "cat.state.power", 0);
-         bool ptt = dict_get_bool(d, "cat.state.ptt", false);
-         // XXX: send the PTT status in here as a json
-         event_emit("rig.ptt", NULL, NULL);
+      char *vfo = dict_get(d, "cat.state.vfo", NULL);
+      char *mode = dict_get(d, "cat.state.mode", NULL);
+      long freq = dict_get_long(d, "cat.state.freq", 0);
+      int width = dict_get_int(d, "cat.state.width", 0);
+      int power = dict_get_int(d, "cat.state.power", 0);
+      bool ptt = dict_get_bool(d, "cat.state.ptt", false);
+      // XXX: send the PTT status in here as a json
+      event_emit("rig.ptt", NULL, NULL);
 
-         int ts = dict_get_int(d, "cat.ts", 0);
-         char *user = dict_get(d, "cat.user", NULL);
+      int ts = dict_get_int(d, "cat.ts", 0);
+      char *user = dict_get(d, "cat.user", NULL);
 
-         if (user && *user) {
-            Log(LOG_DEBUG, "ws.cat", "user:<%p> = |%s|", user, user);
-            struct rr_user *cptr = NULL;
+      if (user && *user) {
+         Log(LOG_DEBUG, "ws.cat", "user:<%p> = |%s|", user, user);
+         struct rr_user *cptr = NULL;
 // XXX: readd this
 //            if ((cptr = userlist_find(user))) {
 //               Log(LOG_DEBUG, "ws.cat", "ptt set to %s for cptr:<%p>",

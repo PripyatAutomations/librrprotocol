@@ -153,18 +153,17 @@ static bool ws_txtframe_dispatch(struct mg_connection *c, struct mg_ws_message *
              strcasecmp(rp[i].type, "ping") != 0) {
             Log(LOG_CRAZY, "ws.router", "Matched route #%d for message type %s", i, rp[i].type);
          }
-         /* Emit a generic event for this raw websocket message type so other
-          * parts of the system can listen to socket-level messages without
-          * depending on the current in-process handlers. The existing handler
-          * is still called afterwards for backward compatibility. */
+         /* Emit a generic event for this raw websocket message type so other parts of the
+          * system can listen to socket-level messages without depending on the current
+          * in-process handlers. The existing handler is still called afterwards for
+          * backward compatibility. */
          char evname[64]; memset( evname, 0, sizeof(evname) );
          snprintf(evname, sizeof(evname), "ws.msg.%s", rp[i].type);
          const char *jp = dict2json(d);
          event_emit(evname, NULL, jp);
          free( (void *)jp );
 
-         /* Call existing handler to preserve current behavior, then free the
-          * dict. */
+         /* Call existing handler to preserve current behavior, then free the dict. */
          rp[i].cb(c, d);
          dict_free(d);
 
@@ -304,8 +303,8 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 void ws_client_init(void) {
    const char *debug = cfg_get_exp("debug.http");
 
-   if (debug && (strcasecmp(debug, "true") == 0 ||
-                 strcasecmp(debug, "yes") == 0) ) {
+   if ( debug && (strcasecmp(debug, "true") == 0 ||
+                  strcasecmp(debug, "yes") == 0) ) {
 #if     defined(USE_MONGOOSE)
       mg_log_set(MG_LL_DEBUG);   // or MG_LL_VERBOSE for even more
 #endif
@@ -317,8 +316,8 @@ void ws_client_init(void) {
    free( (void *)debug );
    const char *debug_crazy = cfg_get_exp("debug.http.crazy");
 
-   if (debug_crazy && (strcasecmp(debug_crazy, "true") == 0 ||
-                       strcasecmp(debug_crazy, "yes") == 0) ) {
+   if ( debug_crazy && (strcasecmp(debug_crazy, "true") == 0 ||
+                        strcasecmp(debug_crazy, "yes") == 0) ) {
       cfg_http_debug_crazy = true;
    }
    free( (void *)debug_crazy );
@@ -405,7 +404,7 @@ void ws_send_to_name(struct mg_connection *sender, const char *username, struct 
    http_client_t *current = http_client_list;
    while (current) {
       // Messages from the server will have NULL sender
-      if (!sender || (current->is_ws && current->conn != sender) ) {
+      if ( !sender || (current->is_ws && current->conn != sender) ) {
          ws_send_to_cptr(sender, current, msg_data, data_type);
       }
       current = current->next;
@@ -547,7 +546,7 @@ static bool ws_handle_pong(struct mg_ws_message *msg, struct mg_connection *c) {
    }
    struct mg_str msg_data = msg->data;
 
-   if (!(ts = mg_json_get_str(msg_data, "$.pong.ts") ) ) {
+   if ( !( ts = mg_json_get_str(msg_data, "$.pong.ts") ) ) {
       Log(LOG_WARN, "http.ws", "ws_handle_pong: PONG from user with no timestamp");
       rv = true;
       goto cleanup;
@@ -566,7 +565,7 @@ static bool ws_handle_pong(struct mg_ws_message *msg, struct mg_connection *c) {
    }
    time_t ping_expiry = ts_t + HTTP_PING_TIME;
 
-   if ( (ping_expiry) < now) {
+   if ( (ping_expiry) < now ) {
       Log(LOG_AUDIT, "http.pong",
          "Late ping for mg_conn:<%p> on cptr:<%p> from %s:%d ts: %li + %li (timeout) < now %li", c, cptr, ip, port,
          ts_t, HTTP_PING_TIMEOUT, now);

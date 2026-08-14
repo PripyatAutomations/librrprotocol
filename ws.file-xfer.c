@@ -62,7 +62,7 @@ static void ws_send_file(struct mg_connection *c, const char *path, const char *
    fseeko(fp, 0, SEEK_SET);
 
    uint64_t id = gen_id();
-   uint32_t total = (uint32_t)( (fsize + CHUNK - 1) / CHUNK);
+   uint32_t total = (uint32_t)( (fsize + CHUNK - 1) / CHUNK );
 
    // meta (text frame)
    mg_ws_printf(c, WEBSOCKET_OP_TEXT,
@@ -260,6 +260,5 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
  *  (void) fn_data;
  *  }
  *
- *  // Example: call ws_send_file(c, "/path/to/file.png", "image/png") after WS
- * is open
+ *  // Example: call ws_send_file(c, "/path/to/file.png", "image/png") after WS is open
  */

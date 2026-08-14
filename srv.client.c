@@ -110,7 +110,7 @@ http_client_t *http_find_client_by_name(const char *name) {
       Log(LOG_CRAZY, "http.core", "find client by name: i: %d user:<%p> chatname: %s", i, cptr->user, cptr->chatname);
 
       // incomplete entry
-      if (!cptr->user || (cptr->chatname[0] == '\0') ) {
+      if ( !cptr->user || (cptr->chatname[0] == '\0') ) {
          cptr = cptr->next;
          continue;
       }

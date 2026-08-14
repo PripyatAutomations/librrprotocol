@@ -45,12 +45,14 @@ bool ws_handle_talk_msg(struct mg_connection *c, dict *d) {
 
    if (!cmd) {
       rv = true;
+
       return true;
    }
 
    if (cmd && strcasecmp(cmd, "userinfo") == 0) {
       if (!user) {
          rv = true;
+
          return true;
       }
       Log(LOG_DEBUG, "ws.talk", "UserInfo: %s has privs '%s' (TX: %s, Muted: %s, clones: %.0f)", user, privs,

@@ -67,7 +67,7 @@ static bool http_backup_authdb(void) {
       }
       prepare_msg(new_path, sizeof(new_path), "%s.bak-%s.%d", HTTP_AUTHDB_PATH, date_str, index);
       index++;
-   } while (file_exists(new_path) );
+   } while ( file_exists(new_path) );
 
    // Rename the file
    if (rename(HTTP_AUTHDB_PATH, new_path) == 0) {
@@ -87,7 +87,7 @@ bool http_save_users(const char *filename) {
       return true;
    }
 
-   if (http_backup_authdb() ) {
+   if ( http_backup_authdb() ) {
       return true;
    }
    int users_saved = 0;
@@ -148,12 +148,12 @@ int http_load_users(const char *filename) {
 
       // Skip comments and empty lines
       if (line[0] == '#' || line[0] == ';' ||
-          (strlen(line) > 1 && (line[0] == '/' && line[1] == '/') ) || line[0] == '\n') {
+          ( strlen(line) > 1 && (line[0] == '/' && line[1] == '/') ) || line[0] == '\n') {
          continue;
       }
       // Remove trailing \r or \n characters
       char *end = line + strlen(line) - 1;
-      while (end >= line && (*end == '\r' || *end == '\n') ) {
+      while ( end >= line && (*end == '\r' || *end == '\n') ) {
          *end = '\0';
          end--;
       }

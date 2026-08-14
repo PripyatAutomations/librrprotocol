@@ -64,7 +64,7 @@ static void irc_try_send(rrconn_t *cptr) {
    char *p = cptr->sendq;
 
    // find how much of sendq is complete messages ending with \r\n
-   while ( (p = strstr(p, "\r\n") ) ) {
+   while ( ( p = strstr(p, "\r\n") ) ) {
       len = (p - cptr->sendq) + 2;
       p += 2;
    }
@@ -85,7 +85,7 @@ static void irc_try_send(rrconn_t *cptr) {
       return;
    }
 
-   if ( (size_t)n < len) {
+   if ( (size_t)n < len ) {
       // partial send, move remaining to front
       memmove(cptr->sendq, cptr->sendq + n, len - n);
       cptr->sendq[len - n] = '\0';
@@ -141,7 +141,7 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
 }
 
 void irc_io_cb(EV_P_ ev_io *w, int revents) {
-   rrconn_t *cptr = (rrconn_t *)( ( (char*)w) - offsetof(rrconn_t, io_watcher) );
+   rrconn_t *cptr = (rrconn_t *)( ( (char*)w ) - offsetof(rrconn_t, io_watcher) );
 
    if (revents & EV_READ) {
       char buf[IRC_MSGLEN];
@@ -171,7 +171,7 @@ void irc_io_cb(EV_P_ ev_io *w, int revents) {
       // process complete lines
       char *start = cptr->recvq;
       char *end;
-      while ( (end = strstr(start, "\r\n") ) ) {
+      while ( ( end = strstr(start, "\r\n") ) ) {
          *end = '\0';
          Log(LOG_DEBUG, "net", "processing line: [%s]", start);
          irc_process_message(cptr, start);

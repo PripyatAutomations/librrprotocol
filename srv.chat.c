@@ -45,7 +45,7 @@ static bool ws_chat_cmd_die(http_client_t *cptr, const char *reason) {
       return true;
    }
 
-   if (client_has_flag(cptr, FLAG_STAFF) ) {
+   if ( client_has_flag(cptr, FLAG_STAFF) ) {
       // Send an ALERT to all connected users
       char msgbuf[HTTP_WS_MAX_MSG + 1];
       prepare_msg(msgbuf, sizeof(msgbuf), "Shutting down due to /die \"%s\" from %s (uid: %d with privs %s)",
@@ -85,7 +85,7 @@ static bool ws_chat_cmd_restart(http_client_t *cptr, const char *reason) {
       return true;
    }
 
-   if (client_has_flag(cptr, FLAG_STAFF) ) {
+   if ( client_has_flag(cptr, FLAG_STAFF) ) {
       // Send an ALERT to all connected users
       char msgbuf[HTTP_WS_MAX_MSG + 1];
       prepare_msg(msgbuf, sizeof(msgbuf), "Shutting down due to /restart from %s (uid: %d with privs %s): %s",
@@ -126,7 +126,7 @@ static bool ws_chat_cmd_kick(http_client_t *cptr, const char *target, const char
       return true;
    }
 
-   if (client_has_flag(cptr, FLAG_STAFF) ) {
+   if ( client_has_flag(cptr, FLAG_STAFF) ) {
       http_client_t *acptr;
       int kicked = 0;
 
@@ -185,7 +185,7 @@ static bool ws_chat_cmd_mute(http_client_t *cptr, const char *target, const char
       return true;
    }
 
-   if (client_has_flag(cptr, FLAG_STAFF) ) {
+   if ( client_has_flag(cptr, FLAG_STAFF) ) {
       http_client_t *acptr = http_find_client_by_name(target);
 
       if (!acptr) {
@@ -238,7 +238,7 @@ static bool ws_chat_cmd_unmute(http_client_t *cptr, const char *target) {
       return true;
    }
 
-   if (client_has_flag(cptr, FLAG_STAFF) ) {
+   if ( client_has_flag(cptr, FLAG_STAFF) ) {
       http_client_t *acptr = http_find_client_by_name(target);
 
       if (!acptr) {
@@ -267,7 +267,7 @@ static bool ws_chat_cmd_syslog(http_client_t *cptr, const char *state) {
       return true;
    }
 
-   if (client_has_flag(cptr, FLAG_STAFF) || client_has_flag(cptr, FLAG_SYSLOG) ) {
+   if ( client_has_flag(cptr, FLAG_STAFF) || client_has_flag(cptr, FLAG_SYSLOG) ) {
       bool new_state = false;
 
       new_state = parse_bool(state);
@@ -390,7 +390,7 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
             return false;
          }
 
-         if (!has_priv(cptr->user->uid, "admin|owner|chat") ) {
+         if ( !has_priv(cptr->user->uid, "admin|owner|chat") ) {
             Log(LOG_CRAZY, "chat", "user %s doesn't have chat privileges but tried to send a message", user);
             // XXX: Alert the user that their message was NOT deliverred because
             // they aren't allowed to send it.
@@ -447,7 +447,7 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
                      return true;
                   }
                   while (*input) {
-                     while (isspace(*input) || (*input == '!') ) {
+                     while ( isspace(*input) || (*input == '!') ) {
                         input++;
                      }
                      // extract command
@@ -457,7 +457,7 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
                      }
                      cmd[i] = '\0';
 
-                     while (isspace(*input) ) {
+                     while ( isspace(*input) ) {
                         input++;
                      }
                      // extract argument
