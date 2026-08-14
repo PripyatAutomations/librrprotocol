@@ -31,12 +31,11 @@ librrprotocol_objs += http.bans.o
 #librrprotocol_objs += irc.server.o
 #librrprotocol_objs += irc.user.o
 librrprotocol_objs += is.o
-# Disabled, need to figure out and merge these with the bits from auth*
-#librrprotocol_objs += newauth.o
 librrprotocol_objs += rrclient.o
 librrprotocol_objs += srv.auth.o
 librrprotocol_objs += srv.auth.passdb.o
 librrprotocol_objs += srv.chat.o
+librrprotocol_objs += srv.chat.error.o
 librrprotocol_objs += srv.http.o
 librrprotocol_objs += srv.client.o
 librrprotocol_objs += srv.session.o
@@ -46,6 +45,7 @@ librrprotocol_objs += srv.rigctl.o
 librrprotocol_objs += srv.send.o
 librrprotocol_objs += vfo.o
 #librrprotocol_objs += ws.audio.o
+# This needs merged into various other files...
 #librrprotocol_objs += wsnew.o
 librrprotocol_objs += ws.auth.o
 librrprotocol_objs += ws.file-xfer.o

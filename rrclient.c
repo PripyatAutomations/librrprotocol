@@ -17,7 +17,6 @@ extern bool ws_connected;
 extern char session_token[HTTP_TOKEN_LEN + 1];
 const char *login_user = NULL;
 
-
 static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) {
    if (ev == MG_EV_WS_MSG) {
       struct mg_ws_message *msg = (struct mg_ws_message *)ev_data;

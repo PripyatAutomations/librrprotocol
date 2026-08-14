@@ -24,47 +24,8 @@
 
 extern time_t now;
 extern bool dying, restarting;
-
-// Send an error message to the user, informing them they lack the appropriate
-// privileges in chat
-bool ws_chat_err_noprivs(http_client_t *cptr, const char *action) {
-   if (!action || !cptr) {
-      return true;
-   }
-
-   if (!cptr->user) {
-      return true;
-   }
-   Log(LOG_CRAZY, "core", "Unprivileged user %s (uid: %d with privs %s) requested to do %s and was denied",
-      cptr->chatname, cptr->user->uid, cptr->user->privs, action);
-   char msgbuf[HTTP_WS_MAX_MSG + 1];
-   prepare_msg(msgbuf, sizeof(msgbuf), "You do not have enough privileges to use '%s' command", now, action);
-   const char *jp = dict2json_mkstr(VAL_STR, "error.msg", msgbuf, VAL_LONG, "error.ts", now);
-
-#if     defined(USE_MONGOOSE)
-   mg_ws_send(cptr->conn, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-#endif
-   free( (char *)jp );
-
-   return false;
-}
-
-bool ws_chat_error_need_reason(http_client_t *cptr, const char *command) {
-   if (!cptr || !command) {
-      return true;
-   }
-   char msgbuf[HTTP_WS_MAX_MSG + 1];
-   prepare_msg(msgbuf, sizeof(msgbuf), "You MUST provide a reason for using'%s' command", now, command);
-
-   const char *jp = dict2json_mkstr(VAL_STR, "error.msg", msgbuf, VAL_LONG, "error.ts", now);
-
-#if     defined(USE_MONGOOSE)
-   mg_ws_send(cptr->conn, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-#endif
-   free( (char *)jp );
-
-   return false;
-}
+extern bool ws_chat_err_noprivs(http_client_t *cptr, const char *action);
+extern bool ws_chat_error_need_reason(http_client_t *cptr, const char *command);
 
 ///////////////////////////////
 // DIE: Makes the server die //
@@ -375,7 +336,6 @@ bool ws_send_users(http_client_t *cptr) {
 }
 
 #if     defined(USE_MONGOOSE)
-// XXX: Once json2dict is implemented, we need to use it here
 bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
    if (!c || !d) {
       return true;
@@ -393,9 +353,9 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
 
       return true;
    }
-   // XXX: remove this asap
+
    char *json_data = dict2json(d);
-   Log(LOG_CRAZY, "chat", "handle chat msg: RX from cptr:<%p> (%s) => json: %.*s", cptr, cptr->chatname, json_data);
+   Log(LOG_DEBUG, "chat", "handle chat msg: RX from cptr:<%p> (%s) => json: %.*s", cptr, cptr->chatname, json_data);
    free(json_data);
 
    cptr->last_heard = now;

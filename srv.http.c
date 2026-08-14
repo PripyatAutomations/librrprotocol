@@ -360,6 +360,9 @@ static void http_cb(struct mg_connection *c, int ev, void *ev_data) {
             // XXX: This should only turn off PTT for the rig they are using!
 //            rr_ptt_set_all_off();
             cptr->is_ptt = false;
+            const char *jp = dict2json_mkstr(VAL_STR, "rig.ptt", "on", VAL_STR, "rig.ptt.user", cptr->chatname);
+            event_emit("ptt", NULL, jp);
+            free( (void *)jp );
          }
 
          // Free the resources, if any, for the user_agent
