@@ -341,14 +341,8 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          Log(LOG_CRAZY, "http", "Departing user %s had %d clones", cptr->chatname, cptr->user->clones);
 
          // We want to deal with clones
-         if (cptr->user->clones >= 1) {
-            cptr->user->clones--;
-         } else {
-            // only cry if it's actually less than 0
-            if (cptr->user->clones < 0) {
-               Log(LOG_CRIT, "http", "Likely bug in %s in %s:%d- cptr->user->clones < 1: %d", __FUNCTION__, __FILE__, __LINE__, cptr->user->clones);
-            }
-            cptr->user->clones = 0;
+         if (cptr->user->clones < 0) {
+            Log(LOG_CRIT, "http", "Likely bug in %s in %s:%d- cptr->user->clones < 1: %d", __FUNCTION__, __FILE__, __LINE__, cptr->user->clones);
          }
 
          if (cptr->active) {
