@@ -64,41 +64,17 @@ struct ws_msg_routes {
 };
 
 struct ws_msg_routes ws_routes_cli[] = {
-   {
-      .type = "alert", .cb = ws_handle_alert_msg
-   },
-   {
-      .type = "auth", .cb = ws_handle_client_auth_msg
-   },
-   {
-      .type = "cat", .cb = ws_handle_rigctl_cli_msg
-   },
-   {
-      .type = "error", .cb = ws_handle_error_msg
-   },
-   {
-      .type = "hello", .cb = ws_handle_hello_msg
-   },
-/*
- *  {
- *     .type = "media", .cb = ws_handle_media_msg
- *  },
- */
-   {
-      .type = "notice", .cb = ws_handle_notice_msg
-   },
-   {
-      .type = "ping", .cb = ws_handle_ping_msg
-   },
-   {
-      .type = "syslog", .cb = ws_handle_syslog_msg
-   },
-   {
-      .type = "talk", .cb = ws_handle_talk_msg
-   },
-   {
-      .type = NULL, .cb = NULL
-   }
+   { .type = "alert", .cb = ws_handle_alert_msg },
+   { .type = "auth", .cb = ws_handle_client_auth_msg },
+   { .type = "cat", .cb = ws_handle_rigctl_cli_msg },
+   { .type = "error", .cb = ws_handle_error_msg },
+   { .type = "hello", .cb = ws_handle_hello_msg },
+//   { .type = "media", .cb = ws_handle_media_msg },
+   { .type = "notice", .cb = ws_handle_notice_msg },
+   { .type = "ping", .cb = ws_handle_ping_msg },
+   { .type = "syslog", .cb = ws_handle_syslog_msg },
+   { .type = "talk", .cb = ws_handle_talk_msg },
+   { .type = NULL, .cb = NULL }
 };
 
 bool ws_handle_hello_msg(struct mg_connection *c, dict *d) {
@@ -153,11 +129,13 @@ static bool ws_txtframe_dispatch(struct mg_connection *c, struct mg_ws_message *
 
       // see if this exists in the json
       if (mg_json_get(msg_data, json_req, NULL) > 0) {
-         // Matched, dispatch the message
+#ifdef HTTP_DEBUG_CRAZY
+         // log the message in crazy mode *IF* its not a ping or CAT message
          if (cfg_http_debug_crazy && strcasecmp(rp[i].type, "cat") != 0 &&
              strcasecmp(rp[i].type, "ping") != 0) {
             Log(LOG_CRAZY, "ws.router", "Matched route #%d for message type %s", i, rp[i].type);
          }
+#endif
          /* Emit a generic event for this raw websocket message type so other parts of the
           * system can listen to socket-level messages without depending on the current
           * in-process handlers. The existing handler is still called afterwards for
@@ -221,9 +199,7 @@ bool ws_handle_cli(struct mg_connection *c, struct mg_ws_message *msg) {
       return true;
    }
 #if     defined(HTTP_DEBUG_CRAZY)
-
    if (cfg_http_debug_crazy) {
-      // XXX: This should be moved to an option in config perhaps?
       Log(LOG_CRAZY, "http", "WS msg: %.*s", (int) msg->data.len, msg->data.buf);
    }
 #endif
@@ -248,15 +224,13 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 
    if (ev == MG_EV_OPEN) {
 #if     defined(HTTP_DEBUG_CRAZY)
-
       if (cfg_http_debug_crazy) {
          c->is_hexdumping = 1;
       }
 #endif
-// XXX: readd this
-//      ws_conn = c;
    } else if (ev == MG_EV_CONNECT) {
-      Log(LOG_CRAZY, "ws", "ev_ws_connect");
+      // send the connected event
+      event_emit("connected", NULL, NULL);
    } else if (ev == MG_EV_WRITE) {
       // Handle writing audio frames one by one
    } else if (ev == MG_EV_WS_OPEN) {
@@ -297,8 +271,9 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          ws_handle_cli(c, wm);
       }
    } else if (ev == MG_EV_ERROR) {
+      // send (char *)ev_data content
+      // { \"error\": { \"msg\": 
       event_emit("http.error", NULL, NULL);
-//      ui_print("[%s] Socket error: %s", get_chat_ts(now), (char *)ev_data);
    } else if (ev == MG_EV_CLOSE) {
       event_emit("goodbye", NULL, NULL);
    }
@@ -363,11 +338,11 @@ struct ws_msg_routes ws_routes[] = {
    {
       .type = "auth", .cb = ws_handle_auth_msg, .auth_reqd = false
    },
-//   { .type = "cat",   .cb = ws_handle_cat_msg,   .auth_reqd = true },
-//   { .type = "hello", .cb = ws_handle_hello_msg,  .auth_reqd = false },
+   { .type = "hello", .cb = ws_handle_hello_msg,  .auth_reqd = false },
 //   { .type = "media", .cb = ws_handle_media_msg, .auth_reqd = true },
-//   { .type = "ping",  .cb = ws_handle_ping_msg,  .auth_reqd = false },
+   { .type = "ping",  .cb = ws_handle_ping_msg,  .auth_reqd = false },
 //   { .type = "pong",  .cb = ws_handle_pong_msg,  .auth_reqd = false },
+   { .type = "cat",   .cb = ws_handle_rigctl_msg,   .auth_reqd = true },
 //   { .type = "talk",  .cb = ws_handle_talk_msg,  .auth_reqd = true },
 //   { .type = "talk.cmd", .cb = ws_handle_talk_cmd, .auth_reqd = false },
 //   { .type = "talk.quit", .cb = ws_handle_quit,  .auth_reqd = false },

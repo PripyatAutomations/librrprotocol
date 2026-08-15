@@ -488,7 +488,16 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
                      } else if (strcasecmp(cmd, "freq") == 0) {
                         long real_freq = parse_freq(arg);
                         Log(LOG_DEBUG, "ws.chat", "Got !freq %lu (%s) from %s", real_freq, arg, cptr->chatname);
-//                        rr_freq_set(active_vfo, real_freq);
+                        
+                        dict *d = dict_new();
+                        dict_add(d, "rigctl.cmd", "freq");
+                        char freq_s[64];
+                        memset(freq_s, 0, sizeof(freq_s));
+                        snprintf(freq_s, sizeof(freq_s), "%l", real_freq);
+                        dict_add(d, "rigctl.val", freq_s);
+                        dict_add(d, "rigctl.from", cptr->chatname);
+                        dict_add(d, "rigctl.vfo", (char *)vfo_name(active_vfo));
+                        event_emit_dict("rigctl", NULL, d);
                      } else if (strcasecmp(cmd, "mode") == 0) {
                         Log(LOG_DEBUG, "ws.chat", "Got !mode %s from %s", arg, cptr->chatname);
                         rr_mode_t new_mode = vfo_parse_mode(arg);
