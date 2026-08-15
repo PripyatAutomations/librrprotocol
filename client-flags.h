@@ -25,7 +25,7 @@
                                            // can TX if they are present
 
 
-static inline bool client_has_flag(http_client_t *cptr, u_int32_t user_flag) {
+static inline bool client_has_flag(rrconn_t *cptr, u_int32_t user_flag) {
    if (cptr) {
       return (cptr->user_flags & user_flag) != 0;
    }
@@ -33,13 +33,13 @@ static inline bool client_has_flag(http_client_t *cptr, u_int32_t user_flag) {
    return false;
 }
 
-static inline void client_set_flag(http_client_t *cptr, u_int32_t flag) {
+static inline void client_set_flag(rrconn_t *cptr, u_int32_t flag) {
    if (cptr) {
       cptr->user_flags |= flag;
    }
 }
 
-static inline void client_clear_flag(http_client_t *cptr, u_int32_t flag) {
+static inline void client_clear_flag(rrconn_t *cptr, u_int32_t flag) {
    if (cptr) {
       cptr->user_flags &= ~flag;
    }

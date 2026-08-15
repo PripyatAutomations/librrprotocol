@@ -22,12 +22,6 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-#if     defined(HOST_POSIX)
-#define	HTTP_MAX_ROUTES 64
-#else
-#define	HTTP_MAX_ROUTES 20
-#endif
-
 extern time_t now;
 
 // In srv.http.c
@@ -49,7 +43,7 @@ extern char www_root[PATH_MAX];
 extern char www_fw_ver[128];
 extern char www_headers[32768];
 extern char www_404_path[PATH_MAX];
-extern http_client_t *http_client_list;
+extern rrconn_t *http_client_list;
 
 #if     defined(USE_MONGOOSE)
 extern struct mg_mgr mg_mgr;

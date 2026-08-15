@@ -155,7 +155,7 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
 #if     defined(USE_MONGOOSE)
 bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    struct mg_str msg_data = msg->data;
-   http_client_t *cptr = http_find_client_by_c(c);
+   rrconn_t *cptr = http_find_client_by_c(c);
    bool rv = false;
 
    if (!cptr) {

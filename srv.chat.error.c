@@ -27,7 +27,7 @@ extern bool dying, restarting;
 
 // Send an error message to the user, informing them they lack the appropriate
 // privileges in chat
-bool ws_chat_err_noprivs(http_client_t *cptr, const char *action) {
+bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action) {
    if (!action || !cptr) {
       return true;
    }
@@ -49,7 +49,7 @@ bool ws_chat_err_noprivs(http_client_t *cptr, const char *action) {
    return false;
 }
 
-bool ws_chat_error_need_reason(http_client_t *cptr, const char *command) {
+bool ws_chat_error_need_reason(rrconn_t *cptr, const char *command) {
    if (!cptr || !command) {
       return true;
    }

@@ -24,13 +24,13 @@
 
 extern time_t now;
 extern bool dying, restarting;
-extern bool ws_chat_err_noprivs(http_client_t *cptr, const char *action);
-extern bool ws_chat_error_need_reason(http_client_t *cptr, const char *command);
+extern bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action);
+extern bool ws_chat_error_need_reason(rrconn_t *cptr, const char *command);
 
 ///////////////////////////////
 // DIE: Makes the server die //
 ///////////////////////////////
-static bool ws_chat_cmd_die(http_client_t *cptr, const char *reason) {
+static bool ws_chat_cmd_die(rrconn_t *cptr, const char *reason) {
    if (!cptr) {
       return true;
    }
@@ -70,7 +70,7 @@ static bool ws_chat_cmd_die(http_client_t *cptr, const char *reason) {
 //////////////////////////////////////
 // RESTART: Make the server restart //
 //////////////////////////////////////
-static bool ws_chat_cmd_restart(http_client_t *cptr, const char *reason) {
+static bool ws_chat_cmd_restart(rrconn_t *cptr, const char *reason) {
    if (!cptr) {
       return true;
    }
@@ -108,7 +108,7 @@ static bool ws_chat_cmd_restart(http_client_t *cptr, const char *reason) {
 ///////////////////////
 // KICK: Kick a user //
 ///////////////////////
-static bool ws_chat_cmd_kick(http_client_t *cptr, const char *target, const char *reason) {
+static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *reason) {
    if (!cptr) {
       return true;
    }
@@ -127,7 +127,7 @@ static bool ws_chat_cmd_kick(http_client_t *cptr, const char *target, const char
    }
 
    if ( client_has_flag(cptr, FLAG_STAFF) ) {
-      http_client_t *acptr;
+      rrconn_t *acptr;
       int kicked = 0;
 
       for (acptr = http_client_list ; acptr ; acptr = acptr->next) {
@@ -174,7 +174,7 @@ static bool ws_chat_cmd_kick(http_client_t *cptr, const char *target, const char
 ///////////////////////
 // MUTE: Mute a user //
 ///////////////////////
-static bool ws_chat_cmd_mute(http_client_t *cptr, const char *target, const char *reason) {
+static bool ws_chat_cmd_mute(rrconn_t *cptr, const char *target, const char *reason) {
    if (!cptr || !cptr->user) {
       return true;
    }
@@ -186,7 +186,7 @@ static bool ws_chat_cmd_mute(http_client_t *cptr, const char *target, const char
    }
 
    if ( client_has_flag(cptr, FLAG_STAFF) ) {
-      http_client_t *acptr = http_find_client_by_name(target);
+      rrconn_t *acptr = http_find_client_by_name(target);
 
       if (!acptr) {
          return true;
@@ -220,7 +220,7 @@ static bool ws_chat_cmd_mute(http_client_t *cptr, const char *target, const char
 ///////////////////////////
 // UNMUTE: Unmute a user //
 ///////////////////////////
-static bool ws_chat_cmd_unmute(http_client_t *cptr, const char *target) {
+static bool ws_chat_cmd_unmute(rrconn_t *cptr, const char *target) {
    if (!cptr) {
       return true;
    }
@@ -239,7 +239,7 @@ static bool ws_chat_cmd_unmute(http_client_t *cptr, const char *target) {
    }
 
    if ( client_has_flag(cptr, FLAG_STAFF) ) {
-      http_client_t *acptr = http_find_client_by_name(target);
+      rrconn_t *acptr = http_find_client_by_name(target);
 
       if (!acptr) {
          return true;
@@ -262,7 +262,7 @@ static bool ws_chat_cmd_unmute(http_client_t *cptr, const char *target) {
 }
 
 // Toggle syslog
-static bool ws_chat_cmd_syslog(http_client_t *cptr, const char *state) {
+static bool ws_chat_cmd_syslog(rrconn_t *cptr, const char *state) {
    if (!cptr || !state) {
       return true;
    }
@@ -288,7 +288,7 @@ static bool ws_chat_cmd_syslog(http_client_t *cptr, const char *state) {
 
 // Send the updated userinfo for a single user; see ws_send_users below for
 // everyone
-bool ws_send_userinfo(http_client_t *cptr, http_client_t *acptr) {
+bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
    if (!cptr || !cptr->authenticated || !cptr->user) {
       return true;
    }
@@ -311,11 +311,11 @@ bool ws_send_userinfo(http_client_t *cptr, http_client_t *acptr) {
    return false;
 }
 // Send info on all online users to the user
-bool ws_send_users(http_client_t *cptr) {
+bool ws_send_users(rrconn_t *cptr) {
    if (!cptr) {
       return true;
    }
-   http_client_t *current = http_client_list;
+   rrconn_t *current = http_client_list;
 
    // iterate over all the users
    while (current) {
@@ -340,7 +340,7 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
    if (!c || !d) {
       return true;
    }
-   http_client_t *cptr = http_find_client_by_c(c);
+   rrconn_t *cptr = http_find_client_by_c(c);
 
    if (!cptr) {
       Log(LOG_DEBUG, "chat", "talk parse, cptr is NULL, c: <%p>", c);
@@ -542,7 +542,7 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
             return true;
          }
          char msgbuf[HTTP_WS_MAX_MSG + 1];
-         http_client_t *acptr = http_client_list;
+         rrconn_t *acptr = http_client_list;
 
          if (!acptr) {
             Log(LOG_DEBUG, "chat", "whois no users online?!?");

@@ -55,7 +55,7 @@ try_again:
       prev_digit = digit;
    }
 
-   http_client_t *cptr = http_client_list;
+   rrconn_t *cptr = http_client_list;
    while (cptr) {
       // if we match an existing number, start over
       if (cptr->guest_id == num) {
@@ -67,11 +67,11 @@ try_again:
 }
 
 // find by login challenge
-static http_client_t *http_find_client_by_nonce(const char *nonce) {
+static rrconn_t *http_find_client_by_nonce(const char *nonce) {
    if (!nonce) {
       return NULL;
    }
-   http_client_t *cptr = http_client_list;
+   rrconn_t *cptr = http_client_list;
    int i = 0;
 
    if (nonce == NULL) {
@@ -83,20 +83,25 @@ static http_client_t *http_find_client_by_nonce(const char *nonce) {
       }
 
       if (memcmp( cptr->nonce, nonce, strlen(cptr->nonce) ) == 0) {
+#ifdef DEBUG_BUILD
          Log(LOG_CRAZY, "http.core", "hfcbn returning index [%i] for nonce |%s|", cptr->nonce);
-
+#endif
          return cptr;
       }
       i++;
       cptr = cptr->next;
    }
-   Log(LOG_CRAZY, "http.core", "hfcbn |%s| no matches!", nonce);
 
+#ifdef DEBUG_BUILD
+   Log(LOG_CRAZY, "http.core", "hfcbn |%s| no matches!", nonce);
+#endif
    return NULL;
 }
 
 bool match_priv(const char *user_privs, const char *priv) {
+#ifdef DEBUG_BUILD
    Log(LOG_CRAZY, "auth", "match_priv(): comparing |%s| to |%s|", user_privs, priv);
+#endif
 
    if (user_privs == NULL || priv == NULL) {
       return false;
@@ -116,11 +121,14 @@ bool match_priv(const char *user_privs, const char *priv) {
       memcpy(token, start, len);
       token[len] = '\0';
 
+#ifdef DEBUG_BUILD
       Log(LOG_CRAZY, "auth", "token=|%s|", token);
+#endif
 
       if (strcmp(token, priv) == 0) {
-         Log(LOG_CRAZY, "auth", " → exact match |%s|", token);
-
+#ifdef DEBUG_BUILD
+         Log(LOG_CRAZY, "auth", " ! exact match |%s|", token);
+#endif
          return true;
       }
 
@@ -128,8 +136,9 @@ bool match_priv(const char *user_privs, const char *priv) {
          token[len - 2] = '\0';   // strip .*
 
          if (strncmp( priv, token, strlen(token) ) == 0 && priv[strlen(token)] == '.') {
-            Log(LOG_CRAZY, "auth", " → wildcard match |%s|", token);
-
+#ifdef DEBUG_BUILD
+            Log(LOG_CRAZY, "auth", " ! wildcard match |%s|", token);
+#endif
             return true;
          }
       }
@@ -216,7 +225,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
       char resp_buf[HTTP_WS_MAX_MSG + 1];
       Log(LOG_AUDIT, "auth", "Login request from user %s on mg_conn:<%p> from %s:%d", user, c, ip, port);
 
-      http_client_t *cptr = http_find_client_by_c(c);
+      rrconn_t *cptr = http_find_client_by_c(c);
 
       if (cptr == NULL) {
          Log(LOG_CRIT, "auth", "Discarding login request on mg_conn:<%p> from %s:%d due to NULL cptr?!?!!?", c, ip,
@@ -270,10 +279,9 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          "auth.user", user, VAL_STR, "auth.token", cptr->token);
       mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
       free( (char *)jp );
-      Log(LOG_CRAZY, "auth", "Sending login challenge |%s| to user at cptr <%p> with token |%s|", cptr->nonce, cptr,
-         cptr->token);
+      Log(LOG_CRAZY, "auth", "Sent login challenge |%s| to cptr <%p>, token |%s|", cptr->nonce, cptr, cptr->token);
    } else if (strcasecmp(cmd, "logout") == 0 || strcasecmp(cmd, "quit") == 0) {
-      http_client_t *cptr = http_find_client_by_c(c);
+      rrconn_t *cptr = http_find_client_by_c(c);
       Log(LOG_DEBUG, "auth", "Logout request from %s (cptr:<%p> mg_conn:<%p>",
          (cptr->chatname[0] != '\0' ? cptr->chatname : ""), cptr, c);
       ws_kick_client_by_c(c, "Logged out. 73!");
@@ -287,7 +295,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
          return true;
       }
-      http_client_t *cptr = http_find_client_by_token(token);
+      rrconn_t *cptr = http_find_client_by_token(token);
 
       if (cptr == NULL) {
          Log(LOG_WARN, "auth", "Unable to find client in PASS parsing");
@@ -363,6 +371,9 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          cptr->authenticated = true;
          cptr->user->clones++;
 
+         // save the user's IP
+         snprintf(cptr->user_ip, sizeof(cptr->user_ip), "%s", ip);
+
          // Store some timestamps such as when user joined & session will
          // forcibly expire
          cptr->session_start = now;
@@ -426,9 +437,23 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          // XXX: We should move this out to it's own function like
          // join_channel(cptr, "&localrig");
          // blorp out a join to all chat users
-         jp = dict2json_mkstr(VAL_STR, "talk.cmd", "join", VAL_STR, "talk.target", "&localrig", VAL_STR, "talk.user",
-            cptr->chatname, VAL_ULONG, "talk.ts", now, VAL_STR, "talk.ip", ip, VAL_STR, "talk.privs", cptr->user->privs,
-            VAL_BOOL, "talk.muted", cptr->user->is_muted, VAL_INT, "talk.clones", cptr->user->clones);
+         char scratch[32];
+         memset(scratch, 0, sizeof(scratch));
+         snprintf(scratch, sizeof(scratch), "%lu", (unsigned long)now);
+         dict *d = dict_new();
+         dict_add(d, "talk.ts", scratch);
+         dict_add(d, "talk.cmd", "join");
+         dict_add(d, "talk.ip", ip);
+         dict_add(d, "talk.muted", (cptr->user->is_muted ? "true" : "false"));
+         dict_add(d, "talk.privs", cptr->user->privs);
+         // XXX: make this support multiple channels
+         dict_add(d, "talk.target", "&localrig");
+         dict_add(d, "talk.user", cptr->chatname);
+         memset(scratch, 0, sizeof(scratch));
+         snprintf(scratch, sizeof(scratch), "%d", cptr->user->clones);
+         dict_add(d, "talk.clones", scratch);
+
+         jp = dict2json(d);
          struct mg_str ms = mg_str(jp);
          ws_broadcast(NULL, &ms, WEBSOCKET_OP_TEXT);
          free( (char *)jp );
@@ -443,7 +468,10 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          ws_send_users(cptr);
 
          // Send chat replay to the user
-//         db_send_chat_replay(cptr, channel);
+         jp = dict2json(d);
+         event_emit("send-chat-replay", cptr, jp);
+         free( (void *)jp );
+         dict_free(d);
       } else {
          Log(LOG_AUDIT, "auth", "User %s on cptr <%p> from IP %s:%d gave wrong password. Kicking!", cptr->user, cptr,
             ip, port);

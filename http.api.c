@@ -21,13 +21,6 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-#if     defined(USE_HTTP)
-#if     defined(HOST_POSIX)
-#define	HTTP_MAX_ROUTES 64
-#else
-#define	HTTP_MAX_ROUTES 20
-#endif
-
 // This defines a hard-coded fallback path for httpd root, if not set in config
 #if     defined(HOST_POSIX)
 #if     !defined(INSTALL_PREFIX)
@@ -207,4 +200,3 @@ bool http_dispatch_route(struct mg_http_message *msg, struct mg_connection *c) {
    return true;  // No match found, let static handler take over
 }
 #endif // defined(USE_MONGOOSE)
-#endif // defined(USE_HTTP)

@@ -29,7 +29,7 @@ extern bool ws_connected;
 extern const char *get_server_property(const char *server, const char *prop);
 extern bool cfg_http_debug_crazy;
 
-bool ws_send_ping(http_client_t *cptr) {
+bool ws_send_ping(rrconn_t *cptr) {
    if (!cptr || !cptr->is_ws) {
       return true;
    }

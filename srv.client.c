@@ -22,19 +22,13 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-#if     defined(HOST_POSIX)
-#define	HTTP_MAX_ROUTES 64
-#else
-#define	HTTP_MAX_ROUTES 20
-#endif
-
 extern time_t now;
 #if     defined(USE_MONGOOSE)
-http_client_t *http_find_client_by_c(struct mg_connection *c) {
+rrconn_t *http_find_client_by_c(struct mg_connection *c) {
    if (!c) {
       return NULL;
    }
-   http_client_t *cptr = http_client_list;
+   rrconn_t *cptr = http_client_list;
    int i = 0;
 
    while (cptr) {
@@ -53,11 +47,11 @@ http_client_t *http_find_client_by_c(struct mg_connection *c) {
 }
 #endif // defined(USE_MONGOOSE)
 
-http_client_t *http_find_client_by_token(const char *token) {
+rrconn_t *http_find_client_by_token(const char *token) {
    if (!token) {
       return NULL;
    }
-   http_client_t *cptr = http_client_list;
+   rrconn_t *cptr = http_client_list;
    int i = 0;
 
    while (cptr) {
@@ -79,8 +73,8 @@ http_client_t *http_find_client_by_token(const char *token) {
    return NULL;
 }
 
-http_client_t *http_find_client_by_guest_id(int gid) {
-   http_client_t *cptr = http_client_list;
+rrconn_t *http_find_client_by_guest_id(int gid) {
+   rrconn_t *cptr = http_client_list;
    int i = 0;
 
    // this filters out invalid calls
@@ -99,8 +93,8 @@ http_client_t *http_find_client_by_guest_id(int gid) {
    return NULL;
 }
 
-http_client_t *http_find_client_by_name(const char *name) {
-   http_client_t *cptr = http_client_list;
+rrconn_t *http_find_client_by_name(const char *name) {
+   rrconn_t *cptr = http_client_list;
    int i = 0;
 
    if (!name) {
@@ -131,7 +125,7 @@ http_client_t *http_find_client_by_name(const char *name) {
 }
 
 void http_dump_clients(void) {
-   http_client_t *cptr = http_client_list;
+   rrconn_t *cptr = http_client_list;
    int i = 0;
 
    while (cptr) {
@@ -144,15 +138,15 @@ void http_dump_clients(void) {
    }
 }
 // Add a new client to the client list (HTTP or WebSocket)
-http_client_t *http_add_client(struct mg_connection *c, bool is_ws) {
-   http_client_t *cptr = (http_client_t *)malloc( sizeof(http_client_t) );
+rrconn_t *http_add_client(struct mg_connection *c, bool is_ws) {
+   rrconn_t *cptr = (rrconn_t *)malloc( sizeof(rrconn_t) );
 
    if (!cptr) {
       fprintf(stderr, "OOM in http_add_client\n");
 
       return NULL;
    }
-   memset( cptr, 0, sizeof(http_client_t) );
+   memset( cptr, 0, sizeof(rrconn_t) );
 
    // create some randomness for login hashing and session
    generate_nonce( cptr->token, sizeof(cptr->token) );
@@ -184,8 +178,8 @@ void http_remove_client(struct mg_connection *c) {
 
       return;
    }
-   http_client_t *prev = NULL;
-   http_client_t *current = http_client_list;
+   rrconn_t *prev = NULL;
+   rrconn_t *current = http_client_list;
 
    c->is_closing = 1;
 
@@ -212,7 +206,7 @@ void http_remove_client(struct mg_connection *c) {
                current->user->clones = 0;
             }
          }
-         memset( current, 0, sizeof(http_client_t) );
+         memset( current, 0, sizeof(rrconn_t) );
          free(current);
 
          return;
@@ -224,7 +218,7 @@ void http_remove_client(struct mg_connection *c) {
 // Counts only websocket clients that are logged in
 int http_count_clients(void) {
    int c = 0;
-   http_client_t *cptr = http_client_list;
+   rrconn_t *cptr = http_client_list;
    while (cptr) {
       if (cptr->authenticated && cptr->is_ws) {
          c++;
@@ -237,7 +231,7 @@ int http_count_clients(void) {
 // Counts ALL websocket clients
 int http_count_connections(void) {
    int c = 0;
-   http_client_t *cptr = http_client_list;
+   rrconn_t *cptr = http_client_list;
    while (cptr) {
       c++;
       cptr = cptr->next;
@@ -246,8 +240,8 @@ int http_count_connections(void) {
 }
 
 // Returns the user actively PTTing
-http_client_t *whos_talking(void) {
-   http_client_t *cptr = http_client_list;
+rrconn_t *whos_talking(void) {
+   rrconn_t *cptr = http_client_list;
 
    while (cptr) {
       if (cptr->authenticated && cptr->is_ptt) {

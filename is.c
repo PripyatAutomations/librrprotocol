@@ -26,7 +26,7 @@ bool is_admin_online(void) {
    if (http_client_list == NULL) {
       return false;
    }
-   http_client_t *curr = http_client_list;
+   rrconn_t *curr = http_client_list;
    while (curr) {
       if (!curr->is_ws || !curr->authenticated || curr->user == NULL) {
          return false;
@@ -45,7 +45,7 @@ bool is_elmer_online(void) {
    if (http_client_list == NULL) {
       return false;
    }
-   http_client_t *curr = http_client_list;
+   rrconn_t *curr = http_client_list;
    while (curr) {
       if (!curr->is_ws || !curr->authenticated || !curr->user) {
          continue;

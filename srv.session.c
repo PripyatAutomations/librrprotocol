@@ -22,19 +22,13 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-#if     defined(HOST_POSIX)
-#define	HTTP_MAX_ROUTES 64
-#else
-#define	HTTP_MAX_ROUTES 20
-#endif
-
 extern time_t now;
 
 //
 // Called periodically to remove sessions that have existed too long
 //
 void http_expire_sessions(void) {
-   http_client_t *cptr = http_client_list;
+   rrconn_t *cptr = http_client_list;
    int expired = 0;
 
    while (cptr) {

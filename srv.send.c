@@ -27,7 +27,7 @@ void ws_broadcast(struct mg_connection *sender, struct mg_str *msg_data, int dat
    if (!msg_data) {
       return;
    }
-   http_client_t *current = http_client_list;
+   rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
       if ( (current->is_ws && current->authenticated) && (current->conn != sender) ) {
@@ -43,7 +43,7 @@ void ws_broadcast_with_flags(u_int32_t flags, struct mg_connection *sender, stru
    if (!msg_data) {
       return;
    }
-   http_client_t *current = http_client_list;
+   rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
       if ( current && (current->is_ws && current->authenticated) && (current->conn != sender) ) {
@@ -59,7 +59,7 @@ void ws_broadcast_audio(struct mg_connection *sender, struct mg_str *msg_data, i
    if (!msg_data) {
       return;
    }
-   http_client_t *current = http_client_list;
+   rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
       if ( (current->is_ws && current->authenticated) && (current->conn != sender) ) {

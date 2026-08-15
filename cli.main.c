@@ -391,7 +391,7 @@ bool ws_init(struct mg_mgr *mgr) {
 }
 
 // Send to a specific, authenticated websocket session
-void ws_send_to_cptr(struct mg_connection *sender, http_client_t *cptr, struct mg_str *msg_data, int data_type) {
+void ws_send_to_cptr(struct mg_connection *sender, rrconn_t *cptr, struct mg_str *msg_data, int data_type) {
    if (!cptr || !msg_data) {
       return;
    }
@@ -406,7 +406,7 @@ void ws_send_to_name(struct mg_connection *sender, const char *username, struct 
 
       return;
    }
-   http_client_t *current = http_client_list;
+   rrconn_t *current = http_client_list;
    while (current) {
       // Messages from the server will have NULL sender
       if ( !sender || (current->is_ws && current->conn != sender) ) {
@@ -422,7 +422,7 @@ bool ws_kick_by_name(const char *name, const char *reason) {
    if (!http_client_list) {
       return true;
    }
-   http_client_t *curr = http_client_list;
+   rrconn_t *curr = http_client_list;
    while (curr) {
       if (strcasecmp(name, curr->chatname) == 0) {
 #if     defined(USE_MONGOOSE)
@@ -438,7 +438,7 @@ bool ws_kick_by_uid(int uid, const char *reason) {
    if (!http_client_list) {
       return true;
    }
-   http_client_t *curr = http_client_list;
+   rrconn_t *curr = http_client_list;
    while (curr) {
       if (uid == curr->user->uid) {
 #if     defined(USE_MONGOOSE)
@@ -451,7 +451,7 @@ bool ws_kick_by_uid(int uid, const char *reason) {
    return false;
 }
 
-bool ws_kick_client(http_client_t *cptr, const char *reason) {
+bool ws_kick_client(rrconn_t *cptr, const char *reason) {
    // skip freeing resources if no client structure
    if (!cptr) {
       Log( LOG_DEBUG, "auth", "ws_kick_client with NULL cptr and reason: %s", (reason ? reason : "(none)") );
@@ -539,7 +539,7 @@ static bool ws_handle_pong(struct mg_ws_message *msg, struct mg_connection *c) {
    } else {
       inet_ntop( AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
    }
-   http_client_t *cptr = http_find_client_by_c(c);
+   rrconn_t *cptr = http_find_client_by_c(c);
 
    if (!cptr) {
       char msgbuf[512];
@@ -595,7 +595,7 @@ cleanup:
 bool ws_binframe_process_mg(struct mg_connection *c, const char *buf, size_t len) {
    Log(LOG_DEBUG, "ws.binframe", "Binary frame of %li bytes", len);
 
-   http_client_t *cptr = http_find_client_by_c(c);
+   rrconn_t *cptr = http_find_client_by_c(c);
 
    if (!cptr) {
       Log(LOG_CRIT, "ws.binframe", "Binary frame from client at <%p> with no http session. Ignoring!");
@@ -648,7 +648,7 @@ static bool ws_txtframe_process(struct mg_ws_message *msg, struct mg_connection 
    bool result = false;
 
    // Update the last-heard time for the user
-   http_client_t *cptr = http_find_client_by_c(c);
+   rrconn_t *cptr = http_find_client_by_c(c);
 
    if (!cptr) {
       Log(LOG_CRAZY, "ws", "message from unauthenticated user at c:<%p>", c);
@@ -829,7 +829,7 @@ bool ws_handle(struct mg_ws_message *msg, struct mg_connection *c) {
 
 /////////
 // Send an error message to the user
-bool ws_send_error(http_client_t *cptr, const char *fmt, ...) {
+bool ws_send_error(rrconn_t *cptr, const char *fmt, ...) {
    if (!fmt) {
       return true;
    }
@@ -854,7 +854,7 @@ bool ws_send_error(http_client_t *cptr, const char *fmt, ...) {
 }
 
 // Send an alert message to the user
-bool ws_send_alert(http_client_t *cptr, const char *fmt, ...) {
+bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...) {
    if (!fmt) {
       return true;
    }

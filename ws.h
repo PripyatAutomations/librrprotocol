@@ -55,12 +55,12 @@ extern void ws_add_client(struct mg_connection *c);
 extern void ws_remove_client(struct mg_connection *c);
 
 // Send to a specific, authenticated websocket user by cptr
-extern void ws_send_to_cptr(struct mg_connection *sender, http_client_t *acptr, struct mg_str *msg_data, int data_type);
+extern void ws_send_to_cptr(struct mg_connection *sender, rrconn_t *acptr, struct mg_str *msg_data, int data_type);
 
 // Send to all users, except the sender (UNLESS sender is NULL)
 extern void ws_send_to_name(struct mg_connection *sender, const char *username, struct mg_str *msg_data, int data_type);
 
-extern bool ws_kick_client(http_client_t *cptr, const char *reason);                     // disconnect
+extern bool ws_kick_client(rrconn_t *cptr, const char *reason);                     // disconnect
                                                                                          // a
                                                                                          // user,
                                                                                          // if
@@ -73,9 +73,9 @@ extern bool ws_kick_by_name(const char *name, const char *reason);
 extern bool ws_kick_by_uid(int uid, const char *reason);
 
 extern bool ws_handle_protocol(struct mg_ws_message *msg, struct mg_connection *c);
-extern bool ws_send_ping(http_client_t *cptr);
-extern bool ws_send_alert(http_client_t *cptr, const char *fmt, ...);
-extern bool ws_send_error(http_client_t *cptr, const char *fmt, ...);
+extern bool ws_send_ping(rrconn_t *cptr);
+extern bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...);
+extern bool ws_send_error(rrconn_t *cptr, const char *fmt, ...);
 
 // ws.audio.c
 extern void au_send_to_ws(const void *data, size_t len, int channel);
@@ -99,10 +99,10 @@ extern void ws_blorp_userlist_cb(void *arg);                     // timer calls
                                                                  // periodically
 
 // ws.chat.c
-extern bool ws_chat_err_noprivs(http_client_t *cptr, const char *action);
+extern bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action);
 extern bool ws_handle_chat_msg(struct mg_connection *c, dict *d);
-extern bool ws_send_users(http_client_t *cptr);
-extern bool ws_send_userinfo(http_client_t *cptr, http_client_t *acptr);
+extern bool ws_send_users(rrconn_t *cptr);
+extern bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr);
 
 // ws.rigctl.c
 extern bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c);
@@ -114,8 +114,8 @@ extern void ws_handler(struct mg_connection *c, int ev, void *ev_data);
 extern bool ws_send_ptt_cmd(struct mg_connection *c, const char *vfo, bool ptt);
 extern bool ws_send_mode_cmd(struct mg_connection *c, const char *vfo, const char *mode);
 extern bool ws_send_freq_cmd(struct mg_connection *c, const char *vfo, long freq);
-extern bool ws_send_error(http_client_t *cptr, const char *fmt, ...);
-extern bool ws_send_alert(http_client_t *cptr, const char *fmt, ...);
+extern bool ws_send_error(rrconn_t *cptr, const char *fmt, ...);
+extern bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...);
 extern bool ws_send_notice(struct mg_connection *c, const char *fmt, ...);
 
 

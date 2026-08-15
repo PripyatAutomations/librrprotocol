@@ -16,6 +16,7 @@
 #if     defined(USE_MONGOOSE)
 #include "ext/libmongoose/mongoose.h"
 #endif // defined(USE_MONGOOSE)
+#include <librustyaxe/struct.h>
 
 ///////
 // many of these need moved to config; decide if runtime or build? (prob build)
@@ -37,12 +38,6 @@
 #define	HTTP_PING_TIME 60                 // If we haven't heard from the
                                            // client in this long, send a
                                            // ping
-#define	HTTP_MAX_ELMERS 8                 // how many elmers can accept
-                                           // elevate request from the
-                                           // user?
-#define	HTTP_MAX_NOOBS 8                  // how many noobs can an elmer
-                                           // babysit?
-
 #if     (HTTP_PING_TIME / 4) >= 10
 #define	HTTP_PING_TIMEOUT (HTTP_PING_TIME / 4)    // And give them this
                                                    // long to respond
@@ -52,17 +47,6 @@
 #endif // (HTTP_PING_TIME / 4)
 #define	HTTP_PING_TRIES 3                 // We'll try this many times
                                            // before kicking the client
-// HTTP Basic-auth user
-#define	HTTP_MAX_USERS 64                 // How many users are allowed in
-                                           // http.users?
-#define	HTTP_USER_LEN 16                  // username length (16 char)
-#define	HTTP_PASS_LEN 40                  // sha1: 40, sha256: 64
-#define	HTTP_HASH_LEN 40                  // sha1
-#define	HTTP_TOKEN_LEN 14                 // session-id / nonce length,
-                                           // longer moar secure
-#define	HTTP_UA_LEN 512                   // allow 128 bytes
-#define	USER_PRIV_LEN 100                 // privileges list
-#define	USER_EMAIL_LEN 128                // email address
 
 // ws.cat protocol
 #define	HTTP_API_RIGPOLL_PAUSE 2          // time to delay polling the rig
@@ -86,20 +70,6 @@ struct rr_user {
    struct rr_user *next;
 };
 
-// http.users entry
-struct http_user {
-   int uid;
-   char name[HTTP_USER_LEN + 1];                         // Username
-   char pass[HTTP_PASS_LEN + 1];                         // Password hash
-   char email[USER_EMAIL_LEN + 1];                       // Email address
-   char privs[USER_PRIV_LEN + 1];                        // privileges string?
-   bool enabled;                                         // Is the user enabled?
-   int max_clones;                                       // maximum allowed
-                                                         // sessions
-   int clones;                                           // active logins
-   int is_muted;                                         // is this user muted?
-};
-typedef struct http_user http_user_t;
 extern http_user_t http_users[HTTP_MAX_USERS];
 
 struct http_route {
@@ -121,94 +91,24 @@ struct http_res_types {
    char *msg;
 };
 
-// Maximum number of subscribed channels for users
-#define	MAX_RX_CHANNELS 64        // User RX channels
-#define	MAX_TX_CHANNELS 16        // User TX channels
-
-struct http_client {
-   bool active;                  // Is this slot actually used or is it
-                                 // free-listed?
-   bool authenticated;           // Is the user fully logged in?
-   bool is_ws;                   // Flag to indicate if it's a WebSocket client
-   bool is_ptt;                  // Is the user keying up ANY attached rig?
-   int ptt_session;              // Set when PTT has been raised
-   u_int32_t user_flags;         // Bit flags for user features, permissions,
-                                 // etc.
-   time_t connected;             // when was the socket connected?
-   time_t session_expiry;        // When does the session expire?
-   time_t session_start;         // When did they login?
-   time_t last_heard;            // when a last valid message was heard from
-                                 // client
-   time_t last_ping;             // If client is pending timeout, this will
-                                 // contain the time a ping was sent to check
-                                 // for
-                                 // dead connection
-   int ping_attempts;            // How many times have we tried to ping the
-                                 // client without answer?
-   http_user_t *user;            // pointer to http user, once login is sent. DO
-                                 // NOT TRUST IF authenticated != true!
-#if     defined(USE_MONGOOSE)
-   struct mg_connection *conn;   // Connection pointer (HTTP or WebSocket)
-#endif
-   char token[HTTP_TOKEN_LEN + 1];   // Session token
-   char nonce[HTTP_TOKEN_LEN + 1];   // Authentication nonce - only used between
-                                     // challenge & pass stages
-   int guest_id;                 // 4 digit unique id for guest users in
-                                 // chat/etc
-                                 // for comfort
-   char chatname[HTTP_USER_LEN + 1];   // username to show in chat (GUESTxxxx or
-                                       // USER)
-   char  *user_agent;            // User-agent
-   char  *cli_version;           // Client version
-   bool ghost;                   // Is the session a ghost?
-   time_t ghost_time;            // When did the session become a ghost?
-
-   // These contain arrays of audio channel IDs
-   u_int32_t rx_channels[MAX_RX_CHANNELS];
-   u_int32_t tx_channels[MAX_RX_CHANNELS];
-   // This is for connections between instances (NYI)
-   enum {
-      CONN_NONE = 0,
-      CONN_RIGUI,               // User-interface (chat and CAT)
-      CONN_AUDIO_RX,            // RX audio
-      CONN_AUDIO_TX             // TX audio
-   } connection_type;
-   char codec_rx[5], codec_tx[5];                // 4 byte ID of the codec for
-                                                 // each audio direction
-
-   // This is a little ugly, but this stores pointers to the users associated
-   // with elmer/noob system
-   union {
-      struct http_client *elmers[HTTP_MAX_ELMERS];       // pointer(s) to elmers
-                                                         // who have accepted to
-                                                         // babysit user (if
-                                                         // noob)
-      struct http_client *noobs[HTTP_MAX_NOOBS];         // pointer(s) to noobs
-                                                         // this user is
-                                                         // babysitting
-   } en_data;
-   struct http_client *next;     // pointer to next client in list
-};
-typedef struct http_client http_client_t;
-
 #if     !defined(__RRCLI)
 ////////////////////////////////////////////////////////
 extern int http_count_clients(void);
 extern int http_count_connections(void);
 
-extern http_client_t *whos_talking(void);                        // returns NULL
+extern rrconn_t *whos_talking(void);                        // returns NULL
                                                                  // or a pointer
                                                                  // to the cptr
                                                                  // of user
                                                                  // PTTing
 #if     defined(USE_MONGOOSE)
 extern bool http_init(struct mg_mgr *mgr);
-extern http_client_t *http_add_client(struct mg_connection *c, bool is_ws);
+extern rrconn_t *http_add_client(struct mg_connection *c, bool is_ws);
 extern void http_remove_client(struct mg_connection *c);
-extern http_client_t *http_find_client_by_c(struct mg_connection *c);
-extern http_client_t *http_find_client_by_token(const char *token);
-extern http_client_t *http_find_client_by_guest_id(int gid);
-extern http_client_t *http_find_client_by_name(const char *name);
+extern rrconn_t *http_find_client_by_c(struct mg_connection *c);
+extern rrconn_t *http_find_client_by_token(const char *token);
+extern rrconn_t *http_find_client_by_guest_id(int gid);
+extern rrconn_t *http_find_client_by_name(const char *name);
 // http.api.c:
 extern bool http_dispatch_route(struct mg_http_message *msg, struct mg_connection *c);
 
@@ -233,7 +133,7 @@ extern const char *http_content_type(const char *type);
 extern bool check_url(const char *path);
 
 //////////////////
-extern http_client_t *http_client_list;
+extern rrconn_t *http_client_list;
 extern int http_users_connected;
 extern char www_root[PATH_MAX];
 extern char www_headers[32768];

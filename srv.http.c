@@ -22,12 +22,6 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-#if     defined(HOST_POSIX)
-#define	HTTP_MAX_ROUTES 64
-#else
-#define	HTTP_MAX_ROUTES 20
-#endif
-
 extern time_t now;
 
 // This defines a hard-coded fallback path for httpd root, if not set in config
@@ -45,7 +39,7 @@ char www_root[PATH_MAX];
 char www_fw_ver[128];
 char www_headers[32768];
 char www_404_path[PATH_MAX];
-http_client_t *http_client_list = NULL;
+rrconn_t *http_client_list = NULL;
 
 #if     defined(USE_MONGOOSE)
 extern struct mg_mgr mg_mgr;
@@ -256,7 +250,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       }
 #endif
    } else if (ev == MG_EV_HTTP_MSG) {
-      http_client_t *cptr = http_find_client_by_c(c);
+      rrconn_t *cptr = http_find_client_by_c(c);
 
       if (!cptr) {
          Log(LOG_CRAZY, "http.core", "ACCEPT: mg_ev_http_msg cptr doesn't exist, creating");
@@ -294,7 +288,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       }
    } else if (ev == MG_EV_WS_OPEN) {
       Log(LOG_CRAZY, "http.core", "WS OPEN for c:<%p>", c);
-      http_client_t *cptr = http_find_client_by_c(c);
+      rrconn_t *cptr = http_find_client_by_c(c);
 
       if (cptr) {
          Log(LOG_DEBUG, "http", "Conn mg_conn:<%p> from %s:%d upgraded to ws with cptr:<%p>", c, ip, port, cptr);
@@ -317,8 +311,9 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       ws_handle(msg, c);
    } else if (ev == MG_EV_CLOSE) {
       char resp_buf[HTTP_WS_MAX_MSG + 1];
-      http_client_t *cptr = http_find_client_by_c(c);
-      Log(LOG_DEBUG, "http", "http_cb MG_EV_CLOSE for cptr:<%p> c:<%p>", cptr, c);
+      rrconn_t *cptr = http_find_client_by_c(c);
+      char *ip = cptr->user_ip;
+      Log(LOG_DEBUG, "http", "http_cb MG_EV_CLOSE for cptr:<%p> c:<%p> ip:%s", cptr, c, ip);
 
       // make sure we're not accessing unsafe memory
       if (cptr && cptr->user && cptr->chatname[0] != '\0') {
@@ -345,11 +340,22 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          // reduce the # of clones for the user / reset to 0
          Log(LOG_CRAZY, "http", "Departing user %s had %d clones", cptr->chatname, cptr->user->clones);
 
+         // We want to deal with clones
+         if (cptr->user->clones >= 1) {
+            cptr->user->clones--;
+         } else {
+            // only cry if it's actually less than 0
+            if (cptr->user->clones < 0) {
+               Log(LOG_CRIT, "http", "Likely bug in %s in %s:%d- cptr->user->clones < 1: %d", __FUNCTION__, __FILE__, __LINE__, cptr->user->clones);
+            }
+            cptr->user->clones = 0;
+         }
+
          if (cptr->active) {
             // blorp out a quit to all connected users
             const char *jp = dict2json_mkstr(VAL_STR, "talk.cmd", "quit", VAL_STR, "talk.user", cptr->chatname,
                VAL_ULONG, "talk.ts", now, VAL_STR, "talk.reason", "connection closed", VAL_INT, "talk.clones",
-               cptr->user->clones);
+               cptr->user->clones, VAL_STR, "talk.ip", ip);
             struct mg_str ms = mg_str(jp);
             ws_broadcast(NULL, &ms, WEBSOCKET_OP_TEXT);
             free( (char *)jp );

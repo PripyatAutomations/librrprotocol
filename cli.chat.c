@@ -88,8 +88,8 @@ bool ws_handle_talk_msg(struct mg_connection *c, dict *d) {
       if (!quit_user) {
          return true;
       }
-      event_emit_dict("quit", NULL, d);
       Log(LOG_INFO, "ws.chat", "talk: sending quit for %s", quit_user);
+      event_emit_dict("quit", NULL, d);
       free(quit_user);
    } else if (cmd && strcasecmp(cmd, "whois") == 0) {
       const char *whois_msg = dict_get(d, "talk.data", NULL);
