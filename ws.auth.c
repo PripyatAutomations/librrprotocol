@@ -80,7 +80,13 @@ bool ws_handle_client_auth_msg(struct mg_connection *c, dict *d) {
    } else if (cmd && strcasecmp(cmd, "authorized") == 0) {
 //      ui_print("[%s] *** Authorized ***", get_chat_ts(ts));
 //      userlist_redraw_gtk();
-      // XXX: Set online state
+      // Let the UI promote its connection indicator only after the server has
+      // completed the authentication handshake.
+      const char *json = dict2json(d);
+      if (json) {
+         event_emit("authorized", NULL, json);
+         free( (void *)json );
+      }
    }
 cleanup:
 

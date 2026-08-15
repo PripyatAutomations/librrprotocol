@@ -411,8 +411,11 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
          // Send last message (AUTHORIZED) of the login sequence to let client
          // know they are logged in
-         const char *jp = dict2json_mkstr(VAL_STR, "auth.cmd", "authorized", VAL_STR, "auth.privs", cptr->user->privs,
-            VAL_STR, "auth.token", token, VAL_ULONG, "auth.ts", now, VAL_STR, "auth.user", cptr->chatname);
+         const char *jp = dict2json_mkstr(VAL_STR, "auth.cmd", "authorized",
+                                          VAL_STR, "auth.privs", cptr->user->privs,
+                                          VAL_STR, "auth.token", token,
+                                          VAL_ULONG, "auth.ts", now,
+                                          VAL_STR, "auth.user", cptr->chatname);
          mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
          free( (char *)jp );
 
@@ -446,7 +449,6 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          dict_add(d, "talk.ip", ip);
          dict_add(d, "talk.muted", (cptr->user->is_muted ? "true" : "false"));
          dict_add(d, "talk.privs", cptr->user->privs);
-         // XXX: make this support multiple channels
          dict_add(d, "talk.target", "&localrig");
          dict_add(d, "talk.user", cptr->chatname);
          memset(scratch, 0, sizeof(scratch));
@@ -458,14 +460,10 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          ws_broadcast(NULL, &ms, WEBSOCKET_OP_TEXT);
          free( (char *)jp );
 
-         // XXX: Do we need to do this twice? Shouldn't NULL send it to this
-         // user too?
+         // XXX: Do we need to do this twice? Shouldn't NULL be enough?
          // Send userlist update to all users
          ws_send_users(NULL);
-
-         // send an initial user-list  message to populate the chat-user-list
-         // (cul)
-         ws_send_users(cptr);
+//         ws_send_users(cptr);
 
          // Send chat replay to the user
          jp = dict2json(d);
@@ -477,6 +475,9 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
             ip, port);
          ws_kick_client(cptr, "Invalid login/password");
       }
+
+      // AUDIT: Sanitize buffers containing sensitive data before freeing
+      explicit_bzero(temp_pw, sizeof(temp_pw));
       free(temp_pw);
    }
 cleanup:

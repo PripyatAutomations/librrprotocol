@@ -53,19 +53,29 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
       }
    } else if (ev == MG_EV_WS_OPEN) {
       ws_connected = true;
-      event_emit("connected", NULL, NULL);
-
-      login_user = cfg_get_exp("server.user");
+      login_user = get_server_property(server_name, "server.user");
 
       if (login_user) {
-         const char *jp = dict2json_mkstr(VAL_STR, "hello", "rrcli");
+         const char *jp = dict2json_mkstr(VAL_STR, "hello", "rrcli",
+                                          VAL_STR, "hello.swver", VERSION,
+                                          VAL_STR, "hello.hwver", "client");
          mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
          free( (void *)jp );
 
-         jp = dict2json_mkstr(VAL_STR, "auth.cmd", "login", VAL_STR, "auth.user", login_user);
+         jp = dict2json_mkstr(VAL_STR, "auth.cmd", "login",
+                              VAL_STR, "auth.user", login_user);
          mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
          free( (void *)jp );
       }
+
+      dict *d = dict_new();
+      char ts_s[64];
+      memset(ts_s, 0, sizeof(ts_s));
+      snprintf(ts_s, sizeof(ts_s), "%lu", now);
+      dict_add(d, "login.ts", ts_s);
+      dict_add(d, "login.user", (char *)login_user);
+      event_emit_dict("connected", NULL, d);
+      dict_free(d);
    } else if (ev == MG_EV_CLOSE) {
       ws_connected = false;
       event_emit("goodbye", NULL, NULL);

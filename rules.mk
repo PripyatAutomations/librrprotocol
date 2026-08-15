@@ -60,7 +60,7 @@ librrprotocol_headers := $(wildcard librrprotocol/*.h)
 librrprotocol_src = $(wildcard librrprotocol/*.c) $(wildcard librrprotocol/*.h)
 
 real_librrprotocol_objs := $(foreach x, ${librrprotocol_objs}, ${BUILD_DIR}/librrprotocol/${x})
-${librrprotocol_srcs}: GNUmakefile ${librrprotocol_headers} librrprotocol/rules.mk
+${librrprotocol_srcs}: GNUmakefile ${librrprotocol_headers} librrprotocol/rules.mk ${BUILD_DIR}/build_config.h
 
 ${BUILD_DIR}/librrprotocol/.stamp:
 	@mkdir -p "${BUILD_DIR}/librrprotocol/"
@@ -70,7 +70,7 @@ ${librrprotocol}: ${BUILD_DIR}/librrprotocol/.stamp ${real_librrprotocol_objs} $
 	@echo "[link] $@ from $(words ${real_librrprotocol_objs}) objects"
 	@${CC} ${LDFLAGS} ${LIB_LDFLAGS} -lm -o $@ ${real_librrprotocol_objs} || exit 2
 
-${BUILD_DIR}/librrprotocol/%.o:librrprotocol/%.c GNUmakefile ${librrprotocol_headers}
+${BUILD_DIR}/librrprotocol/%.o:librrprotocol/%.c GNUmakefile ${librrprotocol_headers} ${librustyaxe} ${librustyaxe_headers}
 	@echo "[compile] $< => $@"
 	@${RM} $@
 	@${CC} ${librrprotocol_cflags} -o $@ -c $< || exit 2

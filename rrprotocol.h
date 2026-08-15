@@ -22,6 +22,7 @@
 //#include <librrprotocol/ws.mediachan.h>
 #include <librrprotocol/state.h>
 #include <librrprotocol/client-flags.h>
+#include <librrprotocol/connman.h>
 
 extern const char *server_name;
 
