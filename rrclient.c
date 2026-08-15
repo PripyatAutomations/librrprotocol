@@ -11,11 +11,13 @@
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/rrclient.h>
 #include <rrclient/ui.h>
-extern struct mg_mgr mgr;
-struct mg_connection *ws_conn = NULL;
 extern bool ws_connected;
 extern char session_token[HTTP_TOKEN_LEN + 1];
 const char *login_user = NULL;
+
+#ifdef	USE_MONGOOSE
+extern struct mg_mgr mgr;
+struct mg_connection *ws_conn = NULL;
 
 static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) {
    if (ev == MG_EV_WS_MSG) {
@@ -69,56 +71,71 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
       event_emit("goodbye", NULL, NULL);
    }
 }
+#endif // USE_MONGOOSE
 
 bool rrclient_connect(const char *url) {
    if (!url) {
       return true;
    }
    event_emit("connecting", NULL, NULL);
+#ifdef	USE_MONGOOSE
    ws_conn = mg_ws_connect(&mgr, url, rrclient_ws_handler, NULL, NULL);
-
    if (!ws_conn) {
       event_emit("http.error", NULL, NULL);
 
       return true;
    }
+#endif // USE_MONGOOSE
 
    return false;
 }
 
 bool rrclient_send_chat(const char *data) {
-   if (!ws_conn || !data) {
+   if (!data) {
       return true;
    }
    const char *jp = dict2json_mkstr(VAL_STR, "talk.cmd", "msg", VAL_STR, "talk.data", data, VAL_STR, "talk.msg_type",
       "pub");
+#ifdef	USE_MONGOOSE
+   if (!ws_conn) {
+      return true;
+   }
    mg_ws_send(ws_conn, jp, strlen(jp), WEBSOCKET_OP_TEXT);
+#endif // USE_MONGOOSE
    free( (void *)jp );
 
    return false;
 }
 
 bool rrclient_send(const char *json) {
-   if (!ws_conn || !json) {
+   if (!json) {
+      return true;
+   }
+#ifdef	USE_MONGOOSE
+   if (!ws_conn) {
       return true;
    }
    mg_ws_send(ws_conn, json, strlen(json), WEBSOCKET_OP_TEXT);
-
+#endif	// USE_MONGOOSE
    return false;
 }
 
 bool rrclient_disconnect(void) {
+#ifdef USE_MONGOOSE
    if (ws_conn) {
       ws_conn->is_closing = 1;
       ws_conn = NULL;
    }
+#endif	// USE_MONGOOSE
    ws_connected = false;
 
    return false;
 }
 
 void rrclient_poll_events(void) {
+#ifdef	USE_MONGOOSE
    mg_mgr_poll(&mgr, 0);
+#endif // USE_MONGOOSE
 }
 
 bool rrclient_autoconnect(void) {

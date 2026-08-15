@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <arpa/inet.h>
+#include <limits.h>
 #include "build_config.h"
 #if     defined(USE_MONGOOSE)
 #include "ext/libmongoose/mongoose.h"

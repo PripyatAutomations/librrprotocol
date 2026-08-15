@@ -171,6 +171,56 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
    return false;
 }
 
+// Send the updated userinfo for a single user; see ws_send_users below for
+// everyone
+bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
+   if (!cptr || !cptr->authenticated || !cptr->user) {
+      return true;
+   }
+   const char *jp = dict2json_mkstr(VAL_INT, "talk.clones", cptr->user->clones, VAL_STR, "talk.cmd", "userinfo",
+      VAL_BOOL, "talk.muted", cptr->user->is_muted, VAL_STR, "talk.privs", cptr->user->privs, VAL_STR, "talk.user",
+      cptr->chatname, VAL_LONG, "talk.ts", now, VAL_BOOL, "talk.tx", cptr->is_ptt);
+
+#if     defined(USE_MONGOOSE)
+   struct mg_str mp = mg_str(jp);
+
+   if (acptr) {
+      ws_send_to_cptr(NULL, acptr, &mp, WEBSOCKET_OP_TEXT);
+   } else {
+      ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
+   }
+#endif
+
+   free( (char *)jp );
+
+   return false;
+}
+
+// Send info on all online users to the user
+bool ws_send_users(rrconn_t *cptr) {
+   if (!cptr) {
+      return true;
+   }
+   rrconn_t *current = http_client_list;
+
+   // iterate over all the users
+   while (current) {
+      // should this be sent to a single user?
+      if (cptr) {
+         ws_send_userinfo(current, cptr);
+      } else {
+         // nope, broadcast it
+         ws_send_userinfo(current, NULL);
+      }
+
+      if (!current->next) {
+         return false;
+      }
+      current = current->next;
+   }
+   return false;
+}
+
 ///////////////////////
 // MUTE: Mute a user //
 ///////////////////////
@@ -286,54 +336,6 @@ static bool ws_chat_cmd_syslog(rrconn_t *cptr, const char *state) {
    return false;
 }
 
-// Send the updated userinfo for a single user; see ws_send_users below for
-// everyone
-bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
-   if (!cptr || !cptr->authenticated || !cptr->user) {
-      return true;
-   }
-   const char *jp = dict2json_mkstr(VAL_INT, "talk.clones", cptr->user->clones, VAL_STR, "talk.cmd", "userinfo",
-      VAL_BOOL, "talk.muted", cptr->user->is_muted, VAL_STR, "talk.privs", cptr->user->privs, VAL_STR, "talk.user",
-      cptr->chatname, VAL_LONG, "talk.ts", now, VAL_BOOL, "talk.tx", cptr->is_ptt);
-
-#if     defined(USE_MONGOOSE)
-   struct mg_str mp = mg_str(jp);
-
-   if (acptr) {
-      ws_send_to_cptr(NULL, acptr, &mp, WEBSOCKET_OP_TEXT);
-   } else {
-      ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
-   }
-#endif
-
-   free( (char *)jp );
-
-   return false;
-}
-// Send info on all online users to the user
-bool ws_send_users(rrconn_t *cptr) {
-   if (!cptr) {
-      return true;
-   }
-   rrconn_t *current = http_client_list;
-
-   // iterate over all the users
-   while (current) {
-      // should this be sent to a single user?
-      if (cptr) {
-         ws_send_userinfo(current, cptr);
-      } else {
-         // nope, broadcast it
-         ws_send_userinfo(current, NULL);
-      }
-
-      if (!current->next) {
-         return false;
-      }
-      current = current->next;
-   }
-   return false;
-}
 
 #if     defined(USE_MONGOOSE)
 bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {

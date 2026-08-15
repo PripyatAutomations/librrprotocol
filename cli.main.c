@@ -29,6 +29,7 @@ const char *default_tls_ca_paths[] = {
 
 const char *tls_ca_path = NULL;
 bool cfg_http_debug_crazy = false;
+const char *server_name = NULL;
 
 extern time_t now;
 extern dict *cfg;                                // config.c
@@ -55,7 +56,6 @@ extern bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d);
 extern bool ws_handle_syslog_msg(struct mg_connection *c, dict *d);
 extern bool ws_handle_talk_msg(struct mg_connection *c, dict *d);
 
-const char *server_name = NULL;
 
 struct ws_msg_routes {
    const char *type;             // auth|ping|talk|cat|alert|error|hello etc

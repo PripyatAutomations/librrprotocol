@@ -25,8 +25,9 @@
 extern time_t now;
 
 // In srv.http.c
+#ifdef	USE_MONGOOSE
 extern void ws_http_cb(struct mg_connection *c, int ev, void *ev_data);
-
+#endif	// USE_MONGOOSE
 
 // This defines a hard-coded fallback path for httpd root, if not set in config
 #if     defined(HOST_POSIX)
@@ -47,7 +48,6 @@ extern rrconn_t *http_client_list;
 
 #if     defined(USE_MONGOOSE)
 extern struct mg_mgr mg_mgr;
-#endif // defined(USE_MONGOOSE)
 
 #if     defined(HTTP_USE_TLS)
 struct mg_str tls_cert;
@@ -85,6 +85,7 @@ void http_tls_init(void) {
    }
 }
 #endif // HTTP_USE_TLS
+#endif // USE_MONGOOSE
 
 bool http_init(struct mg_mgr *mgr) {
    if (!mgr) {
@@ -157,17 +158,18 @@ bool http_init(struct mg_mgr *mgr) {
    free( (char *)s );
    prepare_msg(listen_addr, sizeof(listen_addr), "http://%s:%d", inet_ntoa(sa_bind), bind_port);
 
+#ifdef	USE_MONGOOSE
    if ( !mg_http_listen(mgr, listen_addr, ws_http_cb, NULL) ) {
       Log(LOG_CRIT, "http",
          "Failed to start http listener -- is program already running or something else listening on port %d?",
          bind_port);
       exit(1);
    }
+
    Log( LOG_INFO, "http", "HTTP listening at %s with www-root at %s", listen_addr,
       (cfg_www_root ? cfg_www_root : WWW_ROOT_FALLBACK) );
 
 #if     defined(HTTP_USE_TLS)
-
    if ( cfg_get_bool("net.http.tls-enabled", false) ) {
       int tls_bind_port = cfg_get_int("net.http.tls-port", 0);
 
@@ -202,7 +204,7 @@ bool http_init(struct mg_mgr *mgr) {
       Log( LOG_INFO, "http", "HTTPS listening at %s with www-root at %s", tls_listen_addr,
          (cfg_www_root ? cfg_www_root : WWW_ROOT_FALLBACK) );
    }
-#endif
-
+#endif	// HTTP_USE_TLS
+#endif	// USE_MONGOOSE
    return false;
 }

@@ -19,12 +19,11 @@
 #include <time.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
-#if     defined(USE_MONGOOSE)
-#include "ext/libmongoose/mongoose.h"
-#endif
 
 struct ws_client {
+#ifdef USE_MONGOOSE
    struct mg_connection *conn;
+#endif
    struct ws_client *next;    // Next client in the list
 };
 
@@ -41,8 +40,9 @@ typedef struct ws_audio_frame ws_audio_frame_t;
 
 struct ws_conn {
    bool ws_connected;
+#ifdef USE_MONGOOSE
    struct mg_connection *ws_conn;
-
+#endif
 };
 typedef struct ws_conn ws_conn_t;
 
@@ -89,7 +89,6 @@ extern bool au_send_unsubscribe(u_int32_t channel);
 extern bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c);
 
 // ws_bcast.c
-extern bool send_global_alert(const char *sender, const char *data);
 extern void ws_broadcast_with_flags(u_int32_t flags, struct mg_connection *sender, struct mg_str *msg_data,
                                     int data_type);
 extern void ws_broadcast(struct mg_connection *sender, struct mg_str *msg_data, int data_type);
@@ -114,8 +113,6 @@ extern void ws_handler(struct mg_connection *c, int ev, void *ev_data);
 extern bool ws_send_ptt_cmd(struct mg_connection *c, const char *vfo, bool ptt);
 extern bool ws_send_mode_cmd(struct mg_connection *c, const char *vfo, const char *mode);
 extern bool ws_send_freq_cmd(struct mg_connection *c, const char *vfo, long freq);
-extern bool ws_send_error(rrconn_t *cptr, const char *fmt, ...);
-extern bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...);
 extern bool ws_send_notice(struct mg_connection *c, const char *fmt, ...);
 
 
@@ -124,6 +121,9 @@ extern bool ws_audio_init(void);
 extern bool ws_select_codec(struct mg_connection *c, const char *codec, bool is_tx);
 extern bool ws_binframe_process_mg(struct mg_connection *c, const char *buf, size_t len);
 #endif // defined(USE_MONGOOSE)
+extern bool ws_send_error(rrconn_t *cptr, const char *fmt, ...);
+extern bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...);
 extern bool ws_binframe_process(const char *data, size_t len);
+extern bool send_global_alert(const char *sender, const char *data);
 
 #endif // !defined(__rr_ws_h)
