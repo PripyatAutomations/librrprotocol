@@ -312,7 +312,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
    } else if (ev == MG_EV_CLOSE) {
       char resp_buf[HTTP_WS_MAX_MSG + 1];
       rrconn_t *cptr = http_find_client_by_c(c);
-      char *ip = cptr->user_ip;
+      const char *ip = cptr ? cptr->user_ip : "(unknown)";
       Log(LOG_DEBUG, "http", "http_cb MG_EV_CLOSE for cptr:<%p> c:<%p> ip:%s", cptr, c, ip);
 
       // make sure we're not accessing unsafe memory

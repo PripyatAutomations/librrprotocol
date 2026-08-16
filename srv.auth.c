@@ -460,10 +460,9 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          ws_broadcast(NULL, &ms, WEBSOCKET_OP_TEXT);
          free( (char *)jp );
 
-         // XXX: Do we need to do this twice? Shouldn't NULL be enough?
-         // Send userlist update to all users
-         ws_send_users(NULL);
-//         ws_send_users(cptr);
+         // Send the newly authorized client a complete user-list snapshot.
+         // Existing clients already receive the JOIN message above.
+         ws_send_users(cptr);
 
          // Send chat replay to the user
          jp = dict2json(d);

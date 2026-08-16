@@ -273,9 +273,11 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
    } else if (ev == MG_EV_ERROR) {
       // send (char *)ev_data content
       // { \"error\": { \"msg\": 
+      ws_connected = false;
       event_emit("http.error", NULL, NULL);
    } else if (ev == MG_EV_CLOSE) {
-      event_emit("goodbye", NULL, NULL);
+      ws_connected = false;
+      event_emit("disconnected", NULL, NULL);
    }
 }
 
