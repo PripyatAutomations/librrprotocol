@@ -131,7 +131,7 @@ const char *http_content_type(const char *type) {
    if (!type) {
       return NULL;
    }
-   int items = ( sizeof(http_res_types) / sizeof(struct http_res_types) );
+   int items = (sizeof(http_res_types) / sizeof(struct http_res_types) );
 
    for (int i = 0 ; i <= items ; i++) {
 //      printf("hct: %s, checking %d: %s\n",
@@ -179,11 +179,11 @@ bool http_static(struct mg_http_message *msg, struct mg_connection *c) {
    }
    snprintf(real_path, sizeof(real_path), "%s/%s", www_root, path);
 
-   if ( file_exists(real_path) ) {
+   if (file_exists(real_path) ) {
       // Find last '.' in the path for the extension
       const char *ext = strrchr(path, '.');
 
-      if ( ext && *(ext + 1) ) {
+      if (ext && *(ext + 1) ) {
          // lookup the mime type based on extension
          const char *ctype = http_content_type(ext + 1);
          char typebuf[256];
@@ -197,7 +197,7 @@ bool http_static(struct mg_http_message *msg, struct mg_connection *c) {
 
          return false;
       }
-   } else if ( is_dir(real_path) ) {
+   } else if (is_dir(real_path) ) {
       mg_http_serve_dir(c, msg, &opts);
 
       return false;
@@ -229,7 +229,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
    }
 
    if (ev == MG_EV_OPEN) {
-      if ( cfg_get_bool("net.http.hex-dump", false) ) {
+      if (cfg_get_bool("net.http.hex-dump", false) ) {
          c->is_hexdumping = 1;
       }
    } else if (ev == MG_EV_CONNECT) {
@@ -295,12 +295,10 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          cptr->is_ws = true;
          char msgbuf[512];
          memset( msgbuf, 0, sizeof(msgbuf) );
-         snprintf(msgbuf, sizeof(msgbuf),
-           "{ \"hello\": {"
-           "  \"swver\": \"rustyrig %s\","
-           "  \"hwver\": \"%s\""
-           "} }",
-           VERSION, HARDWARE);
+         snprintf(msgbuf, sizeof(msgbuf), "{ \"hello\": {"
+            "  \"swver\": \"rustyrig %s\","
+            "  \"hwver\": \"%s\""
+            "} }", VERSION, HARDWARE);
          mg_ws_send(c, msgbuf, strlen(msgbuf), WEBSOCKET_OP_TEXT);
       } else {
          Log(LOG_CRIT, "http", "Conn mg_conn:<%p> from %s:%d kicked: No cptr but tried to start ws", c, ip, port);
@@ -342,7 +340,8 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
 
          // We want to deal with clones
          if (cptr->user->clones < 0) {
-            Log(LOG_CRIT, "http", "Likely bug in %s in %s:%d- cptr->user->clones < 1: %d", __FUNCTION__, __FILE__, __LINE__, cptr->user->clones);
+            Log(LOG_CRIT, "http", "Likely bug in %s in %s:%d- cptr->user->clones < 1: %d", __FUNCTION__, __FILE__,
+               __LINE__, cptr->user->clones);
          }
 
          if (cptr->active) {

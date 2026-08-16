@@ -37,7 +37,7 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
    }
    time_t ts = dict_get_time_t(d, "cat.ts", now);
 
-   if ( dict_get(d, "cat.state.mode", NULL) ) {
+   if (dict_get(d, "cat.state.mode", NULL) ) {
 /*      if (poll_block_expire < now) { */
       char *vfo = dict_get(d, "cat.state.vfo", NULL);
       char *mode = dict_get(d, "cat.state.mode", NULL);

@@ -17,8 +17,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define	MAX_VFOS 2                        // maximum VFOs
-#define	DEFAULT_TOT_TIME 300              // TOT time, if not set
+#define	MAX_VFOS 2                       // maximum VFOs
+#define	DEFAULT_TOT_TIME 300             // TOT time, if not set
 
 typedef enum rr_vfo_type {
    VFO_INVALID = 0,     // Not present

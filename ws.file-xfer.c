@@ -21,7 +21,7 @@
 
 #define	CHUNK 32768
 
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
 static uint64_t gen_id(void) {
    uint64_t x = (uint64_t) mg_millis();
    uint8_t rnd[8];
@@ -48,7 +48,7 @@ static const char *rr_basename(const char *path) {
    return base;
 }
 
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
 static void ws_send_file(struct mg_connection *c, const char *path, const char *mime) {
    if (!c || !path || !mime) {
       return;
@@ -65,7 +65,7 @@ static void ws_send_file(struct mg_connection *c, const char *path, const char *
    fseeko(fp, 0, SEEK_SET);
 
    uint64_t id = gen_id();
-   uint32_t total = (uint32_t)( (fsize + CHUNK - 1) / CHUNK );
+   uint32_t total = (uint32_t)( (fsize + CHUNK - 1) / CHUNK);
 
    // meta (text frame)
    mg_ws_printf(c, WEBSOCKET_OP_TEXT,
@@ -112,11 +112,11 @@ struct xfer {
    FILE *fp;
 };
 
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
 static struct mg_str k_meta = {
    .buf = "file_meta", .len = sizeof("file_meta") - 1
 };
-#endif	// USE_MONGOOSE
+#endif // USE_MONGOOSE
 
 // Simple open-addressing table; replace with your own map if you have one
 struct slot {
@@ -157,7 +157,7 @@ static void xf_done(uint64_t id) {
    }
 }
 
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
 static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
    if (ev != MG_EV_WS_MSG) {
       return;
@@ -255,7 +255,7 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
       }
    }
 }
-#endif	// USE_MONGOOSE
+#endif // USE_MONGOOSE
 /*
  *  static void fn(struct mg_connection *c, int ev, void *ev_data, void fn_data)
  * {

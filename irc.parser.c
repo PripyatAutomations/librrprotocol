@@ -169,7 +169,7 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
    bool is_numeric = false;
    int parsed_numeric = 0;
 
-   if ( mp->argv[0] && isdigit(mp->argv[0][0]) ) {
+   if (mp->argv[0] && isdigit(mp->argv[0][0]) ) {
       parsed_numeric = atoi(mp->argv[0]);
 
       if (!parsed_numeric) {
@@ -393,7 +393,7 @@ bool irc_register_default_callbacks(void) {
          cb->event_key = strdup(cmd->event_key);
       }
 
-      if ( irc_register_callback(cb) ) {
+      if (irc_register_callback(cb) ) {
          Log(LOG_CRIT, "irc", "Failed to register callback for %s", cmd->name);
          free(cb->cmd);
          free(cb);
@@ -442,7 +442,7 @@ bool irc_register_default_numeric_callbacks(void) {
          cb->event_key = strdup(numeric->event_key);
       }
 
-      if ( irc_register_callback(cb) ) {
+      if (irc_register_callback(cb) ) {
          Log(LOG_CRIT, "irc", "Failed to register numeric %03d (%s)", numeric->code, numeric->name);
          free(cb->cmd);
          free(cb);

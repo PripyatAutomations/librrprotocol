@@ -15,7 +15,7 @@
 extern char session_token[HTTP_TOKEN_LEN + 1];
 const char *login_user = NULL;
 
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
 extern struct mg_mgr mgr;
 struct mg_connection *ws_conn = NULL;
 
@@ -44,9 +44,9 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
             Log(LOG_CRAZY, "http.pong", "Received pong ts:%s", pong_ts);
          } else if (cmd && strcasecmp(cmd, "msg") == 0) {
             event_emit_dict("talk.msg", NULL, d);
-         } else if ( dict_get(d, "hello", NULL) ) {
+         } else if (dict_get(d, "hello", NULL) ) {
             Log(LOG_DEBUG, "ws", "Got hello from server");
-         } else if ( dict_get(d, "auth.cmd", NULL) ) {
+         } else if (dict_get(d, "auth.cmd", NULL) ) {
             Log(LOG_DEBUG, "ws", "Got auth message");
          }
          dict_free(d);
@@ -56,21 +56,19 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
       login_user = get_server_property(server_name, "server.user");
 
       if (login_user) {
-         const char *jp = dict2json_mkstr(VAL_STR, "hello", "rrcli",
-                                          VAL_STR, "hello.swver", VERSION,
-                                          VAL_STR, "hello.hwver", "client");
+         const char *jp = dict2json_mkstr(VAL_STR, "hello", "rrcli", VAL_STR, "hello.swver", VERSION, VAL_STR,
+            "hello.hwver", "client");
          mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
          free( (void *)jp );
 
-         jp = dict2json_mkstr(VAL_STR, "auth.cmd", "login",
-                              VAL_STR, "auth.user", login_user);
+         jp = dict2json_mkstr(VAL_STR, "auth.cmd", "login", VAL_STR, "auth.user", login_user);
          mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
          free( (void *)jp );
       }
 
       dict *d = dict_new();
       char ts_s[64];
-      memset(ts_s, 0, sizeof(ts_s));
+      memset( ts_s, 0, sizeof(ts_s) );
       snprintf(ts_s, sizeof(ts_s), "%lu", now);
       dict_add(d, "login.ts", ts_s);
       dict_add(d, "login.user", (char *)login_user);
@@ -88,8 +86,9 @@ bool rrclient_connect(const char *url) {
       return true;
    }
    event_emit("connecting", NULL, NULL);
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
    ws_conn = mg_ws_connect(&mgr, url, rrclient_ws_handler, NULL, NULL);
+
    if (!ws_conn) {
       event_emit("http.error", NULL, NULL);
 
@@ -106,7 +105,8 @@ bool rrclient_send_chat(const char *data) {
    }
    const char *jp = dict2json_mkstr(VAL_STR, "talk.cmd", "msg", VAL_STR, "talk.data", data, VAL_STR, "talk.msg_type",
       "pub");
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
+
    if (!ws_conn) {
       return true;
    }
@@ -121,29 +121,32 @@ bool rrclient_send(const char *json) {
    if (!json) {
       return true;
    }
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
+
    if (!ws_conn) {
       return true;
    }
    mg_ws_send(ws_conn, json, strlen(json), WEBSOCKET_OP_TEXT);
-#endif	// USE_MONGOOSE
+#endif // USE_MONGOOSE
+
    return false;
 }
 
 bool rrclient_disconnect(void) {
 #ifdef USE_MONGOOSE
+
    if (ws_conn) {
       ws_conn->is_closing = 1;
       ws_conn = NULL;
    }
-#endif	// USE_MONGOOSE
+#endif // USE_MONGOOSE
    ws_connected = false;
 
    return false;
 }
 
 void rrclient_poll_events(void) {
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
    mg_mgr_poll(&mgr, 0);
 #endif // USE_MONGOOSE
 }

@@ -117,7 +117,7 @@ bool irc_builtin_part_cb(rrconn_t *cptr, irc_message_t *mp) {
    if (nick_end) {
       size_t nicklen = nick_end - mp->prefix;
 
-      if ( nicklen > 0 && nicklen < sizeof(tmp_nick) ) {
+      if (nicklen > 0 && nicklen < sizeof(tmp_nick) ) {
          snprintf(tmp_nick, sizeof(tmp_nick), "%.*s", (int)nicklen, mp->prefix);
       }
    }

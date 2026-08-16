@@ -66,7 +66,7 @@ static bool http_help(struct mg_http_message *msg, struct mg_connection *c) {
    }
 
    // Sanity check the topic doesnt contain illegal characters like .. or /
-   if ( check_url(topic) ) {
+   if (check_url(topic) ) {
       Log(LOG_AUDIT, "http.api", "Topic |%s| contains sketch characters, bailing from http_help", help_path);
 
       return true;
@@ -164,7 +164,7 @@ bool http_dispatch_route(struct mg_http_message *msg, struct mg_connection *c) {
    if (!c || !msg) {
       return true;
    }
-   int items = ( sizeof(http_routes) / sizeof(http_route_t) ) - 1;
+   int items = (sizeof(http_routes) / sizeof(http_route_t) ) - 1;
 
    for (int i = 0 ; i < items ; i++) {
       int rv = 0;

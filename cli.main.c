@@ -64,17 +64,37 @@ struct ws_msg_routes {
 };
 
 struct ws_msg_routes ws_routes_cli[] = {
-   { .type = "alert", .cb = ws_handle_alert_msg },
-   { .type = "auth", .cb = ws_handle_client_auth_msg },
-   { .type = "cat", .cb = ws_handle_rigctl_cli_msg },
-   { .type = "error", .cb = ws_handle_error_msg },
-   { .type = "hello", .cb = ws_handle_hello_msg },
+   {
+      .type = "alert", .cb = ws_handle_alert_msg
+   },
+   {
+      .type = "auth", .cb = ws_handle_client_auth_msg
+   },
+   {
+      .type = "cat", .cb = ws_handle_rigctl_cli_msg
+   },
+   {
+      .type = "error", .cb = ws_handle_error_msg
+   },
+   {
+      .type = "hello", .cb = ws_handle_hello_msg
+   },
 //   { .type = "media", .cb = ws_handle_media_msg },
-   { .type = "notice", .cb = ws_handle_notice_msg },
-   { .type = "ping", .cb = ws_handle_ping_msg },
-   { .type = "syslog", .cb = ws_handle_syslog_msg },
-   { .type = "talk", .cb = ws_handle_talk_msg },
-   { .type = NULL, .cb = NULL }
+   {
+      .type = "notice", .cb = ws_handle_notice_msg
+   },
+   {
+      .type = "ping", .cb = ws_handle_ping_msg
+   },
+   {
+      .type = "syslog", .cb = ws_handle_syslog_msg
+   },
+   {
+      .type = "talk", .cb = ws_handle_talk_msg
+   },
+   {
+      .type = NULL, .cb = NULL
+   }
 };
 
 bool ws_handle_hello_msg(struct mg_connection *c, dict *d) {
@@ -130,6 +150,7 @@ static bool ws_txtframe_dispatch(struct mg_connection *c, struct mg_ws_message *
       // see if this exists in the json
       if (mg_json_get(msg_data, json_req, NULL) > 0) {
 #ifdef HTTP_DEBUG_CRAZY
+
          // log the message in crazy mode *IF* its not a ping or CAT message
          if (cfg_http_debug_crazy && strcasecmp(rp[i].type, "cat") != 0 &&
              strcasecmp(rp[i].type, "ping") != 0) {
@@ -199,6 +220,7 @@ bool ws_handle_cli(struct mg_connection *c, struct mg_ws_message *msg) {
       return true;
    }
 #if     defined(HTTP_DEBUG_CRAZY)
+
    if (cfg_http_debug_crazy) {
       Log(LOG_CRAZY, "http", "WS msg: %.*s", (int) msg->data.len, msg->data.buf);
    }
@@ -224,6 +246,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 
    if (ev == MG_EV_OPEN) {
 #if     defined(HTTP_DEBUG_CRAZY)
+
       if (cfg_http_debug_crazy) {
          c->is_hexdumping = 1;
       }
@@ -272,7 +295,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       }
    } else if (ev == MG_EV_ERROR) {
       // send (char *)ev_data content
-      // { \"error\": { \"msg\": 
+      // { \"error\": { \"msg\":
       ws_connected = 0;
       event_emit("http.error", NULL, NULL);
    } else if (ev == MG_EV_CLOSE) {
@@ -285,8 +308,8 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 void ws_client_init(void) {
    const char *debug = cfg_get_exp("debug.http");
 
-   if ( debug && (strcasecmp(debug, "true") == 0 ||
-                  strcasecmp(debug, "yes") == 0) ) {
+   if (debug && (strcasecmp(debug, "true") == 0 ||
+                 strcasecmp(debug, "yes") == 0) ) {
 #if     defined(USE_MONGOOSE)
       mg_log_set(MG_LL_DEBUG);   // or MG_LL_VERBOSE for even more
 #endif
@@ -298,8 +321,8 @@ void ws_client_init(void) {
    free( (void *)debug );
    const char *debug_crazy = cfg_get_exp("debug.http.crazy");
 
-   if ( debug_crazy && (strcasecmp(debug_crazy, "true") == 0 ||
-                        strcasecmp(debug_crazy, "yes") == 0) ) {
+   if (debug_crazy && (strcasecmp(debug_crazy, "true") == 0 ||
+                       strcasecmp(debug_crazy, "yes") == 0) ) {
       cfg_http_debug_crazy = true;
    }
    free( (void *)debug_crazy );
@@ -340,11 +363,17 @@ struct ws_msg_routes ws_routes[] = {
    {
       .type = "auth", .cb = ws_handle_auth_msg, .auth_reqd = false
    },
-   { .type = "hello", .cb = ws_handle_hello_msg,  .auth_reqd = false },
+   {
+      .type = "hello", .cb = ws_handle_hello_msg, .auth_reqd = false
+   },
 //   { .type = "media", .cb = ws_handle_media_msg, .auth_reqd = true },
-   { .type = "ping",  .cb = ws_handle_ping_msg,  .auth_reqd = false },
+   {
+      .type = "ping", .cb = ws_handle_ping_msg, .auth_reqd = false
+   },
 //   { .type = "pong",  .cb = ws_handle_pong_msg,  .auth_reqd = false },
-   { .type = "cat",   .cb = ws_handle_rigctl_msg,   .auth_reqd = true },
+   {
+      .type = "cat", .cb = ws_handle_rigctl_msg, .auth_reqd = true
+   },
 //   { .type = "talk",  .cb = ws_handle_talk_msg,  .auth_reqd = true },
 //   { .type = "talk.cmd", .cb = ws_handle_talk_cmd, .auth_reqd = false },
 //   { .type = "talk.quit", .cb = ws_handle_quit,  .auth_reqd = false },
@@ -386,7 +415,7 @@ void ws_send_to_name(struct mg_connection *sender, const char *username, struct 
    rrconn_t *current = http_client_list;
    while (current) {
       // Messages from the server will have NULL sender
-      if ( !sender || (current->is_ws && current->conn != sender) ) {
+      if (!sender || (current->is_ws && current->conn != sender) ) {
          ws_send_to_cptr(sender, current, msg_data, data_type);
       }
       current = current->next;
@@ -528,7 +557,7 @@ static bool ws_handle_pong(struct mg_ws_message *msg, struct mg_connection *c) {
    }
    struct mg_str msg_data = msg->data;
 
-   if ( !( ts = mg_json_get_str(msg_data, "$.pong.ts") ) ) {
+   if (!(ts = mg_json_get_str(msg_data, "$.pong.ts") ) ) {
       Log(LOG_WARN, "http.ws", "ws_handle_pong: PONG from user with no timestamp");
       rv = true;
       goto cleanup;
@@ -547,7 +576,7 @@ static bool ws_handle_pong(struct mg_ws_message *msg, struct mg_connection *c) {
    }
    time_t ping_expiry = ts_t + HTTP_PING_TIME;
 
-   if ( (ping_expiry) < now ) {
+   if ( (ping_expiry) < now) {
       Log(LOG_AUDIT, "http.pong",
          "Late ping for mg_conn:<%p> on cptr:<%p> from %s:%d ts: %li + %li (timeout) < now %li", c, cptr, ip, port,
          ts_t, HTTP_PING_TIMEOUT, now);

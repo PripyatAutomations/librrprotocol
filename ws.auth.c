@@ -83,6 +83,7 @@ bool ws_handle_client_auth_msg(struct mg_connection *c, dict *d) {
       // Let the UI promote its connection indicator only after the server has
       // completed the authentication handshake.
       const char *json = dict2json(d);
+
       if (json) {
          event_emit("authorized", NULL, json);
          free( (void *)json );

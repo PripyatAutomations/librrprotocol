@@ -23,7 +23,7 @@
 #include <librrprotocol/rrprotocol.h>
 
 extern time_t now;
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
 rrconn_t *http_find_client_by_c(struct mg_connection *c) {
    if (!c) {
       return NULL;
@@ -104,7 +104,7 @@ rrconn_t *http_find_client_by_name(const char *name) {
       Log(LOG_CRAZY, "http.core", "find client by name: i: %d user:<%p> chatname: %s", i, cptr->user, cptr->chatname);
 
       // incomplete entry
-      if ( !cptr->user || (cptr->chatname[0] == '\0') ) {
+      if (!cptr->user || (cptr->chatname[0] == '\0') ) {
          cptr = cptr->next;
          continue;
       }
@@ -138,7 +138,7 @@ void http_dump_clients(void) {
    }
 }
 // Add a new client to the client list (HTTP or WebSocket)
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
 rrconn_t *http_add_client(struct mg_connection *c, bool is_ws) {
    rrconn_t *cptr = (rrconn_t *)malloc( sizeof(rrconn_t) );
 
@@ -214,7 +214,7 @@ void http_remove_client(struct mg_connection *c) {
       current = current->next;
    }
 }
-#endif	// USE_MONGOOSE
+#endif // USE_MONGOOSE
 
 // Counts only websocket clients that are logged in
 int http_count_clients(void) {

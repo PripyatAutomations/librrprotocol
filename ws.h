@@ -61,13 +61,13 @@ extern void ws_send_to_cptr(struct mg_connection *sender, rrconn_t *acptr, struc
 extern void ws_send_to_name(struct mg_connection *sender, const char *username, struct mg_str *msg_data, int data_type);
 
 extern bool ws_kick_client(rrconn_t *cptr, const char *reason);                     // disconnect
-                                                                                         // a
-                                                                                         // user,
-                                                                                         // if
-                                                                                         // we
-                                                                                         // can
-                                                                                         // find
-                                                                                         // them
+// a
+// user,
+// if
+// we
+// can
+// find
+// them
 extern bool ws_kick_client_by_c(struct mg_connection *c, const char *reason);
 extern bool ws_kick_by_name(const char *name, const char *reason);
 extern bool ws_kick_by_uid(int uid, const char *reason);
