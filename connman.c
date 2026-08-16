@@ -22,8 +22,8 @@ char active_server[SERVERLEN] = {
    0
 };
 rr_connection_t *active_connections = NULL;
-bool ws_connected = false;
-bool ws_tx_connected = false;
+int ws_connected = 0;
+int ws_tx_connected = 0;
 bool server_ptt_state = false;
 
 rr_connection_t *connection_find(const char *server) {
@@ -123,7 +123,7 @@ bool rrproto_disconnect_server(const char *server) {
  *  }
  */
 #endif
-   ws_connected = false;
+   ws_connected = 0;
    event_emit("goodbye", NULL, NULL);
 
    return false;
@@ -153,7 +153,7 @@ bool rrproto_connect_server(const char *server) {
 
       return true;
    }
-   ws_connected = true;
+   ws_connected = 1;
    event_emit("connected", NULL, NULL);
 #else
    // No mongoose transport available; emit event for higher-level code to

@@ -44,8 +44,8 @@ extern char active_server[512];
 extern rr_connection_t *active_connections;
 extern bool disconnect_server(const char *server);
 extern bool connect_server(const char *server);
-extern bool ws_connected;
-extern bool ws_tx_connected;
+extern int ws_connected;
+extern int ws_tx_connected;
 #if defined(USE_MONGOOSE)
 extern struct mg_connection *ws_conn;
 extern struct mg_connection *ws_tx_conn;

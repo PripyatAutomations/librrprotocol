@@ -198,9 +198,6 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
 
 // Send info on all online users to the user
 bool ws_send_users(rrconn_t *cptr) {
-   if (!cptr) {
-      return true;
-   }
    rrconn_t *current = http_client_list;
 
    // iterate over all the users

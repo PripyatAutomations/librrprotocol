@@ -37,7 +37,7 @@ extern dict *cfg;                                // config.c
 struct mg_mgr mgr;
 struct mg_str tls_ca_path_str;
 #endif
-extern bool ws_connected;
+extern int ws_connected;
 extern const char *get_server_property(const char *server, const char *prop);
 extern bool cfg_show_pings;
 
@@ -249,7 +249,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          }
          mg_tls_init(c, &opts);
       }
-      ws_connected = true;
+      ws_connected = 1;
 
       const char *login_user = get_server_property(this_server, "server.user");
       Log(LOG_DEBUG, "ws", "ev_ws_connect: server: |%s| user: |%s|", server_name, login_user);
@@ -273,10 +273,10 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
    } else if (ev == MG_EV_ERROR) {
       // send (char *)ev_data content
       // { \"error\": { \"msg\": 
-      ws_connected = false;
+      ws_connected = 0;
       event_emit("http.error", NULL, NULL);
    } else if (ev == MG_EV_CLOSE) {
-      ws_connected = false;
+      ws_connected = 0;
       event_emit("disconnected", NULL, NULL);
    }
 }

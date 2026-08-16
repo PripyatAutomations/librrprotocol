@@ -283,8 +283,8 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    } else if (strcasecmp(cmd, "logout") == 0 || strcasecmp(cmd, "quit") == 0) {
       rrconn_t *cptr = http_find_client_by_c(c);
       Log(LOG_DEBUG, "auth", "Logout request from %s (cptr:<%p> mg_conn:<%p>",
-         (cptr->chatname[0] != '\0' ? cptr->chatname : ""), cptr, c);
-      ws_kick_client_by_c(c, "Logged out. 73!");
+         (cptr && cptr->chatname[0] != '\0' ? cptr->chatname : ""), cptr, c);
+      ws_kick_client(cptr, "Logged out. 73!");
    } else if (strcasecmp(cmd, "pass") == 0) {
       bool guest = false;
 
@@ -460,9 +460,8 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          ws_broadcast(NULL, &ms, WEBSOCKET_OP_TEXT);
          free( (char *)jp );
 
-         // Send the newly authorized client a complete user-list snapshot.
-         // Existing clients already receive the JOIN message above.
-         ws_send_users(cptr);
+         // Broadcast the complete, updated user-list snapshot to all users.
+         ws_send_users(NULL);
 
          // Send chat replay to the user
          jp = dict2json(d);

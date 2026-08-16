@@ -11,7 +11,7 @@
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/rrclient.h>
 #include <rrclient/ui.h>
-extern bool ws_connected;
+
 extern char session_token[HTTP_TOKEN_LEN + 1];
 const char *login_user = NULL;
 

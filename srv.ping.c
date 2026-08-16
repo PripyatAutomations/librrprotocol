@@ -25,7 +25,6 @@ extern dict *cfg;                                // config.c
 extern struct mg_mgr mgr;
 #endif
 bool cfg_show_pings = true;          // cfg:ui.show-pings=false in rrserver.cfg
-extern bool ws_connected;
 extern const char *get_server_property(const char *server, const char *prop);
 extern bool cfg_http_debug_crazy;
 
