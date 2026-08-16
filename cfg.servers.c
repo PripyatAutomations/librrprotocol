@@ -159,6 +159,8 @@ bool add_server(const char *network, const char *str) {
    return true;
 }
 
+#if	0
+
 ///////////////
 // XXX: upgrade this to be able to be called by a timer
 // XXX: It should check for an existing connection to each network
@@ -172,11 +174,14 @@ bool autoconnect(void) {
       // Split this on ',' and connect to allow configured networks
       char *sp = strtok(tv, ", ");
 
+      // use a dictionary to store this stuff
+      dict *d = dict_new();
+
       while (sp) {
          char this_network[256];
          memset( this_network, 0, sizeof(this_network) );
          snprintf(this_network, sizeof(this_network), "%s", sp);
-         event_emit("autoconnect", NULL, NULL);
+         dict_add(d, "autoconnect.network", this_network);
          rrlist_t *temp_list = NULL;   // head of temporary list
 
          server_cfg_t *srvp = server_list;
@@ -225,7 +230,6 @@ bool autoconnect(void) {
          rrlist_t *node = temp_list;
          while (node) {
             server_cfg_t *srv = node->ptr;
-            event_emit("connecting", NULL, NULL);
 #if     0
             rrconn_t *cli;
 
@@ -234,6 +238,7 @@ bool autoconnect(void) {
                rrlist_add(&irc_client_conns, cli, LIST_TAIL);
             }
 #endif
+            event_emit("connecting", NULL, d);
             node = node->next;
          }
          sp = strtok(NULL, " ,");
@@ -243,5 +248,8 @@ bool autoconnect(void) {
       networks = NULL;
    }
 
+   dict_free(d);
+
    return false;
 }
+#endif

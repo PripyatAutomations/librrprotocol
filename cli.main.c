@@ -253,7 +253,10 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 #endif
    } else if (ev == MG_EV_CONNECT) {
       // send the connected event
-      event_emit("connected", NULL, NULL);
+      dict *d = dict_new();
+      dict_add(d, "connected.server", (char *)server_name);
+      event_emit_dict("connected", NULL, d);
+      dict_free(d);
    } else if (ev == MG_EV_WRITE) {
       // Handle writing audio frames one by one
    } else if (ev == MG_EV_WS_OPEN) {
@@ -282,9 +285,12 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 
          return;
       }
-      const char *jp = dict2json_mkstr(VAL_STR, "auth.user", login_user, VAL_STR, "auth.server", server_name);
-      event_emit("connected", NULL, (char *)jp);
-      free( (void *)jp );
+      dict *d = dict_new();
+      dict_add(d, "auth.user", (char *)login_user);
+      dict_add(d, "auth.server", (char *)server_name);
+      event_emit_dict("connected", NULL, d);
+      dict_free(d);
+
       ws_send_hello(c);
       ws_send_login(c, login_user);
    } else if (ev == MG_EV_WS_MSG) {
@@ -297,10 +303,25 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       // send (char *)ev_data content
       // { \"error\": { \"msg\":
       ws_connected = 0;
-      event_emit("http.error", NULL, NULL);
+      struct mg_ws_message *msg = (struct mg_ws_message *)ev_data;
+
+      char buf[HTTP_WS_MAX_MSG + 1];
+      memset(buf, 0, sizeof(buf));
+
+      if (msg && msg->data.buf) {
+         memset( buf, 0, sizeof(buf) );
+         memcpy(buf, msg->data.buf, msg->data.len);
+      }
+      dict *d = dict_new();
+      dict_add(d, "error.msg", buf);
+      event_emit_dict("http.error", NULL, d);
+      dict_free(d);
    } else if (ev == MG_EV_CLOSE) {
       ws_connected = 0;
-      event_emit("disconnected", NULL, NULL);
+      dict *d = dict_new();
+      dict_add(d, "disconnected.server", (char *)server_name);
+      event_emit_dict("disconnected", NULL, d);
+      dict_free(d);
    }
 }
 
