@@ -30,15 +30,15 @@ extern void ws_http_cb(struct mg_connection *c, int ev, void *ev_data);
 #endif // USE_MONGOOSE
 
 // This defines a hard-coded fallback path for httpd root, if not set in config
-#if     defined(HOST_POSIX)
-#if     !defined(INSTALL_PREFIX)
+#ifdef	HOST_POSIX
+#ifndef	INSTALL_PREFIX
 #define	WWW_ROOT_FALLBACK "./www"
 #define	WWW_404_FALLBACK "./www/404.html"
-#endif // !defined(INSTALL_PREFIX)
+#endif // !INSTALL_PREFIX
 #else
 #define	WWW_ROOT_FALLBACK "fs:www/"
 #define	WWW_404_FALLBACK "fs:www/404.html"
-#endif // defined(HOST_POSIX).else
+#endif // HOST_POSIX.else
 
 extern char www_root[PATH_MAX];
 extern char www_fw_ver[128];
@@ -46,10 +46,10 @@ extern char www_headers[32768];
 extern char www_404_path[PATH_MAX];
 extern rrconn_t *http_client_list;
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 extern struct mg_mgr mg_mgr;
 
-#if     defined(HTTP_USE_TLS)
+#ifdef	HTTP_USE_TLS
 struct mg_str tls_cert;
 struct mg_str tls_key;
 
@@ -96,8 +96,7 @@ bool http_init(struct mg_mgr *mgr) {
    const char *cfg_www_root = cfg_get_exp("net.http.www-root");
    const char *cfg_404_path = cfg_get_exp("net.http.404-path");
 
-#if     defined(USE_EEPROM)
-
+#ifdef	USE_EEPROM
    if (!cfg_www_root) {
       cfg_www_root = eeprom_get_str("net/http/www-root");
    }
@@ -105,7 +104,7 @@ bool http_init(struct mg_mgr *mgr) {
    if (!cfg_404_path) {
       cfg_404_path = eeprom_get_str("net/http/404-path");
    }
-#endif
+#endif	// USE_EEPROM
 
 #if     0 // XXX: fix this
    // store firmware version in www_fw_ver
@@ -113,7 +112,7 @@ bool http_init(struct mg_mgr *mgr) {
 
    // and make our headers
    prepare_msg(www_headers, sizeof(www_headers), "%s\r\n", www_fw_ver);
-#endif
+#endif	// 0
 
    // store the 404 path if available
    if (cfg_404_path) {
@@ -141,25 +140,24 @@ bool http_init(struct mg_mgr *mgr) {
    struct in_addr sa_bind;
    char listen_addr[255];
    int bind_port = cfg_get_int("net.http.port", 0);
-#if     defined(USE_EEPROM)
 
+#ifdef	USE_EEPROM
    if (!bind_port) {
       bind_port = eeprom_get_int("net/http/port");
    }
-#endif
+#endif	// USE_EEPROM
 
    const char *s = cfg_get("net.http.bind");
 
    if (!s || !inet_aton(s, &sa_bind) ) {
-#if     defined(USE_EEPROM)
+#ifdef	USE_EEPROM
       eeprom_get_ip4("net/http/bind", &sa_bind);
-#endif
+#endif	// USE_EEPROM
    }
    free( (char *)s );
    prepare_msg(listen_addr, sizeof(listen_addr), "http://%s:%d", inet_ntoa(sa_bind), bind_port);
 
 #ifdef  USE_MONGOOSE
-
    if (!mg_http_listen(mgr, listen_addr, ws_http_cb, NULL) ) {
       Log(LOG_CRIT, "http",
          "Failed to start http listener -- is program already running or something else listening on port %d?",
@@ -170,25 +168,23 @@ bool http_init(struct mg_mgr *mgr) {
    Log( LOG_INFO, "http", "HTTP listening at %s with www-root at %s", listen_addr,
       (cfg_www_root ? cfg_www_root : WWW_ROOT_FALLBACK) );
 
-#if     defined(HTTP_USE_TLS)
-
+#ifdef	HTTP_USE_TLS
    if (cfg_get_bool("net.http.tls-enabled", false) ) {
       int tls_bind_port = cfg_get_int("net.http.tls-port", 0);
 
-#if     defined(USE_EEPROM)
-
+#ifdef	USE_EEPROM
       if (!tls_bind_port) {
          tls_bind_port = eeprom_get_int("net/http/tls_port");
       }
-#endif
+#endif	// USE_EEPROM
 
       struct in_addr sa_tls_bind;
       s = cfg_get_exp("net.http.tls-bind");
 
       if (!s || !inet_aton(s, &sa_tls_bind) ) {
-#if     defined(USE_EEPROM)
+#ifdef	USE_EEPROM
          eeprom_get_ip4("net/http/bind", &sa_tls_bind);
-#endif
+#endif	// USE_EEPROM
       }
       free( (char *)s );
       s = NULL;
@@ -208,6 +204,5 @@ bool http_init(struct mg_mgr *mgr) {
    }
 #endif // HTTP_USE_TLS
 #endif // USE_MONGOOSE
-
    return false;
 }

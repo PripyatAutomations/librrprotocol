@@ -19,32 +19,29 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-// At startup, we try to find the distribution's TLS certificate authority trust
-// store
+
+extern const char *get_server_property(const char *server, const char *prop);
+extern time_t now;
+extern dict *cfg;                                // config.c
+extern int ws_connected;
+extern bool cfg_show_pings;
+const char *tls_ca_path = NULL;
+bool cfg_http_debug_crazy = false;
+const char *server_name = NULL;
+
+// At startup, we try to find the distribution's TLS certificate authority trust store
 const char *default_tls_ca_paths[] = {
    "/etc/ssl/certs/ca-certificates.crt",
    "/etc/pki/tls/certs/ca-bundle.crt",
    "/etc/ssl/cert.pem"
 };
 
-const char *tls_ca_path = NULL;
-bool cfg_http_debug_crazy = false;
-const char *server_name = NULL;
-
-extern time_t now;
-extern dict *cfg;                                // config.c
-#if     defined(USE_MONGOOSE)
-struct mg_mgr mgr;
-struct mg_str tls_ca_path_str;
-#endif
-extern int ws_connected;
-extern const char *get_server_property(const char *server, const char *prop);
-extern bool cfg_show_pings;
-
 //////////////////////
 // Websocket router //
 //////////////////////
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
+struct mg_mgr mgr;
+struct mg_str tls_ca_path_str;
 extern bool ws_handle_alert_msg(struct mg_connection *c, dict *d);
 extern bool ws_handle_client_auth_msg(struct mg_connection *c, dict *d);
 extern bool ws_handle_error_msg(struct mg_connection *c, dict *d);
@@ -64,37 +61,17 @@ struct ws_msg_routes {
 };
 
 struct ws_msg_routes ws_routes_cli[] = {
-   {
-      .type = "alert", .cb = ws_handle_alert_msg
-   },
-   {
-      .type = "auth", .cb = ws_handle_client_auth_msg
-   },
-   {
-      .type = "cat", .cb = ws_handle_rigctl_cli_msg
-   },
-   {
-      .type = "error", .cb = ws_handle_error_msg
-   },
-   {
-      .type = "hello", .cb = ws_handle_hello_msg
-   },
+   { .type = "alert", .cb = ws_handle_alert_msg },
+   { .type = "auth", .cb = ws_handle_client_auth_msg },
+   { .type = "cat", .cb = ws_handle_rigctl_cli_msg },
+   { .type = "error", .cb = ws_handle_error_msg },
+   { .type = "hello", .cb = ws_handle_hello_msg },
 //   { .type = "media", .cb = ws_handle_media_msg },
-   {
-      .type = "notice", .cb = ws_handle_notice_msg
-   },
-   {
-      .type = "ping", .cb = ws_handle_ping_msg
-   },
-   {
-      .type = "syslog", .cb = ws_handle_syslog_msg
-   },
-   {
-      .type = "talk", .cb = ws_handle_talk_msg
-   },
-   {
-      .type = NULL, .cb = NULL
-   }
+   { .type = "notice", .cb = ws_handle_notice_msg },
+   { .type = "ping", .cb = ws_handle_ping_msg },
+   { .type = "syslog", .cb = ws_handle_syslog_msg },
+   {  .type = "talk", .cb = ws_handle_talk_msg },
+   { .type = NULL, .cb = NULL }
 };
 
 bool ws_handle_hello_msg(struct mg_connection *c, dict *d) {
@@ -150,13 +127,13 @@ static bool ws_txtframe_dispatch(struct mg_connection *c, struct mg_ws_message *
       // see if this exists in the json
       if (mg_json_get(msg_data, json_req, NULL) > 0) {
 #ifdef HTTP_DEBUG_CRAZY
-
          // log the message in crazy mode *IF* its not a ping or CAT message
          if (cfg_http_debug_crazy && strcasecmp(rp[i].type, "cat") != 0 &&
              strcasecmp(rp[i].type, "ping") != 0) {
             Log(LOG_CRAZY, "ws.router", "Matched route #%d for message type %s", i, rp[i].type);
          }
-#endif
+#endif	// HTTP_DEBUG_CRAZY
+
          /* Emit a generic event for this raw websocket message type so other parts of the
           * system can listen to socket-level messages without depending on the current
           * in-process handlers. The existing handler is still called afterwards for
@@ -182,7 +159,7 @@ static bool ws_txtframe_dispatch(struct mg_connection *c, struct mg_ws_message *
    return true;
 }
 
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE
 
 bool ws_binframe_process(const char *data, size_t len) {
    if (!data || len <= 10) {
@@ -191,7 +168,8 @@ bool ws_binframe_process(const char *data, size_t len) {
 
       return true;
    }
-#if     defined(DEBUG_WS_BINFRAMES)
+
+#ifdef	DEBUG_WS_BINFRAMES
    char hex[128] = {
       0
    };
@@ -202,7 +180,7 @@ bool ws_binframe_process(const char *data, size_t len) {
    }
 
    Log(LOG_DEBUG, "http.ws", "binary: %zu bytes, hex: %s", len, hex);
-#endif
+#endif	// DEBUG_WS_BINFRAMES
 
 //   audio_process_frame(data, len);
    return false;
@@ -212,19 +190,19 @@ bool ws_binframe_process(const char *data, size_t len) {
 // Handle a websocket request (see http.c/http_cb for case ev == MG_EV_WS_MSG)
 //
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 bool ws_handle_cli(struct mg_connection *c, struct mg_ws_message *msg) {
    if (!c || !msg || !msg->data.buf) {
       Log( LOG_DEBUG, "http.ws", "ws_handle got c <%p> msg <%p> data <%p>", c, msg, (msg ? msg->data.buf : NULL) );
 
       return true;
    }
-#if     defined(HTTP_DEBUG_CRAZY)
 
+#ifdef	HTTP_DEBUG_CRAZY
    if (cfg_http_debug_crazy) {
       Log(LOG_CRAZY, "http", "WS msg: %.*s", (int) msg->data.len, msg->data.buf);
    }
-#endif
+#endif	// HTTP_DEBUG_CRAZY
 
    if (msg->flags & WEBSOCKET_OP_BINARY) {
       // Binary (audio, waterfall, etc) frames
@@ -245,12 +223,11 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
    }
 
    if (ev == MG_EV_OPEN) {
-#if     defined(HTTP_DEBUG_CRAZY)
-
+#ifdef	HTTP_DEBUG_CRAZY
       if (cfg_http_debug_crazy) {
          c->is_hexdumping = 1;
       }
-#endif
+#endif	// HTTP_DEBUG_CRAZY
    } else if (ev == MG_EV_CONNECT) {
       // send the connected event
       dict *d = dict_new();
@@ -324,20 +301,19 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       dict_free(d);
    }
 }
-
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE
 void ws_client_init(void) {
    const char *debug = cfg_get_exp("debug.http");
 
    if (debug && (strcasecmp(debug, "true") == 0 ||
                  strcasecmp(debug, "yes") == 0) ) {
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
       mg_log_set(MG_LL_DEBUG);   // or MG_LL_VERBOSE for even more
-#endif
+#endif	// USE_MONGOOSE
    } else {
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
       mg_log_set(MG_LL_ERROR);
-#endif
+#endif	// USE_MONGOOSE
    }
    free( (void *)debug );
    const char *debug_crazy = cfg_get_exp("debug.http.crazy");
@@ -348,9 +324,9 @@ void ws_client_init(void) {
    }
    free( (void *)debug_crazy );
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
    mg_mgr_init(&mgr);
-#endif
+#endif	// USE_MONGOOSE
 
 // XXX: Fix this
 //   tls_ca_path = find_file_by_list(default_tls_ca_paths,
@@ -360,12 +336,12 @@ void ws_client_init(void) {
    }
 
    if (tls_ca_path) {
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
       // turn it into a mongoose string
       tls_ca_path_str = mg_str(tls_ca_path);
       Log(LOG_DEBUG, "ws", "Setting TLS CA path to <%p> %s with target mg_str at <%p>", tls_ca_path, tls_ca_path,
          tls_ca_path_str);
-#endif
+#endif	// USE_MONGOOSE
    } else {
       Log(LOG_CRIT, "ws", "unable to find TLS CA file");
       exit(1);
@@ -379,7 +355,7 @@ void ws_client_init(void) {
 // XXX: We need to move to a similar arrangement as the client,
 // XXX: so these can be properly split across multiple source files
 // XXX: and accessed in a pleasant way...
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 struct ws_msg_routes ws_routes[] = {
    {
       .type = "auth", .cb = ws_handle_auth_msg, .auth_reqd = false
@@ -399,13 +375,13 @@ struct ws_msg_routes ws_routes[] = {
 //   { .type = "talk.cmd", .cb = ws_handle_talk_cmd, .auth_reqd = false },
 //   { .type = "talk.quit", .cb = ws_handle_quit,  .auth_reqd = false },
 };
-#endif
+#endif	// USE_MONGOOSE
 
 bool rrproto_ws_connect(int server) {
    return false;
 }
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 bool ws_init(struct mg_mgr *mgr) {
    if (!mgr) {
       Log(LOG_CRIT, "ws", "ws_init called with NULL mgr");
@@ -443,7 +419,7 @@ void ws_send_to_name(struct mg_connection *sender, const char *username, struct 
    }
 }
 
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE
 
 bool ws_kick_by_name(const char *name, const char *reason) {
    if (!http_client_list) {
@@ -452,7 +428,7 @@ bool ws_kick_by_name(const char *name, const char *reason) {
    rrconn_t *curr = http_client_list;
    while (curr) {
       if (strcasecmp(name, curr->chatname) == 0) {
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
          ws_kick_client(curr, reason);
 #endif // USE_MONGOOSE
       }
@@ -468,9 +444,9 @@ bool ws_kick_by_uid(int uid, const char *reason) {
    rrconn_t *curr = http_client_list;
    while (curr) {
       if (uid == curr->user->uid) {
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
          ws_kick_client(curr, reason);
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE
 
       }
       curr = curr->next;
@@ -485,15 +461,15 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
 
       return true;
    }
-#if     defined(USE_MONGOOSE)
 
+#ifdef	USE_MONGOOSE
    if (!cptr->conn) {
       Log( LOG_DEBUG, "auth", "ws_kick_client for cptr <%p> has mg_conn <%p> and is invalid", cptr,
          (cptr ? cptr->conn : NULL) );
 
       return true;
    }
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE
 
    // If we have a client structure attached, release it's resources
    if (cptr->user_agent) {
@@ -506,7 +482,8 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
       cptr->cli_version = NULL;
    }
    char resp_buf[HTTP_WS_MAX_MSG + 1];
-#if     defined(USE_MONGOOSE)
+
+#ifdef	USE_MONGOOSE
    struct mg_connection *c = cptr->conn;
 
    // make sure we're not accessing unsafe memory
@@ -525,12 +502,12 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
    }
 
    return ws_kick_client_by_c(cptr->conn, reason);
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE
 
    return true;
 }
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
    char resp_buf[HTTP_WS_MAX_MSG + 1];
 
@@ -813,7 +790,7 @@ static bool ws_txtframe_process(struct mg_ws_message *msg, struct mg_connection 
             Log(LOG_DEBUG, "ws.media", "No codec in media.codec cmd");
          }
       }
-#endif
+#endif	// 0
    } else if (mg_json_get(msg_data, "$.pong", NULL) > 0) {
       result = ws_handle_pong(msg, c);
    } else if (mg_json_get(msg_data, "$.auth", NULL) > 0) {
@@ -852,7 +829,7 @@ bool ws_handle(struct mg_ws_message *msg, struct mg_connection *c) {
    return false;
 }
 
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE
 
 /////////
 // Send an error message to the user
@@ -868,9 +845,9 @@ bool ws_send_error(rrconn_t *cptr, const char *fmt, ...) {
    char *escaped_msg = escape_html(fullmsg);
    const char *jp = dict2json_mkstr(VAL_STR, "error.msg", escaped_msg, VAL_ULONG, "error.ts", now);
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
    mg_ws_send(cptr->conn, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE
 
    free(escaped_msg);
    free( (char *)jp );
@@ -895,9 +872,9 @@ bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...) {
 
    const char *jp = dict2json_mkstr(VAL_STR, "alert.msg", escaped_msg, VAL_ULONG, "alert.ts", now);
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
    mg_ws_send(cptr->conn, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-#endif // defined(USE_MONGOOSE)
+#endif //USE_MONGOOSE
 
    free(escaped_msg);
    free( (char *)jp );
@@ -907,7 +884,7 @@ bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...) {
    return false;
 }
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 bool ws_send_notice(struct mg_connection *c, const char *fmt, ...) {
    if (!c || !fmt) {
       return true;
@@ -933,4 +910,4 @@ void ws_fini(struct mg_mgr *mgr) {
    mg_mgr_free(mgr);
 }
 
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE

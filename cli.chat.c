@@ -1,4 +1,3 @@
-
 // rrclient/ws.chat.c
 //    This is part of rustyrig-fw.
 // https://github.com/pripyatautomations/rustyrig-fw
@@ -19,10 +18,10 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-#if     defined(USE_MONGOOSE)
-extern dict *cfg;                // config.c
-extern time_t now;
+extern dict *cfg;               // config.c
+extern time_t now;		// main.c
 
+#ifdef	USE_MONGOOSE
 bool ws_handle_talk_msg(struct mg_connection *c, dict *d) {
    if (!c || !d) {
       Log(LOG_DEBUG, "ws.chat", "handle_talk_msg: c:<%p> d:<%p>", c, d);
@@ -99,4 +98,4 @@ bool ws_handle_talk_msg(struct mg_connection *c, dict *d) {
 
    return false;
 }
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE

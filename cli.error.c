@@ -22,7 +22,7 @@
 extern dict *cfg;                // config.c
 extern time_t now;
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 bool ws_handle_error_msg(struct mg_connection *c, struct mg_ws_message *msg) {
    if (!c || !msg) {
       Log(LOG_WARN, "http.ws", "error_msg: got msg:<%p> mg_conn:<%p>", msg, c);
@@ -61,14 +61,8 @@ bool ws_handle_error_msg(struct mg_connection *c, struct mg_ws_message *msg) {
    if (!error_from) {
       dict_add(d, "error.from", "***SERVER***");
    }
-
-   if (error_msg) {
-// XXX: readd this
-//      ui_print("[%s] ERROR: %s: %s !!!", get_chat_ts(ts), error_from,
-// error_msg);
-   }
-   dict_free(d);
+   event_emit_dict("error", NULL, d);
 
    return false;
 }
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE

@@ -41,9 +41,9 @@ bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action) {
    prepare_msg(msgbuf, sizeof(msgbuf), "You do not have enough privileges to use '%s' command", now, action);
    const char *jp = dict2json_mkstr(VAL_STR, "error.msg", msgbuf, VAL_LONG, "error.ts", now);
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
    mg_ws_send(cptr->conn, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-#endif
+#endif	// USE_MONGOOSE
    free( (char *)jp );
 
    return false;
@@ -58,9 +58,9 @@ bool ws_chat_error_need_reason(rrconn_t *cptr, const char *command) {
 
    const char *jp = dict2json_mkstr(VAL_STR, "error.msg", msgbuf, VAL_LONG, "error.ts", now);
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
    mg_ws_send(cptr->conn, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-#endif
+#endif	// USE_MONGOOSE
    free( (char *)jp );
 
    return false;

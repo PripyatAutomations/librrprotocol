@@ -22,7 +22,7 @@
 extern dict *cfg;                // config.c
 extern time_t now;
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 bool ws_handle_syslog_msg(struct mg_connection *c, dict *d) {
    bool rv = false;
 
@@ -57,14 +57,10 @@ bool ws_handle_syslog_msg(struct mg_connection *c, dict *d) {
          snprintf( my_timestamp, sizeof(my_timestamp), "<%ld>", (long)time(NULL) );
       }
    }
-   logpriority_t log_priority = log_priority_from_str(prio);
+//   logpriority_t log_priority = log_priority_from_str(prio);
 
-   Log(LOG_DEBUG, "server.syslog", "remote syslog: <%s.%s> %s", subsys, prio, data);
-
-// XXX: readd this
-//   log_print(log_priority, subsys, "[%s] <%s.%s> %s", my_timestamp, subsys,
-// prio, data);
+   Log(LOG_DEBUG, "server.syslog", "remote syslog: [%s] <%s.%s> %s", my_timestamp, subsys, prio, data);
    return false;
 }
 
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE

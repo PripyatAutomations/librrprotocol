@@ -50,9 +50,9 @@ static bool ws_chat_cmd_die(rrconn_t *cptr, const char *reason) {
       char msgbuf[HTTP_WS_MAX_MSG + 1];
       prepare_msg(msgbuf, sizeof(msgbuf), "Shutting down due to /die \"%s\" from %s (uid: %d with privs %s)",
          (reason ? reason : "No reason given"), cptr->chatname, cptr->user->uid, cptr->user->privs);
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
       send_global_alert("***SERVER***", msgbuf);
-#endif
+#endif	// USE_MONGOOSE
       // Throw a shutdown event
       event_emit("shutdown", NULL, NULL);
 
@@ -90,9 +90,9 @@ static bool ws_chat_cmd_restart(rrconn_t *cptr, const char *reason) {
       char msgbuf[HTTP_WS_MAX_MSG + 1];
       prepare_msg(msgbuf, sizeof(msgbuf), "Shutting down due to /restart from %s (uid: %d with privs %s): %s",
          cptr->chatname, cptr->user->uid, cptr->user->privs, reason);
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
       send_global_alert("***SERVER***", msgbuf);
-#endif
+#endif	// USE_MONGOOSE
       dying = 1;                 // flag that this should be the last iteration
       restarting = 1;            // flag that we should restart after processing
                                  // the alert
@@ -142,11 +142,11 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
             prepare_msg( msgbuf, sizeof(msgbuf), "kicked by %s (Reason: %s)", cptr->chatname,
                (reason ? reason : "No reason given") );
             Log(LOG_AUDIT, "admin.kick", "%s %s", acptr->chatname, msgbuf);
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
             struct mg_str ms = mg_str(msgbuf);
             ws_broadcast_with_flags(FLAG_STAFF, NULL, &ms, WEBSOCKET_OP_TEXT);
             ws_kick_client(acptr, msgbuf);
-#endif
+#endif	// USE_MONGOOSE
             kicked++;
          }
       }
@@ -157,9 +157,9 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
 
          const char *jp = dict2json_mkstr(VAL_STR, "error.msg", msgbuf, VAL_LONG, "error.ts", now);
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
          mg_ws_send(cptr->conn, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-#endif
+#endif	// USE_MONGOOSE
          free( (char *)jp );
       }
    } else {
@@ -181,7 +181,7 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
       VAL_BOOL, "talk.muted", cptr->user->is_muted, VAL_STR, "talk.privs", cptr->user->privs, VAL_STR, "talk.user",
       cptr->chatname, VAL_LONG, "talk.ts", now, VAL_BOOL, "talk.tx", cptr->is_ptt);
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
    struct mg_str mp = mg_str(jp);
 
    if (acptr) {
@@ -189,7 +189,7 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
    } else {
       ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
    }
-#endif
+#endif	// USE_MONGOOSE
 
    free( (char *)jp );
 
@@ -273,10 +273,9 @@ static bool ws_chat_cmd_unmute(rrconn_t *cptr, const char *target) {
    }
 
    if (!target) {
-      // XXX: send an error response 'No target given'
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
       ws_send_error(cptr, "No target given for UNMUTE");
-#endif
+#endif	// USE_MONGOOSE
 
       return true;
    }
@@ -333,8 +332,7 @@ static bool ws_chat_cmd_syslog(rrconn_t *cptr, const char *state) {
    return false;
 }
 
-
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
    if (!c || !d) {
       return true;
@@ -543,8 +541,6 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
          }
       } else if (strcasecmp(cmd, "whois") == 0) {
          if (!target) {
-            // XXX: Send a warning to the user informing that they must specify
-            // a target username
             Log(LOG_DEBUG, "chat", "whois with no target");
 
             return true;
@@ -576,4 +572,4 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
 
    return true;
 }
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE

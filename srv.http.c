@@ -25,15 +25,15 @@
 extern time_t now;
 
 // This defines a hard-coded fallback path for httpd root, if not set in config
-#if     defined(HOST_POSIX)
-#if     !defined(INSTALL_PREFIX)
+#ifdef	HOST_POSIX
+#ifndef	INSTALL_PREFIX
 #define	WWW_ROOT_FALLBACK "./www"
 #define	WWW_404_FALLBACK "./www/404.html"
-#endif // !defined(INSTALL_PREFIX)
+#endif // !INSTALL_PREFIX
 #else
 #define	WWW_ROOT_FALLBACK "fs:www/"
 #define	WWW_404_FALLBACK "fs:www/404.html"
-#endif // defined(HOST_POSIX).else
+#endif // HOST_POSIX.else
 
 char www_root[PATH_MAX];
 char www_fw_ver[128];
@@ -44,7 +44,7 @@ rrconn_t *http_client_list = NULL;
 #if     defined(USE_MONGOOSE)
 extern struct mg_mgr mg_mgr;
 extern struct mg_tls_opts tls_opts;
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE
 
 // XXX: Need to remove Content-Type: from these and just store that here
 static const char content_type[] = "Content-Type: ";
@@ -148,7 +148,7 @@ const char *http_content_type(const char *type) {
    return "text/plain\r\n";
 }
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 bool http_static(struct mg_http_message *msg, struct mg_connection *c) {
    struct mg_http_serve_opts opts = http_opts;
 
@@ -237,13 +237,12 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
    } else if (ev == MG_EV_ACCEPT) {
       Log(LOG_CRAZY, "http", "Accepted connection on mg_conn:<%p> from %s:%d", c, ip, port);
 
-#if     defined(HTTP_USE_TLS)
-
+#ifdef	HTTP_USE_TLS
       if (c->fn_data) {
          Log(LOG_CRAZY, "http", "Init TLS for mg_conn:<%p> from %s:%d", c, ip, port);
          mg_tls_init(c, &tls_opts);
       }
-#endif
+#endif	// HTTP_USE_TLS
    } else if (ev == MG_EV_HTTP_MSG) {
       rrconn_t *cptr = http_find_client_by_c(c);
 
@@ -357,7 +356,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       http_remove_client(c);
    }
 }
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE
 
 // Combine some common, safe string handling into one call
 bool prepare_msg(char *buf, size_t len, const char *fmt, ...) {

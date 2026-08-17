@@ -22,7 +22,7 @@
 extern dict *cfg;                // config.c
 extern time_t now;
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 bool ws_handle_notice_msg(struct mg_connection *c, struct mg_ws_message *msg) {
    if (!c || !msg) {
       Log(LOG_WARN, "http.ws", "notice_msg: got msg:<%p> mg_conn:<%p>", msg, c);
@@ -55,17 +55,13 @@ bool ws_handle_notice_msg(struct mg_connection *c, struct mg_ws_message *msg) {
    // and expand into a dict, which is freed in cleanup below
    dict *d = json2dict(buf);
 
-   char *notice_msg = dict_get(d, "notice.msg", NULL);
-   char *notice_from = dict_get(d, "notice.from", NULL);
-   time_t ts = dict_get_time_t(d, "notice.ts", now);
+   char *notice_msg = dict_get(d, "talk.msg", NULL);
+   char *notice_from = dict_get(d, "talk.from", NULL);
+   time_t ts = dict_get_time_t(d, "talk.ts", now);
 
-   if (notice_msg) {
-// XXX: readd this
-//      ui_print("[%s] NOTICE: %s: %s !!!", get_chat_ts(ts), (notice_from ?
-// notice_from : "***SERVER***"), notice_msg);
-   }
+   event_emit_dict("talk.msg", NULL, d);
    dict_free(d);
 
    return false;
 }
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE

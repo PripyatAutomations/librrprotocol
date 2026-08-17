@@ -28,7 +28,7 @@ extern time_t now;
 // XXX: this needs to go into the per-VFO
 char old_mode[16];
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
    if (!c || !d) {
       Log(LOG_DEBUG, "ws.rigctl", "handle_rigctl_msg invalid args: c:<%p> d:<%p>", c, d);
@@ -54,13 +54,13 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
       if (user && *user) {
          Log(LOG_DEBUG, "ws.cat", "user:<%p> = |%s|", user, user);
          struct rr_user *cptr = NULL;
-// XXX: readd this
-//            if ((cptr = userlist_find(user))) {
-//               Log(LOG_DEBUG, "ws.cat", "ptt set to %s for cptr:<%p>",
-// (cptr->is_ptt ? "true" : "false"), cptr);
-//               cptr->is_ptt = ptt;
-//            }
-/*         } */
+#if	0
+         if ((cptr = userlist_find(user))) {
+            Log(LOG_DEBUG, "ws.cat", "ptt set to %s for cptr:<%p>",
+              (cptr->is_ptt ? "true" : "false"), cptr);
+            cptr->is_ptt = ptt;
+         }
+#endif
 
          if (freq > 0) {
             event_emit_dict("rig.freq", NULL, d);

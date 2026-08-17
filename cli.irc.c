@@ -16,7 +16,9 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
+#ifdef	USE_LIBEV
 void irc_io_cb(EV_P_ ev_io *w, int revents);
+#endif	// USE_LIBEV
 
 rrconn_t *irc_cli_connect(server_cfg_t *srv) {
    if (!srv) {
@@ -79,8 +81,9 @@ rrconn_t *irc_cli_connect(server_cfg_t *srv) {
    cptr->fd = fd;
 
    // Always start EV_READ watcher immediately
+#ifdef	USE_LIBEV
    ev_io_init(&cptr->io_watcher, irc_io_cb, fd, EV_READ);
    ev_io_start(EV_DEFAULT, &cptr->io_watcher);
-
+#endif
    return cptr;
 }

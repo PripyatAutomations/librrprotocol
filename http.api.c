@@ -36,7 +36,7 @@
 // Deal with HTTP API requests here //
 //////////////////////////////////////
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 const struct mg_http_serve_opts http_opts = {
    .extra_headers = www_headers,
    .page404 = www_404_path,
@@ -199,4 +199,4 @@ bool http_dispatch_route(struct mg_http_message *msg, struct mg_connection *c) {
 
    return true;  // No match found, let static handler take over
 }
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE

@@ -152,7 +152,7 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
    return false;
 }
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    struct mg_str msg_data = msg->data;
    rrconn_t *cptr = http_find_client_by_c(c);
@@ -261,7 +261,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          } else {
             db_ptt_stop(masterdb, cptr->ptt_session);
          }
-#endif
+#endif	// 0
 
          // Send to log file & consoles
          Log(LOG_AUDIT, "ptt", "User %s set PTT to %s on vfo %s", cptr->chatname, (c_state ? "true" : "false"), vfo);
@@ -271,10 +271,8 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
             "cat.user", cptr->chatname, VAL_STR, "cat.vfo", vfo, VAL_INT, "cat.width", dp->width, VAL_LONG, "cat.ts",
             now);
 
-#if     defined(USE_MONGOOSE)
          struct mg_str mp = mg_str(jp);
          ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
-#endif // use_mongoose
          free( (char *)jp );
 
          // Send a PTT event
@@ -294,11 +292,6 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
             return true;
          }
-         // XXX: We should do a latency test at the start of the session and
-         // optimize this per-user from there
-// XXX: readd this
-//         last_rig_poll.tv_sec = (loop_start.tv_sec + HTTP_API_RIGPOLL_PAUSE);
-//         last_rig_poll.tv_nsec = loop_start.tv_nsec;
 
          rr_vfo_t c_vfo;
          c_vfo = vfo_lookup(vfo[0]);

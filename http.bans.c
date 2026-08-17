@@ -7,7 +7,6 @@
 // The software is not for sale. It is freely available, always.
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
-#if     defined(USE_HTTP)
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>
@@ -22,8 +21,7 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-extern struct mg_mgr mg_mgr;
-
+#ifdef	USE_HTTP
 struct http_ua_ban {
    char *useragent;      // saved user agent regex
    char *description;    // Description
@@ -115,5 +113,4 @@ bool load_http_ua_bans(const char *path) {
 
    return false;
 }
-
-#endif // defined(USE_HTTP)
+#endif // USE_HTTP

@@ -29,7 +29,7 @@ int generate_nonce(char *buffer, size_t length) {
    return length;
 }
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 char *hash_passwd(const char *passwd) {
    if (!passwd) {
       return NULL;
@@ -63,6 +63,7 @@ char *hash_passwd(const char *passwd) {
 
    return hex_output;
 }
+#endif	// USE_MONGOOSE
 
 //////////////////////////////////////////
 // Compute wire password:
@@ -98,6 +99,7 @@ char *compute_wire_password(const char *password, const char *nonce) {
 
    size_t len = strlen( (char *)combined );   // Cast to (char *) for strlen
    unsigned char hash[20];   // Store the raw SHA1 hash
+
 #if     defined(USE_MONGOOSE)
    // Compute SHA1 of the combined string
    mg_sha1_init(&ctx);
@@ -116,5 +118,3 @@ char *compute_wire_password(const char *password, const char *nonce) {
 
    return hex_output;
 }
-
-#endif // defined(USE_MONGOOSE)

@@ -22,7 +22,7 @@
 extern dict *cfg;                // config.c
 extern bool cfg_show_pings;
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 bool ws_handle_ping_msg(struct mg_connection *c, dict *d) {
    if (!c || !d) {
       Log(LOG_WARN, "http.ws", "ping_msg: got d:<%p> mg_conn:<%p>", d, c);
@@ -56,4 +56,4 @@ bool ws_handle_ping_msg(struct mg_connection *c, dict *d) {
    return false;
 }
 
-#endif // defined(USE_MONGOOSE)
+#endif // USE_MONGOOSE

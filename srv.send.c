@@ -21,7 +21,7 @@
 
 extern time_t now;
 
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 // Broadcast a message to all WebSocket clients (using http_client_list)
 void ws_broadcast(struct mg_connection *sender, struct mg_str *msg_data, int data_type) {
    if (!msg_data) {
@@ -82,10 +82,10 @@ bool send_global_alert(const char *sender, const char *data) {
    const char *jp = dict2json_mkstr(VAL_STR, "alert.from", sender, VAL_STR, "alert.msg", escaped_msg, VAL_LONG,
       "alert.ts", now);
 
-#if     defined(USE_MONGOOSE)
+#ifdef   USE_MONGOOSE
    struct mg_str mp = mg_str(jp);
    ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
-#endif
+#endif	// USE_MONGOOSE
    free( (char *)escaped_msg );
    free( (char *)jp );
 

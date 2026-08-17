@@ -22,15 +22,15 @@
 #include <librrprotocol/rrprotocol.h>
 
 // This defines a hard-coded fallback path for httpd root, if not set in config
-#if     defined(HOST_POSIX)
-#if     !defined(INSTALL_PREFIX)
+#ifdef	HOST_POSIX
+#ifndef	INSTALL_PREFIX
 #define	WWW_ROOT_FALLBACK "./www"
 #define	WWW_404_FALLBACK "./www/404.html"
-#endif // !defined(INSTALL_PREFIX)
-#else
+#endif // !INSTALL_PREFIX
+#else	// HOST_POSIX
 #define	WWW_ROOT_FALLBACK "fs:www/"
 #define	WWW_404_FALLBACK "fs:www/404.html"
-#endif // defined(HOST_POSIX).else
+#endif // HOST_POSIX.else
 
 extern bool dying;
 extern time_t now;
@@ -181,7 +181,7 @@ bool has_priv(int uid, const char *priv) {
 }
 
 ///////////////////////////////////////
-#if     defined(USE_MONGOOSE)
+#ifdef	USE_MONGOOSE
 bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    bool rv = false;
 
@@ -247,7 +247,14 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
       }
 
       // handle disabled accounts
-      if (cptr->user == NULL || cptr->user->enabled == false) {
+      if (cptr->user == NULL) {
+         Log(LOG_AUDIT, "auth.users", "No such account %s", user);
+         ws_kick_client(cptr, "Invalid account/password");
+         dict_free(d);
+
+         return true;
+      }
+      if (cptr->user->enabled == false) {
          Log(LOG_AUDIT, "auth.users", "User account %s is disabled", user);
          ws_kick_client(cptr, "Account disabled");
          dict_free(d);

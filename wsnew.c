@@ -24,11 +24,11 @@ typedef struct ws_arg {
 } ws_arg_t;
 
 ////////////////////////////////////////
-#if     defined(DEBUG_PROTO_UNKNOWN)
+#ifdef   DEBUG_PROTO_UNKNOWN
 bool ws_proto_debug_unknowns = true;
-#else
+#else    // DEBUG_PROTO_UNKNOWN
 bool ws_proto_debug_unknowns = false;
-#endif // defined(DEBUG_PROTO_UNKNOWN)
+#endif // DEBUG_PROTO_UNKNOWN
 
 ////////////////
 // Validators //
