@@ -134,8 +134,6 @@ const char *http_content_type(const char *type) {
    int items = (sizeof(http_res_types) / sizeof(struct http_res_types) );
 
    for (int i = 0 ; i <= items ; i++) {
-//      printf("hct: %s, checking %d: %s\n",
-//         type, i, http_res_types[i].shortname);
       // end of table marker?
       if (!http_res_types[i].shortname && !http_res_types[i].msg) {
          break;
@@ -143,9 +141,6 @@ const char *http_content_type(const char *type) {
 
       // compare the short name
       if (strcasecmp(http_res_types[i].shortname, type) == 0) {
-//         printf("hct: %s is [%d] => %s: %s\n",
-//             type, i, http_res_types[i].shortname,
-//             http_res_types[i].msg);
          return http_res_types[i].msg;
       }
    }
@@ -270,7 +265,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
 
                if (!cptr->user_agent) {
                   fprintf(stderr, "OOM in http_cb EV_HTTP_MSG\n");
-
+                  abort();
                   return;
                }
                memset(cptr->user_agent, 0, ua_len);
