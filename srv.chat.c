@@ -352,7 +352,7 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
    }
 
    char *json_data = dict2json(d);
-   Log(LOG_DEBUG, "chat", "handle chat msg: RX from cptr:<%p> (%s) => json: %.*s", cptr, cptr->chatname, json_data);
+//   Log(LOG_DEBUG, "chat", "handle chat msg: RX from cptr:<%p> (%s) => json: %.*s", cptr, cptr->chatname, json_data);
    free(json_data);
 
    cptr->last_heard = now;

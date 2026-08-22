@@ -19,7 +19,6 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-
 extern const char *get_server_property(const char *server, const char *prop);
 extern time_t now;
 extern dict *cfg;                                // config.c
@@ -280,19 +279,16 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       // send (char *)ev_data content
       // { \"error\": { \"msg\":
       ws_connected = 0;
-      struct mg_ws_message *msg = (struct mg_ws_message *)ev_data;
 
-      char buf[HTTP_WS_MAX_MSG + 1];
-      memset(buf, 0, sizeof(buf));
-
-      if (msg && msg->data.buf) {
-         memset( buf, 0, sizeof(buf) );
-         memcpy(buf, msg->data.buf, msg->data.len);
+      if (ev_data) {
+         dict *d = dict_new();
+         dict_add(d, "error.msg", (char *)ev_data);
+         event_emit_dict("http.error", NULL, d);
+         dict_free(d);
+      } else {
+         Log(LOG_CRIT, "rrprotocol", "HTTP error! Unknown error");
+         event_emit("http.error", NULL, NULL);
       }
-      dict *d = dict_new();
-      dict_add(d, "error.msg", buf);
-      event_emit_dict("http.error", NULL, d);
-      dict_free(d);
    } else if (ev == MG_EV_CLOSE) {
       ws_connected = 0;
       dict *d = dict_new();
