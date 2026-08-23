@@ -60,7 +60,7 @@ struct rr_vfo_data {
    rr_vfo_type_t type;
    uint32_t input;               // input #
    int width;                    // width in hz
-   long freq;                   // dial frequency
+   long freq;                    // dial frequency
    rr_mode_t mode;               // Mode we're TXing
    float power;                  // power in watts
    time_t tx_started;
@@ -75,8 +75,6 @@ extern rr_mode_t vfo_parse_mode(const char *mode);
 extern const char *vfo_mode_name(rr_mode_t mode);
 extern long parse_freq(const char *str);
 extern rr_vfo_data_t get_vfo(int vfo);
-
-//
 extern rr_vfo_data_t vfos[MAX_VFOS];
 extern rr_vfo_t active_vfo;
 
