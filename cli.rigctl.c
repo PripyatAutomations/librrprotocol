@@ -115,19 +115,14 @@ bool ws_send_ptt_cmd(struct mg_connection *c, const char *vfo, bool ptt) {
    if (!c || !vfo) {
       return true;
    }
-   const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "ptt", VAL_STR, "cat.vfo", vfo, VAL_BOOL, "cat.ptt", ptt,
-      VAL_ULONG, "cat.ts", now);
+   dict *d = dict_new();
+   dict_add(d, "cat.cmd", "ptt");
+   dict_add(d, "cat.vfo", vfo);
+   dict_add_bool(d, "cat.ptt", ptt);
+   dict_add_ulong(d, "cat.ts", now);
 
-   Log(LOG_CRAZY, "ws.cat", "Sending: %s", jp);
-   int ret = mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-   free( (char *)jp );
-
-   if (ret < 0) {
-      Log(LOG_DEBUG, "cat", "ws_send_ptt_cmd: mg_ws_send error: %d", ret);
-
-      return true;
-   }
-
+   ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+   dict_free(d);
    return false;
 }
 
@@ -135,20 +130,13 @@ bool ws_send_mode_cmd(struct mg_connection *c, const char *vfo, const char *mode
    if (!c || !vfo || !mode) {
       return true;
    }
-   char msgbuf[512];
-   memset(msgbuf, 0, 512);
-   const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "mode", VAL_STR, "cat.vfo", vfo, VAL_STR, "cat.mode", mode,
-      VAL_ULONG, "cat.ts", now);
-
-   Log(LOG_CRAZY, "ws.cat", "Sending: %s", jp);
-   int ret = mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-   free( (char *)jp );
-
-   if (ret < 0) {
-      Log(LOG_DEBUG, "cat", "ws_send_mode_cmd: mg_ws_send error: %d", ret);
-
-      return true;
-   }
+   dict *d = dict_new();
+   dict_add(d, "cat.cmd", "mode");
+   dict_add(d, "cat.vfo", vfo);
+   dict_add(d, "cat.mode", mode);
+   dict_add_ulong(d, "cat.ts", now);
+   ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+   dict_free(d);
 
    return false;
 }
@@ -157,21 +145,14 @@ bool ws_send_freq_cmd(struct mg_connection *c, const char *vfo, long freq) {
    if (!c || !vfo) {
       return true;
    }
-   char msgbuf[512];
-   memset(msgbuf, 0, 512);
-   const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "freq", VAL_STR, "cat.vfo", vfo, VAL_LONG, "cat.freq", freq,
-      VAL_ULONG, "cat.ts", now);
-   Log(LOG_CRAZY, "ws.cat", "Sending: %s", jp);
-   int ret = mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-   free( (char *)jp );
-
-   if (ret < 0) {
-      Log(LOG_DEBUG, "cat", "ws_send_mode_cmd: mg_ws_send error: %d", ret);
-
-      return true;
-   }
+   dict *d = dict_new();
+   dict_add(d, "cat.cmd", "freq");
+   dict_add(d, "cat.vfo", vfo);
+   dict_add_long(d, "cat.freq", freq);
+   dict_add_ulong(d, "cat.ts", now);
+   ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+   dict_free(d);
 
    return false;
 }
-
 #endif // USE_MONGOOSE

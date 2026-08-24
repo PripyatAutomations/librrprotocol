@@ -1,7 +1,9 @@
 //
-// Vadlidate incoming messages from websocket and dispatch them as events
 //
-// Enable
+// Validate incoming messages from websocket and dispatch them as events
+//
+// XXX: This needs cleaned up
+//
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
@@ -130,7 +132,6 @@ ws_proto_handler_t ws_proto_handlers[] = {
 // Dispatch an incoming websocket message to it's appropriate
 // validator who will send it on or throw an error
 bool ws_proto_dispatch(rrconn_t *cptr, dict *msg) {
-
    int h = ( sizeof(ws_proto_handlers) / sizeof(ws_proto_handler_t) );
 
    for (int i = 0 ; i < h ; i++) {

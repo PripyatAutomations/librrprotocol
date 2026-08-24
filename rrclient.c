@@ -37,9 +37,9 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
          char *ping_ts = dict_get(d, "ping.ts", NULL);
 
          if (ping_ts) {
-            const char *jp = dict2json_mkstr( VAL_STR, "type", "pong", VAL_ULONG, "ts", atol(ping_ts) );
-            mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-            free( (void *)jp );
+            dict_add(d, "type", "pong");
+            dict_add_ulong(d, "ts", strtoul(ping_ts, NULL, 0));
+            ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
          } else if (pong_ts) {
             Log(LOG_CRAZY, "http.pong", "Received pong ts:%s", pong_ts);
          } else if (cmd && strcasecmp(cmd, "msg") == 0) {
@@ -56,14 +56,18 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
       login_user = get_server_property(server_name, "server.user");
 
       if (login_user) {
-         const char *jp = dict2json_mkstr(VAL_STR, "hello", "rrcli", VAL_STR, "hello.swver", VERSION, VAL_STR,
-            "hello.hwver", "client");
-         mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-         free( (void *)jp );
-
-         jp = dict2json_mkstr(VAL_STR, "auth.cmd", "login", VAL_STR, "auth.user", login_user);
-         mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-         free( (void *)jp );
+         dict *d = dict_new();
+         dict_add(d, "hello", "rrcli");
+         dict_add(d, "hello.swver", VERSION);
+         dict_add(d, "hello.hwver", "client");
+         ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+         dict_free(d);
+         d = dict_new();
+         dict_add(d, "auth.cmd", "login");
+         dict_add(d, "auth.user", login_user);
+         dict_add_ulong(d, "auth.ts", now);
+         ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+         dict_free(d);
       }
 
       dict *d = dict_new();
@@ -103,16 +107,20 @@ bool rrclient_send_chat(const char *data) {
    if (!data) {
       return true;
    }
-   const char *jp = dict2json_mkstr(VAL_STR, "talk.cmd", "msg", VAL_STR, "talk.data", data, VAL_STR, "talk.msg_type",
-      "pub");
+   dict *d = dict_new();
+   dict_add(d, "talk.cmd", "msg");
+   dict_add(d, "talk.data", data);
+   dict_add(d, "talk.msg_type", "pub");
+
 #ifdef  USE_MONGOOSE
 
    if (!ws_conn) {
+      dict_free(d);
       return true;
    }
-   mg_ws_send(ws_conn, jp, strlen(jp), WEBSOCKET_OP_TEXT);
+   ws_send_dict(NULL, ws_conn, d, WEBSOCKET_OP_TEXT);
 #endif // USE_MONGOOSE
-   free( (void *)jp );
+   dict_free(d);
 
    return false;
 }

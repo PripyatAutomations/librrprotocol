@@ -154,13 +154,14 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
       if (!kicked) {
          char msgbuf[HTTP_WS_MAX_MSG + 1];
          prepare_msg(msgbuf, sizeof(msgbuf), "KICK '%s' command matched no connected users", now, target);
-
-         const char *jp = dict2json_mkstr(VAL_STR, "error.msg", msgbuf, VAL_LONG, "error.ts", now);
+         dict *d = dict_new();
+         dict_add(d, "error.msg", msgbuf);
+         dict_add_ulong(d, "error.ts", now);
 
 #ifdef	USE_MONGOOSE
-         mg_ws_send(cptr->conn, jp, strlen(jp), WEBSOCKET_OP_TEXT);
+         ws_send_dict(NULL, cptr->conn, d, WEBSOCKET_OP_TEXT);
 #endif	// USE_MONGOOSE
-         free( (char *)jp );
+         dict_free(d);
       }
    } else {
       ws_chat_err_noprivs(cptr, "KICK");
@@ -177,22 +178,23 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
    if (!cptr || !cptr->authenticated || !cptr->user) {
       return true;
    }
-   const char *jp = dict2json_mkstr(VAL_INT, "talk.clones", cptr->user->clones, VAL_STR, "talk.cmd", "userinfo",
-      VAL_BOOL, "talk.muted", cptr->user->is_muted, VAL_STR, "talk.privs", cptr->user->privs, VAL_STR, "talk.user",
-      cptr->chatname, VAL_LONG, "talk.ts", now, VAL_BOOL, "talk.tx", cptr->is_ptt);
+   dict *d = dict_new();
+   dict_add(d, "talk.privs", cptr->user->privs);
+   dict_add(d, "talk.user", cptr->chatname);
+   dict_add(d, "talk.cmd", "userinfo");
+   dict_add_int(d, "talk.cones", cptr->user->clones);
+   dict_add_bool(d, "talk.muted", cptr->user->is_muted);
+   dict_add_bool(d, "talk.tx", cptr->is_ptt);
+   dict_add_long(d, "talk.ts", now);
 
 #ifdef	USE_MONGOOSE
-   struct mg_str mp = mg_str(jp);
-
    if (acptr) {
-      ws_send_to_cptr(NULL, acptr, &mp, WEBSOCKET_OP_TEXT);
+      ws_send_dict(NULL, acptr->conn, d, WEBSOCKET_OP_TEXT);
    } else {
-      ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
+      ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
    }
 #endif	// USE_MONGOOSE
-
-   free( (char *)jp );
-
+   dict_free(d);
    return false;
 }
 
@@ -351,12 +353,7 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
       return true;
    }
 
-   char *json_data = dict2json(d);
-//   Log(LOG_DEBUG, "chat", "handle chat msg: RX from cptr:<%p> (%s) => json: %.*s", cptr, cptr->chatname, json_data);
-   free(json_data);
-
    cptr->last_heard = now;
-
    char *token = dict_get(d, "talk.token", NULL);
    char *cmd = dict_get(d, "talk.cmd", NULL);
    char *data = dict_get(d, "talk.data", NULL);
@@ -413,16 +410,20 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
                long chunk_index = dict_get_long(d, "talk.chunk_index", 0);
                long total_chunks = dict_get_long(d, "talk.total_chunks", 0);
 
-               const char *jp = dict2json_mkstr(VAL_DOUBLE, "talk.chunk_index", chunk_index, VAL_STR, "talk.cmd", "msg",
-                  VAL_STR, "talk.data", data, VAL_STR, "talk.from", cptr->chatname, VAL_STR, "talk.msg_type", msg_type,
-                  VAL_DOUBLE, "talk.total_chunks", total_chunks, VAL_STR, "talk.filename", filename, VAL_STR,
-                  "talk.filetype", filetype, VAL_LONG, "talk.ts", now);
+               dict *d = dict_new();
+               dict_add_double(d, "talk.chunk_index", chunk_index);
+               dict_add(d, "talk.cmd", "msg");
+               dict_add(d, "talk.data", data);
+               dict_add(d, "talk.from", cptr->chatname);
+               dict_add(d, "talk.msg_type", msg_type);
+               dict_add_double(d, "talk.total_chunks", total_chunks);
+               dict_add(d, "talk.filename", filename);
+               dict_add(d, "talk.filetype", filetype);
+               dict_add_ulong(d, "talk.ts", now);
 
-               mp = mg_str(jp);
-               // Send to everyone, including the sender, which will then
-               // display it as SelfMsg
-               ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
-               free( (void *)jp );
+               // Send to everyone, including the sender, which will then display it as SelfMsg
+               ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
+               dict_free(d);
 
                return false;
             } else if (strcasecmp(msg_type, "pub") == 0 ||
@@ -522,17 +523,18 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
                   if (channel[0] != '&') {
                      // Send the message to all connected servers
                   }
-                  const char *jp = dict2json_mkstr(VAL_STR, "talk.cmd", "msg", VAL_STR, "talk.data", data, VAL_STR,
-                     "talk.from", cptr->chatname, VAL_STR, "talk.target", channel, VAL_STR, "talk.msg_type", msg_type,
-                     VAL_LONG, "talk.ts", now);
-
-                  mp = mg_str(jp);
+                  dict *d = dict_new();
+                  dict_add(d, "talk.cmd", "msg");
+                  dict_add(d, "talk.data", data);
+                  dict_add(d, "talk.from", cptr->chatname);
+                  dict_add(d, "talk.target", channel);
+                  dict_add(d, "talk.msg_type", msg_type);
+                  dict_add_ulong(d, "talk.ts", now);
 
                   // Send to everyone, including the sender, which will then
                   // display it as SelfMsg
-                  ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
-                  free( (void *)jp );
-
+                  ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
+                  dict_free(d);
                   return false;
                }
             } else {

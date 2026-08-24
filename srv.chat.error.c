@@ -39,12 +39,14 @@ bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action) {
       cptr->chatname, cptr->user->uid, cptr->user->privs, action);
    char msgbuf[HTTP_WS_MAX_MSG + 1];
    prepare_msg(msgbuf, sizeof(msgbuf), "You do not have enough privileges to use '%s' command", now, action);
-   const char *jp = dict2json_mkstr(VAL_STR, "error.msg", msgbuf, VAL_LONG, "error.ts", now);
+   dict *d = dict_new();
+   dict_add(d, "error.msg", msgbuf);
+   dict_add_ulong(d, "error.ts", now);
 
 #ifdef	USE_MONGOOSE
-   mg_ws_send(cptr->conn, jp, strlen(jp), WEBSOCKET_OP_TEXT);
+   ws_send_dict(NULL, cptr->conn, d, WEBSOCKET_OP_TEXT);
 #endif	// USE_MONGOOSE
-   free( (char *)jp );
+   dict_free(d);
 
    return false;
 }
@@ -56,12 +58,14 @@ bool ws_chat_error_need_reason(rrconn_t *cptr, const char *command) {
    char msgbuf[HTTP_WS_MAX_MSG + 1];
    prepare_msg(msgbuf, sizeof(msgbuf), "You MUST provide a reason for using'%s' command", now, command);
 
-   const char *jp = dict2json_mkstr(VAL_STR, "error.msg", msgbuf, VAL_LONG, "error.ts", now);
+   dict *d = dict_new();
+   dict_add(d, "error.msg", msgbuf);
+   dict_add_ulong(d, "error.ts", now);
 
 #ifdef	USE_MONGOOSE
-   mg_ws_send(cptr->conn, jp, strlen(jp), WEBSOCKET_OP_TEXT);
+   ws_send_dict(NULL, cptr->conn, d, WEBSOCKET_OP_TEXT);
 #endif	// USE_MONGOOSE
-   free( (char *)jp );
+   dict_free(d);
 
    return false;
 }

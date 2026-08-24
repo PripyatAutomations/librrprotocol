@@ -1,5 +1,5 @@
 //
-// rrgtk/ws.c
+// rrgtk/cli.main.c: Client main stuff
 //    This is part of rustyrig-fw.
 // https://github.com/pripyatautomations/rustyrig-fw
 //
@@ -83,10 +83,10 @@ bool ws_handle_hello_msg(struct mg_connection *c, dict *d) {
    char *h_hwver = dict_get(d, "hello.hwver", NULL);
 
    if (h_swver && h_hwver) {
-      Log(LOG_INFO, "ws.auth", "%s *** client is running %s on %s ***", get_chat_ts(now), h_swver, h_hwver);
+      Log(LOG_INFO, "ws.auth", "*** server is running %s on %s ***", h_swver, h_hwver);
    } else {
       const char *jp = dict2json(d);
-      Log(LOG_INFO, "ws.auth", "%s *** client sent unparsable hello: %s", get_chat_ts(now), jp);
+      Log(LOG_INFO, "ws.auth", "*** server sent unparsable hello: %s", jp);
       free( (void *)jp );
    }
 
@@ -139,9 +139,7 @@ static bool ws_txtframe_dispatch(struct mg_connection *c, struct mg_ws_message *
           * backward compatibility. */
          char evname[64]; memset( evname, 0, sizeof(evname) );
          snprintf(evname, sizeof(evname), "ws.msg.%s", rp[i].type);
-         const char *jp = dict2json(d);
-         event_emit(evname, NULL, jp);
-         free( (void *)jp );
+         event_emit_dict(evname, NULL, d);
 
          /* Call existing handler to preserve current behavior, then free the dict. */
          rp[i].cb(c, d);
@@ -489,11 +487,14 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
          // XXX: replace with ws_broadcast_quit(cptr);
 
          // blorp out a quit to all connected users
-         const char *jp = dict2json_mkstr(VAL_STR, "talk.cmd", "quit", VAL_STR, "talk.user", cptr->chatname, VAL_STR,
-            "talk.reason", reason, VAL_ULONG, "talk.ts", now, VAL_INT, "talk.clones", cptr->user->clones - 1);
-         struct mg_str ms = mg_str(jp);
-         ws_broadcast(NULL, &ms, WEBSOCKET_OP_TEXT);
-         free( (void *)jp );
+         dict *d = dict_new();
+         dict_add(d, "talk.cmd", "quit");
+         dict_add(d, "talk.user", cptr->chatname);
+         dict_add(d, "talk.reason", reason);
+         dict_add_ulong(d, "talk.ts", now);
+         dict_add_int(d, "talk.clones", cptr->user->clones - 1);
+         ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
+         dict_free(d);
       }
    }
 
@@ -512,11 +513,12 @@ bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
    }
    // Tell their client they've been disconnected
    prepare_msg( resp_buf, sizeof(resp_buf), "Client kicked: %s", (reason ? reason : "no reason given") );
-   const char *jp = dict2json_mkstr(VAL_STR, "auth.error", resp_buf);
-   mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-   free( (void *)jp );
-   mg_ws_send(c, "", 0, WEBSOCKET_OP_CLOSE);
+   dict *d = dict_new();
+   dict_add(d, "auth.error", resp_buf);
+   ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+   dict_free(d);
 
+   mg_ws_send(c, "", 0, WEBSOCKET_OP_CLOSE);
    http_remove_client(c);
 
    return false;
@@ -662,9 +664,11 @@ static bool ws_txtframe_process(struct mg_ws_message *msg, struct mg_connection 
       time_t ping_ts = dict_get_time_t(d, "ping.ts", 0);
 
       if (ping_ts) {
-         const char *jp = dict2json_mkstr(VAL_STR, "type", "pong", VAL_ULONG, "ts", ping_ts);
-         mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-         free( (void *)jp );
+         dict *d = dict_new();
+         dict_add(d, "type", "pong");
+         dict_add_ulong(d, "ts", ping_ts);
+         ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+         dict_free(d);
       }
       goto cleanup;
    }
@@ -727,12 +731,15 @@ static bool ws_txtframe_process(struct mg_ws_message *msg, struct mg_connection 
                "Client %s <%p> supported codecs: %s, my preferred codecs: %s, common codecs: %s, negotiated default codec: %s",
                cptr->chatname, cptr, media_codecs, cfg_get("codecs.allowed"), common, def_codec);
             char msgbuf[HTTP_WS_MAX_MSG + 1];
-            const char *jp = dict2json_mkstr(VAL_STR, "media.cmd", "isupport", VAL_STR, "media.codecs", common, VAL_STR,
-               "media.preferred", def_codec, VAL_ULONG, "media.ts", now);
-            mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-            free( (void *)jp );
+            dict *d = dict_new();
+            dict_add(d, "media.cmd", "isupport");
+            dict_add(d, "media.codecs", common);
+            dict_add(d, "media.preferred", def_codec);
+            dict_add_ulong(d, "media.ts", now);
             Log(LOG_DEBUG, "ws.media", "Sending supported codecs |%s| with preferred |%s| to client |%s|", common,
                def_codec, cptr->chatname);
+            ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+            dict_free(d);
             free(common);
          } else {
             Log(LOG_CRIT, "ws.media", "media.capab without payload");
@@ -814,11 +821,11 @@ bool ws_handle(struct mg_ws_message *msg, struct mg_connection *c) {
 
    // Binary (audio, waterfall) frames
    if (msg->flags & WEBSOCKET_OP_BINARY) {
-      Log(LOG_CRAZY, "ws.binframe", "Binary frame: %li bytes", msg->data.len);
+      Log(LOG_CRAZY, "ws.binframe", "Incoming Binary frame: %li bytes", msg->data.len);
       ws_binframe_process_mg(c, msg->data.buf, msg->data.len);
    } else {
       // Text (mostly json) frames
-      Log(LOG_CRAZY, "ws", "Text frame: %li bytes", msg->data.len);
+      Log(LOG_CRAZY, "ws", "Incoming Text frame: %li bytes: %.*s", msg->data.len, msg->data.len, msg->data.buf);
       ws_txtframe_process(msg, c);
    }
 
@@ -839,17 +846,17 @@ bool ws_send_error(rrconn_t *cptr, const char *fmt, ...) {
    va_start(ap, fmt);
    vsnprintf(fullmsg, sizeof(fullmsg), fmt, ap);
    char *escaped_msg = escape_html(fullmsg);
-   const char *jp = dict2json_mkstr(VAL_STR, "error.msg", escaped_msg, VAL_ULONG, "error.ts", now);
+   dict *d = dict_new();
+   dict_add(d, "error.msg", escaped_msg);
+   dict_add_ulong(d, "error.ts", now);
 
 #ifdef	USE_MONGOOSE
-   mg_ws_send(cptr->conn, jp, strlen(jp), WEBSOCKET_OP_TEXT);
+   ws_send_dict(NULL, cptr->conn, d, WEBSOCKET_OP_TEXT);
 #endif // USE_MONGOOSE
-
    free(escaped_msg);
-   free( (char *)jp );
+   dict_free(d);
 
    va_end(ap);
-
    return false;
 }
 
@@ -866,15 +873,16 @@ bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...) {
    vsnprintf(fullmsg, sizeof(fullmsg), fmt, ap);
    char *escaped_msg = escape_html(fullmsg);
 
-   const char *jp = dict2json_mkstr(VAL_STR, "alert.msg", escaped_msg, VAL_ULONG, "alert.ts", now);
+   dict *d = dict_new();
+   dict_add(d, "alert.msg", escaped_msg);
+   dict_add_ulong(d, "alert.ts", now);
 
 #ifdef	USE_MONGOOSE
-   mg_ws_send(cptr->conn, jp, strlen(jp), WEBSOCKET_OP_TEXT);
+   ws_send_dict(NULL, cptr->conn, d, WEBSOCKET_OP_TEXT);
 #endif //USE_MONGOOSE
 
    free(escaped_msg);
-   free( (char *)jp );
-
+   dict_free(d);
    va_end(ap);
 
    return false;
@@ -893,12 +901,12 @@ bool ws_send_notice(struct mg_connection *c, const char *fmt, ...) {
    vsnprintf(fullmsg, sizeof(fullmsg), fmt, ap);
    va_end(ap);
    char *escaped_msg = escape_html(fullmsg);
-   const char *jp = dict2json_mkstr(VAL_STR, "notice.msg", escaped_msg, VAL_ULONG, "notice.ts", now);
-
-   mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-   free( (char *)jp );
+   dict *d = dict_new();
+   dict_add(d, "notice.msg", escaped_msg);
+   dict_add_ulong(d, "notice.ts", now);
+   ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
    free(escaped_msg);
-
+   dict_free(d);
    return false;
 }
 

@@ -50,78 +50,36 @@ extern struct mg_tls_opts tls_opts;
 static const char content_type[] = "Content-Type: ";
 
 static struct http_res_types http_res_types[] = {
-   {
-      "7z", "application/x-7z-compressed\r\n"
-   },
-   {
-      "css", "text/css\r\n"
-   },
-   {
-      "htm", "text/html\r\n"
-   },
-   {
-      "html", "text/html\r\n"
-   },
-   {
-      "ico", "image/x-icon\r\n"
-   },
-   {
-      "js", "application/javascript\r\n"
-   },
-   {
-      "json", "application/json\r\n"
-   },
-   {
-      "jpg", "image/jpeg\r\n"
-   },
-   {
-      "mp3", "audio/mpeg\r\n"
-   },
-   {
-      "ogg", "audio/ogg\r\n"
-   },
-   {
-      "otf", "font/otf\r\n"
-   },
-   {
-      "png", "image/png\r\n"
-   },
-   {
-      "svg", "image/svg\r\n"
-   },
-   {
-      "tar", "application/x-tar\r\n"
-   },
-   {
-      "ttf", "font/ttf\r\n"
-   },
-   {
-      "txt", "text/plain\r\n"
-   },
-   {
-      "wasm", "application/wasm\r\n"
-   },
-   {
-      "webp", "image/webp\r\n"
-   },
-   {
-      "woff", "font/woff\r\n"
-   },
-   {
-      "woff2", "font/woff2\r\n"
-   },
-   {
-      "zip", "application/zip\r\n"
-   },
-   {
-      NULL, NULL
-   }
+   { "7z", "application/x-7z-compressed\r\n" },
+   { "css", "text/css\r\n" },
+   { "htm", "text/html\r\n" },
+   { "html", "text/html\r\n" },
+   { "ico", "image/x-icon\r\n" },
+   { "js", "application/javascript\r\n" },
+   { "json", "application/json\r\n" },
+   { "jpg", "image/jpeg\r\n" },
+   { "mp3", "audio/mpeg\r\n" },
+   { "ogg", "audio/ogg\r\n" },
+   { "otf", "font/otf\r\n" },
+   { "png", "image/png\r\n" },
+   { "svg", "image/svg\r\n" },
+   { "tar", "application/x-tar\r\n" },
+   { "ttf", "font/ttf\r\n" },
+   { "txt", "text/plain\r\n" },
+   { "wasm", "application/wasm\r\n" },
+   { "webp", "image/webp\r\n" },
+   { "woff", "font/woff\r\n" },
+   { "woff2", "font/woff2\r\n" },
+   { "zip", "application/zip\r\n" },
+   { NULL, NULL }
 };
 
 // Perform various checks on synthesized URLs to make sure the user isn't up to
 // anything shady...
-// XXX: Implement these!
 bool check_url(const char *path) {
+   if (strstr(path, "..")) {
+      return true;
+   }
    return false;
 }
 
@@ -287,13 +245,10 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       if (cptr) {
          Log(LOG_DEBUG, "http", "Conn mg_conn:<%p> from %s:%d upgraded to ws with cptr:<%p>", c, ip, port, cptr);
          cptr->is_ws = true;
-         char msgbuf[512];
-         memset( msgbuf, 0, sizeof(msgbuf) );
-         snprintf(msgbuf, sizeof(msgbuf), "{ \"hello\": {"
-            "  \"swver\": \"rustyrig %s\","
-            "  \"hwver\": \"%s\""
-            "} }", VERSION, HARDWARE);
-         mg_ws_send(c, msgbuf, strlen(msgbuf), WEBSOCKET_OP_TEXT);
+         dict *d = dict_new();
+         dict_add(d, "hello.swver", VERSION);
+         dict_add(d, "hello.hwver", HARDWARE);
+         ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
       } else {
          Log(LOG_CRIT, "http", "Conn mg_conn:<%p> from %s:%d kicked: No cptr but tried to start ws", c, ip, port);
          ws_kick_client_by_c(c, "Socket error 314");
@@ -314,9 +269,11 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
             // XXX: This should only turn off PTT for the rig they are using!
 //            rr_ptt_set_all_off();
             cptr->is_ptt = false;
-            const char *jp = dict2json_mkstr(VAL_STR, "rig.ptt", "on", VAL_STR, "rig.ptt.user", cptr->chatname);
-            event_emit("ptt", NULL, jp);
-            free( (void *)jp );
+            dict *d = dict_new();
+            dict_add(d, "rig.ptt", "on");
+            dict_add(d, "rig.ptt.user", cptr->chatname);
+            event_emit_dict("ptt", NULL, d);
+            dict_free(d);
          }
 
          // Free the resources, if any, for the user_agent
@@ -340,18 +297,20 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
 
          if (cptr->active) {
             // blorp out a quit to all connected users
-            const char *jp = dict2json_mkstr(VAL_STR, "talk.cmd", "quit", VAL_STR, "talk.user", cptr->chatname,
-               VAL_ULONG, "talk.ts", now, VAL_STR, "talk.reason", "connection closed", VAL_INT, "talk.clones",
-               cptr->user->clones, VAL_STR, "talk.ip", ip);
-            struct mg_str ms = mg_str(jp);
-            ws_broadcast(NULL, &ms, WEBSOCKET_OP_TEXT);
-            free( (char *)jp );
-            Log(LOG_AUDIT, "auth", "User %s on mg_conn:<%p> cptr:<%p> from %s:%d disconnected", cptr->chatname, c, cptr,
-               ip, port);
+            dict *d = dict_new();
+            dict_add(d, "talk.cmd", "quit");
+            dict_add(d, "talk.ip", ip);
+            dict_add(d, "talk.reason", "connection closer");
+            dict_add(d, "talk.user", cptr->chatname);
+            dict_add_int(d, "talk.clones", cptr->user->clones);
+            dict_add_ulong(d, "talk.ts", now);
+            ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
+            dict_free(d);
+            Log(LOG_AUDIT, "auth", "User %s on mg_conn:<%p> cptr:<%p> from %s:%d disconnected", cptr->chatname, c, cptr, ip, port);
          }
       } else {
          // This one makes a BUNCH of noise due to webui loading
-         Log(LOG_CRAZY, "auth.extreme", "Unauthenticated client on mg_conn:<%p> from %s:%d disconnected", c, ip, port);
+         Log(LOG_CRAZY, "auth", "Unauthenticated client on mg_conn:<%p> from %s:%d disconnected", c, ip, port);
       }
       http_remove_client(c);
    }

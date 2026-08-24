@@ -42,9 +42,10 @@ bool ws_handle_ping_msg(struct mg_connection *c, dict *d) {
    time_t ping_ts = dict_get_time_t(d, "ping.ts", 0);
 
    if (ping_ts) {
-      const char *jp = dict2json_mkstr(VAL_ULONG, "pong.ts", ping_ts);
-      mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-      free( (char *)jp );
+      dict *d = dict_new();
+      dict_add_ulong(d, "pong.ts", ping_ts);
+      ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+      dict_free(d);
    } else {
       Log(LOG_WARN, "ws.ping", "*** Empty ping?? ***");
    }

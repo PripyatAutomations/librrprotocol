@@ -23,15 +23,12 @@
 
 extern dict *cfg;                // config.c
 extern time_t now;
-extern const char *server_name;                          // connman.c XXX: to
-                                                         // remove ASAP for
-                                                         // multiserver
+extern const char *server_name;                          // Remove ASAP
 
 // XXX: This needs moved into the ws_conn
 extern char session_token[HTTP_TOKEN_LEN + 1];
 
 #if     defined(USE_MONGOOSE)
-
 bool ws_handle_client_auth_msg(struct mg_connection *c, dict *d) {
    bool rv = false;
 
@@ -53,8 +50,6 @@ bool ws_handle_client_auth_msg(struct mg_connection *c, dict *d) {
    char *user = dict_get(d, "auth.user", NULL);
    time_t ts = dict_get_time_t(d, "auth.ts", now);
 
-//   ui_print("[%s] => cmd: '%s', nonce: %s, user: %s", get_chat_ts(ts), cmd,
-// nonce, user);
    // Must always send a command and username during auth
    if (!cmd || !user) {
       rv = true;
@@ -69,28 +64,18 @@ bool ws_handle_client_auth_msg(struct mg_connection *c, dict *d) {
          memset(session_token, 0, HTTP_TOKEN_LEN + 1);
          snprintf(session_token, HTTP_TOKEN_LEN + 1, "%s", token);
       } else {
-//         ui_print("[%s] ?? Got CHALLENGE without valid token!",
-// get_chat_ts(ts));
+         Log(LOG_CRIT, "librrprotocol", "CHALLENGE with invalid token from %s", server_name);
          goto cleanup;
       }
-//      ui_print("[%s] *** Sending PASSWD ***", get_chat_ts(ts));
       const char *login_pass = get_server_property(server_name, "server.pass");
-
+      Log(LOG_INFO, "ws.auth", "Got CHALLENGE %s from server %s, sending password!", nonce, server_name);
       ws_send_passwd(c, user, login_pass, nonce);
+      event_emit_dict("logging-in", NULL, d);
    } else if (cmd && strcasecmp(cmd, "authorized") == 0) {
-//      ui_print("[%s] *** Authorized ***", get_chat_ts(ts));
-//      userlist_redraw_gtk();
-      // Let the UI promote its connection indicator only after the server has
-      // completed the authentication handshake.
-      const char *json = dict2json(d);
-
-      if (json) {
-         event_emit("authorized", NULL, json);
-         free( (void *)json );
-      }
+      event_emit_dict("authorized", NULL, d);
    }
-cleanup:
 
+cleanup:
    return rv;
 }
 
@@ -100,17 +85,12 @@ bool ws_send_login(struct mg_connection *c, const char *login_user) {
 
       return true;
    }
-//   ui_print("[%s] *** Sending LOGIN ***", get_chat_ts(now));
-   const char *jp = dict2json_mkstr(VAL_STR, "auth.cmd", "login", VAL_STR, "auth.user", login_user);
-
-   int ret = mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-   free( (char *)jp );
-
-   if (ret < 0) {
-      Log(LOG_DEBUG, "auth", "ws_send_login: mg_ws_send error: %d", ret);
-
-      return true;
-   }
+   Log(LOG_INFO, "librrprotocol", "Sending initial LOGIN!");
+   dict *d = dict_new();
+   dict_add(d, "auth.cmd", "login");
+   dict_add(d, "auth.user", login_user);
+   ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+   dict_free(d);
 
    return false;
 }
@@ -127,13 +107,15 @@ bool ws_send_passwd(struct mg_connection *c, const char *user, const char *passw
 
    if (!temp_pw) {
       Log(LOG_CRIT, "auth", "Failed to hash session password (nonce: |%s|)", nonce);
-
       return true;
    }
-   const char *jp = dict2json_mkstr(VAL_STR, "auth.cmd", "pass", VAL_STR, "auth.user", user, VAL_STR, "auth.pass",
-      temp_pw, VAL_STR, "auth.token", session_token);
-   mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-   free( (char *)jp );
+   dict *d = dict_new();
+   dict_add(d, "auth.cmd", "pass");
+   dict_add(d, "auth.user", user);
+   dict_add(d, "auth.pass", temp_pw);
+   dict_add(d, "auth.token", session_token);
+   ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+   dict_free(d);
    free(temp_pw);
 
    return false;
@@ -145,12 +127,13 @@ bool ws_send_logout(struct mg_connection *c, const char *user, const char *token
 
       return true;
    }
-   char msgbuf[512];
-   memset(msgbuf, 0, 512);
-   const char *jp = dict2json_mkstr(VAL_STR, "auth.cmd", "logout", VAL_STR, "auth.user", user, VAL_STR, "auth.token",
-      token);
-   mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-   free( (char *)jp );
+
+   dict *d = dict_new();
+   dict_add(d, "auth.cmd", "logout");
+   dict_add(d, "auth.user", user);
+   dict_add(d, "auth.token", token);
+   ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+   dict_free(d);
 
    return false;
 }
@@ -164,9 +147,10 @@ bool ws_send_hello(struct mg_connection *c) {
    char msgbuf[512];
    const char *codec = "mulaw";
    int rate = 16000;
-   const char *jp = dict2json_mkstr(VAL_STR, "hello", VERSION);
-   mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-   free( (char *)jp );
+   dict *d = dict_new();
+   dict_add(d, "hello", VERSION);
+   ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+   dict_free(d);
 
    return false;
 }

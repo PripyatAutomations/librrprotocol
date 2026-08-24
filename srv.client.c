@@ -33,7 +33,7 @@ rrconn_t *http_find_client_by_c(struct mg_connection *c) {
 
    while (cptr) {
       if (cptr->conn == c) {
-         Log( LOG_CRAZY, "http.core", "find_client_by_c <%p> returning index %i: %p |%s|", c, i, cptr,
+         Log( LOG_CRAZY, "http.client", "find_client_by_c <%p> returning index %i: %p |%s|", c, i, cptr,
             (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
 
          return cptr;
@@ -41,7 +41,7 @@ rrconn_t *http_find_client_by_c(struct mg_connection *c) {
       i++;
       cptr = cptr->next;
    }
-   Log(LOG_CRAZY, "http.core", "find_client_by_c <%p> no matches!", c);
+   Log(LOG_CRAZY, "http.client", "find_client_by_c <%p> no matches!", c);
 
    return NULL;
 }
@@ -60,7 +60,7 @@ rrconn_t *http_find_client_by_token(const char *token) {
       }
 
       if (memcmp( cptr->token, token, strlen(cptr->token) ) == 0) {
-         Log( LOG_CRAZY, "http.core", "find_client_by_token |%s| returning index %i: %p |%s|", token, i, cptr,
+         Log( LOG_CRAZY, "http.client", "find_client_by_token |%s| returning index %i: %p |%s|", token, i, cptr,
             (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
 
          return cptr;
@@ -68,7 +68,7 @@ rrconn_t *http_find_client_by_token(const char *token) {
       i++;
       cptr = cptr->next;
    }
-   Log(LOG_CRAZY, "http.core", "find client: no matches for token |%s|!", token);
+   Log(LOG_CRAZY, "http.client", "find client: no matches for token |%s|!", token);
 
    return NULL;
 }
@@ -101,7 +101,7 @@ rrconn_t *http_find_client_by_name(const char *name) {
       return NULL;
    }
    while (cptr) {
-      Log(LOG_CRAZY, "http.core", "find client by name: i: %d user:<%p> chatname: %s", i, cptr->user, cptr->chatname);
+      Log(LOG_CRAZY, "http.client", "find client by name: i: %d user:<%p> chatname: %s", i, cptr->user, cptr->chatname);
 
       // incomplete entry
       if (!cptr->user || (cptr->chatname[0] == '\0') ) {
@@ -111,7 +111,7 @@ rrconn_t *http_find_client_by_name(const char *name) {
 
       // match?
       if (strcasecmp(cptr->chatname, name) == 0) {
-         Log( LOG_CRAZY, "http.core", "find client by name |%s| found match at index %d: <%p> |%s|", name, i, cptr,
+         Log( LOG_CRAZY, "http.client", "find client by name |%s| found match at index %d: <%p> |%s|", name, i, cptr,
             (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
 
          return cptr;
@@ -119,7 +119,7 @@ rrconn_t *http_find_client_by_name(const char *name) {
       i++;
       cptr = cptr->next;
    }
-   Log(LOG_DEBUG, "http.core", "find client by name found no results for %s, index was %d", name, i);
+   Log(LOG_DEBUG, "http.client", "find client by name found no results for %s, index was %d", name, i);
 
    return NULL;
 }

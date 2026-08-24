@@ -72,22 +72,69 @@ void ws_broadcast_audio(struct mg_connection *sender, struct mg_str *msg_data, i
 }
 #endif // defined(USE_MONGOOSE)
 
-
 bool send_global_alert(const char *sender, const char *data) {
    if (!data) {
       return true;
    }
    const char *escaped_msg = escape_html(data);
 
-   const char *jp = dict2json_mkstr(VAL_STR, "alert.from", sender, VAL_STR, "alert.msg", escaped_msg, VAL_LONG,
-      "alert.ts", now);
+   dict *d = dict_new();
+   dict_add(d, "alert.from", sender);
+   dict_add(d, "alert.msg", escaped_msg);
+   dict_add_ulong(d, "alert.ts", now);
 
 #ifdef   USE_MONGOOSE
-   struct mg_str mp = mg_str(jp);
-   ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
+   ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
 #endif	// USE_MONGOOSE
    free( (char *)escaped_msg );
-   free( (char *)jp );
+   dict_free(d);
 
    return false;
+}
+
+bool ws_send_dict(struct mg_connection *sender, struct mg_connection *dest, dict *d, int data_type) {
+   const char *jp = dict2json(d);
+   if (jp) {
+      if (dest) {
+         Log(LOG_CRAZY, "ws.proto", "Sending dict <%x> to conn <%x>: %s", d, dest, jp);
+         dict_dump(d, NULL);
+         mg_ws_send(dest, jp, strlen(jp), data_type);
+      } else {
+         Log(LOG_WARN, "librrprotocol", "Unable to send msg dict:<%x> to conn:<%x> - we are offline!", d, dest);
+      }
+      free((void *)jp);
+   }
+   return false;
+}
+
+// Broadcast a message to all WebSocket clients (using http_client_list)
+void ws_broadcast_dict(struct mg_connection *sender, dict *d, int data_type) {
+   if (!d) {
+      return;
+   }
+   rrconn_t *current = http_client_list;
+   while (current) {
+      // NULL sender means it came from the server itself
+      if ( (current->is_ws && current->authenticated) && (current->conn != sender) ) {
+         ws_send_dict(NULL, current->conn, d, data_type);
+      }
+      current = current->next;
+   }
+}
+
+// Broadcast a message to all WebSocket clients with matching flags (using http_client_list)
+void ws_broadcast_dict_with_flags(u_int32_t flags, struct mg_connection *sender, dict *d, int data_type) {
+   if (!d) {
+      return;
+   }
+   rrconn_t *current = http_client_list;
+   while (current) {
+      // NULL sender means it came from the server itself
+      if (current && (current->is_ws && current->authenticated) && (current->conn != sender) ) {
+         if (client_has_flag(current, flags) ) {
+            ws_send_dict(NULL, current->conn, d, data_type);
+         }
+      }
+      current = current->next;
+   }
 }

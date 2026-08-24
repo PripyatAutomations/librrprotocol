@@ -200,9 +200,12 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
             } else {
                Log(LOG_WARN, "dispatcher", "Callback in irc_callbacks:<%p> has no target fn for %s", p, mp->argv[0]);
 
-               char *data = dict2json_mkstr( VAL_STR, "msg.cmd", mp->argv[0], VAL_STR, "msg.from", irc_name(cptr) );
-               event_emit("unsupported-msg", NULL, data);
-               free(data);
+               char *data = dict2json_mkstr( VAL_STR,
+               dict *d = dict_new();
+               dict_add(d, "msg.cmd", mp->argv[0]);
+               dict_add(d, "msg.from", irc_name(cptr));
+               event_emit_dict("unsupported-msg", NULL, d);
+               dict_free(d);
             }
 
             return false;
@@ -216,9 +219,11 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
                p->cb(cptr, mp);
             } else {
                Log(LOG_CRAZY, "dispatcher", "Callback in irc_callbacks:<%p> has no target fn for %s", p, mp->argv[0]);
-               char *data = dict2json_mkstr( VAL_STR, "msg.cmd", mp->argv[0], VAL_STR, "msg.from", irc_name(cptr) );
-               event_emit("unsupported-msg", NULL, data);
-               free(data);
+               dict *d = dict_new();
+               dict_add(d, "msg.cmd", mp->argv[0]);
+               dict_add(d, "msg.from", irc_name(cptr));
+               event_emit_dict("unsupported-msg", NULL, d);
+               dict_free(d);
             }
 
             // Handle relayed commands

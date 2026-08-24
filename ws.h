@@ -56,22 +56,16 @@ extern void ws_remove_client(struct mg_connection *c);
 
 // Send to a specific, authenticated websocket user by cptr
 extern void ws_send_to_cptr(struct mg_connection *sender, rrconn_t *acptr, struct mg_str *msg_data, int data_type);
+extern bool ws_send_dict(struct mg_connection *sender, struct mg_connection *dest, dict *d, int data_type);
+extern void ws_broadcast_dict(struct mg_connection *sender, dict *d, int data_type);
+extern void ws_broadcast_dict_with_flags(u_int32_t flags, struct mg_connection *sender, dict *d, int data_type);
 
 // Send to all users, except the sender (UNLESS sender is NULL)
 extern void ws_send_to_name(struct mg_connection *sender, const char *username, struct mg_str *msg_data, int data_type);
-
-extern bool ws_kick_client(rrconn_t *cptr, const char *reason);                     // disconnect
-// a
-// user,
-// if
-// we
-// can
-// find
-// them
+extern bool ws_kick_client(rrconn_t *cptr, const char *reason);                     // disconnect a user
 extern bool ws_kick_client_by_c(struct mg_connection *c, const char *reason);
 extern bool ws_kick_by_name(const char *name, const char *reason);
 extern bool ws_kick_by_uid(int uid, const char *reason);
-
 extern bool ws_handle_protocol(struct mg_ws_message *msg, struct mg_connection *c);
 extern bool ws_send_ping(rrconn_t *cptr);
 extern bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...);
@@ -92,10 +86,7 @@ extern bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *
 extern void ws_broadcast_with_flags(u_int32_t flags, struct mg_connection *sender, struct mg_str *msg_data,
                                     int data_type);
 extern void ws_broadcast(struct mg_connection *sender, struct mg_str *msg_data, int data_type);
-extern void ws_blorp_userlist_cb(void *arg);                     // timer calls
-                                                                 // this to send
-                                                                 // userlists
-                                                                 // periodically
+extern void ws_blorp_userlist_cb(void *arg);                     // timer calls this to set userlists
 
 // ws.chat.c
 extern bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action);

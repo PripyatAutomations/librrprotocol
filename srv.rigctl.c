@@ -265,18 +265,23 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
          // Send to log file & consoles
          Log(LOG_AUDIT, "ptt", "User %s set PTT to %s on vfo %s", cptr->chatname, (c_state ? "true" : "false"), vfo);
+         dict *d = dict_new();
+         dict_add(d, "cat.cmd", "ptt");
+         dict_add(d, "cat.mode", mode_name);
+         dict_add(d, "cat.ptt", ptt_state);
+         dict_add(d, "cat.user", cptr->chatname);
+         dict_add(d, "cat.vfo", vfo);
+         // was floatp?
+         dict_add_float(d, "cat.power", dp->power);
+         dict_add_long(d, "cat.freq", dp->freq);
+         dict_add_int(d, "cat.width", dp->width);
+         dict_add_ulong(d, "cat.ts", now);
 
-         const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "ptt", VAL_LONG, "cat.freq", dp->freq, VAL_STR,
-            "cat.mode", mode_name, VAL_FLOATP, "cat.power", dp->power, VAL_STR, "cat.ptt", ptt_state, VAL_STR,
-            "cat.user", cptr->chatname, VAL_STR, "cat.vfo", vfo, VAL_INT, "cat.width", dp->width, VAL_LONG, "cat.ts",
-            now);
-
-         struct mg_str mp = mg_str(jp);
-         ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
-         free( (char *)jp );
+         ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
 
          // Send a PTT event
-         event_emit("ptt", NULL, (void *)jp);
+         event_emit_dict("ptt", NULL, d);
+         dict_free(d);
          free(ptt_state);
       } else if (strcasecmp(cmd, "freq") == 0) {
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
@@ -298,14 +303,16 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          cptr->last_heard = now;
 
          // tell everyone about it
-         const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "freq", VAL_LONG, "cat.freq", new_freq, VAL_LONG,
-            "cat.ts", now, VAL_STR, "cat.user", cptr->chatname, VAL_STR, "cat.vfo", vfo);
+         dict_add(d, "cat.cmd", "freq");
+         dict_add_long(d, "cat.freq", new_freq);
+         dict_add_ulong(d, "cat.ts", now);
+         dict_add(d, "cat.user", cptr->chatname);
+         dict_add(d, "cat.vfo", vfo);
 
-         struct mg_str mp = mg_str(jp);
-         ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
+         ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
          Log(LOG_AUDIT, "ws.cat", "User %s set VFO %s FREQ to %d hz", cptr->chatname, vfo, new_freq);
-         event_emit("cat.freq", NULL, jp);
-         free( (char *)jp );
+         event_emit_dict("cat.freq", NULL, d);
+         dict_free(d);
 // XXX: Implement this as an event
 //         rr_freq_set(c_vfo, new_freq);
       } else if (strcasecmp(cmd, "mode") == 0) {
@@ -331,12 +338,15 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          cptr->last_heard = now;
 
          // tell everyone about it
-         const char *jp = dict2json_mkstr(VAL_STR, "cat.cmd", "mode", VAL_STR, "cat.mode", mode, VAL_STR, "cat.user",
-            cptr->chatname, VAL_STR, "cat.vfo", vfo, VAL_LONG, "cat.ts", now);
+         dict *d = dict_new();
+         dict_add(d, "cat.cmd", "mode");
+         dict_add(d, "cat.mode", mode);
+         dict_add(d, "cat.user", cptr->chatname);
+         dict_add(d, "cat.vfo", vfo);
+         dict_add_ulong(d, "cat.ts", now);
 
-         struct mg_str mp = mg_str(jp);
-         ws_broadcast(NULL, &mp, WEBSOCKET_OP_TEXT);
-         free( (char *)jp );
+         ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
+         dict_free(d);
 
          Log(LOG_AUDIT, "mode", "User %s set VFO %s MODE to %s", cptr->chatname, vfo, mode);
          rr_mode_t new_mode = vfo_parse_mode(mode);

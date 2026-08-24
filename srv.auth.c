@@ -285,10 +285,13 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
       } else {
          Log(LOG_CRIT, "auth.users", "login request has no cptr->user for cptr:<%p>?!", cptr);
       }
-      const char *jp = dict2json_mkstr(VAL_STR, "auth.cmd", "challenge", VAL_STR, "auth.nonce", cptr->nonce, VAL_STR,
-         "auth.user", user, VAL_STR, "auth.token", cptr->token);
-      mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-      free( (char *)jp );
+      dict *d = dict_new();
+      dict_add(d, "auth.cmd", "challenge");
+      dict_add(d, "auth.nonce", cptr->nonce);
+      dict_add(d, "auth.user", user);
+      dict_add(d, "auth.token", cptr->token);
+      ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+      dict_free(d);
       Log(LOG_CRAZY, "auth", "Sent login challenge |%s| to cptr <%p>, token |%s|", cptr->nonce, cptr, cptr->token);
    } else if (strcasecmp(cmd, "logout") == 0 || strcasecmp(cmd, "quit") == 0) {
       rrconn_t *cptr = http_find_client_by_c(c);
@@ -381,6 +384,8 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          cptr->authenticated = true;
          cptr->user->clones++;
 
+         Log(LOG_AUDIT, "auth", "Verified credentials for %s", up->name);
+
          // save the user's IP
          snprintf(cptr->user_ip, sizeof(cptr->user_ip), "%s", ip);
 
@@ -421,10 +426,15 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
          // Send last message (AUTHORIZED) of the login sequence to let client
          // know they are logged in
-         const char *jp = dict2json_mkstr(VAL_STR, "auth.cmd", "authorized", VAL_STR, "auth.privs", cptr->user->privs,
-            VAL_STR, "auth.token", token, VAL_ULONG, "auth.ts", now, VAL_STR, "auth.user", cptr->chatname);
-         mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
-         free( (char *)jp );
+         dict *d = dict_new();
+         dict_add(d, "auth.cmd", "authorized");
+         dict_add(d, "auth.privs", cptr->user->privs);
+         dict_add(d, "auth.token", token);
+         dict_add(d, "auth.user", cptr->chatname);
+         dict_add_ulong(d, "auth.ts", now);
+         ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+         dict_free(d);
+         d = NULL;
 
          // send a ping, XXX: this might be a duplicate, confirm?
          ws_send_ping(cptr);
@@ -450,7 +460,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          char scratch[32];
          memset( scratch, 0, sizeof(scratch) );
          snprintf(scratch, sizeof(scratch), "%lu", (unsigned long)now);
-         dict *d = dict_new();
+         d = dict_new();
          dict_add(d, "talk.ts", scratch);
          dict_add(d, "talk.cmd", "join");
          dict_add(d, "talk.ip", ip);
@@ -461,19 +471,9 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          memset( scratch, 0, sizeof(scratch) );
          snprintf(scratch, sizeof(scratch), "%d", cptr->user->clones);
          dict_add(d, "talk.clones", scratch);
-
-         jp = dict2json(d);
-         struct mg_str ms = mg_str(jp);
-         ws_broadcast(NULL, &ms, WEBSOCKET_OP_TEXT);
-         free( (char *)jp );
-
-         // Broadcast the complete, updated user-list snapshot to all users.
+         ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
          ws_send_users(NULL);
-
-         // Send chat replay to the user
-         jp = dict2json(d);
-         event_emit("send-chat-replay", cptr, jp);
-         free( (void *)jp );
+         event_emit_dict("send-chat-replay", cptr, d);
          dict_free(d);
       } else {
          Log(LOG_AUDIT, "auth", "User %s on cptr <%p> from IP %s:%d gave wrong password. Kicking!", cptr->user, cptr,
