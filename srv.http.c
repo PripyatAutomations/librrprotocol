@@ -264,18 +264,19 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
 
       // make sure we're not accessing unsafe memory
       if (cptr && cptr->user && cptr->chatname[0] != '\0') {
+#if	0
          // Does the user hold PTT? if so turn it off
          if (cptr->is_ptt) {
             // XXX: This should only turn off PTT for the rig they are using!
 //            rr_ptt_set_all_off();
             cptr->is_ptt = false;
             dict *d = dict_new();
-            dict_add(d, "rig.ptt", "on");
+            dict_add(d, "rig.ptt", "off");
             dict_add(d, "rig.ptt.user", cptr->chatname);
-            event_emit_dict("ptt", NULL, d);
+            event_emit_dict("rig.ptt", NULL, d);
             dict_free(d);
          }
-
+#endif
          // Free the resources, if any, for the user_agent
          if (cptr->user_agent) {
             free(cptr->user_agent);
@@ -300,7 +301,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
             dict *d = dict_new();
             dict_add(d, "talk.cmd", "quit");
             dict_add(d, "talk.ip", ip);
-            dict_add(d, "talk.reason", "connection closer");
+            dict_add(d, "talk.reason", "connection closed");
             dict_add(d, "talk.user", cptr->chatname);
             dict_add_int(d, "talk.clones", cptr->user->clones);
             dict_add_ulong(d, "talk.ts", now);

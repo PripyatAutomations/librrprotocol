@@ -38,15 +38,19 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
    time_t ts = dict_get_time_t(d, "cat.ts", now);
 
    if (dict_get(d, "cat.state.mode", NULL) ) {
-/*      if (poll_block_expire < now) { */
+// XXX: Implement this - state message throttling & dict_diff usage
+/*
+      if (poll_block_expire < now) {
+         return false;
+      }
+      poll_block_expire = now + poll_block_delay;
+ */
       char *vfo = dict_get(d, "cat.state.vfo", NULL);
       char *mode = dict_get(d, "cat.state.mode", NULL);
       long freq = dict_get_long(d, "cat.state.freq", 0);
       int width = dict_get_int(d, "cat.state.width", 0);
       int power = dict_get_int(d, "cat.state.power", 0);
       bool ptt = dict_get_bool(d, "cat.state.ptt", false);
-      // XXX: send the PTT status in here as a json
-      event_emit("rig.ptt", NULL, NULL);
 
       int ts = dict_get_int(d, "cat.ts", 0);
       char *user = dict_get(d, "cat.user", NULL);
@@ -62,10 +66,6 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
          }
 #endif
 
-         if (freq > 0) {
-            event_emit_dict("rig.freq", NULL, d);
-         }
-
          if (mode && strlen(mode) > 0) {
             // XXX: We need to suppress sending a CAT message by disabling the
             // changed signal on the mode combo
@@ -76,8 +76,6 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
                memset(mode, 0, 6);
                sprintf(mode, "D-L");
             }
-
-            event_emit_dict("rig.ptt", NULL, d);
 
             if (strcasecmp(old_mode, mode) == 0) {
                goto local_cleanup;
@@ -96,8 +94,6 @@ bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
             // save the old mode so we can compare next time
             memset( old_mode, 0, sizeof(old_mode) );
             snprintf(old_mode, sizeof(old_mode), "%s", mode);
-
-            event_emit_dict("rig.mode", NULL, d);
          }
       }
    } else {

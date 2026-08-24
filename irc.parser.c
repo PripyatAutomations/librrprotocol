@@ -199,8 +199,6 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
                p->cb(cptr, mp);
             } else {
                Log(LOG_WARN, "dispatcher", "Callback in irc_callbacks:<%p> has no target fn for %s", p, mp->argv[0]);
-
-               char *data = dict2json_mkstr( VAL_STR,
                dict *d = dict_new();
                dict_add(d, "msg.cmd", mp->argv[0]);
                dict_add(d, "msg.from", irc_name(cptr));

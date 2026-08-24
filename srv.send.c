@@ -97,7 +97,6 @@ bool ws_send_dict(struct mg_connection *sender, struct mg_connection *dest, dict
    if (jp) {
       if (dest) {
          Log(LOG_CRAZY, "ws.proto", "Sending dict <%x> to conn <%x>: %s", d, dest, jp);
-         dict_dump(d, NULL);
          mg_ws_send(dest, jp, strlen(jp), data_type);
       } else {
          Log(LOG_WARN, "librrprotocol", "Unable to send msg dict:<%x> to conn:<%x> - we are offline!", d, dest);
