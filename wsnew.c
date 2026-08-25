@@ -2,7 +2,7 @@
 //
 // Validate incoming messages from websocket and dispatch them as events
 //
-// XXX: This needs cleaned up
+// TODO: merge this w rest of ws.* and remove it
 //
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
@@ -109,24 +109,14 @@ bool ws_msg_syslog(rrconn_t *cptr, dict *msg) {
 }
 
 ws_proto_handler_t ws_proto_handlers[] = {
-   {
-      .cmd = "alert", .func = ws_msg_alert
-   },
+   { .cmd = "alert", .func = ws_msg_alert },
 //  { .cmd = "hello",   .func = ws_msg_hello },
 //  { .cmd = "ping",    .func = ws_msg_ping },
-   {
-      .cmd = "cat", .func = ws_msg_cat
-   },
-   {
-      .cmd = "privmsg", .func = ws_msg_privmsg
-   },
+   { .cmd = "cat", .func = ws_msg_cat },
+   { .cmd = "privmsg", .func = ws_msg_privmsg },
 //  { .cmd = "quit",    .func = ws_msg_quit },
-   {
-      .cmd = "syslog", .func = ws_msg_syslog
-   },
-   {
-      .cmd = NULL
-   }
+   { .cmd = "syslog", .func = ws_msg_syslog },
+   { .cmd = NULL }
 };
 
 // Dispatch an incoming websocket message to it's appropriate
@@ -146,6 +136,7 @@ bool ws_proto_dispatch(rrconn_t *cptr, dict *msg) {
          char *tp = dict_get(msg, wp->cmd, NULL);
 
          if (strcasecmp(wp->cmd, tp) == 0) {
+            wp->func(cptr, msg);
          }
       }
    }

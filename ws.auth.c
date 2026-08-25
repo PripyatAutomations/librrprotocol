@@ -21,29 +21,27 @@
 #include <rrclient/connman.h>
 #include <rrclient/userlist.h>
 
-extern dict *cfg;                // config.c
+extern dict *cfg;
 extern time_t now;
-extern const char *server_name;                          // Remove ASAP
-
-// XXX: This needs moved into the ws_conn
-extern char session_token[HTTP_TOKEN_LEN + 1];
+extern const char *server_name;
+extern char session_token[HTTP_TOKEN_LEN + 1];	// TODO: Move into the ws_conn structure
 
 #if     defined(USE_MONGOOSE)
-bool ws_handle_client_auth_msg(struct mg_connection *c, dict *d) {
+bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
    bool rv = false;
 
-   if (!c || !d) {
-      Log(LOG_WARN, "http.ws", "auth_msg: got msg mg_conn:<%p> msg:<%p>", c, d);
-
+   if (!cptr || !d) {
+      Log(LOG_WARN, "http.ws", "auth_msg: got msg from cptr:<%p> msg:<%p>", cptr, d);
       return true;
    }
-   char ip[INET6_ADDRSTRLEN];
-   int port = c->rem.port;
 
-   if (c->rem.is_ip6) {
-      inet_ntop( AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
+   char ip[INET6_ADDRSTRLEN];
+   int port = cptr->conn->rem.port;
+
+   if (cptr->conn->rem.is_ip6) {
+      inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
    } else {
-      inet_ntop( AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
+      inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
    }
    char *cmd = dict_get(d, "auth.cmd", NULL);
    char *nonce = dict_get(d, "auth.nonce", NULL);
@@ -69,7 +67,7 @@ bool ws_handle_client_auth_msg(struct mg_connection *c, dict *d) {
       }
       const char *login_pass = get_server_property(server_name, "server.pass");
       Log(LOG_INFO, "ws.auth", "Got CHALLENGE %s from server %s, sending password!", nonce, server_name);
-      ws_send_passwd(c, user, login_pass, nonce);
+      ws_send_passwd(cptr, user, login_pass, nonce);
       event_emit_dict("logging-in", NULL, d);
    } else if (cmd && strcasecmp(cmd, "authorized") == 0) {
       event_emit_dict("authorized", NULL, d);
@@ -79,26 +77,25 @@ cleanup:
    return rv;
 }
 
-bool ws_send_login(struct mg_connection *c, const char *login_user) {
-   if (!c || !login_user) {
-      Log(LOG_DEBUG, "ws.auth", "send_login c:<%p> login_user:<%p> |%s|", c, login_user, login_user);
-
+bool ws_send_login(rrconn_t *cptr, const char *login_user) {
+   if (!cptr || !login_user) {
+      Log(LOG_DEBUG, "ws.auth", "send_login cptr:<%p> login_user:<%p> |%s|", cptr, login_user, login_user);
       return true;
    }
    Log(LOG_INFO, "librrprotocol", "Sending initial LOGIN!");
    dict *d = dict_new();
    dict_add(d, "auth.cmd", "login");
    dict_add(d, "auth.user", login_user);
-   ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
 
    return false;
 }
 
 // Hashes the user stored password with the server nonce and returns it
-bool ws_send_passwd(struct mg_connection *c, const char *user, const char *passwd, const char *nonce) {
-   if (!c || !user || !passwd || !nonce) {
-      Log(LOG_CRIT, "auth", "ws_send_passwd with invalid parameters, c:<%p> user:<%p> passwd:<%p> nonce:<%p>", c, user,
+bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const char *nonce) {
+   if (!cptr || !user || !passwd || !nonce) {
+      Log(LOG_CRIT, "auth", "ws_send_passwd with invalid parameters, cptr:<%p> user:<%p> passwd:<%p> nonce:<%p>", cptr, user,
          passwd, nonce);
 
       return true;
@@ -114,17 +111,16 @@ bool ws_send_passwd(struct mg_connection *c, const char *user, const char *passw
    dict_add(d, "auth.user", user);
    dict_add(d, "auth.pass", temp_pw);
    dict_add(d, "auth.token", session_token);
-   ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
    free(temp_pw);
 
    return false;
 }
 
-bool ws_send_logout(struct mg_connection *c, const char *user, const char *token) {
-   if (!user || !token || !c) {
-      Log(LOG_DEBUG, "ws.auth", "send_logout c:<%p> user:<%p> |%s|", c, user, user);
-
+bool ws_send_logout(rrconn_t *cptr, const char *user, const char *token) {
+   if (!user || !token || !cptr) {
+      Log(LOG_DEBUG, "ws.auth", "send_logout cptr:<%p> user:<%p> |%s|", cptr, user, user);
       return true;
    }
 
@@ -132,16 +128,15 @@ bool ws_send_logout(struct mg_connection *c, const char *user, const char *token
    dict_add(d, "auth.cmd", "logout");
    dict_add(d, "auth.user", user);
    dict_add(d, "auth.token", token);
-   ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
 
    return false;
 }
 
-bool ws_send_hello(struct mg_connection *c) {
-   if (!c) {
-      Log(LOG_DEBUG, "ws.auth", "send_hello c:<%p>", c);
-
+bool ws_send_hello(rrconn_t *cptr) {
+   if (!cptr) {
+      Log(LOG_DEBUG, "ws.auth", "send_hello cptr:<%p>", cptr);
       return true;
    }
    char msgbuf[512];
@@ -149,7 +144,7 @@ bool ws_send_hello(struct mg_connection *c) {
    int rate = 16000;
    dict *d = dict_new();
    dict_add(d, "hello", VERSION);
-   ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
 
    return false;

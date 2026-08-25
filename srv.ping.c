@@ -29,13 +29,10 @@ bool ws_send_ping(rrconn_t *cptr) {
    if (!cptr || !cptr->is_ws) {
       return true;
    }
-   // XXX: Send a ping, so they'll have something to respond to, to acknowledge
-   // life
    char resp_buf[HTTP_WS_MAX_MSG + 1];
 
    if (!cptr) {
       Log(LOG_DEBUG, "auth", "ws_send_ping for null cptr!");
-
       return true;
    }
 

@@ -115,11 +115,11 @@ bool rrproto_disconnect_server(const char *server) {
    // If a websocket connection exists, mark it closing. Actual mg loop will
    // close.
    if (ws_conn) {
-      ws_conn->is_closing = 1;
+      ws_conn->conn->is_closing = 1;
    }
 /*
  *  if (ws_tx_conn) {
- *     ws_tx_conn->is_closing = 1;
+ *     ws_tx_conn->conn->is_closing = 1;
  *  }
  */
 #endif
@@ -146,7 +146,7 @@ bool rrproto_connect_server(const char *server) {
    }
 #if defined(USE_MONGOOSE)
    extern void http_handler(struct mg_connection *c, int ev, void *ev_data);
-   ws_conn = mg_ws_connect(&mgr, url, http_handler, NULL, NULL);
+   ws_conn->conn = mg_ws_connect(&mgr, url, http_handler, NULL, NULL);
 
    if (!ws_conn) {
 //      ui_print( "%s Socket connect error", get_chat_ts(now) );

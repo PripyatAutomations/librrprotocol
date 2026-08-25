@@ -23,28 +23,27 @@ extern dict *cfg;                // config.c
 extern bool cfg_show_pings;
 
 #ifdef	USE_MONGOOSE
-bool ws_handle_ping_msg(struct mg_connection *c, dict *d) {
-   if (!c || !d) {
-      Log(LOG_WARN, "http.ws", "ping_msg: got d:<%p> mg_conn:<%p>", d, c);
-
+bool ws_handle_ping_msg(rrconn_t *cptr, dict *d) {
+   if (!cptr || !d) {
+      Log(LOG_WARN, "http.ws", "ping_msg: got d:<%p> cptr:<%p>", d, cptr);
       return true;
    }
    bool rv = false;
 
    char ip[INET6_ADDRSTRLEN];
-   int port = c->rem.port;
+   int port = cptr->conn->rem.port;
 
-   if (c->rem.is_ip6) {
-      inet_ntop( AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
+   if (cptr->conn->rem.is_ip6) {
+      inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
    } else {
-      inet_ntop( AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
+      inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
    }
    time_t ping_ts = dict_get_time_t(d, "ping.ts", 0);
 
    if (ping_ts) {
       dict *d = dict_new();
       dict_add_ulong(d, "pong.ts", ping_ts);
-      ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+      ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
       dict_free(d);
    } else {
       Log(LOG_WARN, "ws.ping", "*** Empty ping?? ***");

@@ -159,7 +159,7 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
          dict_add_ulong(d, "error.ts", now);
 
 #ifdef	USE_MONGOOSE
-         ws_send_dict(NULL, cptr->conn, d, WEBSOCKET_OP_TEXT);
+         ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
 #endif	// USE_MONGOOSE
          dict_free(d);
       }
@@ -189,7 +189,7 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
 
 #ifdef	USE_MONGOOSE
    if (acptr) {
-      ws_send_dict(NULL, acptr->conn, d, WEBSOCKET_OP_TEXT);
+      ws_send_dict(NULL, acptr, d, WEBSOCKET_OP_TEXT);
    } else {
       ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
    }
@@ -335,21 +335,13 @@ static bool ws_chat_cmd_syslog(rrconn_t *cptr, const char *state) {
 }
 
 #ifdef	USE_MONGOOSE
-bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
-   if (!c || !d) {
-      return true;
-   }
-   rrconn_t *cptr = http_find_client_by_c(c);
-
-   if (!cptr) {
-      Log(LOG_DEBUG, "chat", "talk parse, cptr is NULL, c: <%p>", c);
-
+bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
+   if (!cptr || !d) {
       return true;
    }
 
    if (!cptr->user) {
       Log(LOG_WARN, "chat", "talk parse, cptr:<%p> ->user NULL", cptr);
-
       return true;
    }
 
@@ -373,14 +365,12 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
       if (strcasecmp(cmd, "msg") == 0) {
          if (!data) {
             Log(LOG_DEBUG, "chat", "got msg for cptr <%p> with no data: chatname: %s", cptr, user);
-
             return true;
          }
 
          // If the message is empty, just return success
          if (strlen(data) == 0) {
             Log(LOG_CRAZY, "chat", "talk msg has no data");
-
             return false;
          }
 
@@ -389,7 +379,6 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
             // XXX: Alert the user that their message was NOT deliverred because
             // they aren't allowed to send it.
             ws_send_error(cptr, "You do not have CHAT privilege.");
-
             return true;
          }
          struct mg_str mp;
@@ -398,7 +387,6 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
          // sanity check
          if (!user) {
             Log(LOG_CRAZY, "chat", "talk parse, msg has no user field");
-
             return true;
          }
 
@@ -424,10 +412,8 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
                // Send to everyone, including the sender, which will then display it as SelfMsg
                ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
                dict_free(d);
-
                return false;
-            } else if (strcasecmp(msg_type, "pub") == 0 ||
-                       strcasecmp(msg_type, "action") == 0) {
+            } else if (strcasecmp(msg_type, "pub") == 0 || strcasecmp(msg_type, "action") == 0) {
                if (strcasecmp(msg_type, "action") == 0) {
                   Log(LOG_CRAZY, "ws.chat", "%s * %s%s", channel, cptr->chatname, data);
                } else {
@@ -472,7 +458,7 @@ bool ws_handle_chat_msg(struct mg_connection *c, dict *d) {
                      if (strcasecmp(cmd, "help") == 0) {
                         // XXX: These should move to help/ and get served via
                         // that mechanism
-                        ws_send_notice(cptr->conn, "<span>***SERVER***"
+                        ws_send_notice(cptr, "<span>***SERVER***"
                            "<br/>*** !help for VFO commands ***<br>"
                            "&nbsp;&nbsp;&nbsp;!freq <freq> - Set frequency to <freq> - can be 7200 7.2m 7200000 etc form<br/>"
                            "&nbsp;&nbsp;&nbsp;!mode <mode> - Set mode to CW|AM|LSB|USB|FM|DL|DU<br/>"

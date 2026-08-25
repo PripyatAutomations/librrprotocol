@@ -44,7 +44,7 @@ bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action) {
    dict_add_ulong(d, "error.ts", now);
 
 #ifdef	USE_MONGOOSE
-   ws_send_dict(NULL, cptr->conn, d, WEBSOCKET_OP_TEXT);
+   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
 #endif	// USE_MONGOOSE
    dict_free(d);
 
@@ -63,7 +63,7 @@ bool ws_chat_error_need_reason(rrconn_t *cptr, const char *command) {
    dict_add_ulong(d, "error.ts", now);
 
 #ifdef	USE_MONGOOSE
-   ws_send_dict(NULL, cptr->conn, d, WEBSOCKET_OP_TEXT);
+   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
 #endif	// USE_MONGOOSE
    dict_free(d);
 

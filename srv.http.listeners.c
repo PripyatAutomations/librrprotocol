@@ -158,10 +158,10 @@ bool http_init(struct mg_mgr *mgr) {
    prepare_msg(listen_addr, sizeof(listen_addr), "http://%s:%d", inet_ntoa(sa_bind), bind_port);
 
 #ifdef  USE_MONGOOSE
+   fprintf(stderr, "mgr: <%p>, listen_addr:<%p> = %s\n", mgr, listen_addr, listen_addr);
+
    if (!mg_http_listen(mgr, listen_addr, ws_http_cb, NULL) ) {
-      Log(LOG_CRIT, "http",
-         "Failed to start http listener -- is program already running or something else listening on port %d?",
-         bind_port);
+      Log(LOG_CRIT, "http", "Failed to start http listener -- is program already running or something else listening on port %d?", bind_port);
       exit(1);
    }
 
@@ -194,8 +194,7 @@ bool http_init(struct mg_mgr *mgr) {
       http_tls_init();
 
       if (!mg_http_listen(mgr, tls_listen_addr, ws_http_cb, NULL) ) {
-         Log(LOG_CRIT, "http",
-            "Failed to start https listener -- is program already running or something else listening on port %d?",
+         Log(LOG_CRIT, "http", "Failed to start https listener -- is program already running or something else listening on port %d?",
             tls_bind_port);
          exit(1);
       }

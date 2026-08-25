@@ -23,14 +23,14 @@ extern time_t now;
 
 #ifdef	USE_MONGOOSE
 // Broadcast a message to all WebSocket clients (using http_client_list)
-void ws_broadcast(struct mg_connection *sender, struct mg_str *msg_data, int data_type) {
+void ws_broadcast(rrconn_t *sender, struct mg_str *msg_data, int data_type) {
    if (!msg_data) {
       return;
    }
    rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
-      if ( (current->is_ws && current->authenticated) && (current->conn != sender) ) {
+      if ( (current->is_ws && current->authenticated) && (current != sender) ) {
          mg_ws_send(current->conn, msg_data->buf, msg_data->len, data_type);
       }
       current = current->next;
@@ -39,14 +39,14 @@ void ws_broadcast(struct mg_connection *sender, struct mg_str *msg_data, int dat
 
 // Broadcast a message to all WebSocket clients with matching flags (using
 // http_client_list)
-void ws_broadcast_with_flags(u_int32_t flags, struct mg_connection *sender, struct mg_str *msg_data, int data_type) {
+void ws_broadcast_with_flags(u_int32_t flags, rrconn_t *sender, struct mg_str *msg_data, int data_type) {
    if (!msg_data) {
       return;
    }
    rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
-      if (current && (current->is_ws && current->authenticated) && (current->conn != sender) ) {
+      if (current && (current->is_ws && current->authenticated) && (current != sender) ) {
          if (client_has_flag(current, flags) ) {
             mg_ws_send(current->conn, msg_data->buf, msg_data->len, data_type);
          }
@@ -55,14 +55,14 @@ void ws_broadcast_with_flags(u_int32_t flags, struct mg_connection *sender, stru
    }
 }
 
-void ws_broadcast_audio(struct mg_connection *sender, struct mg_str *msg_data, int data_type, u_int32_t channel) {
+void ws_broadcast_audio(rrconn_t *sender, struct mg_str *msg_data, int data_type, u_int32_t channel) {
    if (!msg_data) {
       return;
    }
    rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
-      if ( (current->is_ws && current->authenticated) && (current->conn != sender) ) {
+      if ( (current->is_ws && current->authenticated) && (current != sender) ) {
          // XXX: Compare the connection's codec
 //         if (current->rx_codecs[
 //         mg_ws_send(current->conn, msg_data->buf, msg_data->len, data_type);
@@ -92,12 +92,12 @@ bool send_global_alert(const char *sender, const char *data) {
    return false;
 }
 
-bool ws_send_dict(struct mg_connection *sender, struct mg_connection *dest, dict *d, int data_type) {
+bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
    const char *jp = dict2json(d);
    if (jp) {
       if (dest) {
          Log(LOG_CRAZY, "ws.proto", "Sending dict <%x> to conn <%x>: %s", d, dest, jp);
-         mg_ws_send(dest, jp, strlen(jp), data_type);
+         mg_ws_send(dest->conn, jp, strlen(jp), data_type);
       } else {
          Log(LOG_WARN, "librrprotocol", "Unable to send msg dict:<%x> to conn:<%x> - we are offline!", d, dest);
       }
@@ -107,31 +107,31 @@ bool ws_send_dict(struct mg_connection *sender, struct mg_connection *dest, dict
 }
 
 // Broadcast a message to all WebSocket clients (using http_client_list)
-void ws_broadcast_dict(struct mg_connection *sender, dict *d, int data_type) {
+void ws_broadcast_dict(rrconn_t *sender, dict *d, int data_type) {
    if (!d) {
       return;
    }
    rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
-      if ( (current->is_ws && current->authenticated) && (current->conn != sender) ) {
-         ws_send_dict(NULL, current->conn, d, data_type);
+      if ( (current->is_ws && current->authenticated) && (current != sender) ) {
+         ws_send_dict(NULL, current, d, data_type);
       }
       current = current->next;
    }
 }
 
 // Broadcast a message to all WebSocket clients with matching flags (using http_client_list)
-void ws_broadcast_dict_with_flags(u_int32_t flags, struct mg_connection *sender, dict *d, int data_type) {
+void ws_broadcast_dict_with_flags(u_int32_t flags, rrconn_t *sender, dict *d, int data_type) {
    if (!d) {
       return;
    }
    rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
-      if (current && (current->is_ws && current->authenticated) && (current->conn != sender) ) {
+      if (current && (current->is_ws && current->authenticated) && (current != sender) ) {
          if (client_has_flag(current, flags) ) {
-            ws_send_dict(NULL, current->conn, d, data_type);
+            ws_send_dict(NULL, current, d, data_type);
          }
       }
       current = current->next;

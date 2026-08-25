@@ -47,8 +47,8 @@ extern bool connect_server(const char *server);
 extern int ws_connected;
 extern int ws_tx_connected;
 #if defined(USE_MONGOOSE)
-extern struct mg_connection *ws_conn;
-extern struct mg_connection *ws_tx_conn;
+extern rrconn_t *ws_conn;
+extern rrconn_t *ws_tx_conn;
 #endif
 extern bool server_ptt_state;
 extern const char *get_server_property(const char *server, const char *prop);

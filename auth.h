@@ -36,10 +36,10 @@ extern bool has_privs(struct rr_user *cptr, const char *priv);
 
 //// WebSocket messages related to auth ////
 #ifdef USE_MONGOOSE
-extern bool ws_send_login(struct mg_connection *c, const char *login_user);
-extern bool ws_send_passwd(struct mg_connection *c, const char *user, const char *passwd, const char *nonce);
-extern bool ws_send_logout(struct mg_connection *c, const char *user, const char *token);
-extern bool ws_send_hello(struct mg_connection *c);
+extern bool ws_send_login(rrconn_t *cptr, const char *login_user);
+extern bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const char *nonce);
+extern bool ws_send_logout(rrconn_t *cptr, const char *user, const char *token);
+extern bool ws_send_hello(rrconn_t *cptr);
 #endif // USE_MONGOOSE
 
 #endif // !defined(__rr_auth_h)

@@ -182,27 +182,24 @@ bool has_priv(int uid, const char *priv) {
 
 ///////////////////////////////////////
 #ifdef	USE_MONGOOSE
-bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
+bool ws_handle_auth_msg(struct mg_ws_message *msg, rrconn_t *cptr) {
    bool rv = false;
 
-   if (c == NULL || msg == NULL) {
-      Log(LOG_WARN, "http.ws", "auth_msg: got msg:<%p> mg_conn:<%p>", msg, c);
-
+   if (cptr == NULL || msg == NULL) {
+      Log(LOG_WARN, "http.ws", "auth_msg: got msg:<%p> cptr:<%p>", msg, cptr);
       return true;
    }
    char ip[INET6_ADDRSTRLEN];
-   int port = c->rem.port;
+   int port = cptr->conn->rem.port;
 
-   if (c->rem.is_ip6) {
-      inet_ntop( AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
+   if (cptr->conn->rem.is_ip6) {
+      inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
    } else {
-      inet_ntop( AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
+      inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
    }
 
    if (msg->data.buf == NULL) {
-      Log(LOG_WARN, "http.ws", "auth_msg: got msg from msg_conn:<%p> from %s:%d -- msg:<%p> with no data ptr", c, ip,
-         port, msg);
-
+      Log(LOG_WARN, "http.ws", "auth_msg: got msg from cptr:<%p> from %s:%d -- msg:<%p> with no data ptr", cptr, ip, port, msg);
       return true;
    }
    struct mg_str msg_data = msg->data;
@@ -226,17 +223,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
 
    if (strcasecmp(cmd, "login") == 0) {
       char resp_buf[HTTP_WS_MAX_MSG + 1];
-      Log(LOG_AUDIT, "auth", "Login request from user %s on mg_conn:<%p> from %s:%d", user, c, ip, port);
-
-      rrconn_t *cptr = http_find_client_by_c(c);
-
-      if (cptr == NULL) {
-         Log(LOG_CRIT, "auth", "Discarding login request on mg_conn:<%p> from %s:%d due to NULL cptr?!?!!?", c, ip,
-            port);
-         dict_free(d);
-
-         return true;
-      }
+      Log(LOG_AUDIT, "auth", "Login request from user %s on cptr:<%p> from %s:%d", user, cptr, ip, port);
 
       // search for user
       for (int i = 0 ; i < HTTP_MAX_USERS ; i++) {
@@ -251,14 +238,13 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          Log(LOG_AUDIT, "auth.users", "No such account %s", user);
          ws_kick_client(cptr, "Invalid account/password");
          dict_free(d);
-
          return true;
       }
+
       if (cptr->user->enabled == false) {
          Log(LOG_AUDIT, "auth.users", "User account %s is disabled", user);
          ws_kick_client(cptr, "Account disabled");
          dict_free(d);
-
          return true;
       }
       int curr_clients = http_count_clients();
@@ -290,82 +276,68 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
       dict_add(d, "auth.nonce", cptr->nonce);
       dict_add(d, "auth.user", user);
       dict_add(d, "auth.token", cptr->token);
-      ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+      ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
       dict_free(d);
       Log(LOG_CRAZY, "auth", "Sent login challenge |%s| to cptr <%p>, token |%s|", cptr->nonce, cptr, cptr->token);
    } else if (strcasecmp(cmd, "logout") == 0 || strcasecmp(cmd, "quit") == 0) {
-      rrconn_t *cptr = http_find_client_by_c(c);
-      Log(LOG_DEBUG, "auth", "Logout request from %s (cptr:<%p> mg_conn:<%p>",
-         (cptr && cptr->chatname[0] != '\0' ? cptr->chatname : ""), cptr, c);
+      Log(LOG_DEBUG, "auth", "Logout request from %s cptr:<%p>",
+         (cptr && cptr->chatname[0] != '\0' ? cptr->chatname : ""), cptr);
       ws_kick_client(cptr, "Logged out. 73!");
    } else if (strcasecmp(cmd, "pass") == 0) {
       bool guest = false;
 
       if (pass == NULL || token == NULL) {
          Log(LOG_DEBUG, "auth", "auth pass command without password <%p> / token <%p>", pass, token);
-         ws_kick_client_by_c(c, "auth.pass message incomplete/invalid. Goodbye");
+         ws_kick_client_by_c(cptr->conn, "auth.pass message incomplete/invalid. Goodbye");
          dict_free(d);
 
          return true;
       }
-      rrconn_t *cptr = http_find_client_by_token(token);
 
-      if (cptr == NULL) {
-         Log(LOG_WARN, "auth", "Unable to find client in PASS parsing");
-         http_dump_clients();
-         dict_free(d);
-
-         return true;
-      }
       // Save the remote IP
       char ip[INET6_ADDRSTRLEN];   // Buffer to hold IPv4 or IPv6 address
-      int port = c->rem.port;
+      int port = cptr->conn->rem.port;
 
-      if (c->rem.is_ip6) {
-         inet_ntop( AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
+      if (cptr->conn->rem.is_ip6) {
+         inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
       } else {
-         inet_ntop( AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
+         inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
       }
 
       if (cptr->user == NULL) {
          Log(LOG_WARN, "auth", "cptr-> user == NULL handling conn from ip %s:%d, Kicking!", ip, port);
          ws_kick_client(cptr, "Invalid login/password");
          dict_free(d);
-
          return true;
       }
-      int login_uid = cptr->user->uid;
 
+      int login_uid = cptr->user->uid;
       if (login_uid < 0 || login_uid > HTTP_MAX_USERS) {
          Log(LOG_WARN, "auth", "Invalid uid for username |%s| from IP %s:%d", cptr->chatname, ip, port);
          ws_kick_client(cptr, "Invalid login/passowrd");
          dict_free(d);
-
          return true;
       }
-      http_user_t *up = &http_users[login_uid];
 
+      http_user_t *up = &http_users[login_uid];
       if (up == NULL) {
          Log(LOG_WARN, "auth", "Uid %d returned NULL http_user_t", login_uid);
          dict_free(d);
-
          return true;
       }
+
       // Deal with double-hashed (reply-protected) responses
       char *nonce = cptr->nonce;
-
       if (nonce == NULL) {
          Log(LOG_WARN, "auth", "No nonce for user %d", login_uid);
          dict_free(d);
-
          return true;
       }
+
       temp_pw = compute_wire_password(up->pass, nonce);
-
       if (temp_pw == NULL) {
-         Log(LOG_WARN, "auth", "Got NULL return from compute_wire_password for mg_conn:<%p>, kicking!", c);
+         Log(LOG_WARN, "auth", "Got NULL return from compute_wire_password for cptr:<%p>, kicking!", cptr);
          dict_free(d);
-
          return true;
       }
       Log(LOG_CRAZY, "auth", "Saved: |%s|, hashed (server): |%s|, received: |%s|", up->pass, temp_pw, pass);
@@ -432,7 +404,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          dict_add(d, "auth.token", token);
          dict_add(d, "auth.user", cptr->chatname);
          dict_add_ulong(d, "auth.ts", now);
-         ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+         ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
          dict_free(d);
          d = NULL;
 
@@ -448,7 +420,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          free( (void *)my_codecs );
 
          if (capab_msg) {
-            mg_ws_send(c, capab_msg, strlen(capab_msg), WEBSOCKET_OP_TEXT);
+            mg_ws_send(cptr->conn, capab_msg, strlen(capab_msg), WEBSOCKET_OP_TEXT);
             free( (char *)capab_msg );
          } else {
             Log(LOG_CRIT, "ws.media", ">> No codecs negotiated");
@@ -476,8 +448,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          event_emit_dict("send-chat-replay", cptr, d);
          dict_free(d);
       } else {
-         Log(LOG_AUDIT, "auth", "User %s on cptr <%p> from IP %s:%d gave wrong password. Kicking!", cptr->user, cptr,
-            ip, port);
+         Log(LOG_AUDIT, "auth", "User %s on cptr <%p> from IP %s:%d gave wrong password. Kicking!", cptr->user, cptr, ip, port);
          ws_kick_client(cptr, "Invalid login/password");
       }
 

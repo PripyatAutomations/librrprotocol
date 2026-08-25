@@ -14,9 +14,6 @@
 #include <arpa/inet.h>
 #include <limits.h>
 #include "build_config.h"
-#if     defined(USE_MONGOOSE)
-#include "ext/libmongoose/mongoose.h"
-#endif // defined(USE_MONGOOSE)
 #include <librustyaxe/struct.h>
 
 ///////
@@ -97,43 +94,31 @@ struct http_res_types {
 extern int http_count_clients(void);
 extern int http_count_connections(void);
 
-extern rrconn_t *whos_talking(void);                        // returns NULL
-// or a pointer
-// to the cptr
-// of user
-// PTTing
+// returns NULL or a point to the cptr of the user with PTT active
+extern rrconn_t *whos_talking(void);
+
 #if     defined(USE_MONGOOSE)
-extern bool http_init(struct mg_mgr *mgr);
-extern rrconn_t *http_add_client(struct mg_connection *c, bool is_ws);
-extern void http_remove_client(struct mg_connection *c);
 extern rrconn_t *http_find_client_by_c(struct mg_connection *c);
+extern bool http_init(struct mg_mgr *mgr);
+extern bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr);
+extern rrconn_t *http_add_client(struct mg_connection *c, bool is_ws);
+#endif // defined(USE_MONGOOSE)
+
+extern void http_remove_client(struct mg_connection *c);
 extern rrconn_t *http_find_client_by_token(const char *token);
 extern rrconn_t *http_find_client_by_guest_id(int gid);
 extern rrconn_t *http_find_client_by_name(const char *name);
-// http.api.c:
-extern bool http_dispatch_route(struct mg_http_message *msg, struct mg_connection *c);
 
-#endif // defined(USE_MONGOOSE)
-extern void http_expire_sessions(void);                                         // ping
-                                                                                // clients,
-                                                                                // drop
-                                                                                // pinged
-                                                                                // out
-                                                                                // ones,
-                                                                                // etc
+// http.api.c:
+// Ping clients, drop pinged out ones, etc
+extern void http_expire_sessions(void);
 extern void http_dump_clients(void);
-extern bool http_save_users(const char *filename);                       // save
-                                                                         // active
-                                                                         // users
-                                                                         // to
-                                                                         // config
-                                                                         // file
+// Save active users to config file (NYI)
+extern bool http_save_users(const char *filename);
 extern char *escape_html(const char *input);
 extern bool prepare_msg(char *buf, size_t len, const char *fmt, ...);
 extern const char *http_content_type(const char *type);
 extern bool check_url(const char *path);
-
-//////////////////
 extern rrconn_t *http_client_list;
 extern int http_users_connected;
 extern char www_root[PATH_MAX];

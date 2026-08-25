@@ -29,9 +29,9 @@ extern time_t now;
 char old_mode[16];
 
 #ifdef	USE_MONGOOSE
-bool ws_handle_rigctl_cli_msg(struct mg_connection *c, dict *d) {
-   if (!c || !d) {
-      Log(LOG_DEBUG, "ws.rigctl", "handle_rigctl_msg invalid args: c:<%p> d:<%p>", c, d);
+bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
+   if (!cptr || !d) {
+      Log(LOG_DEBUG, "ws.rigctl", "handle_rigctl_msg invalid args: cptr:<%p> d:<%p>", cptr, d);
 
       return true;
    }
@@ -107,8 +107,8 @@ local_cleanup:
    return false;
 }
 
-bool ws_send_ptt_cmd(struct mg_connection *c, const char *vfo, bool ptt) {
-   if (!c || !vfo) {
+bool ws_send_ptt_cmd(rrconn_t *cptr, const char *vfo, bool ptt) {
+   if (!cptr || !vfo) {
       return true;
    }
    dict *d = dict_new();
@@ -117,13 +117,13 @@ bool ws_send_ptt_cmd(struct mg_connection *c, const char *vfo, bool ptt) {
    dict_add_bool(d, "cat.ptt", ptt);
    dict_add_ulong(d, "cat.ts", now);
 
-   ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
    return false;
 }
 
-bool ws_send_mode_cmd(struct mg_connection *c, const char *vfo, const char *mode) {
-   if (!c || !vfo || !mode) {
+bool ws_send_mode_cmd(rrconn_t *cptr, const char *vfo, const char *mode) {
+   if (!cptr || !vfo || !mode) {
       return true;
    }
    dict *d = dict_new();
@@ -131,14 +131,14 @@ bool ws_send_mode_cmd(struct mg_connection *c, const char *vfo, const char *mode
    dict_add(d, "cat.vfo", vfo);
    dict_add(d, "cat.mode", mode);
    dict_add_ulong(d, "cat.ts", now);
-   ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
 
    return false;
 }
 
-bool ws_send_freq_cmd(struct mg_connection *c, const char *vfo, long freq) {
-   if (!c || !vfo) {
+bool ws_send_freq_cmd(rrconn_t *cptr, const char *vfo, long freq) {
+   if (!cptr || !vfo) {
       return true;
    }
    dict *d = dict_new();
@@ -146,7 +146,7 @@ bool ws_send_freq_cmd(struct mg_connection *c, const char *vfo, long freq) {
    dict_add(d, "cat.vfo", vfo);
    dict_add_long(d, "cat.freq", freq);
    dict_add_ulong(d, "cat.ts", now);
-   ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
 
    return false;

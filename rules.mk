@@ -57,7 +57,7 @@ librrprotocol_cflags := ${CFLAGS} -I./modsrc/ -I./ -I./inc
 
 extra_clean += ${librustyaxe_objs} ${librustyaxe}
 librrprotocol_headers := $(wildcard librrprotocol/*.h)
-librrprotocol_src = $(wildcard librrprotocol/*.c) $(wildcard librrprotocol/*.h)
+librrprotocol_srcs = $(wildcard librrprotocol/*.c)
 
 real_librrprotocol_objs := $(foreach x, ${librrprotocol_objs}, ${BUILD_DIR}/librrprotocol/${x})
 ${librrprotocol_srcs}: GNUmakefile ${librrprotocol_headers} librrprotocol/rules.mk ${BUILD_DIR}/build_config.h

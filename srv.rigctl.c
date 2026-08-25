@@ -1,5 +1,5 @@
 //
-// ws.rigctl.c
+// librrprotoco;/srv.rigctl.c: Rig control stuff on the server side
 //    This is part of rustyrig-fw.
 // https://github.com/pripyatautomations/rustyrig-fw
 //
@@ -29,11 +29,9 @@ bool rr_set_mode(rr_vfo_t vfo, rr_mode_t mode) {
 
 extern time_t now;
 
-#define	WS_RIGCTL_FORCE_INTERVAL 60              // every 60 seconds,
-                                                  // send a full update
+time_t cfg_backed_poll_interval = 60;
 
-// XXX: Merge with existing rr_vfo_data_t
-// This ugly mess needs sorted out asap ;)
+// TODO: Merge with existing rr_vfo_data_t
 typedef struct ws_rig_state {
    long freq;
    rr_mode_t mode;
@@ -53,7 +51,6 @@ ws_rig_state_t *ws_rig_get_vfo_last_state(rr_vfo_t vfo) {
 }
 
 // Returns NULL or a diff of the last and current rig statef
-// XXX: Uglyyy...
 static ws_rig_state_t *ws_rigctl_state_diff(rr_vfo_t vfo) {
    if (vfo == VFO_NONE) {
       return NULL;
@@ -66,10 +63,8 @@ static ws_rig_state_t *ws_rigctl_state_diff(rr_vfo_t vfo) {
    ws_rig_state_t *update = malloc( sizeof(ws_rig_state_t) );
 
    if (!update) {
-      // XXX: we should throw a log message but we're out of memory....
       fprintf(stderr, "OOM in ws_rigctl_state_diff!\n");
-
-      return NULL;
+      abort();
    }
    memset( update, 0, sizeof(ws_rig_state_t) );
 
@@ -101,7 +96,6 @@ static ws_rig_state_t *ws_rigctl_state_diff(rr_vfo_t vfo) {
 }
 
 // Save the old state then poll the rig
-// XXX: this should be throttled
 static bool ws_rig_state_poll(rr_vfo_t vfo) {
    // shortcut pointers
    ws_rig_state_t *curr = &vfo_states[vfo],
@@ -112,7 +106,6 @@ static bool ws_rig_state_poll(rr_vfo_t vfo) {
    memcpy( old, curr, sizeof(ws_rig_state_t) );
 
 #if     0
-
    // Poll the backend
    if (rig.backend && rig.backend->api && rig.backend->api->backend_poll) {
       rig.backend->api->backend_poll();
@@ -131,7 +124,7 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
    }
 
    // Nothing to return, see if we've iterated enough times to force a send
-   if (ws_rig_state_last_sent >= WS_RIGCTL_FORCE_INTERVAL) {
+   if (ws_rig_state_last_sent >= cfg_backed_poll_interval) {
       force_send = true;
    }
    ws_rig_state_t *diff = NULL;
@@ -152,15 +145,17 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
    return false;
 }
 
+/*
+ time_t cfg_backed_poll_interval = 60;
+ cfg_backed_poll_interval = cfg_get_int("backend.poll-interval", 60);
+*/
+
 #ifdef	USE_MONGOOSE
-bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
+bool ws_handle_rigctl_msg(struct mg_ws_message *msg, rrconn_t *cptr) {
    struct mg_str msg_data = msg->data;
-   rrconn_t *cptr = http_find_client_by_c(c);
    bool rv = false;
 
    if (!cptr) {
-      Log(LOG_DEBUG, "ws.rigctl", "rig parse, cptr == NULL, c: <%p>", c);
-
       return true;
    }
    cptr->last_heard = now;       // avoid unneeded keep-alives
@@ -179,7 +174,12 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    if (cptr->user->is_muted) {
       Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they are muted!", cmd, cptr->chatname);
       // XXX: Inform the user they are muted and can't use rigctl
-      dict_free(d);
+      dict *d_err = dict_new();
+      dict_add(d, "error.msg", "Invalid target");
+      dict_add(d, "error.vfo", vfo);
+      dict_add(d, "error.target", cptr->chatname);
+      ws_send_dict(NULL, cptr, d_err, WEBSOCKET_OP_TEXT);
+      dict_free(d_err);
 
       return true;
    }
@@ -197,7 +197,6 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
    }
 
    if (cmd) {
-      // XXX: This needs split up to move functionality to ptt.c
       if (strcasecmp(cmd, "ptt") == 0) {
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
             dict_free(d);
@@ -250,19 +249,6 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          cptr->last_heard = now;
          cptr->is_ptt = c_state;
 
-         // Start/stop PTT session
-// XXX: Need to move this into a event...
-#if     0
-
-         if (!cptr->ptt_session) {
-            const char *recording = au_recording_start(channel);
-            cptr->ptt_session = db_ptt_start(masterdb, cptr->user->name, dp->freq, mode_name, dp->width, dp->power,
-               recording);
-         } else {
-            db_ptt_stop(masterdb, cptr->ptt_session);
-         }
-#endif	// 0
-
          // Send to log file & consoles
          Log(LOG_AUDIT, "ptt", "User %s set PTT to %s on vfo %s", cptr->chatname, (c_state ? "true" : "false"), vfo);
          dict *d = dict_new();
@@ -271,12 +257,10 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          dict_add(d, "cat.ptt", ptt_state);
          dict_add(d, "cat.user", cptr->chatname);
          dict_add(d, "cat.vfo", vfo);
-         // was floatp?
          dict_add_float(d, "cat.power", dp->power);
          dict_add_long(d, "cat.freq", dp->freq);
          dict_add_int(d, "cat.width", dp->width);
          dict_add_ulong(d, "cat.ts", now);
-
          ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
 
          // Send a PTT event
@@ -313,8 +297,6 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          Log(LOG_AUDIT, "ws.cat", "User %s set VFO %s FREQ to %d hz", cptr->chatname, vfo, new_freq);
          event_emit_dict("cat.freq", NULL, d);
          dict_free(d);
-// XXX: Implement this as an event
-//         rr_freq_set(c_vfo, new_freq);
       } else if (strcasecmp(cmd, "mode") == 0) {
          char *mode = mg_json_get_str(msg_data, "$.cat.mode");
 
@@ -352,8 +334,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          rr_mode_t new_mode = vfo_parse_mode(mode);
 
          if (new_mode != MODE_NONE) {
-// XXX: Implement this as an event
-//            rr_set_mode(c_vfo, new_mode);
+//            event_emit_dict();
          }
          free(mode);
       } else {

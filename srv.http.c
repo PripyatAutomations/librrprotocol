@@ -1,4 +1,4 @@
-// http.c
+// librrprotocol/srv.http.c
 //    This is part of rustyrig-fw.
 // https://github.com/pripyatautomations/rustyrig-fw
 //
@@ -107,7 +107,7 @@ const char *http_content_type(const char *type) {
 }
 
 #ifdef	USE_MONGOOSE
-bool http_static(struct mg_http_message *msg, struct mg_connection *c) {
+bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
    struct mg_http_serve_opts opts = http_opts;
 
    if (!msg) {
@@ -146,18 +146,18 @@ bool http_static(struct mg_http_message *msg, struct mg_connection *c) {
          // tell mongoose about it
          opts.mime_types = ctype;
          // and serve the file
-         mg_http_serve_dir(c, msg, &opts);
+         mg_http_serve_dir(cptr->conn, msg, &opts);
 
          return false;
       }
    } else if (is_dir(real_path) ) {
-      mg_http_serve_dir(c, msg, &opts);
+      mg_http_serve_dir(cptr->conn, msg, &opts);
 
       return false;
    } else {
       // file not found
       Log(LOG_DEBUG, "http.core", "Static dispatch for %s returning 404", path);
-      mg_http_serve_file(c, msg, www_404_path, &opts);
+      mg_http_serve_file(cptr->conn, msg, www_404_path, &opts);
    }
 
    return true;
@@ -173,37 +173,41 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
    char ip[INET6_ADDRSTRLEN];   // Buffer to hold IPv4 or IPv6 address
    memset(ip, 0, INET6_ADDRSTRLEN);
 
-   int port = c->rem.port;
+   // Try to find the cptr for this mg_connection
+   rrconn_t *cptr = http_find_client_by_c(c);
+   if (!cptr) {
+      cptr = http_add_client(c, false);
+   }
+   int port = cptr->conn->rem.port;
 
-   if (c->rem.is_ip6) {
-      inet_ntop( AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
+   if (cptr->conn->rem.is_ip6) {
+      inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
    } else {
-      inet_ntop( AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
+      inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
    }
 
    if (ev == MG_EV_OPEN) {
       if (cfg_get_bool("net.http.hex-dump", false) ) {
-         c->is_hexdumping = 1;
+         cptr->conn->is_hexdumping = 1;
       }
    } else if (ev == MG_EV_CONNECT) {
-      if (c->is_tls) {
+      if (cptr->conn->is_tls) {
          Log(LOG_DEBUG, "http", "Initializing TLS");
          struct mg_tls_opts opts;
          opts.ca = mg_str("*");
-         mg_tls_init(c, &opts);
+         mg_tls_init(cptr->conn, &opts);
       }
    } else if (ev == MG_EV_ACCEPT) {
-      Log(LOG_CRAZY, "http", "Accepted connection on mg_conn:<%p> from %s:%d", c, ip, port);
+      Log(LOG_CRAZY, "http", "Accepted connection on cptr:<%p> from %s:%d", cptr, ip, port);
 
 #ifdef	HTTP_USE_TLS
-      if (c->fn_data) {
-         Log(LOG_CRAZY, "http", "Init TLS for mg_conn:<%p> from %s:%d", c, ip, port);
-         mg_tls_init(c, &tls_opts);
+      if (cptr->conn->fn_data) {
+         Log(LOG_CRAZY, "http", "Init TLS for cptr:<%p> from %s:%d", cptr, ip, port);
+         mg_tls_init(cptr->conn, &tls_opts);
       }
 #endif	// HTTP_USE_TLS
    } else if (ev == MG_EV_HTTP_MSG) {
       rrconn_t *cptr = http_find_client_by_c(c);
-
       if (!cptr) {
          Log(LOG_CRAZY, "http.core", "ACCEPT: mg_ev_http_msg cptr doesn't exist, creating");
          cptr = http_add_client(c, false);
@@ -227,40 +231,32 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
                }
                memset(cptr->user_agent, 0, ua_len);
                memcpy(cptr->user_agent, ua_hdr->buf, ua_len);
-               Log(LOG_DEBUG, "http.core", "New session c:<%p> cptr:<%p> User-Agent: %s (%d)", c, cptr,
+               Log(LOG_DEBUG, "http.core", "New session cptr:<%p> User-Agent: %s (%d)", cptr,
                   (cptr->user_agent ? cptr->user_agent : "none"), ua_len);
             }
          }
       }
 
       // Send the request to our HTTP router
-      if (hm && http_dispatch_route(hm, c) == true) {
+      if (hm && http_dispatch_route(hm, cptr) == true) {
          Log(LOG_CRAZY, "http.core", "fall through to http_static");
-         http_static(hm, c);
+         http_static(hm, cptr);
       }
    } else if (ev == MG_EV_WS_OPEN) {
-      Log(LOG_CRAZY, "http.core", "WS OPEN for c:<%p>", c);
-      rrconn_t *cptr = http_find_client_by_c(c);
-
-      if (cptr) {
-         Log(LOG_DEBUG, "http", "Conn mg_conn:<%p> from %s:%d upgraded to ws with cptr:<%p>", c, ip, port, cptr);
-         cptr->is_ws = true;
-         dict *d = dict_new();
-         dict_add(d, "hello.swver", VERSION);
-         dict_add(d, "hello.hwver", HARDWARE);
-         ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
-      } else {
-         Log(LOG_CRIT, "http", "Conn mg_conn:<%p> from %s:%d kicked: No cptr but tried to start ws", c, ip, port);
-         ws_kick_client_by_c(c, "Socket error 314");
-      }
+      Log(LOG_CRAZY, "http.core", "WS OPEN for cptr:<%p>", cptr);
+      Log(LOG_DEBUG, "http", "Conn cptr:<%p> from %s:%d upgraded to ws with cptr:<%p>", cptr, ip, port, cptr);
+      cptr->is_ws = true;
+      dict *d = dict_new();
+      dict_add(d, "hello.swver", VERSION);
+      dict_add(d, "hello.hwver", HARDWARE);
+      ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    } else if (ev == MG_EV_WS_MSG) {
       struct mg_ws_message *msg = (struct mg_ws_message *)ev_data;
-      ws_handle(msg, c);
+      ws_handle(msg, cptr);
    } else if (ev == MG_EV_CLOSE) {
       char resp_buf[HTTP_WS_MAX_MSG + 1];
-      rrconn_t *cptr = http_find_client_by_c(c);
       const char *ip = cptr ? cptr->user_ip : "(unknown)";
-      Log(LOG_DEBUG, "http", "http_cb MG_EV_CLOSE for cptr:<%p> c:<%p> ip:%s", cptr, c, ip);
+      Log(LOG_DEBUG, "http", "http_cb MG_EV_CLOSE for cptr:<%p> ip:%s", cptr, ip);
 
       // make sure we're not accessing unsafe memory
       if (cptr && cptr->user && cptr->chatname[0] != '\0') {
@@ -307,11 +303,11 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
             dict_add_ulong(d, "talk.ts", now);
             ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
             dict_free(d);
-            Log(LOG_AUDIT, "auth", "User %s on mg_conn:<%p> cptr:<%p> from %s:%d disconnected", cptr->chatname, c, cptr, ip, port);
+            Log(LOG_AUDIT, "auth", "User %s on cptr:<%p> cptr:<%p> from %s:%d disconnected", cptr->chatname, cptr, cptr, ip, port);
          }
       } else {
          // This one makes a BUNCH of noise due to webui loading
-         Log(LOG_CRAZY, "auth", "Unauthenticated client on mg_conn:<%p> from %s:%d disconnected", c, ip, port);
+         Log(LOG_CRAZY, "auth", "Unauthenticated client on cptr:<%p> from %s:%d disconnected", cptr, ip, port);
       }
       http_remove_client(c);
    }

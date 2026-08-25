@@ -50,23 +50,23 @@ typedef struct ws_conn ws_conn_t;
 //extern void ws_init(void);
 extern void ws_fini(struct mg_mgr *mgr);
 extern bool ws_init(struct mg_mgr *mgr);
-extern bool ws_handle(struct mg_ws_message *msg, struct mg_connection *c);
-extern void ws_add_client(struct mg_connection *c);
-extern void ws_remove_client(struct mg_connection *c);
+extern bool ws_handle(struct mg_ws_message *msg, rrconn_t *cptr);
+extern void ws_add_client(rrconn_t *cptr);
+extern void ws_remove_client(rrconn_t *cptr);
 
 // Send to a specific, authenticated websocket user by cptr
-extern void ws_send_to_cptr(struct mg_connection *sender, rrconn_t *acptr, struct mg_str *msg_data, int data_type);
-extern bool ws_send_dict(struct mg_connection *sender, struct mg_connection *dest, dict *d, int data_type);
-extern void ws_broadcast_dict(struct mg_connection *sender, dict *d, int data_type);
-extern void ws_broadcast_dict_with_flags(u_int32_t flags, struct mg_connection *sender, dict *d, int data_type);
+extern void ws_send_to_cptr(rrconn_t *sender, rrconn_t *acptr, struct mg_str *msg_data, int data_type);
+extern bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type);
+extern void ws_broadcast_dict(rrconn_t *sender, dict *d, int data_type);
+extern void ws_broadcast_dict_with_flags(u_int32_t flags, rrconn_t *sender, dict *d, int data_type);
 
 // Send to all users, except the sender (UNLESS sender is NULL)
-extern void ws_send_to_name(struct mg_connection *sender, const char *username, struct mg_str *msg_data, int data_type);
+extern void ws_send_to_name(rrconn_t *sender, const char *username, struct mg_str *msg_data, int data_type);
 extern bool ws_kick_client(rrconn_t *cptr, const char *reason);                     // disconnect a user
 extern bool ws_kick_client_by_c(struct mg_connection *c, const char *reason);
 extern bool ws_kick_by_name(const char *name, const char *reason);
 extern bool ws_kick_by_uid(int uid, const char *reason);
-extern bool ws_handle_protocol(struct mg_ws_message *msg, struct mg_connection *c);
+extern bool ws_handle_protocol(struct mg_ws_message *msg, rrconn_t *cptr);
 extern bool ws_send_ping(rrconn_t *cptr);
 extern bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...);
 extern bool ws_send_error(rrconn_t *cptr, const char *fmt, ...);
@@ -80,37 +80,37 @@ extern bool au_send_subscribe(u_int32_t channel);
 extern bool au_send_unsubscribe(u_int32_t channel);
 
 // ws.auth.c
-extern bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c);
+extern bool ws_handle_auth_msg(struct mg_ws_message *msg, rrconn_t *cptr);
 
 // ws_bcast.c
-extern void ws_broadcast_with_flags(u_int32_t flags, struct mg_connection *sender, struct mg_str *msg_data,
+extern void ws_broadcast_with_flags(u_int32_t flags, rrconn_t *sender, struct mg_str *msg_data,
                                     int data_type);
-extern void ws_broadcast(struct mg_connection *sender, struct mg_str *msg_data, int data_type);
+extern void ws_broadcast(rrconn_t *sender, struct mg_str *msg_data, int data_type);
 extern void ws_blorp_userlist_cb(void *arg);                     // timer calls this to set userlists
 
 // ws.chat.c
 extern bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action);
-extern bool ws_handle_chat_msg(struct mg_connection *c, dict *d);
+extern bool ws_handle_chat_msg(rrconn_t *cptr, dict *d);
 extern bool ws_send_users(rrconn_t *cptr);
 extern bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr);
 
 // ws.rigctl.c
-extern bool ws_handle_rigctl_msg(struct mg_ws_message *msg, struct mg_connection *c);
+extern bool ws_handle_rigctl_msg(struct mg_ws_message *msg, rrconn_t *cptr);
 
 // Handle incoming messages
-extern void ws_handler(struct mg_connection *c, int ev, void *ev_data);
+extern void ws_handler(rrconn_t *cptr, int ev, void *ev_data);
 
 // Send messages
-extern bool ws_send_ptt_cmd(struct mg_connection *c, const char *vfo, bool ptt);
-extern bool ws_send_mode_cmd(struct mg_connection *c, const char *vfo, const char *mode);
-extern bool ws_send_freq_cmd(struct mg_connection *c, const char *vfo, long freq);
-extern bool ws_send_notice(struct mg_connection *c, const char *fmt, ...);
+extern bool ws_send_ptt_cmd(rrconn_t *cptr, const char *vfo, bool ptt);
+extern bool ws_send_mode_cmd(rrconn_t *cptr, const char *vfo, const char *mode);
+extern bool ws_send_freq_cmd(rrconn_t *cptr, const char *vfo, long freq);
+extern bool ws_send_notice(rrconn_t *cptr, const char *fmt, ...);
 
 
 // ws.audio.c
 extern bool ws_audio_init(void);
-extern bool ws_select_codec(struct mg_connection *c, const char *codec, bool is_tx);
-extern bool ws_binframe_process_mg(struct mg_connection *c, const char *buf, size_t len);
+extern bool ws_select_codec(rrconn_t *cptr, const char *codec, bool is_tx);
+extern bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len);
 #endif // defined(USE_MONGOOSE)
 extern bool ws_send_error(rrconn_t *cptr, const char *fmt, ...);
 extern bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...);

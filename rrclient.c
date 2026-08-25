@@ -17,9 +17,10 @@ const char *login_user = NULL;
 
 #ifdef  USE_MONGOOSE
 extern struct mg_mgr mgr;
-struct mg_connection *ws_conn = NULL;
+rrconn_t *ws_conn = NULL;
 
 static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) {
+   rrconn_t *cptr = http_find_client_by_c(c);
    if (ev == MG_EV_WS_MSG) {
       struct mg_ws_message *msg = (struct mg_ws_message *)ev_data;
 
@@ -39,7 +40,7 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
          if (ping_ts) {
             dict_add(d, "type", "pong");
             dict_add_ulong(d, "ts", strtoul(ping_ts, NULL, 0));
-            ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+            ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
          } else if (pong_ts) {
             Log(LOG_CRAZY, "http.pong", "Received pong ts:%s", pong_ts);
          } else if (cmd && strcasecmp(cmd, "msg") == 0) {
@@ -60,13 +61,13 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
          dict_add(d, "hello", "rrcli");
          dict_add(d, "hello.swver", VERSION);
          dict_add(d, "hello.hwver", "client");
-         ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+         ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
          dict_free(d);
          d = dict_new();
          dict_add(d, "auth.cmd", "login");
          dict_add(d, "auth.user", login_user);
          dict_add_ulong(d, "auth.ts", now);
-         ws_send_dict(NULL, c, d, WEBSOCKET_OP_TEXT);
+         ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
          dict_free(d);
       }
 
@@ -91,50 +92,13 @@ bool rrclient_connect(const char *url) {
    }
    event_emit("connecting", NULL, NULL);
 #ifdef  USE_MONGOOSE
-   ws_conn = mg_ws_connect(&mgr, url, rrclient_ws_handler, NULL, NULL);
 
    if (!ws_conn) {
       event_emit("http.error", NULL, NULL);
-
       return true;
    }
-#endif // USE_MONGOOSE
 
-   return false;
-}
-
-bool rrclient_send_chat(const char *data) {
-   if (!data) {
-      return true;
-   }
-   dict *d = dict_new();
-   dict_add(d, "talk.cmd", "msg");
-   dict_add(d, "talk.data", data);
-   dict_add(d, "talk.msg_type", "pub");
-
-#ifdef  USE_MONGOOSE
-
-   if (!ws_conn) {
-      dict_free(d);
-      return true;
-   }
-   ws_send_dict(NULL, ws_conn, d, WEBSOCKET_OP_TEXT);
-#endif // USE_MONGOOSE
-   dict_free(d);
-
-   return false;
-}
-
-bool rrclient_send(const char *json) {
-   if (!json) {
-      return true;
-   }
-#ifdef  USE_MONGOOSE
-
-   if (!ws_conn) {
-      return true;
-   }
-   mg_ws_send(ws_conn, json, strlen(json), WEBSOCKET_OP_TEXT);
+   ws_conn->conn = mg_ws_connect(&mgr, url, rrclient_ws_handler, NULL, NULL);
 #endif // USE_MONGOOSE
 
    return false;
@@ -144,7 +108,7 @@ bool rrclient_disconnect(void) {
 #ifdef USE_MONGOOSE
 
    if (ws_conn) {
-      ws_conn->is_closing = 1;
+      ws_conn->conn->is_closing = 1;
       ws_conn = NULL;
    }
 #endif // USE_MONGOOSE

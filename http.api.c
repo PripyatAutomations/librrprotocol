@@ -43,7 +43,7 @@ const struct mg_http_serve_opts http_opts = {
    .root_dir = www_root
 };
 
-static bool http_help(struct mg_http_message *msg, struct mg_connection *c) {
+static bool http_help(struct mg_http_message *msg, rrconn_t *cptr) {
    size_t h_sz = PATH_MAX;
    size_t t_sz = 128;
    char help_path[h_sz];
@@ -76,83 +76,65 @@ static bool http_help(struct mg_http_message *msg, struct mg_connection *c) {
    if (file_exists(help_path) != true) {
       Log(LOG_AUDIT, "http.api", "help: %s doesn't exist", help_path);
    }
-   mg_http_serve_file(c, msg, help_path, &http_opts);
+   mg_http_serve_file(cptr->conn, msg, help_path, &http_opts);
 
    return false;
 }
 
-static bool http_api_ping(struct mg_http_message *msg, struct mg_connection *c) {
+static bool http_api_ping(struct mg_http_message *msg, rrconn_t *cptr) {
    // XXX: We should send back the first GET argument
-   mg_http_reply(c, 200, http_content_type("json"), "{%m:%d}\n", MG_ESC("status"), 1);
+   mg_http_reply(cptr->conn, 200, http_content_type("json"), "{%m:%d}\n", MG_ESC("status"), 1);
 
    return false;
 }
 
-static bool http_api_time(struct mg_http_message *msg, struct mg_connection *c) {
-   mg_http_reply( c, 200, http_content_type("json"), "{%m:%lu}\n", MG_ESC("time"), time(NULL) );
+static bool http_api_time(struct mg_http_message *msg, rrconn_t *cptr) {
+   mg_http_reply( cptr->conn, 200, http_content_type("json"), "{%m:%lu}\n", MG_ESC("time"), time(NULL) );
 
    return false;
 }
 
-static bool http_api_ws(struct mg_http_message *msg, struct mg_connection *c) {
+static bool http_api_ws(struct mg_http_message *msg, rrconn_t *cptr) {
    // Upgrade to websocket
-   mg_ws_upgrade(c, msg, NULL);
-   c->data[0] = 'W';
+   mg_ws_upgrade(cptr->conn, msg, NULL);
+   cptr->conn->data[0] = 'W';
 
    return false;
 }
 
-static bool http_api_version(struct mg_http_message *msg, struct mg_connection *c) {
-   mg_http_reply(c, 200, http_content_type("json"), "{ \"version\": { \"firmware\": \"%s\", \"hardware\": \"%s\" } }",
+static bool http_api_version(struct mg_http_message *msg, rrconn_t *cptr) {
+   mg_http_reply(cptr->conn, 200, http_content_type("json"), "{ \"version\": { \"firmware\": \"%s\", \"hardware\": \"%s\" } }",
       VERSION, HARDWARE);
 
    return false;
 }
 
-static bool http_api_stats(struct mg_http_message *msg, struct mg_connection *c) {
+static bool http_api_stats(struct mg_http_message *msg, rrconn_t *cptr) {
    struct mg_connection *t;
    // Print some statistics about currently established connections
-   mg_printf(c, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
-   mg_http_printf_chunk(c, "ID PROTO TYPE      LOCAL           REMOTE\n");
+   mg_printf(cptr->conn, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
+   mg_http_printf_chunk(cptr->conn, "ID PROTO TYPE      LOCAL           REMOTE\n");
 
-   for (t = c->mgr->conns ; t ; t = t->next) {
-      mg_http_printf_chunk(c, "%-3lu %4s %s %M %M\n", t->id, t->is_udp ? "UDP" : "TCP",
+   for (t = cptr->conn->mgr->conns ; t ; t = t->next) {
+      mg_http_printf_chunk(cptr->conn, "%-3lu %4s %s %M %M\n", t->id, t->is_udp ? "UDP" : "TCP",
          t->is_listening ? "LISTENING" : t->is_accepted ? "ACCEPTED " : "CONNECTED", mg_print_ip, &t->loc, mg_print_ip,
          &t->rem);
    }
 
-   mg_http_printf_chunk(c, "");   // Don't forget the last empty chunk
+   mg_http_printf_chunk(cptr->conn, "");   // Don't forget the last empty chunk
 
    return false;
 }
 
 static http_route_t http_routes[HTTP_MAX_ROUTES] = {
-   {
-      "/api/ping", http_api_ping, false
-   },                                                           // Responds back
-                                                                // with the date
-                                                                // given
-   {
-      "/api/stats", http_api_stats, false
-   },                                                           // Statistics
-   {
-      "/api/time", http_api_time, false
-   },                                                           // Get device
-                                                                // time
-   {
-      "/api/version", http_api_version, false
-   },                                                           // Version info
+   { "/api/ping", http_api_ping, false },
+   { "/api/stats", http_api_stats, false },
+   { "/api/time", http_api_time, false },
+   { "/api/version", http_api_version, false },
 //    { "/help",     http_help,  false }  ,     // Help API
-   {
-      "/ws", http_api_ws, true
-   },                                                           // Upgrade to
-                                                                // websocket
+   { "/ws", http_api_ws, true },
 //    { "/tx",    http_api_tx_ws, true },       //
-   {
-      NULL, NULL, false
-   }                                                            // Terminator
-                                                                // (is this even
-                                                                // needed?)
+   { NULL, NULL, false }
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -160,8 +142,8 @@ static http_route_t http_routes[HTTP_MAX_ROUTES] = {
 // Ugly things lie below. I am not responsible for vomit on keyboards //
 ////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
-bool http_dispatch_route(struct mg_http_message *msg, struct mg_connection *c) {
-   if (!c || !msg) {
+bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr) {
+   if (!cptr || !msg) {
       return true;
    }
    int items = (sizeof(http_routes) / sizeof(http_route_t) ) - 1;
@@ -188,7 +170,7 @@ bool http_dispatch_route(struct mg_http_message *msg, struct mg_connection *c) {
          if (msg->uri.len > 0 && msg->uri.buf[msg->uri.len - 1] == '/') {
             msg->uri.len--;
          }
-         rv = http_routes[i].cb(msg, c);
+         rv = http_routes[i].cb(msg, cptr);
 
          return false;
       } else {

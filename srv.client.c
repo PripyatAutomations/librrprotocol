@@ -23,29 +23,6 @@
 #include <librrprotocol/rrprotocol.h>
 
 extern time_t now;
-#ifdef  USE_MONGOOSE
-rrconn_t *http_find_client_by_c(struct mg_connection *c) {
-   if (!c) {
-      return NULL;
-   }
-   rrconn_t *cptr = http_client_list;
-   int i = 0;
-
-   while (cptr) {
-      if (cptr->conn == c) {
-         Log( LOG_CRAZY, "http.client", "find_client_by_c <%p> returning index %i: %p |%s|", c, i, cptr,
-            (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
-
-         return cptr;
-      }
-      i++;
-      cptr = cptr->next;
-   }
-   Log(LOG_CRAZY, "http.client", "find_client_by_c <%p> no matches!", c);
-
-   return NULL;
-}
-#endif // defined(USE_MONGOOSE)
 
 rrconn_t *http_find_client_by_token(const char *token) {
    if (!token) {
@@ -170,21 +147,39 @@ rrconn_t *http_add_client(struct mg_connection *c, bool is_ws) {
    return cptr;
 }
 
+rrconn_t *http_find_client_by_c(struct mg_connection *c) {
+   if (!c) {
+      return NULL;
+   }
+   rrconn_t *cptr = http_client_list;
+   int i = 0;
+
+   while (cptr) {
+      if (cptr->conn == c) {
+         Log( LOG_CRAZY, "http.client", "find_client_by_c <%p> returning index %i: %p |%s|", 
+              c, i, cptr, (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
+         return cptr;
+      }
+      i++;
+      cptr = cptr->next;
+   }
+   Log(LOG_CRAZY, "http.client", "find_client_by_c <%p> no matches!", c);
+   return NULL;
+}
+
 // Remove a client (WebSocket or HTTP) from the list
 void http_remove_client(struct mg_connection *c) {
    if (!c) {
       Log(LOG_CRIT, "http", "http_remove_client passed NULL mg_conn?!");
-
       return;
    }
    rrconn_t *prev = NULL;
    rrconn_t *current = http_client_list;
 
-   c->is_closing = 1;
-
    while (current) {
       if (current->conn == c) {
          // Found the client to remove, mark it dead
+         current->conn->is_closing = 1;
          current->active = false;
 
          if (!prev) {
@@ -207,7 +202,6 @@ void http_remove_client(struct mg_connection *c) {
          }
          memset( current, 0, sizeof(rrconn_t) );
          free(current);
-
          return;
       }
       prev = current;
