@@ -217,18 +217,17 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       return;
    }
 
-   rrconn_t *cptr = http_find_client_by_c(c);
-
-   if (!cptr) {
-      Log(LOG_DEBUG, "ws", "binframe_process: cptr:<%p> ev: %d ev_data:<%p>", cptr, ev, ev_data);
-
+   rrconn_t *cptr = NULL;
+   if (c->fn_data) {
+      cptr = (rrconn_t *)c->fn_data;
+   } else {
+      Log(LOG_CRIT, "librrprotocol.cli.main", "No fn_data in mg_conn:<%p>", c);
       return;
    }
-
    if (ev == MG_EV_OPEN) {
 #ifdef	HTTP_DEBUG_CRAZY
       if (cfg_http_debug_crazy) {
-         cptr->conn->is_hexdumping = 1;
+         c->is_hexdumping = 1;
       }
 #endif	// HTTP_DEBUG_CRAZY
    } else if (ev == MG_EV_CONNECT) {
@@ -243,7 +242,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       const char *this_server = server_name;
       const char *url = get_server_property(this_server, "server.url");
 
-      if (cptr->conn->is_tls) {
+      if (c->is_tls) {
          struct mg_tls_opts opts = {
             .name = mg_url_host(url)
          };
@@ -253,7 +252,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          } else {
             Log(LOG_CRIT, "ws", "No tls_ca_path set!");
          }
-         mg_tls_init(cptr->conn, &opts);
+         mg_tls_init(c, &opts);
       }
       ws_connected = 1;
 

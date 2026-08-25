@@ -20,7 +20,9 @@ extern struct mg_mgr mgr;
 rrconn_t *ws_conn = NULL;
 
 static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) {
-   rrconn_t *cptr = http_find_client_by_c(c);
+//   rrconn_t *cptr = http_find_client_by_c(c);
+   rrconn_t *cptr = ws_conn;
+
    if (ev == MG_EV_WS_MSG) {
       struct mg_ws_message *msg = (struct mg_ws_message *)ev_data;
 
