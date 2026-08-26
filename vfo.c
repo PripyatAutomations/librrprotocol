@@ -24,6 +24,7 @@
 rr_vfo_data_t vfos[MAX_VFOS];
 rr_vfo_t active_vfo = VFO_A;
 
+// Our static strings
 static const char vfo_mode_none[] = "NONE";
 static const char vfo_mode_cw[] = "CW";
 static const char vfo_mode_am[] = "AM";

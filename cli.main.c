@@ -1,5 +1,5 @@
 //
-// rrgtk/cli.main.c: Client main stuff
+// rrgtk/cli.main.c: Client stuff
 //    This is part of rustyrig-fw.
 // https://github.com/pripyatautomations/rustyrig-fw
 //
@@ -21,12 +21,11 @@
 
 extern const char *get_server_property(const char *server, const char *prop);
 extern time_t now;
-extern dict *cfg;                                // config.c
 extern int ws_connected;
-extern bool cfg_show_pings;
 const char *tls_ca_path = NULL;
 bool cfg_http_debug_crazy = false;
 const char *server_name = NULL;
+extern bool cfg_show_pings;
 
 // At startup, we try to find the distribution's TLS certificate authority trust store
 const char *default_tls_ca_paths[] = {
@@ -38,9 +37,6 @@ const char *default_tls_ca_paths[] = {
 //////////////////////
 // Websocket router //
 //////////////////////
-#ifdef	USE_MONGOOSE
-struct mg_mgr mgr;
-struct mg_str tls_ca_path_str;
 extern bool ws_handle_alert_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_error_msg(rrconn_t *cptr, dict *d);
@@ -52,11 +48,10 @@ extern bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_syslog_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_talk_msg(rrconn_t *cptr, dict *d);
 
-
 struct ws_msg_routes {
    const char *type;             // auth|ping|talk|cat|alert|error|hello etc
    bool auth_reqd;               // Is this only for authenticated users?
-   bool (*cb)(/*rrconn_t *cptr, struct mg_ws_message *msg*/);
+   bool (*cb)(/*rrconn_t *cptr, dict *d*/);
 };
 
 struct ws_msg_routes ws_routes_cli[] = {
@@ -92,6 +87,10 @@ bool ws_handle_hello_msg(rrconn_t *cptr, dict *d) {
 
    return false;
 }
+
+#ifdef	USE_MONGOOSE
+struct mg_mgr mgr;
+struct mg_str tls_ca_path_str;
 
 static bool ws_txtframe_dispatch(rrconn_t *cptr, struct mg_ws_message *msg) {
    if (!cptr || !msg) {
@@ -150,7 +149,6 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, struct mg_ws_message *msg) {
       i++;
    }
    dict_free(d);
-
    Log(LOG_CRAZY, "ws.router", "No matches for message: %s", msg_data);
 
    return true;
@@ -167,9 +165,7 @@ bool ws_binframe_process(const char *data, size_t len) {
    }
 
 #ifdef	DEBUG_WS_BINFRAMES
-   char hex[128] = {
-      0
-   };
+   char hex[128] = { 0 };
    size_t n = len < 16 ? len : 16;
 
    for (size_t i = 0 ; i < n ; i++) {
@@ -186,12 +182,10 @@ bool ws_binframe_process(const char *data, size_t len) {
 //
 // Handle a websocket request (see http.c/http_cb for case ev == MG_EV_WS_MSG)
 //
-
 #ifdef	USE_MONGOOSE
 bool ws_handle_cli(rrconn_t *cptr, struct mg_ws_message *msg) {
    if (!cptr || !msg || !msg->data.buf) {
       Log( LOG_DEBUG, "http.ws", "ws_handle got cptr:<%p> msg <%p> data <%p>", cptr, msg, (msg ? msg->data.buf : NULL) );
-
       return true;
    }
 
@@ -224,6 +218,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       Log(LOG_CRIT, "librrprotocol.cli.main", "No fn_data in mg_conn:<%p>", c);
       return;
    }
+
    if (ev == MG_EV_OPEN) {
 #ifdef	HTTP_DEBUG_CRAZY
       if (cfg_http_debug_crazy) {
@@ -264,6 +259,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 
          return;
       }
+      // Let client UI know we are connected (but not logged into!)
       dict *d = dict_new();
       dict_add(d, "auth.user", (char *)login_user);
       dict_add(d, "auth.server", (char *)server_name);
@@ -326,7 +322,6 @@ void ws_client_init(void) {
 #ifdef	USE_MONGOOSE
    mg_mgr_init(&mgr);
 #endif	// USE_MONGOOSE
-
 // XXX: Fix this
 //   tls_ca_path = find_file_by_list(default_tls_ca_paths,
 // sizeof(default_tls_ca_paths) / sizeof(char *));
@@ -349,19 +344,17 @@ void ws_client_init(void) {
    Log(LOG_DEBUG, "ws", "ws_init finished");
 }
 
-
-
 // XXX: We need to move to a similar arrangement as the client,
 // XXX: so these can be properly split across multiple source files
 // XXX: and accessed in a pleasant way...
 #ifdef	USE_MONGOOSE
 struct ws_msg_routes ws_routes[] = {
    { .type = "auth", .cb = ws_handle_auth_msg, .auth_reqd = false },
+   { .type = "cat", .cb = ws_handle_rigctl_msg, .auth_reqd = true },
    { .type = "hello", .cb = ws_handle_hello_msg, .auth_reqd = false },
 //   { .type = "media", .cb = ws_handle_media_msg, .auth_reqd = true },
    { .type = "ping", .cb = ws_handle_ping_msg, .auth_reqd = false },
 //   { .type = "pong",  .cb = ws_handle_pong_msg,  .auth_reqd = false },
-   { .type = "cat", .cb = ws_handle_rigctl_msg, .auth_reqd = true },
 //   { .type = "talk",  .cb = ws_handle_talk_msg,  .auth_reqd = true },
 //   { .type = "talk.cmd", .cb = ws_handle_talk_cmd, .auth_reqd = false },
 //   { .type = "talk.quit", .cb = ws_handle_quit,  .auth_reqd = false },
@@ -376,11 +369,10 @@ bool rrproto_ws_connect(int server) {
 bool ws_init(struct mg_mgr *mgr) {
    if (!mgr) {
       Log(LOG_CRIT, "ws", "ws_init called with NULL mgr");
-
       return true;
    }
-   Log(LOG_DEBUG, "http.ws", "WebSocket init completed succesfully");
 
+   Log(LOG_DEBUG, "http.ws", "WebSocket init completed succesfully");
    return false;
 }
 
@@ -395,33 +387,30 @@ void ws_send_to_cptr(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_data, 
 // Send to all logged in instances of the user
 void ws_send_to_name(rrconn_t *sender, const char *username, struct mg_str *msg_data, int data_type) {
    if (!sender || !username || !msg_data) {
-      Log(LOG_CRIT, "ws", "ws_send_to_name passed incomplete data; sender:<%p>, username:<%p>, msg_data:<%p>", sender,
-         username, msg_data);
-
+      Log(LOG_CRIT, "ws", "ws_send_to_name passed incomplete data; sender:<%p>, username:<%p>, msg_data:<%p>", sender, username, msg_data);
       return;
    }
+
    rrconn_t *current = http_client_list;
    while (current) {
       // Messages from the server will have NULL sender
-      if (!sender || (current->is_ws && current != sender) ) {
+      if (!sender || current->is_ws) {
          ws_send_to_cptr(sender, current, msg_data, data_type);
       }
       current = current->next;
    }
 }
-
 #endif // USE_MONGOOSE
 
 bool ws_kick_by_name(const char *name, const char *reason) {
    if (!http_client_list) {
       return true;
    }
+
    rrconn_t *curr = http_client_list;
    while (curr) {
       if (strcasecmp(name, curr->chatname) == 0) {
-#ifdef	USE_MONGOOSE
          ws_kick_client(curr, reason);
-#endif // USE_MONGOOSE
       }
       curr = curr->next;
    }
@@ -432,13 +421,11 @@ bool ws_kick_by_uid(int uid, const char *reason) {
    if (!http_client_list) {
       return true;
    }
+
    rrconn_t *curr = http_client_list;
    while (curr) {
       if (uid == curr->user->uid) {
-#ifdef	USE_MONGOOSE
          ws_kick_client(curr, reason);
-#endif // USE_MONGOOSE
-
       }
       curr = curr->next;
    }
@@ -449,18 +436,15 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
    // skip freeing resources if no client structure
    if (!cptr) {
       Log( LOG_DEBUG, "auth", "ws_kick_client with NULL cptr and reason: %s", (reason ? reason : "(none)") );
-
       return true;
    }
 
-#ifdef	USE_MONGOOSE
    if (!cptr->conn) {
       Log( LOG_DEBUG, "auth", "ws_kick_client for cptr <%p> has mg_conn <%p> and is invalid", cptr,
          (cptr ? cptr->conn : NULL) );
 
       return true;
    }
-#endif // USE_MONGOOSE
 
    // If we have a client structure attached, release it's resources
    if (cptr->user_agent) {
@@ -472,9 +456,7 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
       free(cptr->cli_version);
       cptr->cli_version = NULL;
    }
-   char resp_buf[HTTP_WS_MAX_MSG + 1];
 
-#ifdef	USE_MONGOOSE
    // make sure we're not accessing unsafe memory
    if (cptr->user && cptr->chatname[0] != '\0') {
       if (cptr->active) {
@@ -492,10 +474,7 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
          dict_free(d);
       }
    }
-
-   return ws_kick_client(cptr, reason);
-#endif // USE_MONGOOSE
-
+   // XXX: Delete the user
    return true;
 }
 
@@ -506,15 +485,18 @@ bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
    if (!c) {
       return true;
    }
+
    // Tell their client they've been disconnected
    prepare_msg( resp_buf, sizeof(resp_buf), "Client kicked: %s", (reason ? reason : "no reason given") );
    dict *d = dict_new();
    dict_add(d, "auth.error", resp_buf);
    const char *jp = dict2json(d);
    mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_CLOSE);
+   event_emit_dict("disconnected", NULL, d);
    dict_free(d);
    free((void *)jp);
    http_remove_client(c);
+   free(c);
 
    return false;
 }
@@ -546,17 +528,17 @@ static bool ws_handle_pong(struct mg_ws_message *msg, rrconn_t *cptr) {
       Log(LOG_CRAZY, "http.ws", "ws_handle_pong: PONG from user %s with ts:|%s|",
          (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>"), ts);
    }
+
    char *endptr;
    errno = 0;
    time_t ts_t = strtoll(ts, &endptr, 10);
-
    if (errno == ERANGE || ts_t < 0 || ts_t > LONG_MAX || *endptr != '\0') {
       Log(LOG_WARN, "http.pong", "Got invalid ts |%s| from client <%p>", ts, cptr);
       rv = true;
       goto cleanup;
    }
-   time_t ping_expiry = ts_t + HTTP_PING_TIME;
 
+   time_t ping_expiry = ts_t + HTTP_PING_TIME;
    if ( (ping_expiry) < now) {
       Log(LOG_AUDIT, "http.pong",
          "Late ping for cptr:<%p> from %s:%d ts: %li + %li (timeout) < now %li", cptr, ip, port,
@@ -801,7 +783,6 @@ bool ws_handle(struct mg_ws_message *msg, rrconn_t *cptr) {
 
    return false;
 }
-
 #endif // USE_MONGOOSE
 
 /////////
@@ -819,10 +800,7 @@ bool ws_send_error(rrconn_t *cptr, const char *fmt, ...) {
    dict *d = dict_new();
    dict_add(d, "error.msg", escaped_msg);
    dict_add_ulong(d, "error.ts", now);
-
-#ifdef	USE_MONGOOSE
    ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
-#endif // USE_MONGOOSE
    free(escaped_msg);
    dict_free(d);
 
@@ -846,10 +824,7 @@ bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...) {
    dict *d = dict_new();
    dict_add(d, "alert.msg", escaped_msg);
    dict_add_ulong(d, "alert.ts", now);
-
-#ifdef	USE_MONGOOSE
    ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
-#endif //USE_MONGOOSE
 
    free(escaped_msg);
    dict_free(d);
@@ -858,7 +833,6 @@ bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...) {
    return false;
 }
 
-#ifdef	USE_MONGOOSE
 bool ws_send_notice(rrconn_t *cptr, const char *fmt, ...) {
    if (!cptr || !fmt) {
       return true;
@@ -880,8 +854,8 @@ bool ws_send_notice(rrconn_t *cptr, const char *fmt, ...) {
    return false;
 }
 
+#ifdef	USE_MONGOOSE
 void ws_fini(struct mg_mgr *mgr) {
    mg_mgr_free(mgr);
 }
-
 #endif // USE_MONGOOSE

@@ -22,7 +22,6 @@
 extern dict *cfg;                // config.c
 extern bool cfg_show_pings;
 
-#ifdef	USE_MONGOOSE
 bool ws_handle_ping_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_WARN, "http.ws", "ping_msg: got d:<%p> cptr:<%p>", d, cptr);
@@ -31,13 +30,16 @@ bool ws_handle_ping_msg(rrconn_t *cptr, dict *d) {
    bool rv = false;
 
    char ip[INET6_ADDRSTRLEN];
-   int port = cptr->conn->rem.port;
+   int port = 0;
 
+#ifdef	USE_MONGOOSE
+   port = cptr->conn->rem.port;
    if (cptr->conn->rem.is_ip6) {
       inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
    } else {
       inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
    }
+#endif // USE_MONGOOSE
    time_t ping_ts = dict_get_time_t(d, "ping.ts", 0);
 
    if (ping_ts) {
@@ -56,4 +58,3 @@ bool ws_handle_ping_msg(rrconn_t *cptr, dict *d) {
    return false;
 }
 
-#endif // USE_MONGOOSE

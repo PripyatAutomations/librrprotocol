@@ -20,19 +20,15 @@
 #include <librrprotocol/rrprotocol.h>
 
 extern time_t poll_block_expire, poll_block_delay;
-extern dict *cfg;                // config.c
 extern time_t now;
-//extern gulong freq_changed_handler_id;
 
 // Store the previous mode
 // XXX: this needs to go into the per-VFO
 char old_mode[16];
 
-#ifdef	USE_MONGOOSE
 bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_DEBUG, "ws.rigctl", "handle_rigctl_msg invalid args: cptr:<%p> d:<%p>", cptr, d);
-
       return true;
    }
    time_t ts = dict_get_time_t(d, "cat.ts", now);
@@ -51,7 +47,6 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
       int width = dict_get_int(d, "cat.state.width", 0);
       int power = dict_get_int(d, "cat.state.power", 0);
       bool ptt = dict_get_bool(d, "cat.state.ptt", false);
-
       int ts = dict_get_int(d, "cat.ts", 0);
       char *user = dict_get(d, "cat.user", NULL);
 
@@ -102,8 +97,8 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_DEBUG, "ws.cat", "Unknown msg: %s", json_msg);
       free(json_msg);
    }
-local_cleanup:
 
+local_cleanup:
    return false;
 }
 
@@ -116,9 +111,9 @@ bool ws_send_ptt_cmd(rrconn_t *cptr, const char *vfo, bool ptt) {
    dict_add(d, "cat.vfo", vfo);
    dict_add_bool(d, "cat.ptt", ptt);
    dict_add_ulong(d, "cat.ts", now);
-
    ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
+
    return false;
 }
 
@@ -151,4 +146,3 @@ bool ws_send_freq_cmd(rrconn_t *cptr, const char *vfo, long freq) {
 
    return false;
 }
-#endif // USE_MONGOOSE

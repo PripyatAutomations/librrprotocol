@@ -22,7 +22,8 @@
 
 typedef enum rr_vfo_type {
    VFO_INVALID = 0,     // Not present
-   VFS_DDS,             // Direct Digital Synthesizer
+   VFO_DDS,             // Direct Digital Synthesizer
+   VFO_INTERNAL,	// Internal (other) reference
    VFO_EXTERNAL         // External frequency reference
 } rr_vfo_type_t;
 

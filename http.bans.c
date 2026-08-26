@@ -1,5 +1,5 @@
 //
-// http.bans.c: Support for user-agent restrictions
+// librrprotocol/http.bans.c: Support for user-agent restrictions
 //    This is part of rustyrig-fw.
 // https://github.com/pripyatautomations/rustyrig-fw
 //

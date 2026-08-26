@@ -17,7 +17,6 @@ librrprotocol_objs += cli.ping.o
 librrprotocol_objs += cli.rigctl.o
 librrprotocol_objs += cli.syslog.o
 librrprotocol_objs += http.api.o
-librrprotocol_objs += http.bans.o
 # XXX: This needs updated to use *either* ev or mongoose as configured.
 #librrprotocol_objs += irc.o
 #librrprotocol_objs += irc.capab.o

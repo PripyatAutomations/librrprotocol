@@ -18,9 +18,7 @@ extern struct mg_mgr mgr;  // provided by the application that uses mongoose
 #endif
 
 // Shared state
-char active_server[SERVERLEN] = {
-   0
-};
+char active_server[SERVERLEN] = { 0 };
 rr_connection_t *active_connections = NULL;
 int ws_connected = 0;
 int ws_tx_connected = 0;

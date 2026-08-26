@@ -22,23 +22,24 @@
 extern dict *cfg;                // config.c
 extern time_t now;
 
-#ifdef	USE_MONGOOSE
-bool ws_handle_syslog_msg(struct mg_connection *c, dict *d) {
+bool ws_handle_syslog_msg(rrconn_t *cptr, dict *d) {
    bool rv = false;
 
-   if (!c || !d) {
-      Log(LOG_WARN, "http.ws", "syslog_msg: got d:<%p> mg_conn:<%p>", d, c);
-
+   if (!cptr || !d) {
+      Log(LOG_WARN, "http.ws", "syslog_msg: got cptr:<%p> d:<%p>", cptr, d);
       return true;
    }
    char ip[INET6_ADDRSTRLEN];
-   int port = c->rem.port;
-
-   if (c->rem.is_ip6) {
-      inet_ntop( AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
+   int port = 0;
+   
+#ifdef	USE_MONGOOSE
+   port = cptr->conn->rem.port;
+   if (cptr->conn->rem.is_ip6) {
+      inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
    } else {
-      inet_ntop( AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
+      inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
    }
+#endif	// USE_MONGOOSE
    char *ts = dict_get(d, "syslog.ts", NULL);
    char *prio = dict_get(d, "syslog.prio", NULL);
    char *subsys = dict_get(d, "syslog.subsys", NULL);
@@ -52,15 +53,14 @@ bool ws_handle_syslog_msg(struct mg_connection *c, dict *d) {
    if ( (tmp = localtime(&t) ) ) {
       // success, proceed
       if (strftime(my_timestamp, sizeof(my_timestamp), "%Y/%m/%d %H:%M:%S", tmp) == 0) {
-         // handle the error
+         // if strftime fails: handle the error by printing the time_t
          memset( my_timestamp, 0, sizeof(my_timestamp) );
          snprintf( my_timestamp, sizeof(my_timestamp), "<%ld>", (long)time(NULL) );
       }
    }
-//   logpriority_t log_priority = log_priority_from_str(prio);
 
+// XXX: This needs some testing to make sure its robust
+//   logpriority_t log_priority = log_priority_from_str(prio);
    Log(LOG_DEBUG, "server.syslog", "remote syslog: [%s] <%s.%s> %s", my_timestamp, subsys, prio, data);
    return false;
 }
-
-#endif // USE_MONGOOSE

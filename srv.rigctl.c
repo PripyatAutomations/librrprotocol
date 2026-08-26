@@ -168,7 +168,7 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, rrconn_t *cptr) {
    // and expand into a dict, which is freed in cleanup below
    dict *d = json2dict(buf);
    char *cmd = dict_get(d, "cat.cmd", NULL);
-   char *vfo = dict_get(d, "cat.vfo", NULL);
+   char *vfo = dict_get(d, "cat.state.vfo", NULL);
    char *state = dict_get(d, "cat.state", NULL);
 
    if (cptr->user->is_muted) {

@@ -182,7 +182,7 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
    dict_add(d, "talk.privs", cptr->user->privs);
    dict_add(d, "talk.user", cptr->chatname);
    dict_add(d, "talk.cmd", "userinfo");
-   dict_add_int(d, "talk.cones", cptr->user->clones);
+   dict_add_int(d, "talk.clones", cptr->user->clones);
    dict_add_bool(d, "talk.muted", cptr->user->is_muted);
    dict_add_bool(d, "talk.tx", cptr->is_ptt);
    dict_add_long(d, "talk.ts", now);

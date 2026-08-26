@@ -19,49 +19,29 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-extern dict *cfg;                // config.c
 extern time_t now;
 
-#ifdef	USE_MONGOOSE
-bool ws_handle_notice_msg(struct mg_connection *c, struct mg_ws_message *msg) {
-   if (!c || !msg) {
-      Log(LOG_WARN, "http.ws", "notice_msg: got msg:<%p> mg_conn:<%p>", msg, c);
-
+bool ws_handle_notice_msg(rrconn_t *cptr, dict *d) {
+   if (!cptr || !d) {
+      Log(LOG_WARN, "http.ws", "notice_msg: got cptr:<%p> d:<%p>", cptr, d);
       return true;
    }
    bool rv = false;
-
    char ip[INET6_ADDRSTRLEN];
-   int port = c->rem.port;
+   int port = 0;
+#ifdef	USE_MONGOOSE
+   port = cptr->conn->rem.port;
 
-   if (c->rem.is_ip6) {
-      inet_ntop( AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
+   if (cptr->conn->rem.is_ip6) {
+      inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
    } else {
-      inet_ntop( AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
+      inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
    }
-
-   if (!msg->data.buf) {
-      Log(LOG_WARN, "http.ws", "notice_msg: got msg from msg_conn:<%p> from %s:%d -- msg:<%p> with no data ptr", c, ip,
-         port, msg);
-
-      return true;
-   }
-   struct mg_str msg_data = msg->data;
-
-   char buf[HTTP_WS_MAX_MSG + 1];
-   memset( buf, 0, sizeof(buf) );
-   memcpy(buf, msg_data.buf, msg_data.len);
-
-   // and expand into a dict, which is freed in cleanup below
-   dict *d = json2dict(buf);
-
+#endif // USE_MONGOOSE
    char *notice_msg = dict_get(d, "talk.msg", NULL);
    char *notice_from = dict_get(d, "talk.from", NULL);
    time_t ts = dict_get_time_t(d, "talk.ts", now);
 
    event_emit_dict("talk.msg", NULL, d);
-   dict_free(d);
-
    return false;
 }
-#endif // USE_MONGOOSE

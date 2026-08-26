@@ -18,14 +18,11 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-extern dict *cfg;               // config.c
 extern time_t now;		// main.c
 
-#ifdef	USE_MONGOOSE
-bool ws_handle_talk_msg(struct mg_connection *c, dict *d) {
-   if (!c || !d) {
-      Log(LOG_DEBUG, "ws.chat", "handle_talk_msg: c:<%p> d:<%p>", c, d);
-
+bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
+   if (!cptr || !d) {
+      Log(LOG_DEBUG, "ws.chat", "handle_talk_msg: cptr:<%p> d:<%p>", cptr, d);
       return true;
    }
    char *cmd = dict_get(d, "talk.cmd", NULL);
@@ -44,14 +41,12 @@ bool ws_handle_talk_msg(struct mg_connection *c, dict *d) {
 
    if (!cmd) {
       rv = true;
-
       return true;
    }
 
    if (cmd && strcasecmp(cmd, "userinfo") == 0) {
       if (!user) {
          rv = true;
-
          return true;
       }
       Log(LOG_DEBUG, "ws.talk", "UserInfo: %s has privs '%s' (TX: %s, Muted: %s, clones: %.0f)", user, privs,
@@ -92,10 +87,7 @@ bool ws_handle_talk_msg(struct mg_connection *c, dict *d) {
       free(quit_user);
    } else if (cmd && strcasecmp(cmd, "whois") == 0) {
       const char *whois_msg = dict_get(d, "talk.data", NULL);
-
       event_emit_dict("whois", NULL, d);
    }
-
    return false;
 }
-#endif // USE_MONGOOSE
