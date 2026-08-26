@@ -62,7 +62,7 @@ bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
          memset(session_token, 0, HTTP_TOKEN_LEN + 1);
          snprintf(session_token, HTTP_TOKEN_LEN + 1, "%s", token);
       } else {
-         Log(LOG_CRIT, "librrprotocol", "CHALLENGE with invalid token from %s", server_name);
+         Log(LOG_CRIT, "rrproto.auth", "CHALLENGE with invalid token from %s", server_name);
          goto cleanup;
       }
       const char *login_pass = get_server_property(server_name, "server.pass");
@@ -82,7 +82,7 @@ bool ws_send_login(rrconn_t *cptr, const char *login_user) {
       Log(LOG_DEBUG, "ws.auth", "send_login cptr:<%p> login_user:<%p> |%s|", cptr, login_user, login_user);
       return true;
    }
-   Log(LOG_INFO, "librrprotocol", "Sending initial LOGIN!");
+   Log(LOG_INFO, "rrproto.auth", "Sending initial LOGIN!");
    dict *d = dict_new();
    dict_add(d, "auth.cmd", "login");
    dict_add(d, "auth.user", login_user);

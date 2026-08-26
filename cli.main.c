@@ -215,7 +215,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
    if (c->fn_data) {
       cptr = (rrconn_t *)c->fn_data;
    } else {
-      Log(LOG_CRIT, "librrprotocol.cli.main", "No fn_data in mg_conn:<%p>", c);
+      Log(LOG_CRIT, "rrproto.cli.main", "No fn_data in mg_conn:<%p>", c);
       return;
    }
 

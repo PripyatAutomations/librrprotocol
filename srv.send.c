@@ -99,7 +99,7 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
          Log(LOG_CRAZY, "ws.proto", "Sending dict <%x> to conn <%x>: %s", d, dest, jp);
          mg_ws_send(dest->conn, jp, strlen(jp), data_type);
       } else {
-         Log(LOG_WARN, "librrprotocol", "Unable to send msg dict:<%x> to conn:<%x> - we are offline!", d, dest);
+         Log(LOG_WARN, "rrproto.srv", "Unable to send msg dict:<%x> to conn:<%x> - we are offline!", d, dest);
       }
       free((void *)jp);
    }
