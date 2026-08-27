@@ -40,10 +40,10 @@ bool ws_handle_syslog_msg(rrconn_t *cptr, dict *d) {
       inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
    }
 #endif	// USE_MONGOOSE
-   char *ts = dict_get(d, "syslog.ts", NULL);
-   char *prio = dict_get(d, "syslog.prio", NULL);
-   char *subsys = dict_get(d, "syslog.subsys", NULL);
-   char *data = dict_get(d, "syslog.data", NULL);
+   const char *ts = dict_get(d, "syslog.ts", NULL);
+   const char *prio = dict_get(d, "syslog.prio", NULL);
+   const char *subsys = dict_get(d, "syslog.subsys", NULL);
+   const char *data = dict_get(d, "syslog.data", NULL);
    char my_timestamp[64];
    time_t t;
    struct tm *tmp;

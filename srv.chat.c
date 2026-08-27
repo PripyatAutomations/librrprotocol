@@ -154,18 +154,17 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
       if (!kicked) {
          char msgbuf[HTTP_WS_MAX_MSG + 1];
          prepare_msg(msgbuf, sizeof(msgbuf), "KICK '%s' command matched no connected users", now, target);
-         dict *d = dict_new();
-         dict_add(d, "error.msg", msgbuf);
-         dict_add_ulong(d, "error.ts", now);
+         dict *err_msg = dict_new();
+         dict_add(err_msg, "error.msg", msgbuf);
+         dict_add_ulong(err_msg, "error.ts", now);
 
 #ifdef	USE_MONGOOSE
-         ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+         ws_send_dict(NULL, cptr, err_msg, WEBSOCKET_OP_TEXT);
 #endif	// USE_MONGOOSE
-         dict_free(d);
+         dict_free(err_msg);
       }
    } else {
       ws_chat_err_noprivs(cptr, "KICK");
-
       return true;
    }
 
@@ -178,23 +177,23 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
    if (!cptr || !cptr->authenticated || !cptr->user) {
       return true;
    }
-   dict *d = dict_new();
-   dict_add(d, "talk.privs", cptr->user->privs);
-   dict_add(d, "talk.user", cptr->chatname);
-   dict_add(d, "talk.cmd", "userinfo");
-   dict_add_int(d, "talk.clones", cptr->user->clones);
-   dict_add_bool(d, "talk.muted", cptr->user->is_muted);
-   dict_add_bool(d, "talk.tx", cptr->is_ptt);
-   dict_add_long(d, "talk.ts", now);
+   dict *talk_msg = dict_new();
+   dict_add(talk_msg, "talk.privs", cptr->user->privs);
+   dict_add(talk_msg, "talk.user", cptr->chatname);
+   dict_add(talk_msg, "talk.cmd", "userinfo");
+   dict_add_int(talk_msg, "talk.clones", cptr->user->clones);
+   dict_add_bool(talk_msg, "talk.muted", cptr->user->is_muted);
+   dict_add_bool(talk_msg, "talk.tx", cptr->is_ptt);
+   dict_add_long(talk_msg, "talk.ts", now);
 
 #ifdef	USE_MONGOOSE
    if (acptr) {
-      ws_send_dict(NULL, acptr, d, WEBSOCKET_OP_TEXT);
+      ws_send_dict(NULL, acptr, talk_msg, WEBSOCKET_OP_TEXT);
    } else {
-      ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
+      ws_broadcast_dict(NULL, talk_msg, WEBSOCKET_OP_TEXT);
    }
 #endif	// USE_MONGOOSE
-   dict_free(d);
+   dict_free(talk_msg);
    return false;
 }
 
@@ -346,13 +345,13 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
    }
 
    cptr->last_heard = now;
-   char *token = dict_get(d, "talk.token", NULL);
-   char *cmd = dict_get(d, "talk.cmd", NULL);
-   char *data = dict_get(d, "talk.data", NULL);
-   char *target = dict_get(d, "talk.target", NULL);
-   char *reason = dict_get(d, "talk.args.reason", NULL);
-   char *msg_type = dict_get(d, "talk.msg_type", NULL);
-   char *user = cptr->chatname;
+   const char *token = dict_get(d, "talk.token", NULL);
+   const char *cmd = dict_get(d, "talk.cmd", NULL);
+   const char *data = dict_get(d, "talk.data", NULL);
+   const char *target = dict_get(d, "talk.target", NULL);
+   const char *reason = dict_get(d, "talk.args.reason", NULL);
+   const char *msg_type = dict_get(d, "talk.msg_type", NULL);
+   const char *user = cptr->chatname;
 
    // set a default of &localrig, but use target if passed
    const char *channel = "&localrig";
@@ -393,25 +392,25 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          // handle a file chunk
          if (msg_type) {
             if (strcasecmp(msg_type, "file_chunk") == 0) {
-               char *filetype = dict_get(d, "talk.filetype", NULL);
-               char *filename = dict_get(d, "talk.filename", NULL);
+               const char *filetype = dict_get(d, "talk.filetype", NULL);
+               const char *filename = dict_get(d, "talk.filename", NULL);
                long chunk_index = dict_get_long(d, "talk.chunk_index", 0);
                long total_chunks = dict_get_long(d, "talk.total_chunks", 0);
 
-               dict *d = dict_new();
-               dict_add_double(d, "talk.chunk_index", chunk_index);
-               dict_add(d, "talk.cmd", "msg");
-               dict_add(d, "talk.data", data);
-               dict_add(d, "talk.from", cptr->chatname);
-               dict_add(d, "talk.msg_type", msg_type);
-               dict_add_double(d, "talk.total_chunks", total_chunks);
-               dict_add(d, "talk.filename", filename);
-               dict_add(d, "talk.filetype", filetype);
-               dict_add_ulong(d, "talk.ts", now);
+               dict *talk_msg = dict_new();
+               dict_add_double(talk_msg, "talk.chunk_index", chunk_index);
+               dict_add(talk_msg, "talk.cmd", "msg");
+               dict_add(talk_msg, "talk.data", data);
+               dict_add(talk_msg, "talk.from", cptr->chatname);
+               dict_add(talk_msg, "talk.msg_type", msg_type);
+               dict_add_double(talk_msg, "talk.total_chunks", total_chunks);
+               dict_add(talk_msg, "talk.filename", filename);
+               dict_add(talk_msg, "talk.filetype", filetype);
+               dict_add_ulong(talk_msg, "talk.ts", now);
 
                // Send to everyone, including the sender, which will then display it as SelfMsg
-               ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
-               dict_free(d);
+               ws_broadcast_dict(NULL, talk_msg, WEBSOCKET_OP_TEXT);
+               dict_free(talk_msg);
                return false;
             } else if (strcasecmp(msg_type, "pub") == 0 || strcasecmp(msg_type, "action") == 0) {
                if (strcasecmp(msg_type, "action") == 0) {
@@ -422,7 +421,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
                // Check for commands
                if (data[0] == '!') {
-                  char *input = data;
+                  const char *input = data;
                   char cmd[16], arg[32];
                   size_t cmd_len = sizeof(cmd), arg_len = sizeof(arg);
 
@@ -509,18 +508,18 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                   if (channel[0] != '&') {
                      // Send the message to all connected servers
                   }
-                  dict *d = dict_new();
-                  dict_add(d, "talk.cmd", "msg");
-                  dict_add(d, "talk.data", data);
-                  dict_add(d, "talk.from", cptr->chatname);
-                  dict_add(d, "talk.target", channel);
-                  dict_add(d, "talk.msg_type", msg_type);
-                  dict_add_ulong(d, "talk.ts", now);
+                  dict *talk_msg = dict_new();
+                  dict_add(talk_msg, "talk.cmd", "msg");
+                  dict_add(talk_msg, "talk.data", data);
+                  dict_add(talk_msg, "talk.from", cptr->chatname);
+                  dict_add(talk_msg, "talk.target", channel);
+                  dict_add(talk_msg, "talk.msg_type", msg_type);
+                  dict_add_ulong(talk_msg, "talk.ts", now);
 
                   // Send to everyone, including the sender, which will then
                   // display it as SelfMsg
-                  ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
-                  dict_free(d);
+                  ws_broadcast_dict(NULL, talk_msg, WEBSOCKET_OP_TEXT);
+                  dict_free(talk_msg);
                   return false;
                }
             } else {

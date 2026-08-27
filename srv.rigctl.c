@@ -90,7 +90,7 @@ static ws_rig_state_t *ws_rigctl_state_diff(rr_vfo_t vfo) {
       return update;
    }
    // If no changes, return NULL
-   free(update);
+   free( (void *)update);
 
    return NULL;
 }
@@ -151,36 +151,26 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
 */
 
 #ifdef	USE_MONGOOSE
-bool ws_handle_rigctl_msg(struct mg_ws_message *msg, rrconn_t *cptr) {
-   struct mg_str msg_data = msg->data;
+bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    bool rv = false;
 
    if (!cptr) {
       return true;
    }
    cptr->last_heard = now;       // avoid unneeded keep-alives
-
-   // Copy to a null terminated buffer
-   char buf[HTTP_WS_MAX_MSG + 1];
-   memset( buf, 0, sizeof(buf) );
-   memcpy(buf, msg_data.buf, msg_data.len);
-
-   // and expand into a dict, which is freed in cleanup below
-   dict *d = json2dict(buf);
-   char *cmd = dict_get(d, "cat.cmd", NULL);
-   char *vfo = dict_get(d, "cat.state.vfo", NULL);
-   char *state = dict_get(d, "cat.state", NULL);
+   const char *cmd = dict_get(d, "cat.cmd", NULL);
+   const char *vfo = dict_get(d, "cat.state.vfo", NULL);
+   const char *state = dict_get(d, "cat.state", NULL);
 
    if (cptr->user->is_muted) {
       Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they are muted!", cmd, cptr->chatname);
       // XXX: Inform the user they are muted and can't use rigctl
       dict *d_err = dict_new();
-      dict_add(d, "error.msg", "Invalid target");
-      dict_add(d, "error.vfo", vfo);
-      dict_add(d, "error.target", cptr->chatname);
+      dict_add(d_err, "error.msg", "Invalid target");
+      dict_add(d_err, "error.vfo", vfo);
+      dict_add(d_err, "error.target", cptr->chatname);
       ws_send_dict(NULL, cptr, d_err, WEBSOCKET_OP_TEXT);
       dict_free(d_err);
-
       return true;
    }
 
@@ -191,28 +181,21 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, rrconn_t *cptr) {
    if (client_has_flag(cptr, FLAG_NOOB) && !is_elmer_online() ) {
       Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they're a noob and no elmers are online", cmd,
          cptr->chatname);
-      dict_free(d);
-
       return true;
    }
 
    if (cmd) {
       if (strcasecmp(cmd, "ptt") == 0) {
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
-            dict_free(d);
-
             return true;
          }
-         char *ptt_state = mg_json_get_str(msg_data, "$.cat.ptt");
 
-         if (!vfo || !ptt_state) {
+         if (!vfo) {
             Log(LOG_DEBUG, "ws.rigctl", "PTT set without vfo or ptt_state");
-            dict_free(d);
-
             return true;
          }
+         bool ptt_state = dict_get_bool(d, "cat.state.ptt", false);
          rr_vfo_t c_vfo = vfo_lookup(vfo[0]);
-         bool c_state;
 
          // Gather some data about the VFO
          rr_vfo_t vfo_id = VFO_NONE;
@@ -221,8 +204,6 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, rrconn_t *cptr) {
          vfo_id = vfo_lookup(vfo[0]);
 
          if (vfo_id < 0) {
-            dict_free(d);
-
             return true;
          }
          rr_vfo_data_t *dp = &vfos[vfo_id];
@@ -233,52 +214,39 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, rrconn_t *cptr) {
          // XXX: We need to look up the channel ID for RX *FROM* the client
          if (channel < 0) {
             Log(LOG_CRIT, "ptt", "Couldn't find channel ID for TX stream, ignoring PTT event");
-            dict_free(d);
-
             return true;
             // XXX: send an error & ptt off notice
          }
 
-         // turn PTT state requested into a boolean value
-         if (strcasecmp(ptt_state, "true") == 0 || strcasecmp(ptt_state, "on") == 0) {
-            c_state = true;
-         } else {
-            c_state = false;
-         }
          // Update their last heard and PTT status
          cptr->last_heard = now;
-         cptr->is_ptt = c_state;
+         cptr->is_ptt = ptt_state;
 
          // Send to log file & consoles
-         Log(LOG_AUDIT, "ptt", "User %s set PTT to %s on vfo %s", cptr->chatname, (c_state ? "true" : "false"), vfo);
-         dict *d = dict_new();
-         dict_add(d, "cat.cmd", "ptt");
-         dict_add(d, "cat.mode", mode_name);
-         dict_add(d, "cat.ptt", ptt_state);
-         dict_add(d, "cat.user", cptr->chatname);
-         dict_add(d, "cat.vfo", vfo);
-         dict_add_float(d, "cat.power", dp->power);
-         dict_add_long(d, "cat.freq", dp->freq);
-         dict_add_int(d, "cat.width", dp->width);
-         dict_add_ulong(d, "cat.ts", now);
-         ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
+         Log(LOG_AUDIT, "ptt", "User %s set PTT to %s on vfo %s", cptr->chatname, (ptt_state ? "true" : "false"), vfo);
+         dict *cat_msg = dict_new();
+         dict_add(cat_msg, "cat.cmd", "ptt");
+         dict_add(cat_msg, "cat.mode", mode_name);
+         dict_add_bool(cat_msg, "cat.ptt", ptt_state);
+         dict_add(cat_msg, "cat.user", cptr->chatname);
+         dict_add(cat_msg, "cat.vfo", vfo);
+         dict_add_float(cat_msg, "cat.power", dp->power);
+         dict_add_long(cat_msg, "cat.freq", dp->freq);
+         dict_add_int(cat_msg, "cat.width", dp->width);
+         dict_add_ulong(cat_msg, "cat.ts", now);
+         ws_broadcast_dict(NULL, cat_msg, WEBSOCKET_OP_TEXT);
 
          // Send a PTT event
-         event_emit_dict("ptt", NULL, d);
-         dict_free(d);
-         free(ptt_state);
+         event_emit_dict("ptt", NULL, cat_msg);
+         dict_free(cat_msg);
       } else if (strcasecmp(cmd, "freq") == 0) {
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
-            dict_free(d);
-
             return true;
          }
-         long new_freq = mg_json_get_long(msg_data, "$.cat.freq", 0);
+         long new_freq = dict_get_long(d, "cat.state.freq", 0);
 
          if (!vfo || new_freq <= 0) {
             Log(LOG_DEBUG, "ws.rigctl", "FREQ set without vfo or freq");
-            dict_free(d);
-
             return true;
          }
 
@@ -287,31 +255,28 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, rrconn_t *cptr) {
          cptr->last_heard = now;
 
          // tell everyone about it
-         dict_add(d, "cat.cmd", "freq");
-         dict_add_long(d, "cat.freq", new_freq);
-         dict_add_ulong(d, "cat.ts", now);
-         dict_add(d, "cat.user", cptr->chatname);
-         dict_add(d, "cat.vfo", vfo);
+         dict *cat_msg = dict_new();
+         dict_add(cat_msg, "cat.cmd", "freq");
+         dict_add_long(cat_msg, "cat.freq", new_freq);
+         dict_add_ulong(cat_msg, "cat.ts", now);
+         dict_add(cat_msg, "cat.user", cptr->chatname);
+         dict_add(cat_msg, "cat.vfo", vfo);
 
-         ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
+         ws_broadcast_dict(NULL, cat_msg, WEBSOCKET_OP_TEXT);
          Log(LOG_AUDIT, "ws.cat", "User %s set VFO %s FREQ to %d hz", cptr->chatname, vfo, new_freq);
-         event_emit_dict("cat.freq", NULL, d);
-         dict_free(d);
+         event_emit_dict("cat.freq", NULL, cat_msg);
+         dict_free(cat_msg);
       } else if (strcasecmp(cmd, "mode") == 0) {
-         char *mode = mg_json_get_str(msg_data, "$.cat.mode");
+         const char *mode = dict_get(d, "cat.state.mode", NULL);
 
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
-            free(mode);
-            dict_free(d);
-
+            free( (void *)mode);
             return true;
          }
 
          if (!vfo || !mode) {
             Log(LOG_DEBUG, "ws.rigctl", "MODE set without vfo:<%p> or mode:<%p>", vfo, mode);
-            free(mode);
-            dict_free(d);
-
+            free( (void *)mode);
             return true;
          }
          rr_vfo_t c_vfo;
@@ -320,15 +285,15 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, rrconn_t *cptr) {
          cptr->last_heard = now;
 
          // tell everyone about it
-         dict *d = dict_new();
-         dict_add(d, "cat.cmd", "mode");
-         dict_add(d, "cat.mode", mode);
-         dict_add(d, "cat.user", cptr->chatname);
-         dict_add(d, "cat.vfo", vfo);
-         dict_add_ulong(d, "cat.ts", now);
+         dict *cat_msg = dict_new();
+         dict_add(cat_msg, "cat.cmd", "mode");
+         dict_add(cat_msg, "cat.mode", mode);
+         dict_add(cat_msg, "cat.user", cptr->chatname);
+         dict_add(cat_msg, "cat.vfo", vfo);
+         dict_add_ulong(cat_msg, "cat.ts", now);
 
-         ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
-         dict_free(d);
+         ws_broadcast_dict(NULL, cat_msg, WEBSOCKET_OP_TEXT);
+         dict_free(cat_msg);
 
          Log(LOG_AUDIT, "mode", "User %s set VFO %s MODE to %s", cptr->chatname, vfo, mode);
          rr_mode_t new_mode = vfo_parse_mode(mode);
@@ -336,14 +301,14 @@ bool ws_handle_rigctl_msg(struct mg_ws_message *msg, rrconn_t *cptr) {
          if (new_mode != MODE_NONE) {
 //            event_emit_dict();
          }
-         free(mode);
+         free( (void *)mode);
       } else {
-         Log(LOG_DEBUG, "ws.rigctl", "Got unknown rig msg: |%.*s|", msg_data.len, msg_data.buf);
-         ws_send_error(cptr, "Unknown message: |%.*s|", msg_data.len, msg_data.buf);
+         const char *jp = dict2json(d);
+         Log(LOG_DEBUG, "ws.rigctl", "Got unknown rig msg: |%s|", d);
+         ws_send_error(cptr, "Unknown message: |%s|", jp);
+         free( (void *)jp );
       }
    }
-   dict_free(d);
-
    return true;
 }
 #endif // USE_MONGOOSE

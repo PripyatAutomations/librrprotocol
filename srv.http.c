@@ -252,7 +252,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    } else if (ev == MG_EV_WS_MSG) {
       struct mg_ws_message *msg = (struct mg_ws_message *)ev_data;
-      ws_handle(msg, cptr);
+      ws_handle(cptr, msg);
    } else if (ev == MG_EV_CLOSE) {
       char resp_buf[HTTP_WS_MAX_MSG + 1];
       const char *ip = cptr ? cptr->user_ip : "(unknown)";
@@ -266,11 +266,11 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
             // XXX: This should only turn off PTT for the rig they are using!
 //            rr_ptt_set_all_off();
             cptr->is_ptt = false;
-            dict *d = dict_new();
-            dict_add(d, "rig.ptt", "off");
-            dict_add(d, "rig.ptt.user", cptr->chatname);
-            event_emit_dict("rig.ptt", NULL, d);
-            dict_free(d);
+            dict *rig_msg = dict_new();
+            dict_add(rig_msg, "rig.ptt", "off");
+            dict_add(rig_msg, "rig.ptt.user", cptr->chatname);
+            event_emit_dict("rig.ptt", NULL, rig_msg);
+            dict_free(rig_msg);
          }
 #endif
          // Free the resources, if any, for the user_agent
@@ -294,15 +294,15 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
 
          if (cptr->active) {
             // blorp out a quit to all connected users
-            dict *d = dict_new();
-            dict_add(d, "talk.cmd", "quit");
-            dict_add(d, "talk.ip", ip);
-            dict_add(d, "talk.reason", "connection closed");
-            dict_add(d, "talk.user", cptr->chatname);
-            dict_add_int(d, "talk.clones", cptr->user->clones);
-            dict_add_ulong(d, "talk.ts", now);
-            ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
-            dict_free(d);
+            dict *rig_msg = dict_new();
+            dict_add(rig_msg, "talk.cmd", "quit");
+            dict_add(rig_msg, "talk.ip", ip);
+            dict_add(rig_msg, "talk.reason", "connection closed");
+            dict_add(rig_msg, "talk.user", cptr->chatname);
+            dict_add_int(rig_msg, "talk.clones", cptr->user->clones);
+            dict_add_ulong(rig_msg, "talk.ts", now);
+            ws_broadcast_dict(NULL, rig_msg, WEBSOCKET_OP_TEXT);
+            dict_free(rig_msg);
             Log(LOG_AUDIT, "auth", "User %s on cptr:<%p> cptr:<%p> from %s:%d disconnected", cptr->chatname, cptr, cptr, ip, port);
          }
       } else {

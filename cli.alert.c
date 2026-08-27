@@ -41,8 +41,13 @@ bool ws_handle_alert_msg(rrconn_t *cptr, dict *d) {
    }
 #endif // defined(USE_MONGOOSE)
 
-   char *alert_msg = dict_get(d, "alert.msg", NULL);
-   char *alert_from = dict_get(d, "alert.from", NULL);
+   const char *alert_msg = dict_get(d, "alert.msg", NULL);
+
+   if (!alert_msg) {
+      return true;
+   }
+
+   const char *alert_from = dict_get(d, "alert.from", NULL);
    time_t alert_ts = dict_get_time_t(d, "alert.ts", 0);
 
    if (!alert_from) {
@@ -50,14 +55,9 @@ bool ws_handle_alert_msg(rrconn_t *cptr, dict *d) {
    }
 
    if (!alert_ts) {
-      char now_ts[12];
-      memset(now_ts, 0, 12);
-      snprintf(now_ts, 12, "%lu", now);
-      dict_add(d, "alert.ts", now_ts);
+      dict_add_ulong(d, "alert.ts", now);
    }
 
-   if (alert_msg) {
-      event_emit_dict("alert", NULL, d);
-   }
+   event_emit_dict("alert", NULL, d);
    return false;
 }

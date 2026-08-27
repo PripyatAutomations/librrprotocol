@@ -36,9 +36,9 @@ bool ws_proto_debug_unknowns = false;
 // Validators //
 ////////////////
 bool ws_msg_alert(rrconn_t *cptr, dict *msg) {
-   char *a_msg = dict_get(msg, "alert.msg", NULL);
-   char *a_from = dict_get(msg, "alert.from", NULL);
-   char *a_ts = dict_get(msg, "alert.ts", NULL);
+   const char *a_msg = dict_get(msg, "alert.msg", NULL);
+   const char *a_from = dict_get(msg, "alert.from", NULL);
+   const char *a_ts = dict_get(msg, "alert.ts", NULL);
 
    //////////////////////////
    // Validate the message //
@@ -54,9 +54,9 @@ bool ws_msg_alert(rrconn_t *cptr, dict *msg) {
 }
 
 bool ws_msg_cat(rrconn_t *cptr, dict *msg) {
-   char *ts = dict_get(msg, "cat.ts", NULL);
-   char *from = dict_get(msg, "cat.from", NULL);
-   char *data = dict_get(msg, "cat.data", NULL);
+   const char *ts = dict_get(msg, "cat.ts", NULL);
+   const char *from = dict_get(msg, "cat.from", NULL);
+   const char *data = dict_get(msg, "cat.data", NULL);
 
    //////////////////////////
    // Validate the message //
@@ -72,9 +72,9 @@ bool ws_msg_cat(rrconn_t *cptr, dict *msg) {
 }
 
 bool ws_msg_privmsg(rrconn_t *cptr, dict *msg) {
-   char *ts = dict_get(msg, "privmsg.ts", NULL);
-   char *from = dict_get(msg, "privmsg.from", NULL);
-   char *data = dict_get(msg, "privmsg.data", NULL);
+   const char *ts = dict_get(msg, "privmsg.ts", NULL);
+   const char *from = dict_get(msg, "privmsg.from", NULL);
+   const char *data = dict_get(msg, "privmsg.data", NULL);
 
    //////////////////////////
    // Validate the message //
@@ -90,10 +90,10 @@ bool ws_msg_privmsg(rrconn_t *cptr, dict *msg) {
 }
 
 bool ws_msg_syslog(rrconn_t *cptr, dict *msg) {
-   char *ts = dict_get(msg, "syslog.ts", NULL);
-   char *prio = dict_get(msg, "syslog.prio", NULL);
-   char *subsys = dict_get(msg, "syslog.subsys", NULL);
-   char *data = dict_get(msg, "syslog.data", NULL);
+   const char *ts = dict_get(msg, "syslog.ts", NULL);
+   const char *prio = dict_get(msg, "syslog.prio", NULL);
+   const char *subsys = dict_get(msg, "syslog.subsys", NULL);
+   const char *data = dict_get(msg, "syslog.data", NULL);
 
    //////////////////////////
    // Validate the message //
@@ -133,7 +133,7 @@ bool ws_proto_dispatch(rrconn_t *cptr, dict *msg) {
 
       // This is gross
       if (wp->cmd && wp->cmd[0]) {
-         char *tp = dict_get(msg, wp->cmd, NULL);
+         const char *tp = dict_get(msg, wp->cmd, NULL);
 
          if (strcasecmp(wp->cmd, tp) == 0) {
             wp->func(cptr, msg);

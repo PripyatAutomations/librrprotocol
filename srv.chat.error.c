@@ -39,14 +39,14 @@ bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action) {
       cptr->chatname, cptr->user->uid, cptr->user->privs, action);
    char msgbuf[HTTP_WS_MAX_MSG + 1];
    prepare_msg(msgbuf, sizeof(msgbuf), "You do not have enough privileges to use '%s' command", now, action);
-   dict *d = dict_new();
-   dict_add(d, "error.msg", msgbuf);
-   dict_add_ulong(d, "error.ts", now);
+   dict *err_msg = dict_new();
+   dict_add(err_msg, "error.msg", msgbuf);
+   dict_add_ulong(err_msg, "error.ts", now);
 
 #ifdef	USE_MONGOOSE
-   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+   ws_send_dict(NULL, cptr, err_msg, WEBSOCKET_OP_TEXT);
 #endif	// USE_MONGOOSE
-   dict_free(d);
+   dict_free(err_msg);
 
    return false;
 }
@@ -58,14 +58,14 @@ bool ws_chat_error_need_reason(rrconn_t *cptr, const char *command) {
    char msgbuf[HTTP_WS_MAX_MSG + 1];
    prepare_msg(msgbuf, sizeof(msgbuf), "You MUST provide a reason for using'%s' command", now, command);
 
-   dict *d = dict_new();
-   dict_add(d, "error.msg", msgbuf);
-   dict_add_ulong(d, "error.ts", now);
+   dict *err_msg = dict_new();
+   dict_add(err_msg, "error.msg", msgbuf);
+   dict_add_ulong(err_msg, "error.ts", now);
 
 #ifdef	USE_MONGOOSE
-   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+   ws_send_dict(NULL, cptr, err_msg, WEBSOCKET_OP_TEXT);
 #endif	// USE_MONGOOSE
-   dict_free(d);
+   dict_free(err_msg);
 
    return false;
 }

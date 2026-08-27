@@ -43,9 +43,9 @@ bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
    } else {
       inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
    }
-   char *cmd = dict_get(d, "auth.cmd", NULL);
-   char *nonce = dict_get(d, "auth.nonce", NULL);
-   char *user = dict_get(d, "auth.user", NULL);
+   const char *cmd = dict_get(d, "auth.cmd", NULL);
+   const char *nonce = dict_get(d, "auth.nonce", NULL);
+   const char *user = dict_get(d, "auth.user", NULL);
    time_t ts = dict_get_time_t(d, "auth.ts", now);
 
    // Must always send a command and username during auth
@@ -55,7 +55,7 @@ bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
    }
 
    if (cmd && strcasecmp(cmd, "challenge") == 0) {
-      char *token = dict_get(d, "auth.token", NULL);
+      const char *token = dict_get(d, "auth.token", NULL);
       time_t ts = dict_get_time_t(d, "auth.ts", now);
 
       if (token) {
@@ -83,11 +83,12 @@ bool ws_send_login(rrconn_t *cptr, const char *login_user) {
       return true;
    }
    Log(LOG_INFO, "rrproto.auth", "Sending initial LOGIN!");
-   dict *d = dict_new();
-   dict_add(d, "auth.cmd", "login");
-   dict_add(d, "auth.user", login_user);
-   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
-   dict_free(d);
+   dict *auth_msg = dict_new();
+   dict_add(auth_msg, "msg.type", "auth");
+   dict_add(auth_msg, "auth.cmd", "login");
+   dict_add(auth_msg, "auth.user", login_user);
+   ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
+   dict_free(auth_msg);
 
    return false;
 }
@@ -106,13 +107,13 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
       Log(LOG_CRIT, "auth", "Failed to hash session password (nonce: |%s|)", nonce);
       return true;
    }
-   dict *d = dict_new();
-   dict_add(d, "auth.cmd", "pass");
-   dict_add(d, "auth.user", user);
-   dict_add(d, "auth.pass", temp_pw);
-   dict_add(d, "auth.token", session_token);
-   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
-   dict_free(d);
+   dict *auth_msg = dict_new();
+   dict_add(auth_msg, "auth.cmd", "pass");
+   dict_add(auth_msg, "auth.user", user);
+   dict_add(auth_msg, "auth.pass", temp_pw);
+   dict_add(auth_msg, "auth.token", session_token);
+   ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
+   dict_free(auth_msg);
    free(temp_pw);
 
    return false;
@@ -124,12 +125,12 @@ bool ws_send_logout(rrconn_t *cptr, const char *user, const char *token) {
       return true;
    }
 
-   dict *d = dict_new();
-   dict_add(d, "auth.cmd", "logout");
-   dict_add(d, "auth.user", user);
-   dict_add(d, "auth.token", token);
-   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
-   dict_free(d);
+   dict *auth_msg = dict_new();
+   dict_add(auth_msg, "auth.cmd", "logout");
+   dict_add(auth_msg, "auth.user", user);
+   dict_add(auth_msg, "auth.token", token);
+   ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
+   dict_free(auth_msg);
 
    return false;
 }
@@ -140,12 +141,13 @@ bool ws_send_hello(rrconn_t *cptr) {
       return true;
    }
    char msgbuf[512];
-   const char *codec = "mulaw";
+   const char *codec = "mu08,mu08";
    int rate = 16000;
-   dict *d = dict_new();
-   dict_add(d, "hello", VERSION);
-   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
-   dict_free(d);
+   dict *hello = dict_new();
+   dict_add(hello, "msg.type", "hello");
+   dict_add(hello, "hello.swver", VERSION);
+   ws_send_dict(NULL, cptr, hello, WEBSOCKET_OP_TEXT);
+   dict_free(hello);
 
    return false;
 }

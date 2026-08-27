@@ -43,10 +43,10 @@ bool ws_handle_ping_msg(rrconn_t *cptr, dict *d) {
    time_t ping_ts = dict_get_time_t(d, "ping.ts", 0);
 
    if (ping_ts) {
-      dict *d = dict_new();
-      dict_add_ulong(d, "pong.ts", ping_ts);
-      ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
-      dict_free(d);
+      dict *pong_msg = dict_new();
+      dict_add_ulong(pong_msg, "pong.ts", ping_ts);
+      ws_send_dict(NULL, cptr, pong_msg, WEBSOCKET_OP_TEXT);
+      dict_free(pong_msg);
    } else {
       Log(LOG_WARN, "ws.ping", "*** Empty ping?? ***");
    }
@@ -57,4 +57,3 @@ bool ws_handle_ping_msg(rrconn_t *cptr, dict *d) {
 
    return false;
 }
-

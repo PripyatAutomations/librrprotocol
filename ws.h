@@ -77,7 +77,7 @@ extern void ws_add_client(rrconn_t *cptr);
 extern bool ws_kick_client_by_c(struct mg_connection *c, const char *reason);
 extern void ws_fini(struct mg_mgr *mgr);
 extern bool ws_init(struct mg_mgr *mgr);
-extern bool ws_handle(struct mg_ws_message *msg, rrconn_t *cptr);
+extern bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg);
 
 // Send to a specific, authenticated websocket user by cptr
 extern void ws_send_to_cptr(rrconn_t *sender, rrconn_t *acptr, struct mg_str *msg_data, int data_type);
@@ -94,15 +94,16 @@ extern u_int32_t au_find_or_create_channel(const char codec[5], bool tx);
 extern bool au_send_subscribe(u_int32_t channel);
 extern bool au_send_unsubscribe(u_int32_t channel);
 
-// ws.auth.c
-extern bool ws_handle_auth_msg(struct mg_ws_message *msg, rrconn_t *cptr);
 extern void ws_broadcast_with_flags(u_int32_t flags, rrconn_t *sender, struct mg_str *msg_data, int data_type);
 extern void ws_broadcast(rrconn_t *sender, struct mg_str *msg_data, int data_type);
 
-// ws.rigctl.c
-extern bool ws_handle_rigctl_msg(struct mg_ws_message *msg, rrconn_t *cptr);
-
 #endif // defined(USE_MONGOOSE)
+
+// ws.auth.c
+extern bool ws_handle_auth_msg(rrconn_t *cptr, dict *d);
+
+// ws.rigctl.c
+extern bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d);
 
 extern void ws_blorp_userlist_cb(void *arg);                     // timer calls this to set userlists
 // Handle incoming messages

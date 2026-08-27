@@ -25,11 +25,11 @@ bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_DEBUG, "ws.chat", "handle_talk_msg: cptr:<%p> d:<%p>", cptr, d);
       return true;
    }
-   char *cmd = dict_get(d, "talk.cmd", NULL);
-   char *user = dict_get(d, "talk.user", NULL);
-   char *privs = dict_get(d, "talk.privs", NULL);
-   char *muted = dict_get(d, "talk.muted", NULL);
-   char *ts = dict_get(d, "talk.ts", NULL);
+   const char *cmd = dict_get(d, "talk.cmd", NULL);
+   const char *user = dict_get(d, "talk.user", NULL);
+   const char *privs = dict_get(d, "talk.privs", NULL);
+   const char *muted = dict_get(d, "talk.muted", NULL);
+   const char *ts = dict_get(d, "talk.ts", NULL);
    int clones = dict_get_int(d, "talk.clones", 11);
    bool rv = false;
    bool tx = dict_get_bool(d, "talk.state.tx", false);
@@ -48,10 +48,10 @@ bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
          (tx ? "true" : "false"), (muted ? "true" : "false"), clones);
       event_emit_dict("userinfo", NULL, d);
    } else if (cmd && strcasecmp(cmd, "msg") == 0) {
-      char *from = dict_get(d, "talk.from", NULL);
-      char *data = dict_get(d, "talk.data", NULL);
-      char *msg_type = dict_get(d, "talk.msg_type", NULL);
-      char *target = dict_get(d, "talk.target", NULL);
+      const char *from = dict_get(d, "talk.from", NULL);
+      const char *data = dict_get(d, "talk.data", NULL);
+      const char *msg_type = dict_get(d, "talk.msg_type", NULL);
+      const char *target = dict_get(d, "talk.target", NULL);
       time_t ts = dict_get_time_t(d, "talk.ts", now);
 
       if (strcasecmp(msg_type, "action") == 0) {

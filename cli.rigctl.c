@@ -7,7 +7,7 @@
 // The software is not for sale. It is freely available, always.
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
-
+//
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -41,14 +41,14 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
       }
       poll_block_expire = now + poll_block_delay;
  */
-      char *vfo = dict_get(d, "cat.state.vfo", NULL);
-      char *mode = dict_get(d, "cat.state.mode", NULL);
+      const char *vfo = dict_get(d, "cat.state.vfo", NULL);
+      const char *mode = dict_get(d, "cat.state.mode", NULL);
       long freq = dict_get_long(d, "cat.state.freq", 0);
       int width = dict_get_int(d, "cat.state.width", 0);
       int power = dict_get_int(d, "cat.state.power", 0);
       bool ptt = dict_get_bool(d, "cat.state.ptt", false);
       int ts = dict_get_int(d, "cat.ts", 0);
-      char *user = dict_get(d, "cat.user", NULL);
+      const char *user = dict_get(d, "cat.user", NULL);
 
       if (user && *user) {
          Log(LOG_DEBUG, "ws.cat", "user:<%p> = |%s|", user, user);
@@ -61,25 +61,29 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
          }
 #endif
 
-         if (mode && strlen(mode) > 0) {
+         char real_mode[32];
+         memset(real_mode, 0, sizeof(real_mode));
+         snprintf(real_mode, sizeof(real_mode), "%s", mode);
+
+         if (real_mode && strlen(real_mode) > 0) {
             // XXX: We need to suppress sending a CAT message by disabling the
             // changed signal on the mode combo
-            if (strcasecmp(mode, "PKTUSB") == 0) {
-               memset(mode, 0, 6);
-               sprintf(mode, "D-U");
-            } else if (strcasecmp(mode, "PKTLSB") == 0) {
-               memset(mode, 0, 6);
-               sprintf(mode, "D-L");
+            if (strcasecmp(real_mode, "PKTUSB") == 0) {
+               memset(real_mode, 0, 6);
+               sprintf(real_mode, "D-U");
+            } else if (strcasecmp(real_mode, "PKTLSB") == 0) {
+               memset(real_mode, 0, 6);
+               sprintf(real_mode, "D-L");
             }
 
-            if (strcasecmp(old_mode, mode) == 0) {
+            if (strcasecmp(old_mode, real_mode) == 0) {
                goto local_cleanup;
             }
 // XXX: need to fix FM mode dialog crash ASAP
-            Log(LOG_CRAZY, "ws.rigctl", "Set MODE to %s", mode);
+            Log(LOG_CRAZY, "ws.rigctl", "Set MODE to %s", real_mode);
 
 /*
- *           if (strcasecmp(mode, "FM") == 0) {
+ *           if (strcasecmp(real_mode, "FM") == 0) {
  *  //               fm_dialog_show();
  *           } else {
  *              // Hide the FM dialog
@@ -88,7 +92,7 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
  */
             // save the old mode so we can compare next time
             memset( old_mode, 0, sizeof(old_mode) );
-            snprintf(old_mode, sizeof(old_mode), "%s", mode);
+            snprintf(old_mode, sizeof(old_mode), "%s", real_mode);
          }
       }
    } else {
@@ -106,13 +110,13 @@ bool ws_send_ptt_cmd(rrconn_t *cptr, const char *vfo, bool ptt) {
    if (!cptr || !vfo) {
       return true;
    }
-   dict *d = dict_new();
-   dict_add(d, "cat.cmd", "ptt");
-   dict_add(d, "cat.vfo", vfo);
-   dict_add_bool(d, "cat.ptt", ptt);
-   dict_add_ulong(d, "cat.ts", now);
-   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
-   dict_free(d);
+   dict *cat_msg = dict_new();
+   dict_add(cat_msg, "cat.cmd", "ptt");
+   dict_add(cat_msg, "cat.vfo", vfo);
+   dict_add_bool(cat_msg, "cat.ptt", ptt);
+   dict_add_ulong(cat_msg, "cat.ts", now);
+   ws_send_dict(NULL, cptr, cat_msg, WEBSOCKET_OP_TEXT);
+   dict_free(cat_msg);
 
    return false;
 }
@@ -121,13 +125,13 @@ bool ws_send_mode_cmd(rrconn_t *cptr, const char *vfo, const char *mode) {
    if (!cptr || !vfo || !mode) {
       return true;
    }
-   dict *d = dict_new();
-   dict_add(d, "cat.cmd", "mode");
-   dict_add(d, "cat.vfo", vfo);
-   dict_add(d, "cat.mode", mode);
-   dict_add_ulong(d, "cat.ts", now);
-   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
-   dict_free(d);
+   dict *cat_msg = dict_new();
+   dict_add(cat_msg, "cat.cmd", "mode");
+   dict_add(cat_msg, "cat.vfo", vfo);
+   dict_add(cat_msg, "cat.mode", mode);
+   dict_add_ulong(cat_msg, "cat.ts", now);
+   ws_send_dict(NULL, cptr, cat_msg, WEBSOCKET_OP_TEXT);
+   dict_free(cat_msg);
 
    return false;
 }
@@ -136,13 +140,13 @@ bool ws_send_freq_cmd(rrconn_t *cptr, const char *vfo, long freq) {
    if (!cptr || !vfo) {
       return true;
    }
-   dict *d = dict_new();
-   dict_add(d, "cat.cmd", "freq");
-   dict_add(d, "cat.vfo", vfo);
-   dict_add_long(d, "cat.freq", freq);
-   dict_add_ulong(d, "cat.ts", now);
-   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
-   dict_free(d);
+   dict *cat_msg = dict_new();
+   dict_add(cat_msg, "cat.cmd", "freq");
+   dict_add(cat_msg, "cat.vfo", vfo);
+   dict_add_long(cat_msg, "cat.freq", freq);
+   dict_add_ulong(cat_msg, "cat.ts", now);
+   ws_send_dict(NULL, cptr, cat_msg, WEBSOCKET_OP_TEXT);
+   dict_free(cat_msg);
 
    return false;
 }

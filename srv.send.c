@@ -78,16 +78,16 @@ bool send_global_alert(const char *sender, const char *data) {
    }
    const char *escaped_msg = escape_html(data);
 
-   dict *d = dict_new();
-   dict_add(d, "alert.from", sender);
-   dict_add(d, "alert.msg", escaped_msg);
-   dict_add_ulong(d, "alert.ts", now);
+   dict *alert_msg = dict_new();
+   dict_add(alert_msg, "alert.from", sender);
+   dict_add(alert_msg, "alert.msg", escaped_msg);
+   dict_add_ulong(alert_msg, "alert.ts", now);
 
 #ifdef   USE_MONGOOSE
-   ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
+   ws_broadcast_dict(NULL, alert_msg, WEBSOCKET_OP_TEXT);
 #endif	// USE_MONGOOSE
    free( (char *)escaped_msg );
-   dict_free(d);
+   dict_free(alert_msg);
 
    return false;
 }
