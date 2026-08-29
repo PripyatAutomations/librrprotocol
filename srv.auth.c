@@ -184,7 +184,6 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       return true;
    }
 
-   Log(LOG_CRIT, "auth", "ws_handle_auth_msg: %s", cmd);
    if (strcasecmp(cmd, "login") == 0) {
       char resp_buf[HTTP_WS_MAX_MSG + 1];
       char *ip = cptr->user_ip;
@@ -361,7 +360,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          ws_send_ping(cptr);
 
          Log(LOG_AUDIT, "auth", "User %s on cptr <%p> logged in from IP %s:%d (clone #%d/%d) with privs: %s",
-            cptr->chatname, cptr, ip, port, cptr->user->clones, cptr->user->max_clones, cptr->user->privs);
+            cptr->chatname, cptr, cptr->user_ip, cptr->user_port, cptr->user->clones, cptr->user->max_clones, cptr->user->privs);
 
          // Send our capabilities
          const char *my_codecs = cfg_get_exp("codecs.allowed");

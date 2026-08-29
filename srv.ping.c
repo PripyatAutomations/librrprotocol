@@ -60,7 +60,7 @@ bool ws_send_ping(rrconn_t *cptr) {
    }
    dict *d = dict_new();
    dict_add(d, "msg.type", "ping");
-   dict_add_ulong(d, "ping.ts", now);
+   dict_add_ulong(d, "msg.ts", now);
    ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
    return false;

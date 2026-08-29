@@ -128,9 +128,10 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
       i++;
    }
 
+   // XXX: make this a compile time enable for higher debug levels
    // Dump the dict for debugging purposes
    const char *jp = dict2json(d);
-   Log(LOG_WARN, "http.ws", "%s: No matches for message: %s", __FUNCTION__, jp);
+   Log(LOG_CRAZY, "http.ws", "%s: No matches for message: %s", __FUNCTION__, jp);
    free( (void *)jp );
    return true;
 }
@@ -217,10 +218,9 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       dict_add(d, "auth.user", (char *)login_user);
       dict_add(d, "auth.server", (char *)server_name);
       event_emit_dict("connected", NULL, d);
-      dict_free(d);
-      fprintf(stderr, "http_handler\n");
       ws_send_hello(cptr);
       ws_send_login(cptr, login_user);
+      dict_free(d);
    } else if (ev == MG_EV_WS_MSG) {
       struct mg_ws_message *wm = (struct mg_ws_message *)ev_data;
 
@@ -476,59 +476,6 @@ bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
    dict_free(d);
    free((void *)jp);
    free(c);
-
-   return rv;
-}
-
-static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
-   bool rv = false;
-   char *ts = NULL;
-
-   if (!cptr || !d) {
-      Log( LOG_CRAZY, "http.ws", "ws_handle_pong got cptr:<%p> dict<%p>", cptr, d);
-      rv = true;
-      goto cleanup;
-   }
-   char *ip = cptr->user_ip;
-   int port = cptr->user_port;
-
-   const char *pong_ts = dict_get(d, "pong.ts", NULL);
-   if (!pong_ts) {
-      Log(LOG_WARN, "http.ws", "ws_handle_pong: PONG from user with no timestamp");
-      rv = true;
-      goto cleanup;
-   } else {
-      Log(LOG_CRAZY, "http.ws", "ws_handle_pong: PONG from user %s with ts:|%s|",
-         (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>"), ts);
-   }
-
-   char *endptr;
-   errno = 0;
-   time_t ts_t = strtoll(ts, &endptr, 10);
-   if (errno == ERANGE || ts_t < 0 || ts_t > LONG_MAX || *endptr != '\0') {
-      Log(LOG_WARN, "http.pong", "Got invalid ts |%s| from client <%p>", ts, cptr);
-      rv = true;
-      goto cleanup;
-   }
-
-   time_t ping_expiry = ts_t + HTTP_PING_TIME;
-   if ( (ping_expiry) < now) {
-      Log(LOG_AUDIT, "http.pong",
-         "Late ping for cptr:<%p> from %s:%d ts: %li + %li (timeout) < now %li", cptr, ip, port,
-         ts_t, HTTP_PING_TIMEOUT, now);
-      ws_kick_client(cptr, "Network Error: PING expired");
-      rv = true;
-      goto cleanup;
-   } else {
-      // The pong response is valid, update the client's data
-      cptr->last_heard = now;
-      cptr->last_ping = 0;
-      cptr->ping_attempts = 0;
-      Log(LOG_CRAZY, "http.pong", "Reset user %s last_heard to now:[%li] and last_ping to 0",
-         (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>"), now);
-   }
-cleanup:
-   free(ts);
 
    return rv;
 }

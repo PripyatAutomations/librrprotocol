@@ -48,7 +48,7 @@ librrprotocol_objs += vfo.o
 # This needs merged into various other files...
 #librrprotocol_objs += wsnew.o
 librrprotocol_objs += ws.auth.o
-librrprotocol_objs += ws.file-xfer.o
+#librrprotocol_objs += ws.file-xfer.o
 #librrprotocol_objs += ws.media.o
 #librrprotocol_objs += ws.mediachan.o
 

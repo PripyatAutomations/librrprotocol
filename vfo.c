@@ -21,7 +21,7 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-rr_vfo_data_t vfos[MAX_VFOS];
+rr_vfo_data_t vfos[MAX_VFOS] = { 0};
 rr_vfo_t active_vfo = VFO_A;
 
 // Our static strings

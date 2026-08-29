@@ -48,8 +48,6 @@ bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
       goto cleanup;
    }
 
-   fprintf(stderr, "[auth]\n");
-   dict_dump(d, stderr);
    if (cmd && strcasecmp(cmd, "challenge") == 0) {
       const char *token = dict_get(d, "auth.token", NULL);
       time_t ts = dict_get_time_t(d, "auth.ts", now);

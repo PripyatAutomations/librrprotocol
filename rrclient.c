@@ -18,8 +18,10 @@ const char *login_user = NULL;
 #ifdef  USE_MONGOOSE
 extern struct mg_mgr mgr;
 rrconn_t *ws_conn = NULL;
+rrconn_t *ws_tx_conn = NULL;
 
 static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) {
+#if	0
    rrconn_t *cptr = ws_conn;
 
    if (ev == MG_EV_WS_MSG) {
@@ -35,8 +37,7 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
             return;
          }
          const char *cmd = dict_get(msg, "talk.cmd", NULL);
-         const char *pong_ts = dict_get(msg, "pong.ts", NULL);
-         const char *ping_ts = dict_get(msg, "ping.ts", NULL);
+         const char *ping_ts = dict_get(msg, "msg.ts", NULL);
 
          if (ping_ts) {
             dict_add(msg, "msg.type", "pong");
@@ -87,6 +88,7 @@ static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) 
       ws_connected = false;
       event_emit("goodbye", NULL, NULL);
    }
+#endif
 }
 #endif // USE_MONGOOSE
 

@@ -50,9 +50,7 @@ static bool ws_chat_cmd_die(rrconn_t *cptr, const char *reason) {
       char msgbuf[HTTP_WS_MAX_MSG + 1];
       prepare_msg(msgbuf, sizeof(msgbuf), "Shutting down due to /die \"%s\" from %s (uid: %d with privs %s)",
          (reason ? reason : "No reason given"), cptr->chatname, cptr->user->uid, cptr->user->privs);
-#ifdef	USE_MONGOOSE
       send_global_alert("***SERVER***", msgbuf);
-#endif	// USE_MONGOOSE
       // Throw a shutdown event
       event_emit("shutdown", NULL, NULL);
 
@@ -90,9 +88,7 @@ static bool ws_chat_cmd_restart(rrconn_t *cptr, const char *reason) {
       char msgbuf[HTTP_WS_MAX_MSG + 1];
       prepare_msg(msgbuf, sizeof(msgbuf), "Shutting down due to /restart from %s (uid: %d with privs %s): %s",
          cptr->chatname, cptr->user->uid, cptr->user->privs, reason);
-#ifdef	USE_MONGOOSE
       send_global_alert("***SERVER***", msgbuf);
-#endif	// USE_MONGOOSE
       dying = 1;                 // flag that this should be the last iteration
       restarting = 1;            // flag that we should restart after processing
                                  // the alert
@@ -158,9 +154,7 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
          dict_add(err_msg, "error.msg", msgbuf);
          dict_add_ulong(err_msg, "error.ts", now);
 
-#ifdef	USE_MONGOOSE
          ws_send_dict(NULL, cptr, err_msg, WEBSOCKET_OP_TEXT);
-#endif	// USE_MONGOOSE
          dict_free(err_msg);
       }
    } else {
@@ -178,6 +172,7 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
       return true;
    }
    dict *talk_msg = dict_new();
+   dict_add(talk_msg, "msg.type", "talk");
    dict_add(talk_msg, "talk.privs", cptr->user->privs);
    dict_add(talk_msg, "talk.user", cptr->chatname);
    dict_add(talk_msg, "talk.cmd", "userinfo");
@@ -186,13 +181,12 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
    dict_add_bool(talk_msg, "talk.tx", cptr->is_ptt);
    dict_add_long(talk_msg, "talk.ts", now);
 
-#ifdef	USE_MONGOOSE
    if (acptr) {
       ws_send_dict(NULL, acptr, talk_msg, WEBSOCKET_OP_TEXT);
    } else {
       ws_broadcast_dict(NULL, talk_msg, WEBSOCKET_OP_TEXT);
    }
-#endif	// USE_MONGOOSE
+
    dict_free(talk_msg);
    return false;
 }
@@ -274,10 +268,7 @@ static bool ws_chat_cmd_unmute(rrconn_t *cptr, const char *target) {
    }
 
    if (!target) {
-#ifdef	USE_MONGOOSE
       ws_send_error(cptr, "No target given for UNMUTE");
-#endif	// USE_MONGOOSE
-
       return true;
    }
 
@@ -333,7 +324,6 @@ static bool ws_chat_cmd_syslog(rrconn_t *cptr, const char *state) {
    return false;
 }
 
-#ifdef	USE_MONGOOSE
 bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       return true;
@@ -380,9 +370,6 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             ws_send_error(cptr, "You do not have CHAT privilege.");
             return true;
          }
-         struct mg_str mp;
-         char msgbuf[HTTP_WS_MAX_MSG + 1];
-
          // sanity check
          if (!user) {
             Log(LOG_CRAZY, "chat", "talk parse, msg has no user field");
@@ -398,6 +385,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                long total_chunks = dict_get_long(d, "talk.total_chunks", 0);
 
                dict *talk_msg = dict_new();
+               dict_add(talk_msg, "msg.type", "talk");
                dict_add_double(talk_msg, "talk.chunk_index", chunk_index);
                dict_add(talk_msg, "talk.cmd", "msg");
                dict_add(talk_msg, "talk.data", data);
@@ -464,18 +452,16 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            "&nbsp;&nbsp;&nbsp;!power <power> - Set power (NYI)<br/>"
                            "&nbsp;&nbsp;&nbsp;!vfo <vfo> - Switch VFOs (A|B|C)<br/>"
                            "&nbsp;&nbsp;&nbsp;!width <width> - Set passband width (narrow|normal|wide)<br/></span>");
-
+                        fprintf(stderr, "help!\n");
                         return false;
                      } else if (strcasecmp(cmd, "freq") == 0) {
                         long real_freq = parse_freq(arg);
                         Log(LOG_DEBUG, "ws.chat", "Got !freq %lu (%s) from %s", real_freq, arg, cptr->chatname);
 
                         dict *d = dict_new();
+                        dict_add(d, "msg.type", "rigctl");
                         dict_add(d, "rigctl.cmd", "freq");
-                        char freq_s[64];
-                        memset( freq_s, 0, sizeof(freq_s) );
-                        snprintf(freq_s, sizeof(freq_s), "%l", real_freq);
-                        dict_add(d, "rigctl.val", freq_s);
+                        dict_add_int(d, "rigctl.freq", real_freq);
                         dict_add(d, "rigctl.from", cptr->chatname);
                         dict_add( d, "rigctl.vfo", (char *)vfo_name(active_vfo) );
                         event_emit_dict("rigctl", NULL, d);
@@ -509,6 +495,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                      // Send the message to all connected servers
                   }
                   dict *talk_msg = dict_new();
+                  dict_add(talk_msg, "msg.type", "talk");
                   dict_add(talk_msg, "talk.cmd", "msg");
                   dict_add(talk_msg, "talk.data", data);
                   dict_add(talk_msg, "talk.from", cptr->chatname);
@@ -532,7 +519,6 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
             return true;
          }
-         char msgbuf[HTTP_WS_MAX_MSG + 1];
          rrconn_t *acptr = http_client_list;
 
          if (!acptr) {
@@ -559,4 +545,3 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
    return true;
 }
-#endif // USE_MONGOOSE

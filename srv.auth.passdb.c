@@ -24,7 +24,8 @@
 // This defines a hard-coded fallback path for httpd root, if not set in config
 extern bool dying;
 extern time_t now;
-char session_token[HTTP_TOKEN_LEN + 1];
+char session_token[HTTP_TOKEN_LEN + 1] = { 0 };
+
 http_user_t http_users[HTTP_MAX_USERS];
 
 // This is used in ws.* too, so not static

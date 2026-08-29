@@ -163,6 +163,51 @@ bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
    return true;
 }
 
+static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
+   bool rv = false;
+
+   if (!cptr || !d) {
+      Log( LOG_CRAZY, "http.ws", "ws_handle_pong got cptr:<%p> dict<%p>", cptr, d);
+      rv = true;
+      goto cleanup;
+   }
+   char *ip = cptr->user_ip;
+   int port = cptr->user_port;
+
+   time_t msg_ts = dict_get_ulong(d, "msg.ts", 0);
+   if (!msg_ts) {
+      Log(LOG_WARN, "http.ws", "ws_handle_pong: PONG from user with no timestamp");
+      rv = true;
+      goto cleanup;
+   } else {
+      Log(LOG_CRAZY, "http.ws", "ws_handle_pong: PONG from user %s with ts:|%lu|",
+         (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>"), msg_ts);
+   }
+
+   char *endptr;
+   errno = 0;
+
+   time_t ping_expiry = msg_ts + HTTP_PING_TIME;
+   if ( (ping_expiry) < now) {
+      Log(LOG_AUDIT, "http.pong",
+         "Late ping for cptr:<%p> from %s:%d ts: %li + %li (timeout) < now %li", cptr, ip, port,
+         msg_ts, HTTP_PING_TIMEOUT, now);
+      ws_kick_client(cptr, "Network Error: PING expired");
+      rv = true;
+      goto cleanup;
+   } else {
+      // The pong response is valid, update the client's data
+      cptr->last_heard = now;
+      cptr->last_ping = 0;
+      cptr->ping_attempts = 0;
+      Log(LOG_CRAZY, "http.pong", "Reset user %s last_heard to now:[%li] and last_ping to 0",
+         (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>"), now);
+   }
+
+cleanup:
+   return rv;
+}
+
 //
 // Handle a TEXT ws message
 //
@@ -190,36 +235,47 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
    } else if (strcasecmp(msg_type, "hello") == 0) {
       const char *hello_hwver = dict_get(d, "hello.hwver", "generic");
       const char *hello_swver = dict_get(d, "hello.swver", NULL);
+      Log(LOG_DEBUG, "ws", "Got HELLO from client at cptr:<%p>: swver=%s, hwver=%s", cptr, hello_swver, (hello_hwver ? hello_hwver : "generic"));
+      cptr->cli_version = malloc(HTTP_UA_LEN);
+
+      if (cptr->cli_version) {
+         memset(cptr->cli_version, 0, HTTP_UA_LEN);
+         snprintf(cptr->cli_version, HTTP_UA_LEN, "%s@%s", hello_swver, (hello_hwver ? hello_hwver : "generic"));
+      }
    } else if (strcasecmp(msg_type, "media") == 0) {
       // AUDIO/VIDEO MEDIA RELATED
       const char *media_cmd = dict_get(d, "media.cmd", NULL);
    } else if (strcasecmp(msg_type, "ping") == 0) {
       // PING request
       const char *ping = dict_get(d, "ping", NULL);
-      time_t ping_ts = dict_get_time_t(d, "ping.ts", 0);
-
+      time_t ping_ts = dict_get_time_t(d, "msg.ts", 0);
       if (ping_ts) {
-         fprintf(stderr, "PING?\n");
          dict *pong = dict_new();
          dict_add(pong, "msg.type", "pong");
          dict_add_ulong(pong, "pong.ts", ping_ts);
          ws_send_dict(NULL, cptr, pong, WEBSOCKET_OP_TEXT);
          dict_free(pong);
+      } else {
+         // XXX: for now just complain
+         Log(LOG_DEBUG, "srv.http", "PING with no TS from cptr:<%p>", cptr);
       }
       goto cleanup;
    } else if (strcasecmp(msg_type, "pong") == 0) {
-      // PING response
-      fprintf(stderr, "PONG!\n");
-      const char *pong = dict_get(d, "pong", NULL);
+      if (msg_ts && cptr) {
+         result = ws_handle_pong(cptr, d);
+         cptr->last_ping = 0;
+         cptr->ping_attempts = 0;
+         Log(LOG_CRAZY, "http.pong", "Received pong from user %s for ts:%lu", cptr->chatname, msg_ts);
+         goto cleanup;
+      }
+   } else if (strcasecmp(msg_type, "rigctl") == 0) {
+      result = ws_handle_rigctl_msg(cptr, d);
    } else if (strcasecmp(msg_type, "quit") == 0) {
       const char *talk_reason = dict_get(d, "quit.reason", NULL);
       int clones = dict_get_int(d, "quit.clones", 0);
    } else if (strcasecmp(msg_type, "talk") == 0) {
       // CHAT RELATED
-      const char *talk_cmd = dict_get(d, "talk.cmd", NULL);
-      const char *talk_user = dict_get(d, "talk.user", NULL);
-
-//      const char *talk_target = dict_get(d, "talk.args.target", NULL);
+         result = ws_handle_chat_msg(cptr, d);
    }
 
    // Update last heard time
@@ -232,53 +288,6 @@ cleanup:
 }
 
 #if	0
-      // Handle pong messages (responses to server-initiated pings)
-      time_t pong_ts = dict_get_time_t(d, "pong.ts", 0);
-      if (pong_ts && cptr) {
-         result = ws_handle_pong(cptr, d);
-         cptr->last_ping = 0;
-         cptr->ping_attempts = 0;
-         Log(LOG_CRAZY, "http.pong", "Received pong from user %s for ts:%li", cptr->chatname, pong_ts);
-         goto cleanup;
-      }
-
-      if (hello) {
-         Log(LOG_DEBUG, "ws", "Got HELLO from client at cptr:<%p>: %s", cptr, hello);
-         cptr->cli_version = malloc(HTTP_UA_LEN);
-
-         if (cptr->cli_version) {
-            memset(cptr->cli_version, 0, HTTP_UA_LEN);
-            snprintf(cptr->cli_version, HTTP_UA_LEN, "%s", hello);
-         }
-         goto cleanup;
-      }
-
-      if (auth_cmd) {
-         Log(LOG_CRIT, "rrprotocol", "authcmd: %s", auth_cmd);
-
-         if (strcasecmp(auth_cmd, "challenge") == 0) {
-            const char *ch_nonce = dict_get(d, "auth.nonce", NULL);
-            Log(LOG_CRIT, "rrprotocol.cli.main", "challenge: %s", ch_nonce);
-         } else if (strcasecmp(cmd, "login") == 0) {
-            fprintf(stderr, "LOGIN cmd: %s\n", cmd);
-            goto cleanup;
-         }
-         goto cleanup;
-      }
-
-
-      if (c_cat_cmd) {
-         result = ws_handle_rigctl_msg(cptr, d);
-         goto cleanup;
-      }
-
-      if (talk_cmd) {
-         result = ws_handle_chat_msg(cptr, d);
-         goto cleanup;
-      }
-
-      fprintf(stderr, "cat:<%x>=%s, media:<%x>=%s\n",
-         c_cat_cmd, c_cat_cmd, c_cat_media, c_cat_media);
    } else if (mg_json_get(msg_data, "$.media", NULL) > 0) {
       char *media_cmd = dict_get(d, "media.cmd", NULL);
       char *media_codecs = dict_get(d, "media.codecs", NULL);
@@ -398,7 +407,7 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
       char buf[HTTP_WS_MAX_MSG + 1];
       memset( buf, 0, sizeof(buf) );
       memcpy(buf, msg_data.buf, msg_data.len);
-      fprintf(stderr, "buf(%d): %s(%d)\n", msg_data.len, buf, strlen(buf));
+//      fprintf(stderr, "buf(%d): %s(%d)\n", msg_data.len, buf, strlen(buf));
       dict *d = json2dict(buf);
       if (!d) {
          Log(LOG_CRIT, "rrproto.cli.main", "ws_handle: d is null!");
@@ -547,6 +556,11 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
             free(cptr->cli_version);
             cptr->cli_version = NULL;
          }
+
+         if (cptr->user->clones > 0) {
+            cptr->user->clones--;
+         }
+
          // reduce the # of clones for the user / reset to 0
          Log(LOG_CRAZY, "http", "Departing user %s had %d clones", cptr->chatname, cptr->user->clones);
 

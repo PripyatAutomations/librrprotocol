@@ -19,10 +19,10 @@ extern bool dying;
 extern time_t now;
 
 static server_cfg_t *server_list = NULL;
-static rrlist_t *irc_client_conns = NULL;
+static rrlist_t *client_conns = NULL;
 
 void rr_set_irc_conn_pool(void) {
-//   irc_set_conn_pool(irc_client_conns);
+//   irc_set_conn_pool(client_conns);
 }
 
 static void parse_server_opts(server_cfg_t *cfg, const char *opts) {
@@ -96,10 +96,11 @@ bool add_server(const char *network, const char *str) {
       new_cfg->tls = true;
    } else if (strncasecmp(p, "irc://", 6) == 0) {
       p += 6;
+   } else if (strncasecmp(p, "wss://", 6) == 0) {
+      new_cfg->tls = true;
+      p += 6;
    } else if (strncasecmp(p, "ws://", 5) == 0) {
       p += 5;
-   } else if (strncasecmp(p, "wss://", 6) == 0) {
-      p += 6;
    }
    // Split host and options
    const char *opts = strchr(p, '|');
@@ -159,13 +160,13 @@ bool add_server(const char *network, const char *str) {
    return true;
 }
 
+// XXX: Re-enable this and make use of it
 #if	0
-
 ///////////////
 // XXX: upgrade this to be able to be called by a timer
 // XXX: It should check for an existing connection to each network
 // XXX: Need to add support for ws/wss connections
-bool autoconnect(void) {
+bool check_server_autoconnects(void) {
    // Handle connecting to servers in networks.auto
    const char *networks = cfg_get_exp("networks.auto");
 
@@ -175,13 +176,13 @@ bool autoconnect(void) {
       char *sp = strtok(tv, ", ");
 
       // use a dictionary to store this stuff
-      dict *d = dict_new();
+      dict *newsrv = dict_new();
 
       while (sp) {
          char this_network[256];
          memset( this_network, 0, sizeof(this_network) );
          snprintf(this_network, sizeof(this_network), "%s", sp);
-         dict_add(d, "autoconnect.network", this_network);
+         dict_add(newsrv, "autoconnect.network", this_network);
          rrlist_t *temp_list = NULL;   // head of temporary list
 
          server_cfg_t *srvp = server_list;
@@ -235,10 +236,10 @@ bool autoconnect(void) {
 
             if ( ( cli = irc_cli_connect(srv) ) ) {
                // Add to the connection list
-               rrlist_add(&irc_client_conns, cli, LIST_TAIL);
+               rrlist_add(&client_conns, cli, LIST_TAIL);
             }
 #endif
-            event_emit("connecting", NULL, d);
+            event_emit_dict("connecting", NULL, newsrv);
             node = node->next;
          }
          sp = strtok(NULL, " ,");
@@ -246,10 +247,8 @@ bool autoconnect(void) {
       free(tv);
       free( (void *)networks );
       networks = NULL;
+      dict_free(newsrv);
    }
-
-   dict_free(d);
-
    return false;
 }
 #endif
