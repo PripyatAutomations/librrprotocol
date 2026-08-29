@@ -58,12 +58,10 @@ bool ws_send_ping(rrconn_t *cptr) {
       Log(LOG_CRAZY, "ping", "sending ping to user %s on cptr:<%p> with ts:[%li] attempt %d", cptr->chatname, cptr, now,
          cptr->ping_attempts);
    }
-   char ping_buf[64];
-   snprintf(ping_buf, sizeof(ping_buf), "{\"ping\":{\"ts\":%li}}", now);
-#ifdef	USE_MONGOOSE
-   struct mg_connection *c = cptr->conn;
-   mg_ws_send(c, ping_buf, strlen(ping_buf), WEBSOCKET_OP_TEXT);
-#endif // USE_MONGOOSE
-
+   dict *d = dict_new();
+   dict_add(d, "msg.type", "ping");
+   dict_add_ulong(d, "ping.ts", now);
+   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+   dict_free(d);
    return false;
 }

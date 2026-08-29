@@ -166,6 +166,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they are muted!", cmd, cptr->chatname);
       // XXX: Inform the user they are muted and can't use rigctl
       dict *d_err = dict_new();
+      dict_add(d_err, "msg.type", "error");
       dict_add(d_err, "error.msg", "Invalid target");
       dict_add(d_err, "error.vfo", vfo);
       dict_add(d_err, "error.target", cptr->chatname);
@@ -225,6 +226,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          // Send to log file & consoles
          Log(LOG_AUDIT, "ptt", "User %s set PTT to %s on vfo %s", cptr->chatname, (ptt_state ? "true" : "false"), vfo);
          dict *cat_msg = dict_new();
+         dict_add(cat_msg, "msg.type", "cat");
          dict_add(cat_msg, "cat.cmd", "ptt");
          dict_add(cat_msg, "cat.mode", mode_name);
          dict_add_bool(cat_msg, "cat.ptt", ptt_state);
@@ -233,7 +235,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_add_float(cat_msg, "cat.power", dp->power);
          dict_add_long(cat_msg, "cat.freq", dp->freq);
          dict_add_int(cat_msg, "cat.width", dp->width);
-         dict_add_ulong(cat_msg, "cat.ts", now);
+         dict_add_ulong(cat_msg, "msg.ts", now);
          ws_broadcast_dict(NULL, cat_msg, WEBSOCKET_OP_TEXT);
 
          // Send a PTT event
@@ -256,9 +258,10 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
          // tell everyone about it
          dict *cat_msg = dict_new();
+         dict_add(cat_msg, "msg.type", "cat");
          dict_add(cat_msg, "cat.cmd", "freq");
          dict_add_long(cat_msg, "cat.freq", new_freq);
-         dict_add_ulong(cat_msg, "cat.ts", now);
+         dict_add_ulong(cat_msg, "msg.ts", now);
          dict_add(cat_msg, "cat.user", cptr->chatname);
          dict_add(cat_msg, "cat.vfo", vfo);
 
@@ -286,11 +289,12 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
          // tell everyone about it
          dict *cat_msg = dict_new();
+         dict_add(cat_msg, "msg.type", "cat");
          dict_add(cat_msg, "cat.cmd", "mode");
          dict_add(cat_msg, "cat.mode", mode);
          dict_add(cat_msg, "cat.user", cptr->chatname);
          dict_add(cat_msg, "cat.vfo", vfo);
-         dict_add_ulong(cat_msg, "cat.ts", now);
+         dict_add_ulong(cat_msg, "msg.ts", now);
 
          ws_broadcast_dict(NULL, cat_msg, WEBSOCKET_OP_TEXT);
          dict_free(cat_msg);

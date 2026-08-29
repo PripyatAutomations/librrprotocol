@@ -41,6 +41,7 @@ const char *default_tls_ca_paths[] = {
 //////////////////////
 // Websocket router //
 //////////////////////
+extern bool ws_handler_auth_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_alert_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_error_msg(rrconn_t *cptr, dict *d);
@@ -91,49 +92,45 @@ bool ws_handle_hello_msg(rrconn_t *cptr, dict *d) {
    return false;
 }
 
-
 static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_DEBUG, "ws", "txtframe_dispatch: cptr:<%p> d:<%p>", cptr, d);
       return true;
    }
-   int i = 0;
    char json_req[65];
-
-   // Pointer to available routes
    struct ws_msg_routes *rp = ws_routes_cli;
+   const char *msg_type = dict_get(d, "msg.type", NULL);
+
+   // Send an even
+   char evname[64];
+   memset( evname, 0, sizeof(evname) );
+   snprintf(evname, sizeof(evname), "ws.msg.%s", msg_type);
+   event_emit_dict(evname, NULL, d);
 
    // Walk the table of handlers
+   int i = 0;
    while (rp[i].type) {
       // End of table marker
       if (!rp[i].type && !rp[i].cb) {
+         Log(LOG_CRAZY, "ws.cli", "End of route table reached without match for msg_type %s", msg_type);
          break;
       }
-      memset( json_req, 0, sizeof(json_req) );
-      snprintf(json_req, sizeof(json_req), "$.%s", rp[i].type);
 
-      // see if this exists in the json
-      const char *data = dict_get(d, json_req, NULL);
-      if ((strcasecmp(rp[i].type, "ping") != 0) &&
-          (strcasecmp(rp[i].type, "cat") != 0) && cfg_http_debug_crazy) {
-         Log(LOG_CRAZY, "ws.router", "Matched route #%d for message type %s", i, rp[i].type);
+      if (msg_type && strcasecmp(rp[i].type, msg_type) == 0) {
+         /* Emit a generic event for this raw websocket message type so other parts of the
+          * system can listen to socket-level messages without depending on the current
+          * in-process handlers. The existing handler is still called afterwards for
+          * backward compatibility. */
+         // Call the stored handler
+         rp[i].cb(cptr, d);
+         return false;
       }
-
-      /* Emit a generic event for this raw websocket message type so other parts of the
-       * system can listen to socket-level messages without depending on the current
-       * in-process handlers. The existing handler is still called afterwards for
-       * backward compatibility. */
-      char evname[64]; memset( evname, 0, sizeof(evname) );
-      snprintf(evname, sizeof(evname), "ws.msg.%s", rp[i].type);
-      event_emit_dict(evname, NULL, d);
-
-      /* Call existing handler to preserve current behavior, then free the dict. */
-      rp[i].cb(cptr, d);
-      return false;
       i++;
    }
+
+   // Dump the dict for debugging purposes
    const char *jp = dict2json(d);
-   Log(LOG_CRAZY, "ws.router", "No matches for message: %s", jp);
+   Log(LOG_WARN, "http.ws", "%s: No matches for message: %s", __FUNCTION__, jp);
    free( (void *)jp );
    return true;
 }
@@ -141,7 +138,7 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
 bool ws_binframe_process(const char *data, size_t len) {
    if (!data || len <= 10) {
       // no real packet will EVER be under 10 bytes, even a keep-alive
-      Log(LOG_DEBUG, "ws", "binframe_process: data:<%p> len: %d", data, len);
+      Log(LOG_DEBUG, "ws", "%s: data:<%p> len: %d", __FUNCTION__, data, len);
 
       return true;
    }
@@ -161,43 +158,7 @@ bool ws_binframe_process(const char *data, size_t len) {
    return false;
 }
 
-//
-// Handle a websocket request (see http.c/http_cb for case ev == MG_EV_WS_MSG)
-//
 #ifdef	USE_MONGOOSE
-bool ws_handle_cli(rrconn_t *cptr, struct mg_ws_message *msg) {
-   if (!cptr || !msg || !msg->data.buf) {
-      Log( LOG_DEBUG, "http.ws", "ws_handle got cptr:<%p> msg <%p> data <%p>", cptr, msg, (msg ? msg->data.buf : NULL) );
-      return true;
-   }
-
-#ifdef	HTTP_DEBUG_CRAZY
-   if (cfg_http_debug_crazy) {
-      Log(LOG_CRAZY, "http", "WS msg: %.*s", (int) msg->data.len, msg->data.buf);
-   }
-#endif	// HTTP_DEBUG_CRAZY
-
-   if (msg->flags & WEBSOCKET_OP_BINARY) {
-      // Binary (audio, waterfall, etc) frames
-      ws_binframe_process(msg->data.buf, msg->data.len);
-   } else {
-      // Text (mostly json) frames
-      struct mg_str msg_data = msg->data;
-
-      // Copy to a null terminated buffer
-      char buf[HTTP_WS_MAX_MSG + 1];
-      memset( buf, 0, sizeof(buf) );
-      memcpy(buf, msg_data.buf, msg_data.len);
-
-      Log(LOG_CRAZY, "rrproto.cli.main", "ws_handle_cli: msg=%s", buf);
-      dict *d = json2dict(buf);
-      ws_txtframe_dispatch(cptr, d);
-      memset( buf, 0, sizeof(buf) );
-      dict_free(d);
-   }
-   return false;
-}
-
 void http_handler(struct mg_connection *c, int ev, void *ev_data) {
    if (!c) {
       return;
@@ -257,19 +218,48 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       dict_add(d, "auth.server", (char *)server_name);
       event_emit_dict("connected", NULL, d);
       dict_free(d);
-
+      fprintf(stderr, "http_handler\n");
       ws_send_hello(cptr);
       ws_send_login(cptr, login_user);
    } else if (ev == MG_EV_WS_MSG) {
       struct mg_ws_message *wm = (struct mg_ws_message *)ev_data;
 
-      if (wm) {
-         ws_handle_cli(cptr, wm);
+      if (!wm) {
+         Log(LOG_CRIT, "rrprotocol.ws", "Empty message in MG_EV_WS_MSG");
+         return;
       }
+
+      if (cfg_http_debug_crazy) {
+         Log(LOG_CRAZY, "http", "http_handler: WS msg: %.*s", (int) wm->data.len, wm->data.buf);
+      }
+
+      if (wm->flags & WEBSOCKET_OP_BINARY) {
+         // Binary (audio, waterfall, etc) frames
+         ws_binframe_process(wm->data.buf, wm->data.len);
+      } else {
+         // Text (mostly json) frames
+         struct mg_str msg_data = wm->data;
+
+         // Copy to a null terminated buffer
+         char buf[HTTP_WS_MAX_MSG + 1];
+         memset( buf, 0, sizeof(buf) );
+         memcpy(buf, msg_data.buf, msg_data.len);
+
+         Log(LOG_CRAZY, "http", "ws_handle_cli: msg=%s", buf);
+         dict *d = json2dict(buf);
+         ws_txtframe_dispatch(cptr, d);
+         memset( buf, 0, sizeof(buf) );
+         dict_free(d);
+      }
+      return;
    } else if (ev == MG_EV_ERROR) {
       // send (char *)ev_data content
       // { \"error\": { \"msg\":
       ws_connected = 0;
+      mg_ws_send(c, NULL, 0, WEBSOCKET_OP_CLOSE);
+      if (ws_conn->conn) {
+         ws_conn->conn->is_closing = 1;
+      }
 
       if (ev_data) {
          dict *d = dict_new();
@@ -282,6 +272,10 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       }
    } else if (ev == MG_EV_CLOSE) {
       ws_connected = 0;
+      if (ws_conn) {
+         ws_conn->conn = NULL;
+         ws_conn = NULL;
+      }
       dict *d = dict_new();
       dict_add(d, "disconnected.server", (char *)server_name);
       event_emit_dict("disconnected", NULL, d);
@@ -335,23 +329,6 @@ void ws_client_init(void) {
    cfg_show_pings = cfg_get_bool("ui.show-pings", false);
    Log(LOG_DEBUG, "ws", "ws_init finished");
 }
-
-// XXX: We need to move to a similar arrangement as the client,
-// XXX: so these can be properly split across multiple source files
-// XXX: and accessed in a pleasant way...
-#ifdef	USE_MONGOOSE
-struct ws_msg_routes ws_routes[] = {
-   { .type = "auth", .cb = ws_handle_auth_msg, .auth_reqd = false },
-   { .type = "cat", .cb = ws_handle_rigctl_msg, .auth_reqd = true },
-   { .type = "hello", .cb = ws_handle_hello_msg, .auth_reqd = false },
-//   { .type = "media", .cb = ws_handle_media_msg, .auth_reqd = true },
-   { .type = "ping", .cb = ws_handle_ping_msg, .auth_reqd = false },
-//   { .type = "pong",  .cb = ws_handle_pong_msg,  .auth_reqd = false },
-//   { .type = "talk",  .cb = ws_handle_talk_msg,  .auth_reqd = true },
-//   { .type = "talk.cmd", .cb = ws_handle_talk_cmd, .auth_reqd = false },
-//   { .type = "talk.quit", .cb = ws_handle_quit,  .auth_reqd = false },
-};
-#endif	// USE_MONGOOSE
 
 bool rrproto_ws_connect(int server) {
    return false;
@@ -435,11 +412,6 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
       return true;
    }
 
-   if (!cptr->conn) {
-      Log( LOG_DEBUG, "auth", "ws_kick_client for cptr <%p> has mg_conn <%p> and is invalid", cptr,
-         (cptr ? cptr->conn : NULL) );
-      return true;
-   }
 
    // If we have a client structure attached, release it's resources
    if (cptr->user_agent) {
@@ -470,11 +442,21 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
       }
    }
    // XXX: Delete the user
-   return true;
+   if (!cptr->conn) {
+      Log( LOG_DEBUG, "auth", "ws_kick_client for cptr <%p> has mg_conn <%p> and is invalid", cptr,
+         (cptr ? cptr->conn : NULL) );
+      return true;
+   }
+
+#ifdef	USE_MONGOOSE
+   return ws_kick_client_by_c(cptr->conn, reason);
+#endif	// USE_MONGOOSE
+   return false;
 }
 
 #ifdef	USE_MONGOOSE
 bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
+   bool rv = false;
    char resp_buf[HTTP_WS_MAX_MSG + 1];
 
    if (!c) {
@@ -484,16 +466,18 @@ bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
    // Tell their client they've been disconnected
    prepare_msg( resp_buf, sizeof(resp_buf), "Client kicked: %s", (reason ? reason : "no reason given") );
    dict *d = dict_new();
+   dict_add(d, "msg.type", "auth");
    dict_add(d, "auth.error", resp_buf);
    const char *jp = dict2json(d);
-   mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_CLOSE);
+   mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
+   mg_ws_send(c, NULL, 0, WEBSOCKET_OP_CLOSE);
+   c->is_closing = 1;
    event_emit_dict("disconnected", NULL, d);
    dict_free(d);
    free((void *)jp);
-   http_remove_client(c);
    free(c);
 
-   return false;
+   return rv;
 }
 
 static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
@@ -505,18 +489,8 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
       rv = true;
       goto cleanup;
    }
-   char ip[INET6_ADDRSTRLEN];   // Buffer to hold IPv4 or IPv6 address
-   int port = 0;
-
-#ifdef	USE_MONGOOSE
-   port = cptr->conn->rem.port;
-
-   if (cptr->conn->rem.is_ip6) {
-      inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
-   } else {
-      inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
-   }
-#endif	// USE_MONGOOSE
+   char *ip = cptr->user_ip;
+   int port = cptr->user_port;
 
    const char *pong_ts = dict_get(d, "pong.ts", NULL);
    if (!pong_ts) {
@@ -585,273 +559,6 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
 
    return false;
 }
-
-//
-// Handle a TEXT ws message
-//
-static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
-   bool result = false;
-   bool ping_pong = false;	// ping?/pong! message?
-   const char *msg_type = dict_get(d, "msg.type", NULL);
-   time_t msg_ts = dict_get_ulong(d, "msg.ts", 0);
-
-   if (!msg_type) {
-      // Old protocol
-      Log(LOG_CRIT, "rrproto.core", "ws_txtframe_process: msg_type unset!");
-      return true;
-   }
-
-   if (strcasecmp(msg_type, "alert") == 0) {
-      const char *alert_from = dict_get(d, "alert.from", "*** SERVER ***");
-   } else if (strcasecmp(msg_type, "error") == 0) {
-      const char *error_msg = dict_get(d, "error.msg", NULL);
-   } else if (strcasecmp(msg_type, "auth") == 0) {
-      // AUTHENTICATION RELATED
-      const char *auth_cmd = dict_get(d, "auth.cmd", NULL);
-      const char *auth_user = dict_get(d, "auth.user", NULL);
-      const char *auth_error = dict_get(d, "auth.error", NULL);
-      if (auth_error) {
-         Log(LOG_CRIT, "rrproto.auth", "Auth Error: %s", auth_error);
-         goto cleanup;
-      }
-
-      if (strcasecmp(auth_cmd, "challenge") == 0) {
-         const char *auth_nonce = dict_get(d, "auth.nonce", NULL);
-         const char *auth_token = dict_get(d, "auth.token", NULL);
-         //
-      } else if (strcasecmp(auth_cmd, "login") == 0) {
-         //
-      } else if (strcasecmp(auth_cmd, "pass") == 0) {
-         const char *auth_pass = dict_get(d, "auth.pass", NULL);
-      }
-   } else if (strcasecmp(msg_type, "cat") == 0) {
-      // RIG CONTROL/STATE RELATED
-      const char *c_cat_cmd = dict_get(d, "cat.cmd", NULL);
-   } else if (strcasecmp(msg_type, "hello") == 0) {
-      const char *hello_hwver = dict_get(d, "hello.hwver", "generic");
-      const char *hello_swver = dict_get(d, "hello.swver", NULL);
-   } else if (strcasecmp(msg_type, "media") == 0) {
-      // AUDIO/VIDEO MEDIA RELATED
-      const char *media_cmd = dict_get(d, "media.cmd", NULL);
-   } else if (strcasecmp(msg_type, "ping") == 0) {
-      // PING request
-      const char *ping = dict_get(d, "ping", NULL);
-      time_t ping_ts = dict_get_time_t(d, "ping.ts", 0);
-
-      if (ping_ts) {
-         fprintf(stderr, "PING?\n");
-         dict *pong = dict_new();
-         dict_add(pong, "msg.type", "pong");
-         dict_add_ulong(pong, "pong.ts", ping_ts);
-         ws_send_dict(NULL, cptr, pong, WEBSOCKET_OP_TEXT);
-         dict_free(pong);
-      }
-      goto cleanup;
-   } else if (strcasecmp(msg_type, "pong") == 0) {
-      // PING response
-      fprintf(stderr, "PONG!\n");
-      const char *pong = dict_get(d, "pong", NULL);
-   } else if (strcasecmp(msg_type, "quit") == 0) {
-      const char *talk_reason = dict_get(d, "quit.reason", NULL);
-      int clones = dict_get_int(d, "quit.clones", 0);
-   } else if (strcasecmp(msg_type, "talk") == 0) {
-      // CHAT RELATED
-      const char *talk_cmd = dict_get(d, "talk.cmd", NULL);
-      const char *talk_user = dict_get(d, "talk.user", NULL);
-
-//      const char *talk_target = dict_get(d, "talk.args.target", NULL);
-   }
-
-   // Update last heard time
-   if (!ping_pong) {
-      cptr->last_heard = now;
-   }
-
-cleanup:
-   return result;
-}
-
-#if	0
-
-      // Handle pong messages (responses to server-initiated pings)
-      time_t pong_ts = dict_get_time_t(d, "pong.ts", 0);
-      if (pong_ts && cptr) {
-         result = ws_handle_pong(cptr, d);
-         cptr->last_ping = 0;
-         cptr->ping_attempts = 0;
-         Log(LOG_CRAZY, "http.pong", "Received pong from user %s for ts:%li", cptr->chatname, pong_ts);
-         goto cleanup;
-      }
-
-      if (hello) {
-         Log(LOG_DEBUG, "ws", "Got HELLO from client at cptr:<%p>: %s", cptr, hello);
-         cptr->cli_version = malloc(HTTP_UA_LEN);
-
-         if (cptr->cli_version) {
-            memset(cptr->cli_version, 0, HTTP_UA_LEN);
-            snprintf(cptr->cli_version, HTTP_UA_LEN, "%s", hello);
-         }
-         goto cleanup;
-      }
-
-      if (auth_cmd) {
-         if (strcasecmp(auth_cmd, "challenge") == 0) {
-            const char *ch_nonce = dict_get(d, "auth.nonce", NULL);
-            Log(LOG_CRIT, "rrprotocol.cli.main", "challenge: %s", ch_nonce);
-         } else if (strcasecmp(cmd, "login") == 0) {
-            fprintf(stderr, "LOGIN cmd: %s\n", cmd);
-            goto cleanup;
-         }
-         goto cleanup;
-      }
-
-
-      if (c_cat_cmd) {
-         result = ws_handle_rigctl_msg(cptr, d);
-         goto cleanup;
-      }
-
-      if (talk_cmd) {
-         result = ws_handle_chat_msg(cptr, d);
-         goto cleanup;
-      }
-
-      fprintf(stderr, "cat:<%x>=%s, media:<%x>=%s\n",
-         c_cat_cmd, c_cat_cmd, c_cat_media, c_cat_media);
-   }
-   } else if (mg_json_get(msg_data, "$.media", NULL) > 0) {
-      char *media_cmd = dict_get(d, "media.cmd", NULL);
-      char *media_codecs = dict_get(d, "media.codecs", NULL);
-
-      // all packets need a command
-      if (!media_cmd) {
-         return true;
-      }
-
-      if (strcasecmp(media_cmd, "capab") == 0) {
-         // Capability negotiation
-         if (media_codecs) {
-            const char *preferred = cfg_get_exp("codecs.allowed");
-
-            if (!preferred) {
-               Log(LOG_CRIT, "ws.media", "media.capab needs codecs.allowed set in config!");
-               return true;
-            }
-            char *common = codec_filter_common(preferred, media_codecs);
-            free( (char *)preferred );
-
-            if (strlen(common) < 4) {
-               free(common);
-               return true;
-            }
-            char def_codec[5];
-            memset(def_codec, 0, 5);
-            snprintf(def_codec, sizeof(def_codec), "%s", common);
-            Log(LOG_INFO, "ws.media",
-               "Client %s <%p> supported codecs: %s, my preferred codecs: %s, common codecs: %s, negotiated default codec: %s",
-               cptr->chatname, cptr, media_codecs, cfg_get("codecs.allowed"), common, def_codec);
-            char msgbuf[HTTP_WS_MAX_MSG + 1];
-            dict *d = dict_new();
-            dict_add(d, "media.cmd", "isupport");
-            dict_add(d, "media.codecs", common);
-            dict_add(d, "media.preferred", def_codec);
-            dict_add_ulong(d, "media.ts", now);
-            Log(LOG_DEBUG, "ws.media", "Sending supported codecs |%s| with preferred |%s| to client |%s|", common,
-               def_codec, cptr->chatname);
-            ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
-            free(common);
-         } else {
-            Log(LOG_CRIT, "ws.media", "media.capab without payload");
-         }
-      } else if (strcasecmp(media_cmd, "codec") == 0) {
-         if (cptr->chatname[0] == '\0') {
-            return true;
-         }
-         char *media_codec = dict_get(d, "media.codec", NULL);
-         char *media_channel = dict_get(d, "media.channel", NULL);
-
-         if (media_codec && strlen(media_codec) == 4) {
-            Log(LOG_DEBUG, "ws.media", "Selected %s codec %s.%s for user %s at cptr:<%p>", media_channel, media_codec,
-               media_channel, cptr->chatname, cptr);
-            struct fwdsp_subproc *codec_tx_subproc = NULL;
-            struct fwdsp_subproc *codec_rx_subproc = NULL;
-
-// XXX: Rewrite this to subscribe rx_channels and rx_channels
-            if (media_channel) {
-               // XXX: Should we store pointers to the subprocs in the user
-               // struct? downside is it requires librustyaxe/http.h to include
-               // rrserver/fwdsp-mgr.h or move struct fwdsp_subrpco to
-               // librustyaxe/fwdsp-shared.h
-               if (strcasecmp(media_channel, "tx") == 0) {
-                  if (cptr->codec_tx[0] != '\0') {
-                     // XXX: Decrease refcnt on old codec
-                  }
-                  memset( cptr->codec_tx, 0, sizeof(cptr->codec_tx) );
-                  memcpy(cptr->codec_tx, media_codec, 4);
-                  codec_tx_subproc = fwdsp_find_or_create(cptr->codec_tx, FW_IO_STDIO, true);
-                  Log(LOG_DEBUG, "ws.media", "Started fwdsp %s.tx at %p", cptr->codec_tx, codec_tx_subproc);
-               } else if (strcasecmp(media_channel, "rx") == 0) {
-                  if (cptr->codec_rx[0] != '\0') {
-                     // XXX: Decrease refcnt on old codec
-                  }
-                  memset( cptr->codec_rx, 0, sizeof(cptr->codec_rx) );
-                  memcpy(cptr->codec_rx, media_codec, 4);
-                  codec_rx_subproc = fwdsp_find_or_create(cptr->codec_rx, FW_IO_STDIO, false);
-                  Log(LOG_DEBUG, "ws.media", "Started fwdsp %s.rx at %p", cptr->codec_rx, codec_rx_subproc);
-               } else if (strcasecmp(media_channel, "video-rx") == 0) {
-                  // NYI
-               } else if (strcasecmp(media_channel, "video-tx") == 0) {
-                  // NYI
-               } else {
-                  Log(LOG_CRIT, "ws.media", "invalid channel '%s' for codec message from cptr:<%p>", media_channel,
-                     cptr);
-               }
-            }
-         } else {
-            Log(LOG_DEBUG, "ws.media", "No codec in media.codec cmd");
-         }
-      }
-#endif	// 0
-
-//
-// Handle a websocket request (see http.c/http_cb for case ev == MG_EV_WS_MSG)
-//
-bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
-   if (!cptr || !msg || !msg->data.buf) {
-      Log( LOG_DEBUG, "http.ws", "ws_handle got msg:<%p> c:<%p> data:<%p>", msg, cptr, (msg ? msg->data.buf : NULL) );
-
-      return true;
-   }
-#if     defined(HTTP_DEBUG_CRAZY) || defined(DEBUG_PROTO)
-   // XXX: This should be moved to an option in config perhaps?
-   Log(LOG_CRAZY, "http", "WS msg: %.*s", (int) msg->data.len, msg->data.buf);
-#endif
-
-   // Binary (audio, waterfall) frames
-   if (msg->flags & WEBSOCKET_OP_BINARY) {
-      Log(LOG_CRAZY, "ws.binframe", "Incoming Binary frame: %li bytes", msg->data.len);
-      ws_binframe_process_mg(cptr, msg->data.buf, msg->data.len);
-   } else {
-      // Text (mostly json) frames
-      Log(LOG_CRAZY, "ws", "Incoming Text frame: %li bytes: %.*s", msg->data.len, msg->data.len, msg->data.buf);
-      struct mg_str msg_data = msg->data;
-      char buf[HTTP_WS_MAX_MSG + 1];
-      memset( buf, 0, sizeof(buf) );
-      memcpy(buf, msg_data.buf, msg_data.len);
-      fprintf(stderr, "buf(%d): %s(%d)\n", msg_data.len, buf, strlen(buf));
-      dict *d = json2dict(buf);
-      if (!d) {
-         Log(LOG_CRIT, "rrproto.cli.main", "ws_handle: d is null!");
-         return true;
-      }
-
-      ws_txtframe_process(cptr, d);
-      dict_free(d);
-      memset(buf, 0, sizeof(buf) );
-   }
-
-   return false;
-}
 #endif // USE_MONGOOSE
 
 ///////////////////////////////////////////////////////////////
@@ -867,8 +574,9 @@ bool ws_send_error(rrconn_t *cptr, const char *fmt, ...) {
    vsnprintf(fullmsg, sizeof(fullmsg), fmt, ap);
    char *escaped_msg = escape_html(fullmsg);
    dict *err_msg = dict_new();
+   dict_add(err_msg, "msg.type", "error");
    dict_add(err_msg, "error.msg", escaped_msg);
-   dict_add_ulong(err_msg, "error.ts", now);
+   dict_add_ulong(err_msg, "msg.ts", now);
    ws_send_dict(NULL, cptr, err_msg, WEBSOCKET_OP_TEXT);
    free(escaped_msg);
    dict_free(err_msg);

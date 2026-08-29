@@ -46,7 +46,7 @@ librrprotocol_objs += srv.send.o
 librrprotocol_objs += vfo.o
 #librrprotocol_objs += ws.audio.o
 # This needs merged into various other files...
-librrprotocol_objs += wsnew.o
+#librrprotocol_objs += wsnew.o
 librrprotocol_objs += ws.auth.o
 librrprotocol_objs += ws.file-xfer.o
 #librrprotocol_objs += ws.media.o

@@ -179,6 +179,7 @@ void http_remove_client(struct mg_connection *c) {
    while (current) {
       if (current->conn == c) {
          // Found the client to remove, mark it dead
+         mg_ws_send(c, NULL, 0, WEBSOCKET_OP_CLOSE);
          current->conn->is_closing = 1;
          current->active = false;
 
@@ -187,8 +188,6 @@ void http_remove_client(struct mg_connection *c) {
          } else {
             prev->next = current->next;
          }
-         Log( LOG_CRAZY, "http", "Removing client at cptr:<%p> with mgconn:<%p> (%d connections / %d users remain)",
-            current, c, http_count_connections(), http_count_clients() );
 
          if (current->user) {
             if (current->authenticated && current->is_ws) {
@@ -204,6 +203,9 @@ void http_remove_client(struct mg_connection *c) {
          free(current);
          return;
       }
+      int http_cli = http_count_clients();
+      Log( LOG_CRAZY, "http", "Removed client at cptr:<%p> with mgconn:<%p> (%d connections / %d users remain)",
+         current, c, http_count_connections() - 1, (http_cli > 0 ? http_cli - 1 : 0));
       prev = current;
       current = current->next;
    }

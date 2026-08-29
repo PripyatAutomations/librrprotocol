@@ -31,7 +31,7 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_DEBUG, "ws.rigctl", "handle_rigctl_msg invalid args: cptr:<%p> d:<%p>", cptr, d);
       return true;
    }
-   time_t ts = dict_get_time_t(d, "cat.ts", now);
+   time_t ts = dict_get_time_t(d, "msg.ts", now);
 
    if (dict_get(d, "cat.state.mode", NULL) ) {
 // XXX: Implement this - state message throttling & dict_diff usage
@@ -47,7 +47,7 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
       int width = dict_get_int(d, "cat.state.width", 0);
       int power = dict_get_int(d, "cat.state.power", 0);
       bool ptt = dict_get_bool(d, "cat.state.ptt", false);
-      int ts = dict_get_int(d, "cat.ts", 0);
+      time_t ts = dict_get_ulong(d, "msg.ts", 0);
       const char *user = dict_get(d, "cat.user", NULL);
 
       if (user && *user) {
@@ -111,10 +111,11 @@ bool ws_send_ptt_cmd(rrconn_t *cptr, const char *vfo, bool ptt) {
       return true;
    }
    dict *cat_msg = dict_new();
+   dict_add(cat_msg, "msg.type", "cat");
    dict_add(cat_msg, "cat.cmd", "ptt");
    dict_add(cat_msg, "cat.vfo", vfo);
    dict_add_bool(cat_msg, "cat.ptt", ptt);
-   dict_add_ulong(cat_msg, "cat.ts", now);
+   dict_add_ulong(cat_msg, "msg.ts", now);
    ws_send_dict(NULL, cptr, cat_msg, WEBSOCKET_OP_TEXT);
    dict_free(cat_msg);
 
@@ -126,10 +127,11 @@ bool ws_send_mode_cmd(rrconn_t *cptr, const char *vfo, const char *mode) {
       return true;
    }
    dict *cat_msg = dict_new();
+   dict_add(cat_msg, "msg.type", "cat");
    dict_add(cat_msg, "cat.cmd", "mode");
    dict_add(cat_msg, "cat.vfo", vfo);
    dict_add(cat_msg, "cat.mode", mode);
-   dict_add_ulong(cat_msg, "cat.ts", now);
+   dict_add_ulong(cat_msg, "msg.ts", now);
    ws_send_dict(NULL, cptr, cat_msg, WEBSOCKET_OP_TEXT);
    dict_free(cat_msg);
 
@@ -141,10 +143,11 @@ bool ws_send_freq_cmd(rrconn_t *cptr, const char *vfo, long freq) {
       return true;
    }
    dict *cat_msg = dict_new();
+   dict_add(cat_msg, "msg.type", "cat");
    dict_add(cat_msg, "cat.cmd", "freq");
    dict_add(cat_msg, "cat.vfo", vfo);
    dict_add_long(cat_msg, "cat.freq", freq);
-   dict_add_ulong(cat_msg, "cat.ts", now);
+   dict_add_ulong(cat_msg, "msg.ts", now);
    ws_send_dict(NULL, cptr, cat_msg, WEBSOCKET_OP_TEXT);
    dict_free(cat_msg);
 

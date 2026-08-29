@@ -163,6 +163,256 @@ bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
    return true;
 }
 
+//
+// Handle a TEXT ws message
+//
+static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
+   bool result = false;
+   bool ping_pong = false;	// ping?/pong! message?
+   const char *msg_type = dict_get(d, "msg.type", NULL);
+   time_t msg_ts = dict_get_ulong(d, "msg.ts", 0);
+
+   if (!msg_type) {
+      // Old protocol
+      Log(LOG_CRIT, "rrproto.core", "ws_txtframe_process: msg_type unset!");
+      return true;
+   }
+
+   if (strcasecmp(msg_type, "alert") == 0) {
+      const char *alert_from = dict_get(d, "alert.from", "*** SERVER ***");
+   } else if (strcasecmp(msg_type, "error") == 0) {
+      const char *error_msg = dict_get(d, "error.msg", NULL);
+   } else if (strcasecmp(msg_type, "auth") == 0) {
+      ws_handle_auth_msg(cptr, d);
+   } else if (strcasecmp(msg_type, "cat") == 0) {
+      // RIG CONTROL/STATE RELATED
+      const char *c_cat_cmd = dict_get(d, "cat.cmd", NULL);
+   } else if (strcasecmp(msg_type, "hello") == 0) {
+      const char *hello_hwver = dict_get(d, "hello.hwver", "generic");
+      const char *hello_swver = dict_get(d, "hello.swver", NULL);
+   } else if (strcasecmp(msg_type, "media") == 0) {
+      // AUDIO/VIDEO MEDIA RELATED
+      const char *media_cmd = dict_get(d, "media.cmd", NULL);
+   } else if (strcasecmp(msg_type, "ping") == 0) {
+      // PING request
+      const char *ping = dict_get(d, "ping", NULL);
+      time_t ping_ts = dict_get_time_t(d, "ping.ts", 0);
+
+      if (ping_ts) {
+         fprintf(stderr, "PING?\n");
+         dict *pong = dict_new();
+         dict_add(pong, "msg.type", "pong");
+         dict_add_ulong(pong, "pong.ts", ping_ts);
+         ws_send_dict(NULL, cptr, pong, WEBSOCKET_OP_TEXT);
+         dict_free(pong);
+      }
+      goto cleanup;
+   } else if (strcasecmp(msg_type, "pong") == 0) {
+      // PING response
+      fprintf(stderr, "PONG!\n");
+      const char *pong = dict_get(d, "pong", NULL);
+   } else if (strcasecmp(msg_type, "quit") == 0) {
+      const char *talk_reason = dict_get(d, "quit.reason", NULL);
+      int clones = dict_get_int(d, "quit.clones", 0);
+   } else if (strcasecmp(msg_type, "talk") == 0) {
+      // CHAT RELATED
+      const char *talk_cmd = dict_get(d, "talk.cmd", NULL);
+      const char *talk_user = dict_get(d, "talk.user", NULL);
+
+//      const char *talk_target = dict_get(d, "talk.args.target", NULL);
+   }
+
+   // Update last heard time
+   if (!ping_pong) {
+      cptr->last_heard = now;
+   }
+
+cleanup:
+   return result;
+}
+
+#if	0
+      // Handle pong messages (responses to server-initiated pings)
+      time_t pong_ts = dict_get_time_t(d, "pong.ts", 0);
+      if (pong_ts && cptr) {
+         result = ws_handle_pong(cptr, d);
+         cptr->last_ping = 0;
+         cptr->ping_attempts = 0;
+         Log(LOG_CRAZY, "http.pong", "Received pong from user %s for ts:%li", cptr->chatname, pong_ts);
+         goto cleanup;
+      }
+
+      if (hello) {
+         Log(LOG_DEBUG, "ws", "Got HELLO from client at cptr:<%p>: %s", cptr, hello);
+         cptr->cli_version = malloc(HTTP_UA_LEN);
+
+         if (cptr->cli_version) {
+            memset(cptr->cli_version, 0, HTTP_UA_LEN);
+            snprintf(cptr->cli_version, HTTP_UA_LEN, "%s", hello);
+         }
+         goto cleanup;
+      }
+
+      if (auth_cmd) {
+         Log(LOG_CRIT, "rrprotocol", "authcmd: %s", auth_cmd);
+
+         if (strcasecmp(auth_cmd, "challenge") == 0) {
+            const char *ch_nonce = dict_get(d, "auth.nonce", NULL);
+            Log(LOG_CRIT, "rrprotocol.cli.main", "challenge: %s", ch_nonce);
+         } else if (strcasecmp(cmd, "login") == 0) {
+            fprintf(stderr, "LOGIN cmd: %s\n", cmd);
+            goto cleanup;
+         }
+         goto cleanup;
+      }
+
+
+      if (c_cat_cmd) {
+         result = ws_handle_rigctl_msg(cptr, d);
+         goto cleanup;
+      }
+
+      if (talk_cmd) {
+         result = ws_handle_chat_msg(cptr, d);
+         goto cleanup;
+      }
+
+      fprintf(stderr, "cat:<%x>=%s, media:<%x>=%s\n",
+         c_cat_cmd, c_cat_cmd, c_cat_media, c_cat_media);
+   } else if (mg_json_get(msg_data, "$.media", NULL) > 0) {
+      char *media_cmd = dict_get(d, "media.cmd", NULL);
+      char *media_codecs = dict_get(d, "media.codecs", NULL);
+
+      // all packets need a command
+      if (!media_cmd) {
+         return true;
+      }
+
+      if (strcasecmp(media_cmd, "capab") == 0) {
+         // Capability negotiation
+         if (media_codecs) {
+            const char *preferred = cfg_get_exp("codecs.allowed");
+
+            if (!preferred) {
+               Log(LOG_CRIT, "ws.media", "media.capab needs codecs.allowed set in config!");
+               return true;
+            }
+            char *common = codec_filter_common(preferred, media_codecs);
+            free( (char *)preferred );
+
+            if (strlen(common) < 4) {
+               free(common);
+               return true;
+            }
+            char def_codec[5];
+            memset(def_codec, 0, 5);
+            snprintf(def_codec, sizeof(def_codec), "%s", common);
+            Log(LOG_INFO, "ws.media",
+               "Client %s <%p> supported codecs: %s, my preferred codecs: %s, common codecs: %s, negotiated default codec: %s",
+               cptr->chatname, cptr, media_codecs, cfg_get("codecs.allowed"), common, def_codec);
+            char msgbuf[HTTP_WS_MAX_MSG + 1];
+            dict *d = dict_new();
+            dict_add(d, "media.cmd", "isupport");
+            dict_add(d, "media.codecs", common);
+            dict_add(d, "media.preferred", def_codec);
+            dict_add_ulong(d, "media.ts", now);
+            Log(LOG_DEBUG, "ws.media", "Sending supported codecs |%s| with preferred |%s| to client |%s|", common,
+               def_codec, cptr->chatname);
+            ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+            free(common);
+         } else {
+            Log(LOG_CRIT, "ws.media", "media.capab without payload");
+         }
+      } else if (strcasecmp(media_cmd, "codec") == 0) {
+         if (cptr->chatname[0] == '\0') {
+            return true;
+         }
+         char *media_codec = dict_get(d, "media.codec", NULL);
+         char *media_channel = dict_get(d, "media.channel", NULL);
+
+         if (media_codec && strlen(media_codec) == 4) {
+            Log(LOG_DEBUG, "ws.media", "Selected %s codec %s.%s for user %s at cptr:<%p>", media_channel, media_codec,
+               media_channel, cptr->chatname, cptr);
+            struct fwdsp_subproc *codec_tx_subproc = NULL;
+            struct fwdsp_subproc *codec_rx_subproc = NULL;
+
+// XXX: Rewrite this to subscribe rx_channels and rx_channels
+            if (media_channel) {
+               // XXX: Should we store pointers to the subprocs in the user
+               // struct? downside is it requires librustyaxe/http.h to include
+               // rrserver/fwdsp-mgr.h or move struct fwdsp_subrpco to
+               // librustyaxe/fwdsp-shared.h
+               if (strcasecmp(media_channel, "tx") == 0) {
+                  if (cptr->codec_tx[0] != '\0') {
+                     // XXX: Decrease refcnt on old codec
+                  }
+                  memset( cptr->codec_tx, 0, sizeof(cptr->codec_tx) );
+                  memcpy(cptr->codec_tx, media_codec, 4);
+                  codec_tx_subproc = fwdsp_find_or_create(cptr->codec_tx, FW_IO_STDIO, true);
+                  Log(LOG_DEBUG, "ws.media", "Started fwdsp %s.tx at %p", cptr->codec_tx, codec_tx_subproc);
+               } else if (strcasecmp(media_channel, "rx") == 0) {
+                  if (cptr->codec_rx[0] != '\0') {
+                     // XXX: Decrease refcnt on old codec
+                  }
+                  memset( cptr->codec_rx, 0, sizeof(cptr->codec_rx) );
+                  memcpy(cptr->codec_rx, media_codec, 4);
+                  codec_rx_subproc = fwdsp_find_or_create(cptr->codec_rx, FW_IO_STDIO, false);
+                  Log(LOG_DEBUG, "ws.media", "Started fwdsp %s.rx at %p", cptr->codec_rx, codec_rx_subproc);
+               } else if (strcasecmp(media_channel, "video-rx") == 0) {
+                  // NYI
+               } else if (strcasecmp(media_channel, "video-tx") == 0) {
+                  // NYI
+               } else {
+                  Log(LOG_CRIT, "ws.media", "invalid channel '%s' for codec message from cptr:<%p>", media_channel,
+                     cptr);
+               }
+            }
+         } else {
+            Log(LOG_DEBUG, "ws.media", "No codec in media.codec cmd");
+         }
+      }
+#endif	// 0
+
+//
+// Handle a websocket request
+//
+bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
+   if (!cptr || !msg || !msg->data.buf) {
+      Log( LOG_DEBUG, "http.ws", "ws_handle got msg:<%p> c:<%p> data:<%p>", msg, cptr, (msg ? msg->data.buf : NULL) );
+
+      return true;
+   }
+#if     defined(HTTP_DEBUG_CRAZY) || defined(DEBUG_PROTO)
+   // XXX: This should be moved to an option in config perhaps?
+   Log(LOG_CRAZY, "http", "ws_handle WS msg: %.*s", (int) msg->data.len, msg->data.buf);
+#endif
+
+   // Binary (audio, waterfall) frames
+   if (msg->flags & WEBSOCKET_OP_BINARY) {
+      Log(LOG_CRAZY, "ws.binframe", "Incoming Binary frame: %li bytes", msg->data.len);
+      ws_binframe_process_mg(cptr, msg->data.buf, msg->data.len);
+   } else {
+      // Text (mostly json) frames
+      Log(LOG_CRAZY, "ws", "Incoming Text frame: %li bytes: %.*s", msg->data.len, msg->data.len, msg->data.buf);
+      struct mg_str msg_data = msg->data;
+      char buf[HTTP_WS_MAX_MSG + 1];
+      memset( buf, 0, sizeof(buf) );
+      memcpy(buf, msg_data.buf, msg_data.len);
+      fprintf(stderr, "buf(%d): %s(%d)\n", msg_data.len, buf, strlen(buf));
+      dict *d = json2dict(buf);
+      if (!d) {
+         Log(LOG_CRIT, "rrproto.cli.main", "ws_handle: d is null!");
+         return true;
+      }
+
+      ws_txtframe_process(cptr, d);
+      dict_free(d);
+      memset(buf, 0, sizeof(buf) );
+   }
+
+   return false;
+}
+
 ///// Main HTTP callback
 void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
    if (!c) {
@@ -170,20 +420,23 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
    }
    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
 
-   char ip[INET6_ADDRSTRLEN];   // Buffer to hold IPv4 or IPv6 address
-   memset(ip, 0, INET6_ADDRSTRLEN);
-
    // Try to find the cptr for this mg_connection
    rrconn_t *cptr = http_find_client_by_c(c);
    if (!cptr) {
       cptr = http_add_client(c, false);
-   }
-   int port = cptr->conn->rem.port;
+      if (!cptr || !cptr->conn) {
+         Log(LOG_CRIT, "ws.core", "ws_http_cb failed to http_add_client(%p)", c);
+         return;
+      }
+      int port = cptr->conn->rem.port;
+      char ip[INET6_ADDRSTRLEN];   // Buffer to hold IPv4 or IPv6 address
+      memset(ip, 0, INET6_ADDRSTRLEN);
 
-   if (cptr->conn->rem.is_ip6) {
-      inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
-   } else {
-      inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
+      if (cptr->conn->rem.is_ip6) {
+         inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
+      } else {
+         inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
+      }
    }
 
    if (ev == MG_EV_OPEN) {
@@ -198,10 +451,12 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          mg_tls_init(cptr->conn, &opts);
       }
    } else if (ev == MG_EV_ACCEPT) {
+      char *ip = cptr->user_ip;
+      int port = cptr->user_port;
       Log(LOG_CRAZY, "http", "Accepted connection on cptr:<%p> from %s:%d", cptr, ip, port);
 
 #ifdef	HTTP_USE_TLS
-      if (cptr->conn->fn_data) {
+      if (cptr && cptr->conn && cptr->conn->fn_data) {
          Log(LOG_CRAZY, "http", "Init TLS for cptr:<%p> from %s:%d", cptr, ip, port);
          mg_tls_init(cptr->conn, &tls_opts);
       }
@@ -243,10 +498,15 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          http_static(hm, cptr);
       }
    } else if (ev == MG_EV_WS_OPEN) {
+      char *ip = cptr->user_ip;
+      int port = cptr->user_port;
+
       Log(LOG_CRAZY, "http.core", "WS OPEN for cptr:<%p>", cptr);
       Log(LOG_DEBUG, "http", "Conn cptr:<%p> from %s:%d upgraded to ws with cptr:<%p>", cptr, ip, port, cptr);
       cptr->is_ws = true;
       dict *d = dict_new();
+      dict_add(d, "msg.type", "hello");
+      dict_add_ulong(d, "msg.ts", now);
       dict_add(d, "hello.swver", VERSION);
       dict_add(d, "hello.hwver", HARDWARE);
       ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
@@ -260,6 +520,9 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
 
       // make sure we're not accessing unsafe memory
       if (cptr && cptr->user && cptr->chatname[0] != '\0') {
+         char *ip = cptr->user_ip;
+         int port = cptr->user_port;
+
 #if	0
          // Does the user hold PTT? if so turn it off
          if (cptr->is_ptt) {
@@ -267,8 +530,9 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
 //            rr_ptt_set_all_off();
             cptr->is_ptt = false;
             dict *rig_msg = dict_new();
-            dict_add(rig_msg, "rig.ptt", "off");
-            dict_add(rig_msg, "rig.ptt.user", cptr->chatname);
+            dict_add(rig_msg, "msg.type", "cat");
+            dict_add(rig_msg, "cat.cmd", "ptt");
+            dict_add(rig_msg, "cat.user", cptr->chatname);
             event_emit_dict("rig.ptt", NULL, rig_msg);
             dict_free(rig_msg);
          }
@@ -295,21 +559,31 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          if (cptr->active) {
             // blorp out a quit to all connected users
             dict *rig_msg = dict_new();
+            dict_add(rig_msg, "msg.type", "talk");
             dict_add(rig_msg, "talk.cmd", "quit");
             dict_add(rig_msg, "talk.ip", ip);
             dict_add(rig_msg, "talk.reason", "connection closed");
             dict_add(rig_msg, "talk.user", cptr->chatname);
             dict_add_int(rig_msg, "talk.clones", cptr->user->clones);
-            dict_add_ulong(rig_msg, "talk.ts", now);
+            dict_add_ulong(rig_msg, "msg.ts", now);
             ws_broadcast_dict(NULL, rig_msg, WEBSOCKET_OP_TEXT);
             dict_free(rig_msg);
             Log(LOG_AUDIT, "auth", "User %s on cptr:<%p> cptr:<%p> from %s:%d disconnected", cptr->chatname, cptr, cptr, ip, port);
          }
       } else {
+         if (!cptr) {
+            Log(LOG_CRIT, "ws.core", "ws_http_cb(): cptr is null!?");
+            return;
+         }
+         char *ip = cptr->user_ip;
+         int port = cptr->user_port;
+
          // This one makes a BUNCH of noise due to webui loading
          Log(LOG_CRAZY, "auth", "Unauthenticated client on cptr:<%p> from %s:%d disconnected", cptr, ip, port);
       }
-      http_remove_client(c);
+      if (cptr->conn) {
+         http_remove_client(cptr->conn);
+      }
    }
 }
 #endif // USE_MONGOOSE

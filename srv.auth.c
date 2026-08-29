@@ -173,17 +173,6 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_WARN, "http.ws", "auth_msg: got cptr:<%p> d:<%p>", cptr, d);
       return true;
    }
-   char ip[INET6_ADDRSTRLEN];
-   int port = 0;
-#ifdef	USE_MONGOOSE
-   port = cptr->conn->rem.port;
-
-   if (cptr->conn->rem.is_ip6) {
-      inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
-   } else {
-      inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
-   }
-#endif	// USE_MONGOOSE
    const char *cmd = dict_get(d, "auth.cmd", NULL);
    const char *pass = dict_get(d, "auth.pass", NULL);
    const char *token = dict_get(d, "auth.token", NULL);
@@ -195,8 +184,12 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       return true;
    }
 
+   Log(LOG_CRIT, "auth", "ws_handle_auth_msg: %s", cmd);
    if (strcasecmp(cmd, "login") == 0) {
       char resp_buf[HTTP_WS_MAX_MSG + 1];
+      char *ip = cptr->user_ip;
+      int port = cptr->user_port;
+
       Log(LOG_AUDIT, "auth", "Login request from user %s on cptr:<%p> from %s:%d", user, cptr, ip, port);
 
       // search for user
@@ -219,8 +212,8 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          ws_kick_client(cptr, "Account disabled");
          return true;
       }
-      int curr_clients = http_count_clients();
 
+      int curr_clients = http_count_clients();
       if (curr_clients > HTTP_MAX_SESSIONS) {
          Log(LOG_AUDIT, "auth.users", "Server is full! %d clients exceeds max %d", curr_clients, HTTP_MAX_SESSIONS);
          // kick the user
@@ -240,6 +233,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          Log(LOG_CRIT, "auth.users", "login request has no cptr->user for cptr:<%p>?!", cptr);
       }
       dict *auth_msg = dict_new();
+      dict_add(auth_msg, "msg.type", "auth");
       dict_add(auth_msg, "auth.cmd", "challenge");
       dict_add(auth_msg, "auth.nonce", cptr->nonce);
       dict_add(auth_msg, "auth.user", user);
@@ -260,18 +254,9 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          return true;
       }
 
-      // Save the remote IP
-      char ip[INET6_ADDRSTRLEN];   // Buffer to hold IPv4 or IPv6 address
-      int port = 0;
-#ifdef	USE_MONGOOSE
-      port = cptr->conn->rem.port;
+      char *ip = cptr->user_ip;
+      int port = cptr->user_port;
 
-      if (cptr->conn->rem.is_ip6) {
-         inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
-      } else {
-         inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
-      }
-#endif	// USE_MONGOOSE
       if (cptr->user == NULL) {
          Log(LOG_WARN, "auth", "cptr-> user == NULL handling conn from ip %s:%d, Kicking!", ip, port);
          ws_kick_client(cptr, "Invalid login/password");
@@ -362,6 +347,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          // Send last message (AUTHORIZED) of the login sequence to let client
          // know they are logged in
          dict *auth_msg = dict_new();
+         dict_add(auth_msg, "msg.type", "auth");
          dict_add(auth_msg, "auth.cmd", "authorized");
          dict_add(auth_msg, "auth.privs", cptr->user->privs);
          dict_add(auth_msg, "auth.token", token);
@@ -396,6 +382,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          memset( scratch, 0, sizeof(scratch) );
          snprintf(scratch, sizeof(scratch), "%lu", (unsigned long)now);
          dict *talk_msg = dict_new();
+         dict_add(talk_msg, "msg.type", "talk");
          dict_add(talk_msg, "talk.ts", scratch);
          dict_add(talk_msg, "talk.cmd", "join");
          dict_add(talk_msg, "talk.ip", ip);

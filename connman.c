@@ -139,7 +139,10 @@ bool rrproto_connect_server(const char *server) {
    if (!url) {
 //      ui_print("[%s] * Server '%s' does not have a server.url configured!",
 // server, server);
-
+      dict *evt_msg = dict_new();
+      dict_add(evt_msg, "error.msg", "Server hostname not specified");
+      event_emit_dict("connect-failed", NULL, evt_msg);
+      dict_free(evt_msg);
       return true;
    }
 #if defined(USE_MONGOOSE)
@@ -147,16 +150,14 @@ bool rrproto_connect_server(const char *server) {
    ws_conn->conn = mg_ws_connect(&mgr, url, http_handler, NULL, NULL);
 
    if (!ws_conn) {
-//      ui_print( "%s Socket connect error", get_chat_ts(now) );
-
+      event_emit("socket-error", NULL, NULL);
       return true;
    }
    ws_connected = 1;
    event_emit("connected", NULL, NULL);
 #else
-   // No mongoose transport available; emit event for higher-level code to
-   // handle
-   event_emit("connect.request", NULL, (void *)url);
+   // No mongoose transport available; emit event for higher-level code to handle
+   event_emit("connect-request", NULL, (void *)url);
 #endif
 
    return false;

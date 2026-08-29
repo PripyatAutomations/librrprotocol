@@ -29,17 +29,9 @@ bool ws_handle_syslog_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_WARN, "http.ws", "syslog_msg: got cptr:<%p> d:<%p>", cptr, d);
       return true;
    }
-   char ip[INET6_ADDRSTRLEN];
-   int port = 0;
-   
-#ifdef	USE_MONGOOSE
-   port = cptr->conn->rem.port;
-   if (cptr->conn->rem.is_ip6) {
-      inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
-   } else {
-      inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
-   }
-#endif	// USE_MONGOOSE
+
+   char *ip = cptr->user_ip;
+   int port = cptr->user_port;
    const char *ts = dict_get(d, "syslog.ts", NULL);
    const char *prio = dict_get(d, "syslog.prio", NULL);
    const char *subsys = dict_get(d, "syslog.subsys", NULL);

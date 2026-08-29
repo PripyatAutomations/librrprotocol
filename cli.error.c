@@ -28,17 +28,8 @@ bool ws_handle_error_msg(rrconn_t *cptr, dict *d) {
    }
    bool rv = false;
 
-   char ip[INET6_ADDRSTRLEN];
-   int port = 0;
-
-#ifdef	USE_MONGOOSE
-   port = cptr->conn->rem.port;
-   if (cptr->conn->rem.is_ip6) {
-      inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
-   } else {
-      inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
-   }
-#endif	// USE_MONGOOSE
+   char *ip = cptr->user_ip;
+   int port = cptr->user_port;
    const char *error_msg = dict_get(d, "error.msg", NULL);
    const char *error_from = dict_get(d, "error.from", NULL);
    time_t ts = dict_get_time_t(d, "error.ts", now);

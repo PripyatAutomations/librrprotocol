@@ -26,7 +26,6 @@ extern time_t now;
 extern const char *server_name;
 extern char session_token[HTTP_TOKEN_LEN + 1];	// TODO: Move into the ws_conn structure
 
-#if     defined(USE_MONGOOSE)
 bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
    bool rv = false;
 
@@ -35,14 +34,9 @@ bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
       return true;
    }
 
-   char ip[INET6_ADDRSTRLEN];
-   int port = cptr->conn->rem.port;
+   char *ip = cptr->user_ip;
+   int port = cptr->user_port;
 
-   if (cptr->conn->rem.is_ip6) {
-      inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
-   } else {
-      inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
-   }
    const char *cmd = dict_get(d, "auth.cmd", NULL);
    const char *nonce = dict_get(d, "auth.nonce", NULL);
    const char *user = dict_get(d, "auth.user", NULL);
@@ -54,6 +48,8 @@ bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
       goto cleanup;
    }
 
+   fprintf(stderr, "[auth]\n");
+   dict_dump(d, stderr);
    if (cmd && strcasecmp(cmd, "challenge") == 0) {
       const char *token = dict_get(d, "auth.token", NULL);
       time_t ts = dict_get_time_t(d, "auth.ts", now);
@@ -66,7 +62,7 @@ bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
          goto cleanup;
       }
       const char *login_pass = get_server_property(server_name, "server.pass");
-      Log(LOG_INFO, "ws.auth", "Got CHALLENGE %s from server %s, sending password!", nonce, server_name);
+      Log(LOG_AUDIT, "ws.auth", "Got CHALLENGE %s from server %s, sending password!", nonce, server_name);
       ws_send_passwd(cptr, user, login_pass, nonce);
       event_emit_dict("logging-in", NULL, d);
    } else if (cmd && strcasecmp(cmd, "authorized") == 0) {
@@ -108,6 +104,7 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
       return true;
    }
    dict *auth_msg = dict_new();
+   dict_add(auth_msg, "msg.type", "auth");
    dict_add(auth_msg, "auth.cmd", "pass");
    dict_add(auth_msg, "auth.user", user);
    dict_add(auth_msg, "auth.pass", temp_pw);
@@ -126,6 +123,7 @@ bool ws_send_logout(rrconn_t *cptr, const char *user, const char *token) {
    }
 
    dict *auth_msg = dict_new();
+   dict_add(auth_msg, "msg.type", "auth");
    dict_add(auth_msg, "auth.cmd", "logout");
    dict_add(auth_msg, "auth.user", user);
    dict_add(auth_msg, "auth.token", token);
@@ -151,4 +149,3 @@ bool ws_send_hello(rrconn_t *cptr) {
 
    return false;
 }
-#endif

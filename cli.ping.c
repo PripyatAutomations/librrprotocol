@@ -29,21 +29,13 @@ bool ws_handle_ping_msg(rrconn_t *cptr, dict *d) {
    }
    bool rv = false;
 
-   char ip[INET6_ADDRSTRLEN];
-   int port = 0;
-
-#ifdef	USE_MONGOOSE
-   port = cptr->conn->rem.port;
-   if (cptr->conn->rem.is_ip6) {
-      inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
-   } else {
-      inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
-   }
-#endif // USE_MONGOOSE
+   char *ip = cptr->user_ip;
+   int port = cptr->user_port;
    time_t ping_ts = dict_get_time_t(d, "ping.ts", 0);
 
    if (ping_ts) {
       dict *pong_msg = dict_new();
+      dict_add(pong_msg, "msg.type", "pong");
       dict_add_ulong(pong_msg, "pong.ts", ping_ts);
       ws_send_dict(NULL, cptr, pong_msg, WEBSOCKET_OP_TEXT);
       dict_free(pong_msg);
