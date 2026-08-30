@@ -12,10 +12,9 @@ int generate_nonce(char *buffer, size_t length) {
    if (!buffer || length <= 0) {
       return -1;
    }
-   static const char base64_chars[] =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-   size_t i;
+   static const char base64_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
+   size_t i;
    if (length < 8) {
       length = 8;
    }
@@ -23,9 +22,7 @@ int generate_nonce(char *buffer, size_t length) {
    for (i = 0 ; i < (length - 2) ; i++) {
       buffer[i] = base64_chars[rand() % 64];
    }
-
    buffer[length] = '\0';
-
    return length;
 }
 
@@ -40,9 +37,9 @@ char *hash_passwd(const char *passwd) {
    // for hex string
    if (!hex_output) {
       fprintf(stderr, "oom in hash_passwd?!\n");
-
       return NULL;
    }
+
    // Compute SHA1 of the combined string
    mg_sha1_ctx ctx;
    mg_sha1_init(&ctx);
@@ -60,7 +57,6 @@ char *hash_passwd(const char *passwd) {
 
    // Null terminate teh string for libc's sake
    hex_output[HTTP_HASH_LEN * 2] = '\0';
-
    return hex_output;
 }
 #endif	// USE_MONGOOSE
@@ -77,13 +73,13 @@ char *hash_passwd(const char *passwd) {
 // You *must* free the result
 char *compute_wire_password(const char *password, const char *nonce) {
    unsigned char combined[(HTTP_HASH_LEN * 2) + 1];
+
 #if     defined(USE_MONGOOSE)
    mg_sha1_ctx ctx;
 #endif // USE_MONGOOSE
 
    if (password == NULL || nonce == NULL) {
       Log(LOG_CRIT, "auth", "wtf compute_wire_password called with NULL password<%p> or nonce<%p>", password, nonce);
-
       return NULL;
    }
    char *hex_output = (char *)malloc(HTTP_HASH_LEN * 2 + 1);   // Allocate space
@@ -104,7 +100,6 @@ char *compute_wire_password(const char *password, const char *nonce) {
    // Compute SHA1 of the combined string
    mg_sha1_init(&ctx);
    mg_sha1_update(&ctx, (unsigned char *)combined, len);
-
    mg_sha1_final(hash, &ctx);
 #endif // USE_MONGOOSE
 

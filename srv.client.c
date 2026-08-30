@@ -137,6 +137,21 @@ rrconn_t *http_add_client(struct mg_connection *c, bool is_ws) {
    cptr->conn = c;
    cptr->is_ws = is_ws;
 
+#ifdef	USE_MONGOOSE
+   char ip[INET6_ADDRSTRLEN];
+   int port = c->rem.port;
+
+   if (c->rem.is_ip6) {
+      inet_ntop( AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
+   } else {
+      inet_ntop( AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
+   }
+
+   // save the user's IP 
+   snprintf(cptr->user_ip, sizeof(cptr->user_ip), "%s", ip);
+   cptr->user_port = port;
+#endif
+
    // Add to the top of the list
    cptr->next = http_client_list;
    http_client_list = cptr;
@@ -190,7 +205,7 @@ void http_remove_client(struct mg_connection *c) {
          }
 
          if (current->user) {
-            if (current->authenticated && current->is_ws) {
+            if (current->authenticated && current->is_ws && current->user->clones > 0) {
                current->user->clones--;
             }
 

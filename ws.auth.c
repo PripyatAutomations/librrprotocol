@@ -95,12 +95,22 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
 
       return true;
    }
-   char *temp_pw = compute_wire_password(hash_passwd(passwd), nonce);
+
+   char *hashed_pw = hash_passwd(passwd);
+   char *temp_pw = NULL;
+   
+   if (hashed_pw) {
+      temp_pw = compute_wire_password(hashed_pw, nonce);
+      explicit_bzero(hashed_pw, sizeof(hashed_pw));
+      free( (void *)hashed_pw);
+      hashed_pw = NULL;
+   }
 
    if (!temp_pw) {
       Log(LOG_CRIT, "auth", "Failed to hash session password (nonce: |%s|)", nonce);
       return true;
    }
+
    dict *auth_msg = dict_new();
    dict_add(auth_msg, "msg.type", "auth");
    dict_add(auth_msg, "auth.cmd", "pass");

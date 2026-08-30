@@ -305,8 +305,6 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
 
          Log(LOG_AUDIT, "auth", "Verified credentials for %s", up->name);
 
-         // save the user's IP
-         snprintf(cptr->user_ip, sizeof(cptr->user_ip), "%s", ip);
 
          // Store some timestamps such as when user joined & session will
          // forcibly expire

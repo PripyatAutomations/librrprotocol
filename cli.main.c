@@ -469,16 +469,16 @@ bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
    dict_add(d, "msg.type", "auth");
    dict_add(d, "auth.error", resp_buf);
    const char *jp = dict2json(d);
+   // Rewrite this to use ws_send_dict();
    mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
    mg_ws_send(c, NULL, 0, WEBSOCKET_OP_CLOSE);
    c->is_closing = 1;
    event_emit_dict("disconnected", NULL, d);
    dict_free(d);
    free((void *)jp);
-   free(c);
-
    return rv;
 }
+#endif // USE_MONGOOSE
 
 // Deal with the binary requests
 bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
@@ -506,7 +506,6 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
 
    return false;
 }
-#endif // USE_MONGOOSE
 
 ///////////////////////////////////////////////////////////////
 // Send an error message to the user

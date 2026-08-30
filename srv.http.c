@@ -220,6 +220,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
    if (!msg_type) {
       // Old protocol
       Log(LOG_CRIT, "rrproto.core", "ws_txtframe_process: msg_type unset!");
+      dict_dump(d, stderr);
       return true;
    }
 
@@ -519,6 +520,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       dict_add(d, "hello.swver", VERSION);
       dict_add(d, "hello.hwver", HARDWARE);
       ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+      dict_free(d);
    } else if (ev == MG_EV_WS_MSG) {
       struct mg_ws_message *msg = (struct mg_ws_message *)ev_data;
       ws_handle(cptr, msg);
@@ -532,20 +534,19 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          char *ip = cptr->user_ip;
          int port = cptr->user_port;
 
-#if	0
          // Does the user hold PTT? if so turn it off
          if (cptr->is_ptt) {
-            // XXX: This should only turn off PTT for the rig they are using!
-//            rr_ptt_set_all_off();
             cptr->is_ptt = false;
             dict *rig_msg = dict_new();
             dict_add(rig_msg, "msg.type", "cat");
             dict_add(rig_msg, "cat.cmd", "ptt");
+            dict_add_bool(rig_msg, "cat.ptt", false);
             dict_add(rig_msg, "cat.user", cptr->chatname);
+            // send it to rrserver to turn off ptt
             event_emit_dict("rig.ptt", NULL, rig_msg);
             dict_free(rig_msg);
          }
-#endif
+
          // Free the resources, if any, for the user_agent
          if (cptr->user_agent) {
             free(cptr->user_agent);
