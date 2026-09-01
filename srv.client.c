@@ -46,7 +46,6 @@ rrconn_t *http_find_client_by_token(const char *token) {
       cptr = cptr->next;
    }
    Log(LOG_CRAZY, "http.client", "find client: no matches for token |%s|!", token);
-
    return NULL;
 }
 
@@ -57,7 +56,6 @@ rrconn_t *http_find_client_by_guest_id(int gid) {
    // this filters out invalid calls
    if (gid <= 1) {
       Log(LOG_WARN, "http", "find_client_by_guestid: gid %d isn't valid", gid);
-
       return NULL;
    }
    while (cptr) {
@@ -97,7 +95,6 @@ rrconn_t *http_find_client_by_name(const char *name) {
       cptr = cptr->next;
    }
    Log(LOG_DEBUG, "http.client", "find client by name found no results for %s, index was %d", name, i);
-
    return NULL;
 }
 
@@ -127,8 +124,8 @@ rrconn_t *http_add_client(struct mg_connection *c, bool is_ws) {
    memset( cptr, 0, sizeof(rrconn_t) );
 
    // create some randomness for login hashing and session
-   generate_nonce( cptr->token, sizeof(cptr->token) );
-   generate_nonce( cptr->nonce, sizeof(cptr->nonce) );
+   auth_generate_nonce( cptr->token, sizeof(cptr->token) );
+   auth_generate_nonce( cptr->nonce, sizeof(cptr->nonce) );
    Log(LOG_CRAZY, "http", "add_client: token:<%p> |%s|, nonce:<%p> |%s|", cptr->token, cptr->token, cptr->nonce,
       cptr->nonce);
    cptr->connected = now;

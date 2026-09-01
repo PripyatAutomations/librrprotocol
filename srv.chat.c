@@ -37,7 +37,6 @@ static bool ws_chat_cmd_die(rrconn_t *cptr, const char *reason) {
 
    if (!reason || strlen(reason) < CHAT_MIN_REASON_LEN) {
       ws_chat_error_need_reason(cptr, "die");
-
       return true;
    }
 
@@ -58,7 +57,6 @@ static bool ws_chat_cmd_die(rrconn_t *cptr, const char *reason) {
       dying = 1;
    } else {
       ws_chat_err_noprivs(cptr, "DIE");
-
       return true;
    }
 
@@ -75,7 +73,6 @@ static bool ws_chat_cmd_restart(rrconn_t *cptr, const char *reason) {
 
    if (!reason || strlen(reason) < CHAT_MIN_REASON_LEN) {
       ws_chat_error_need_reason(cptr, "RESTART");
-
       return true;
    }
 
@@ -112,13 +109,11 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
    if (!target) {
       // XXX: send an error response 'No target given'
       ws_send_error(cptr, "No target given for KICK");
-
       return true;
    }
 
    if (!reason || strlen(reason) < CHAT_MIN_REASON_LEN) {
       ws_chat_error_need_reason(cptr, "kick");
-
       return true;
    }
 
@@ -252,10 +247,8 @@ static bool ws_chat_cmd_mute(rrconn_t *cptr, const char *target, const char *rea
       }
    } else {
       ws_chat_err_noprivs(cptr, "MUTE");
-
       return true;
    }
-
    return false;
 }
 
@@ -317,10 +310,8 @@ static bool ws_chat_cmd_syslog(rrconn_t *cptr, const char *state) {
       }
    } else {
       ws_chat_err_noprivs(cptr, "SYSLOG");
-
       return true;
    }
-
    return false;
 }
 
@@ -481,7 +472,6 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                         Log(LOG_DEBUG, "ws.chat", "Got !vfo %s from %s", arg, cptr->chatname);
                      } else {
                         Log(LOG_WARN, "ws.chat", "Unknown command: %s", cmd);
-
                         return false;
                      }
                   }
@@ -516,14 +506,12 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
       } else if (strcasecmp(cmd, "whois") == 0) {
          if (!target) {
             Log(LOG_DEBUG, "chat", "whois with no target");
-
             return true;
          }
          rrconn_t *acptr = http_client_list;
 
          if (!acptr) {
             Log(LOG_DEBUG, "chat", "whois no users online?!?");
-
             return true;
          }
       } else if (strcasecmp(cmd, "die") == 0) {
@@ -542,6 +530,5 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          ws_chat_cmd_unmute(cptr, target);
       }
    }
-
    return true;
 }

@@ -43,7 +43,6 @@ int http_getuid(const char *user) {
 
       if (strcasecmp(up->name, user) == 0) {
          Log(LOG_CRAZY, "auth", "Found uid [%d] for username |%s|", i, up->name);
-
          return i;
       }
    }
@@ -76,7 +75,6 @@ static bool http_backup_authdb(void) {
    } else {
       Log( LOG_CRIT, "http.core", "* Error renaming old config (%s) to %s: %d:%s", HTTP_AUTHDB_PATH, new_path, errno,
          strerror(errno) );
-
       return true;
    }
 
@@ -97,7 +95,6 @@ bool http_save_users(const char *filename) {
 
    if (!file) {
       Log( LOG_CRIT, "auth", "Error saving user database to %s: %d:%s", filename, errno, strerror(errno) );
-
       return true;
    }
    Log(LOG_INFO, "auth", "Saving HTTP user database");
@@ -120,7 +117,6 @@ bool http_save_users(const char *filename) {
 
    fclose(file);
    Log(LOG_INFO, "auth", "Saved %d users to %s", users_saved, filename);
-
    return true;
 }
 
@@ -228,6 +224,5 @@ int http_load_users(const char *filename) {
    }
    Log(LOG_INFO, "auth", "Loaded %d static users from %s", user_count, filename);
    fclose(file);
-
    return 0;
 }

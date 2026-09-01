@@ -44,7 +44,6 @@ static int generate_random_guest_id(int digits) {
    int num = 0, prev_digit = -1;
 
 try_again:
-
    for (int i = 0 ; i < digits ; i++) {
       int digit;
       do{
@@ -135,7 +134,6 @@ bool match_priv(const char *user_privs, const char *priv) {
    return false;
 }
 
-//bool has_privs(struct rr_user *cptr, const char *priv) {
 bool has_priv(int uid, const char *priv) {
    if (priv == NULL || uid < 0 || (uid > HTTP_MAX_USERS - 1) ) {
       return false;

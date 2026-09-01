@@ -21,7 +21,7 @@ extern int http_load_users(const char *filename);
 extern bool has_priv(int uid, const char *priv);
 extern char *compute_wire_password(const char *password_hash, const char *nonce);
 extern const char *http_get_uname(int8_t uid);
-extern int generate_nonce(char *buffer, size_t length);
+extern int auth_generate_nonce(char *buffer, size_t length);
 extern bool is_admin_online(void);
 extern bool is_elmer_online(void);
 
@@ -35,11 +35,9 @@ extern bool match_priv(const char *user_privs, const char *priv);
 extern bool has_privs(struct rr_user *cptr, const char *priv);
 
 //// WebSocket messages related to auth ////
-#ifdef USE_MONGOOSE
 extern bool ws_send_login(rrconn_t *cptr, const char *login_user);
 extern bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const char *nonce);
 extern bool ws_send_logout(rrconn_t *cptr, const char *user, const char *token);
 extern bool ws_send_hello(rrconn_t *cptr);
-#endif // USE_MONGOOSE
 
 #endif // !defined(__rr_auth_h)

@@ -83,9 +83,7 @@ bool send_global_alert(const char *sender, const char *data) {
    dict_add(alert_msg, "alert.msg", escaped_msg);
    dict_add_ulong(alert_msg, "alert.ts", now);
 
-#ifdef   USE_MONGOOSE
    ws_broadcast_dict(NULL, alert_msg, WEBSOCKET_OP_TEXT);
-#endif	// USE_MONGOOSE
    free( (char *)escaped_msg );
    dict_free(alert_msg);
 

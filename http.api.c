@@ -122,7 +122,6 @@ static bool http_api_stats(struct mg_http_message *msg, rrconn_t *cptr) {
    }
 
    mg_http_printf_chunk(cptr->conn, "");   // Don't forget the last empty chunk
-
    return false;
 }
 

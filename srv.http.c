@@ -46,9 +46,7 @@ extern struct mg_mgr mg_mgr;
 extern struct mg_tls_opts tls_opts;
 #endif // USE_MONGOOSE
 
-// XXX: Need to remove Content-Type: from these and just store that here
-static const char content_type[] = "Content-Type: ";
-
+static const char s_content_type[] = "Content-Type: ";
 static struct http_res_types http_res_types[] = {
    { "7z", "application/x-7z-compressed\r\n" },
    { "css", "text/css\r\n" },
@@ -82,7 +80,6 @@ bool check_url(const char *path) {
    }
    return false;
 }
-
 
 // Returns HTTP Content-Type for the chosen short name (save some memory)
 const char *http_content_type(const char *type) {
@@ -122,7 +119,6 @@ bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
 
    if (www_root[0] == '\0') {
       Log(LOG_CRIT, "http.core", "www_root is NULL");
-
       return true;
    }
 
@@ -196,10 +192,12 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
       rv = true;
       goto cleanup;
    } else {
+      // XXX: Should we update last_heard for PONG? Me thinks not.
+//      cptr->last_heard = now;
       // The pong response is valid, update the client's data
-      cptr->last_heard = now;
       cptr->last_ping = 0;
       cptr->ping_attempts = 0;
+
       Log(LOG_CRAZY, "http.pong", "Reset user %s last_heard to now:[%li] and last_ping to 0",
          (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>"), now);
    }
@@ -264,9 +262,6 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
    } else if (strcasecmp(msg_type, "pong") == 0) {
       if (msg_ts && cptr) {
          result = ws_handle_pong(cptr, d);
-         cptr->last_ping = 0;
-         cptr->ping_attempts = 0;
-         Log(LOG_CRAZY, "http.pong", "Received pong from user %s for ts:%lu", cptr->chatname, msg_ts);
          goto cleanup;
       }
    } else if (strcasecmp(msg_type, "rigctl") == 0) {
@@ -288,6 +283,7 @@ cleanup:
    return result;
 }
 
+// XXX: Rewrite this to use msg_type and json2dict/etc.
 #if	0
    } else if (mg_json_get(msg_data, "$.media", NULL) > 0) {
       char *media_cmd = dict_get(d, "media.cmd", NULL);
@@ -419,7 +415,6 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
       dict_free(d);
       memset(buf, 0, sizeof(buf) );
    }
-
    return false;
 }
 

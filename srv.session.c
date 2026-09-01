@@ -40,9 +40,7 @@ void http_expire_sessions(void) {
             Log(LOG_AUDIT, "http.auth",
                "Kicking expired session on cptr:<%p> (%lu sec old, last heard %lu sec ago) for user %s", cptr,
                HTTP_SESSION_LIFETIME, last_heard, cptr->chatname);
-#ifdef USE_MONGOOSE
             ws_kick_client(cptr, "Login session expired!");
-#endif // USE_MONGOOSE
             continue;
          }
 
@@ -51,20 +49,14 @@ void http_expire_sessions(void) {
             if (cptr->ping_attempts >= HTTP_PING_TRIES) {
                Log(LOG_AUDIT, "http.auth", "Client conn at cptr:<%p> for user %s ping timed out, disconnecting", cptr,
                   cptr->chatname);
-#ifdef   USE_MONGOOSE
                ws_kick_client(cptr, "Ping timeout");
-#endif // USE_MONGOOSE
             } else {
                // try again
-#ifdef   USE_MONGOOSE
                ws_send_ping(cptr);
-#endif // USE_MONGOOSE
             }
          } else if (cptr->last_ping == 0 && (now - cptr->last_heard) >= HTTP_PING_TIME) {
             // Time to send the first ping
-#ifdef   USE_MONGOOSE
             ws_send_ping(cptr);
-#endif // USE_MONGOOSE
          }
       }
       cptr = cptr->next;

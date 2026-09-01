@@ -8,7 +8,7 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-int generate_nonce(char *buffer, size_t length) {
+int auth_generate_nonce(char *buffer, size_t length) {
    if (!buffer || length <= 0) {
       return -1;
    }

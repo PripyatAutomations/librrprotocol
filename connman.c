@@ -94,7 +94,6 @@ bool connection_remove(rr_connection_t *conn) {
 const char *get_server_property(const char *server, const char *prop) {
    if (!server || !prop) {
       Log(LOG_CRIT, "ws", "get_server_prop with null server or prop");
-
       return NULL;
    }
    char fullkey[KEYLEN];
@@ -109,7 +108,6 @@ bool rrproto_disconnect_server(const char *server) {
    Log(LOG_DEBUG, "connman", "rrproto_disconnect_server: |%s|", server ? server : "(null)");
 
 #if defined(USE_MONGOOSE)
-
    // If a websocket connection exists, mark it closing. Actual mg loop will
    // close.
    if (ws_conn) {
@@ -130,7 +128,6 @@ bool rrproto_disconnect_server(const char *server) {
 bool rrproto_connect_server(const char *server) {
    if (!server) {
       Log(LOG_DEBUG, "connman", "rrproto_connect_server with no server name!");
-
       return true;
    }
    const char *url = get_server_property(server, "server.url");

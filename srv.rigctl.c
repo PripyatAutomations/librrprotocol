@@ -111,7 +111,6 @@ static bool ws_rig_state_poll(rr_vfo_t vfo) {
       rig.backend->api->backend_poll();
    }
 #endif
-
    return false;
 }
 
@@ -141,7 +140,6 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
    }
    // update last sent and return success
    ws_rig_state_last_sent = now;
-
    return false;
 }
 
@@ -149,8 +147,6 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
  time_t cfg_backed_poll_interval = 60;
  cfg_backed_poll_interval = cfg_get_int("backend.poll-interval", 60);
 */
-
-#ifdef	USE_MONGOOSE
 bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    bool rv = false;
 
@@ -315,4 +311,3 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    }
    return true;
 }
-#endif // USE_MONGOOSE
