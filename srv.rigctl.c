@@ -154,6 +154,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       return true;
    }
    cptr->last_heard = now;       // avoid unneeded keep-alives
+   cptr->last_cat = now;         // last CAT message received from user
    const char *cmd = dict_get(d, "cat.cmd", NULL);
    const char *vfo = dict_get(d, "cat.state.vfo", NULL);
    const char *state = dict_get(d, "cat.state", NULL);
@@ -217,6 +218,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
          // Update their last heard and PTT status
          cptr->last_heard = now;
+         cptr->last_cat = now;         // last CAT message received from user
          cptr->is_ptt = ptt_state;
 
          // Send to log file & consoles
@@ -250,6 +252,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
          rr_vfo_t c_vfo;
          c_vfo = vfo_lookup(vfo[0]);
+         cptr->last_cat = now;         // last CAT message received from user
          cptr->last_heard = now;
 
          // tell everyone about it
@@ -281,6 +284,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          rr_vfo_t c_vfo;
          char msgbuf[HTTP_WS_MAX_MSG + 1];
          c_vfo = vfo_lookup(vfo[0]);
+         cptr->last_cat = now;         // last CAT message received from user
          cptr->last_heard = now;
 
          // tell everyone about it

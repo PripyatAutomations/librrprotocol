@@ -326,6 +326,8 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
    }
 
    cptr->last_heard = now;
+   cptr->last_chat = now;
+
    const char *token = dict_get(d, "talk.token", NULL);
    const char *cmd = dict_get(d, "talk.cmd", NULL);
    const char *data = dict_get(d, "talk.data", NULL);

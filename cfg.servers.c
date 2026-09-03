@@ -160,6 +160,53 @@ bool add_server(const char *network, const char *str) {
    return true;
 }
 
+// Save callback: emit [network:NAME] sections for servers parsed from
+// config (they only live in server_list, not the cfg dict, so cfg_save
+// can't serialize them itself).  Reconstructed in the same format that
+// add_server() parses on load.
+static bool config_servers_save_cb(FILE *fp, const char *path) {
+   if (!fp || !server_list) {
+      return false;
+   }
+
+   for (server_cfg_t *sp = server_list; sp; sp = sp->next) {
+      fprintf(fp, "[network:%s]\n", sp->network);
+
+      // Rebuild the URL: [irc[s]://][nick[:pass]@]host:port[|opts]
+      if (sp->nick[0]) {
+         if (sp->pass[0]) {
+            fprintf(fp, "%s%s:%s@%s", sp->tls ? "ircs://" : "irc://", sp->nick, sp->pass, sp->host);
+         } else {
+            fprintf(fp, "%s%s@%s", sp->tls ? "ircs://" : "irc://", sp->nick, sp->host);
+         }
+      } else {
+         fprintf(fp, "%s%s", sp->tls ? "ircs://" : "irc://", sp->host);
+      }
+
+      // Default ports don't need to be written
+      if (sp->port && sp->port != (sp->tls ? 6697 : 6667) ) {
+         fprintf(fp, ":%d", sp->port);
+      }
+
+      if (sp->priority != 0) {
+         fprintf(fp, "|priority=%d", sp->priority);
+      }
+
+      if (sp->autojoin[0]) {
+         fprintf(fp, "|autojoin=%s", sp->autojoin);
+      }
+      fputc('\n', fp);
+      fputc('\n', fp);
+   }
+
+   return false;
+}
+
+// Called once at startup to register our save callback
+bool cfg_servers_init(void) {
+   return cfg_add_save_callback("cfg.servers", config_servers_save_cb);
+}
+
 // XXX: Re-enable this and make use of it
 #if	0
 ///////////////
