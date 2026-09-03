@@ -393,9 +393,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                return false;
             } else if (strcasecmp(msg_type, "pub") == 0 || strcasecmp(msg_type, "action") == 0) {
                if (strcasecmp(msg_type, "action") == 0) {
-                  Log(LOG_CRAZY, "ws.chat", "%s * %s%s", channel, cptr->chatname, data);
+                  Log(LOG_AUDIT, "ws.chat", "** %s * %s%s", channel, cptr->chatname, data);
                } else {
-                  Log(LOG_CRAZY, "ws.chat", "%s <%s> %s", channel, cptr->chatname, data);
+                  Log(LOG_AUDIT, "ws.chat", "** %s <%s> %s", channel, cptr->chatname, data);
                }
 
                // Check for commands

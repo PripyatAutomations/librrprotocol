@@ -277,7 +277,8 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          ws_conn = NULL;
       }
       dict *d = dict_new();
-      dict_add(d, "disconnected.server", (char *)server_name);
+      dict_add(d, "msg.type", "auth");
+      dict_add(d, "auth.server", server_name);
       event_emit_dict("disconnected", NULL, d);
       dict_free(d);
    }
