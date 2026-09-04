@@ -372,24 +372,24 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          /////////////////////
          // XXX: We should move this out to it's own function like
          // join_channel(cptr, "&localrig");
-         // blorp out a join to all chat users
-         char scratch[32];
-         memset( scratch, 0, sizeof(scratch) );
-         snprintf(scratch, sizeof(scratch), "%lu", (unsigned long)now);
          dict *talk_msg = dict_new();
          dict_add(talk_msg, "msg.type", "talk");
-         dict_add(talk_msg, "msg.ts", scratch);
+         dict_add_ulong(talk_msg, "msg.ts", now);
          dict_add(talk_msg, "talk.cmd", "join");
          dict_add(talk_msg, "talk.ip", ip);
          dict_add(talk_msg, "talk.muted", (cptr->user->is_muted ? "true" : "false") );
          dict_add(talk_msg, "talk.privs", cptr->user->privs);
          dict_add(talk_msg, "talk.target", "&localrig");
          dict_add(talk_msg, "talk.user", cptr->chatname);
-         memset( scratch, 0, sizeof(scratch) );
-         snprintf(scratch, sizeof(scratch), "%d", cptr->user->clones);
-         dict_add(talk_msg, "talk.clones", scratch);
+         dict_add_int(talk_msg, "talk.clones",  cptr->user->clones);
          ws_broadcast_dict(NULL, talk_msg, WEBSOCKET_OP_TEXT);
          ws_send_users(NULL);
+         dict_free(talk_msg);
+         talk_msg = dict_new();
+         dict_add(talk_msg, "msg.type", "talk");
+         dict_add_ulong(talk_msg, "msg.ts", now);
+         dict_add(talk_msg, "talk.target", "&localrig");
+         dict_add(talk_msg, "talk.user", cptr->chatname);
          event_emit_dict("send-chat-replay", cptr, talk_msg);
          dict_free(talk_msg);
       } else {
