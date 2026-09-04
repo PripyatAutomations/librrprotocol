@@ -174,7 +174,7 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
    dict_add_int(talk_msg, "talk.clones", cptr->user->clones);
    dict_add_bool(talk_msg, "talk.muted", cptr->user->is_muted);
    dict_add_bool(talk_msg, "talk.tx", cptr->is_ptt);
-   dict_add_long(talk_msg, "talk.ts", now);
+   dict_add_long(talk_msg, "msg.ts", now);
 
    if (acptr) {
       ws_send_dict(NULL, acptr, talk_msg, WEBSOCKET_OP_TEXT);
@@ -532,7 +532,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                dict_add(talk_msg, "talk.target", channel);
                dict_add(talk_msg, "talk.msg_type", msg_type);
                dict_add_bool(talk_msg, "talk.msg.global", global_msg);
-               dict_add_ulong(talk_msg, "talk.ts", now);
+               dict_add_ulong(talk_msg, "msg.ts", now);
 
                /*
                 * File chunks need their additional metadata preserved.

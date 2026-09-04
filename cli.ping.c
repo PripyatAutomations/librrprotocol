@@ -44,7 +44,7 @@ bool ws_handle_ping_msg(rrconn_t *cptr, dict *d) {
    }
 
    if (cfg_show_pings) {
-      Log(LOG_DEBUG, "ws.ping", "* Ping? Pong! %lld *", ping_ts);
+      Log(LOG_CRAZY, "ws.ping", "* Ping? Pong! %lld *", ping_ts);
    }
 
    return false;

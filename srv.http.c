@@ -192,8 +192,7 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
       rv = true;
       goto cleanup;
    } else {
-      // XXX: Should we update last_heard for PONG? Me thinks not.
-//      cptr->last_heard = now;
+      cptr->last_heard = now;
       // The pong response is valid, update the client's data
       cptr->last_ping = 0;
       cptr->ping_attempts = 0;

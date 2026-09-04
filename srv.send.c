@@ -91,17 +91,33 @@ bool send_global_alert(const char *sender, const char *data) {
 }
 
 bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
-   const char *jp = dict2json(d);
-   if (jp) {
-      if (dest) {
-         Log(LOG_CRAZY, "ws.proto", "Sending dict <%x> to conn <%x>: %s", d, dest, jp);
-         mg_ws_send(dest->conn, jp, strlen(jp), data_type);
-      } else {
-         Log(LOG_WARN, "rrproto.srv", "Unable to send msg dict:<%x> to conn:<%x> - we are offline!", d, dest);
-      }
-      free((void *)jp);
+   (void)sender;
+
+   if (!d || !dest || !dest->conn) {
+      Log(LOG_WARN, "rrproto.srv",
+         "Unable to send msg dict:<%p> to conn:<%p> - invalid destination",
+         d, dest);
+      return false;
    }
-   return false;
+
+   const char *jp = dict2json(d);
+
+   if (!jp) {
+      Log(LOG_WARN, "rrproto.srv",
+         "Unable to serialize msg dict:<%p> to conn:<%p>",
+         d, dest);
+      return false;
+   }
+
+   Log(LOG_CRAZY, "ws.proto",
+      "Sending dict <%p> to conn <%p>: %s",
+      (void *)d, (void *)dest, jp);
+
+   mg_ws_send(dest->conn, jp, strlen(jp), data_type);
+
+   free((void *)jp);
+
+   return true;
 }
 
 // Broadcast a message to all WebSocket clients (using http_client_list)

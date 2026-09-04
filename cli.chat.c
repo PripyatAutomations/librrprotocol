@@ -29,7 +29,7 @@ bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
    const char *user = dict_get(d, "talk.user", NULL);
    const char *privs = dict_get(d, "talk.privs", NULL);
    const char *muted = dict_get(d, "talk.muted", NULL);
-   const char *ts = dict_get(d, "talk.ts", NULL);
+   const char *ts = dict_get(d, "msg.ts", NULL);
    int clones = dict_get_int(d, "talk.clones", 11);
    bool rv = false;
    bool tx = dict_get_bool(d, "talk.state.tx", false);
@@ -46,36 +46,22 @@ bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
       }
       Log(LOG_DEBUG, "ws.talk", "UserInfo: %s has privs '%s' (TX: %s, Muted: %s, clones: %d)", user, privs,
          (tx ? "true" : "false"), (muted ? "true" : "false"), clones);
-      event_emit_dict("userinfo", NULL, d);
+      event_emit_dict("userinfo", cptr, d);
    } else if (cmd && strcasecmp(cmd, "msg") == 0) {
       const char *from = dict_get(d, "talk.from", NULL);
       const char *data = dict_get(d, "talk.data", NULL);
       const char *msg_type = dict_get(d, "talk.msg_type", NULL);
       const char *target = dict_get(d, "talk.target", NULL);
-      time_t ts = dict_get_time_t(d, "talk.ts", now);
+      time_t ts = dict_get_time_t(d, "msg.ts", now);
 
-      if (strcasecmp(msg_type, "action") == 0) {
-         Log(LOG_CRAZY, "ws.chat", "chat: %s * %s %s", target, from, data);
-      } else if (strcasecmp(msg_type, "pub") == 0) {
-         Log(LOG_CRAZY, "ws.chat", "chat: %s <%s> %s", target, from, data);
-      } else if (strcasecmp(msg_type, "priv") == 0) {
-         Log(LOG_CRAZY, "ws.chat", "privmsg: %s <%s> %s", target, from, data);
-      } else if (strcasecmp(msg_type, "replay-action") == 0) {
-         Log(LOG_CRAZY, "ws.chat", "%s chat(replay): %s * %s %s", get_chat_ts(ts), target, from, data);
-      } else if (strcasecmp(msg_type, "replay-pub") == 0) {
-         Log(LOG_CRAZY, "ws.chat", "%s chat(replay): %s <%s> %s", get_chat_ts(ts), target, from, data);
-      } else if (strcasecmp(msg_type, "replay-priv") == 0) {
-         Log(LOG_CRAZY, "ws.chat", "privmsg(replay): %s %s <%s> %s", get_chat_ts(ts), target, from, data);
-      }
-
-      if (from && data) {
-         event_emit_dict("talk.msg", NULL, d);
+      if (from) {
+         event_emit_dict("talk.msg", cptr, d);
       }
    } else if (cmd && strcasecmp(cmd, "join") == 0) {
       if (!user) {
          return true;
       }
-      event_emit_dict("join", NULL, d);
+      event_emit_dict("join", cptr, d);
    } else if (cmd && strcasecmp(cmd, "quit") == 0) {
       if (!user) {
          return true;
@@ -86,11 +72,11 @@ bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
          return true;
       }
       Log(LOG_INFO, "ws.chat", "talk: sending quit for %s", quit_user);
-      event_emit_dict("quit", NULL, d);
+      event_emit_dict("quit", cptr, d);
       free(quit_user);
    } else if (cmd && strcasecmp(cmd, "whois") == 0) {
       const char *whois_msg = dict_get(d, "talk.data", NULL);
-      event_emit_dict("whois", NULL, d);
+      event_emit_dict("whois", cptr, d);
    }
    return false;
 }

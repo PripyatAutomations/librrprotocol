@@ -378,7 +378,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          snprintf(scratch, sizeof(scratch), "%lu", (unsigned long)now);
          dict *talk_msg = dict_new();
          dict_add(talk_msg, "msg.type", "talk");
-         dict_add(talk_msg, "talk.ts", scratch);
+         dict_add(talk_msg, "msg.ts", scratch);
          dict_add(talk_msg, "talk.cmd", "join");
          dict_add(talk_msg, "talk.ip", ip);
          dict_add(talk_msg, "talk.muted", (cptr->user->is_muted ? "true" : "false") );

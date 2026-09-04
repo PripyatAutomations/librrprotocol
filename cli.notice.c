@@ -31,7 +31,7 @@ bool ws_handle_notice_msg(rrconn_t *cptr, dict *d) {
    int port = cptr->user_port;
    const char *notice_msg = dict_get(d, "talk.msg", NULL);
    const char *notice_from = dict_get(d, "talk.from", NULL);
-   time_t ts = dict_get_time_t(d, "talk.ts", now);
+   time_t ts = dict_get_time_t(d, "msg.ts", now);
 
    event_emit_dict("talk.msg", NULL, d);
    return false;
