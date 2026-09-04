@@ -56,8 +56,16 @@ bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
 
       if (strcasecmp(msg_type, "action") == 0) {
          Log(LOG_CRAZY, "ws.chat", "chat: %s * %s %s", target, from, data);
-      } else {
+      } else if (strcasecmp(msg_type, "pub") == 0) {
          Log(LOG_CRAZY, "ws.chat", "chat: %s <%s> %s", target, from, data);
+      } else if (strcasecmp(msg_type, "priv") == 0) {
+         Log(LOG_CRAZY, "ws.chat", "privmsg: %s <%s> %s", target, from, data);
+      } else if (strcasecmp(msg_type, "replay-action") == 0) {
+         Log(LOG_CRAZY, "ws.chat", "%s chat(replay): %s * %s %s", get_chat_ts(ts), target, from, data);
+      } else if (strcasecmp(msg_type, "replay-pub") == 0) {
+         Log(LOG_CRAZY, "ws.chat", "%s chat(replay): %s <%s> %s", get_chat_ts(ts), target, from, data);
+      } else if (strcasecmp(msg_type, "replay-priv") == 0) {
+         Log(LOG_CRAZY, "ws.chat", "privmsg(replay): %s %s <%s> %s", get_chat_ts(ts), target, from, data);
       }
 
       if (from && data) {

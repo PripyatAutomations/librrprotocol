@@ -346,7 +346,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
    if (cmd) {
       if (strcasecmp(cmd, "msg") == 0) {
          if (!data) {
-            Log(LOG_DEBUG, "chat", "got msg for cptr <%p> with no data: chatname: %s", cptr, user);
+            Log(LOG_DEBUG, "chat",
+               "got msg for cptr <%p> with no data: chatname: %s",
+               cptr, user);
             return true;
          }
 
@@ -356,153 +358,228 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             return false;
          }
 
-         if (!has_priv(cptr->user->uid, "admin|owner|chat") ) {
-            Log(LOG_CRAZY, "chat", "user %s doesn't have chat privileges but tried to send a message", user);
-            // XXX: Alert the user that their message was NOT deliverred because
-            // they aren't allowed to send it.
+         if (!has_priv(cptr->user->uid, "admin|owner|chat")) {
+            Log(LOG_CRAZY, "chat",
+               "user %s doesn't have chat privileges but tried to send a message",
+               user);
+
+            // XXX: Alert the user that their message was NOT delivered
+            // because they aren't allowed to send it.
             ws_send_error(cptr, "You do not have CHAT privilege.");
             return true;
          }
+
          // sanity check
          if (!user) {
             Log(LOG_CRAZY, "chat", "talk parse, msg has no user field");
             return true;
          }
 
-         // handle a file chunk
          if (msg_type) {
-            if (strcasecmp(msg_type, "file_chunk") == 0) {
-               const char *filetype = dict_get(d, "talk.filetype", NULL);
-               const char *filename = dict_get(d, "talk.filename", NULL);
-               long chunk_index = dict_get_long(d, "talk.chunk_index", 0);
-               long total_chunks = dict_get_long(d, "talk.total_chunks", 0);
+            if (strcasecmp(msg_type, "file_chunk") == 0 ||
+                strcasecmp(msg_type, "pub") == 0 ||
+                strcasecmp(msg_type, "action") == 0) {
+
+               /*
+                * Commands are handled locally and don't become chat
+                * messages. The resulting CAT events are handled/relayed
+                * separately.
+                */
+               if (strcasecmp(msg_type, "pub") == 0 ||
+                   strcasecmp(msg_type, "action") == 0) {
+
+                  if (data[0] == '!') {
+                     const char *input = data;
+                     char cmd[16], arg[32];
+                     size_t cmd_len = sizeof(cmd);
+                     size_t arg_len = sizeof(arg);
+
+                     if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") ||
+                         cptr->user->is_muted) {
+                        /// XXX: we should send an error alert
+                        return true;
+                     }
+
+                     while (*input) {
+                        while (isspace(*input) || (*input == '!')) {
+                           input++;
+                        }
+
+                        // extract command
+                        size_t i = 0;
+
+                        while (*input &&
+                               !isspace(*input) &&
+                               i < cmd_len - 1) {
+                           cmd[i++] = *input++;
+                        }
+
+                        cmd[i] = '\0';
+
+                        while (isspace(*input)) {
+                           input++;
+                        }
+
+                        // extract argument
+                        i = 0;
+
+                        while (*input &&
+                               !isspace(*input) &&
+                               i < arg_len - 1) {
+                           arg[i++] = *input++;
+                        }
+
+                        arg[i] = '\0';
+
+                        if (*cmd == '\0' || *arg == '\0') {
+                           break;
+                        }
+
+                        if (strcasecmp(cmd, "help") == 0) {
+                           // XXX: These should move to help/ and get served
+                           // via that mechanism.
+                           ws_send_notice(cptr, "<span>***SERVER***"
+                              "<br/>*** !help for VFO commands ***<br>"
+                              "&nbsp;&nbsp;&nbsp;!freq <freq> - Set frequency to <freq> - can be 7200 7.2m 7200000 etc form<br/>"
+                              "&nbsp;&nbsp;&nbsp;!mode <mode> - Set mode to CW|AM|LSB|USB|FM|DL|DU<br/>"
+                              "&nbsp;&nbsp;&nbsp;!power <power> - Set power (NYI)<br/>"
+                              "&nbsp;&nbsp;&nbsp;!vfo <vfo> - Switch VFOs (A|B|C)<br/>"
+                              "&nbsp;&nbsp;&nbsp;!width <width> - Set passband width (narrow|normal|wide)<br/></span>");
+
+                           return false;
+
+                        } else if (strcasecmp(cmd, "freq") == 0) {
+                           long real_freq = parse_freq(arg);
+
+                           Log(LOG_DEBUG, "ws.chat",
+                              "Got !freq %lu (%s) from %s",
+                              real_freq, arg, cptr->chatname);
+
+                           dict *cmd_d = dict_new();
+                           dict_add(cmd_d, "msg.type", "rigctl");
+                           dict_add(cmd_d, "rigctl.cmd", "freq");
+                           dict_add_int(cmd_d, "rigctl.freq", real_freq);
+                           dict_add(cmd_d, "rigctl.from",
+                              cptr->chatname);
+                           dict_add(cmd_d, "rigctl.vfo",
+                              (char *)vfo_name(active_vfo));
+
+                           event_emit_dict("rigctl", NULL, cmd_d);
+                           dict_free(cmd_d);
+
+                        } else if (strcasecmp(cmd, "mode") == 0) {
+                           Log(LOG_DEBUG, "ws.chat",
+                              "Got !mode %s from %s",
+                              arg, cptr->chatname);
+
+                           rr_mode_t new_mode =
+                              vfo_parse_mode(arg);
+
+                           if (new_mode != MODE_NONE) {
+                              rr_set_mode(active_vfo, new_mode);
+                           }
+
+                        } else if (strcasecmp(cmd, "power") == 0) {
+                           Log(LOG_DEBUG, "ws.chat",
+                              "Got !power %s from %s",
+                              arg, cptr->chatname);
+
+                        } else if (strcasecmp(cmd, "width") == 0) {
+                           Log(LOG_DEBUG, "ws.chat",
+                              "Got !width %s from %s",
+                              arg, cptr->chatname);
+
+                           rr_set_width(active_vfo, arg);
+
+                        } else if (strcasecmp(cmd, "vfo") == 0) {
+                           Log(LOG_DEBUG, "ws.chat",
+                              "Got !vfo %s from %s",
+                              arg, cptr->chatname);
+
+                        } else {
+                           Log(LOG_WARN, "ws.chat",
+                              "Unknown command: %s", cmd);
+                           return false;
+                        }
+                     }
+
+                     // These events shouldn't get relayed because the CAT
+                     // events generated above will be relayed separately.
+                     return false;
+                  }
+               }
+
+               /*
+                * Normal chat message, or file chunk.
+                *
+                * The protocol layer creates the semantic event. The
+                * rrserver event handler is responsible for broadcasting,
+                * logging, persistence, and other server-side actions.
+                */
+               bool global_msg = false;
+
+               if (channel[0] != '&') {
+                  // Send the message to all connected servers.
+                  global_msg = true;
+               }
 
                dict *talk_msg = dict_new();
+
                dict_add(talk_msg, "msg.type", "talk");
-               dict_add_double(talk_msg, "talk.chunk_index", chunk_index);
                dict_add(talk_msg, "talk.cmd", "msg");
                dict_add(talk_msg, "talk.data", data);
                dict_add(talk_msg, "talk.from", cptr->chatname);
+               dict_add(talk_msg, "talk.target", channel);
                dict_add(talk_msg, "talk.msg_type", msg_type);
-               dict_add_double(talk_msg, "talk.total_chunks", total_chunks);
-               dict_add(talk_msg, "talk.filename", filename);
-               dict_add(talk_msg, "talk.filetype", filetype);
+               dict_add_bool(talk_msg, "talk.msg.global", global_msg);
                dict_add_ulong(talk_msg, "talk.ts", now);
 
-               // Send to everyone, including the sender, which will then display it as SelfMsg
-               ws_broadcast_dict(NULL, talk_msg, WEBSOCKET_OP_TEXT);
+               /*
+                * File chunks need their additional metadata preserved.
+                */
+               if (strcasecmp(msg_type, "file_chunk") == 0) {
+                  const char *filetype =
+                     dict_get(d, "talk.filetype", NULL);
+                  const char *filename =
+                     dict_get(d, "talk.filename", NULL);
+
+                  long chunk_index =
+                     dict_get_long(d, "talk.chunk_index", 0);
+
+                  long total_chunks =
+                     dict_get_long(d, "talk.total_chunks", 0);
+
+                  dict_add_double(talk_msg,
+                     "talk.chunk_index", chunk_index);
+
+                  dict_add_double(talk_msg,
+                     "talk.total_chunks", total_chunks);
+
+                  dict_add(talk_msg,
+                     "talk.filename", filename);
+
+                  dict_add(talk_msg,
+                     "talk.filetype", filetype);
+               }
+
+               Log(LOG_CRAZY, "ws.chat",
+                  "Emitting talk.msg event: from=<%s> target=<%s> type=<%s> data=<%s>",
+                  cptr->chatname,
+                  channel,
+                  msg_type,
+                  data);
+
+               event_emit_dict("talk.msg", cptr, talk_msg);
+
+               Log(LOG_CRAZY, "ws.chat",
+                  "Returned from talk.msg event");
+
                dict_free(talk_msg);
                return false;
-            } else if (strcasecmp(msg_type, "pub") == 0 || strcasecmp(msg_type, "action") == 0) {
-               if (strcasecmp(msg_type, "action") == 0) {
-                  Log(LOG_AUDIT, "ws.chat", "** %s * %s%s", channel, cptr->chatname, data);
-               } else {
-                  Log(LOG_AUDIT, "ws.chat", "** %s <%s> %s", channel, cptr->chatname, data);
-               }
 
-               // Check for commands
-               if (data[0] == '!') {
-                  const char *input = data;
-                  char cmd[16], arg[32];
-                  size_t cmd_len = sizeof(cmd), arg_len = sizeof(arg);
-
-                  if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
-                     /// XXX: we should send an error alert
-                     return true;
-                  }
-                  while (*input) {
-                     while (isspace(*input) || (*input == '!') ) {
-                        input++;
-                     }
-                     // extract command
-                     size_t i = 0;
-                     while (*input && !isspace(*input) && i < cmd_len - 1) {
-                        cmd[i++] = *input++;
-                     }
-                     cmd[i] = '\0';
-
-                     while (isspace(*input) ) {
-                        input++;
-                     }
-                     // extract argument
-                     i = 0;
-                     while (*input && !isspace(*input) && i < arg_len - 1) {
-                        arg[i++] = *input++;
-                     }
-                     arg[i] = '\0';
-
-                     if (*cmd == '\0' || *arg == '\0') {
-                        break;
-                     }
-
-                     if (strcasecmp(cmd, "help") == 0) {
-                        // XXX: These should move to help/ and get served via
-                        // that mechanism
-                        ws_send_notice(cptr, "<span>***SERVER***"
-                           "<br/>*** !help for VFO commands ***<br>"
-                           "&nbsp;&nbsp;&nbsp;!freq <freq> - Set frequency to <freq> - can be 7200 7.2m 7200000 etc form<br/>"
-                           "&nbsp;&nbsp;&nbsp;!mode <mode> - Set mode to CW|AM|LSB|USB|FM|DL|DU<br/>"
-                           "&nbsp;&nbsp;&nbsp;!power <power> - Set power (NYI)<br/>"
-                           "&nbsp;&nbsp;&nbsp;!vfo <vfo> - Switch VFOs (A|B|C)<br/>"
-                           "&nbsp;&nbsp;&nbsp;!width <width> - Set passband width (narrow|normal|wide)<br/></span>");
-                        fprintf(stderr, "help!\n");
-                        return false;
-                     } else if (strcasecmp(cmd, "freq") == 0) {
-                        long real_freq = parse_freq(arg);
-                        Log(LOG_DEBUG, "ws.chat", "Got !freq %lu (%s) from %s", real_freq, arg, cptr->chatname);
-
-                        dict *d = dict_new();
-                        dict_add(d, "msg.type", "rigctl");
-                        dict_add(d, "rigctl.cmd", "freq");
-                        dict_add_int(d, "rigctl.freq", real_freq);
-                        dict_add(d, "rigctl.from", cptr->chatname);
-                        dict_add( d, "rigctl.vfo", (char *)vfo_name(active_vfo) );
-                        event_emit_dict("rigctl", NULL, d);
-                     } else if (strcasecmp(cmd, "mode") == 0) {
-                        Log(LOG_DEBUG, "ws.chat", "Got !mode %s from %s", arg, cptr->chatname);
-                        rr_mode_t new_mode = vfo_parse_mode(arg);
-
-                        if (new_mode != MODE_NONE) {
-                           rr_set_mode(active_vfo, new_mode);
-                        }
-                     } else if (strcasecmp(cmd, "power") == 0) {
-                        Log(LOG_DEBUG, "ws.chat", "Got !power %s from %s", arg, cptr->chatname);
-                     } else if (strcasecmp(cmd, "width") == 0) {
-                        Log(LOG_DEBUG, "ws.chat", "Got !width %s from %s", arg, cptr->chatname);
-                        rr_set_width(active_vfo, arg);
-                     } else if (strcasecmp(cmd, "vfo") == 0) {
-                        Log(LOG_DEBUG, "ws.chat", "Got !vfo %s from %s", arg, cptr->chatname);
-                     } else {
-                        Log(LOG_WARN, "ws.chat", "Unknown command: %s", cmd);
-                        return false;
-                     }
-                  }
-                  // these events shouldn't get relayed because the CAT events
-                  // generated *will* be relayed
-                  return false;
-               } else {
-                  // Chat message
-                  // Check if this is to a local channel. If not, relay it
-                  if (channel[0] != '&') {
-                     // Send the message to all connected servers
-                  }
-                  dict *talk_msg = dict_new();
-                  dict_add(talk_msg, "msg.type", "talk");
-                  dict_add(talk_msg, "talk.cmd", "msg");
-                  dict_add(talk_msg, "talk.data", data);
-                  dict_add(talk_msg, "talk.from", cptr->chatname);
-                  dict_add(talk_msg, "talk.target", channel);
-                  dict_add(talk_msg, "talk.msg_type", msg_type);
-                  dict_add_ulong(talk_msg, "talk.ts", now);
-
-                  // Send to everyone, including the sender, which will then
-                  // display it as SelfMsg
-                  ws_broadcast_dict(NULL, talk_msg, WEBSOCKET_OP_TEXT);
-                  dict_free(talk_msg);
-                  return false;
-               }
             } else {
-               Log(LOG_DEBUG, "ws.chat", "unknown message type: %s", msg_type);
+               Log(LOG_DEBUG, "ws.chat",
+                  "unknown message type: %s", msg_type);
             }
          }
       } else if (strcasecmp(cmd, "whois") == 0) {
@@ -510,27 +587,39 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             Log(LOG_DEBUG, "chat", "whois with no target");
             return true;
          }
+
          rrconn_t *acptr = http_client_list;
 
          if (!acptr) {
             Log(LOG_DEBUG, "chat", "whois no users online?!?");
             return true;
          }
+
+         /*
+          * Existing whois handling continues here.
+          */
       } else if (strcasecmp(cmd, "die") == 0) {
          ws_chat_cmd_die(cptr, reason);
+
       } else if (strcasecmp(cmd, "kick") == 0) {
          ws_chat_cmd_kick(cptr, target, reason);
+
       } else if (strcasecmp(cmd, "mute") == 0) {
          ws_chat_cmd_mute(cptr, target, reason);
+
       } else if (strcasecmp(cmd, "names") == 0) {
          ws_send_users(cptr);
+
       } else if (strcasecmp(cmd, "restart") == 0) {
          ws_chat_cmd_restart(cptr, reason);
+
       } else if (strcasecmp(cmd, "syslog") == 0) {
          ws_chat_cmd_syslog(cptr, target);
+
       } else if (strcasecmp(cmd, "unmute") == 0) {
          ws_chat_cmd_unmute(cptr, target);
       }
    }
+
    return true;
 }

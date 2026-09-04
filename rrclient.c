@@ -23,74 +23,7 @@ rrconn_t *ws_conn = NULL;
 rrconn_t *ws_tx_conn = NULL;
 
 static void rrclient_ws_handler(struct mg_connection *c, int ev, void *ev_data) {
-#if	0
-   rrconn_t *cptr = ws_conn;
-
-   if (ev == MG_EV_WS_MSG) {
-      struct mg_ws_message *msg = (struct mg_ws_message *)ev_data;
-
-      if (msg && msg->data.buf) {
-         char buf[HTTP_WS_MAX_MSG + 1];
-         memset( buf, 0, sizeof(buf) );
-         memcpy(buf, msg->data.buf, msg->data.len);
-         dict *msg = json2dict(buf);
-
-         if (!msg) {
-            return;
-         }
-         const char *cmd = dict_get(msg, "talk.cmd", NULL);
-         const char *ping_ts = dict_get(msg, "msg.ts", NULL);
-
-         if (ping_ts) {
-            dict_add(msg, "msg.type", "pong");
-            dict_add_ulong(msg, "ts", strtoul(ping_ts, NULL, 0));
-            ws_send_dict(NULL, cptr, msg, WEBSOCKET_OP_TEXT);
-         } else if (pong_ts) {
-            Log(LOG_CRAZY, "http.pong", "Received pong ts:%s", pong_ts);
-         } else if (cmd && strcasecmp(cmd, "msg") == 0) {
-            event_emit_dict("talk.msg", NULL, msg);
-         } else if (dict_get(msg, "hello", NULL) ) {
-            Log(LOG_DEBUG, "ws", "Got hello from server");
-         } else if (dict_get(msg, "auth.cmd", NULL) ) {
-            Log(LOG_DEBUG, "ws", "Got auth message");
-         }
-         dict_free(msg);
-      }
-   } else if (ev == MG_EV_WS_OPEN) {
-      ws_connected = true;
-      login_user = get_server_property(server_name, "server.user");
-
-      if (login_user) {
-         dict *msg = dict_new();
-         dict_add(msg, "msg.type", "hello");
-         dict_add(msg, "hello", "rrcli");
-         dict_add(msg, "hello.swver", VERSION);
-         dict_add(msg, "hello.hwver", "client");
-         ws_send_dict(NULL, cptr, msg, WEBSOCKET_OP_TEXT);
-         dict_free(msg);
-         msg = dict_new();
-         dict_add(msg, "msg.type", "auth");
-         dict_add(msg, "auth.cmd", "login");
-         dict_add(msg, "auth.user", login_user);
-         dict_add_ulong(msg, "msg.ts", now);
-         ws_send_dict(NULL, cptr, msg, WEBSOCKET_OP_TEXT);
-         dict_free(msg);
-      }
-
-      dict *msg = dict_new();
-      char ts_s[64];
-      memset( ts_s, 0, sizeof(ts_s) );
-      snprintf(ts_s, sizeof(ts_s), "%lu", now);
-      dict_add(msg, "msg.type", "auth");
-      dict_add(msg, "msg.ts", ts_s);
-      dict_add(msg, "auth.user", (char *)login_user);
-      event_emit_dict("connected", NULL, msg);
-      dict_free(msg);
-   } else if (ev == MG_EV_CLOSE) {
-      ws_connected = false;
-      event_emit("goodbye", NULL, NULL);
-   }
-#endif
+   Log(LOG_CRIT, "rrclient", "rrclient_ws_handler() called");
 }
 #endif // USE_MONGOOSE
 

@@ -578,7 +578,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
             dict_add_ulong(rig_msg, "msg.ts", now);
             ws_broadcast_dict(NULL, rig_msg, WEBSOCKET_OP_TEXT);
             dict_free(rig_msg);
-            Log(LOG_AUDIT, "auth", "User %s on cptr:<%p> cptr:<%p> from %s:%d disconnected", cptr->chatname, cptr, cptr, ip, port);
+            Log(LOG_AUDIT, "auth", "User %s on cptr:<%p> cptr:<%p> from %s:%d disconnected (%d clones)", cptr->chatname, cptr, cptr, ip, port, cptr->user->clones);
          }
       } else {
          if (!cptr) {

@@ -156,7 +156,9 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    cptr->last_heard = now;       // avoid unneeded keep-alives
    cptr->last_cat = now;         // last CAT message received from user
    const char *cmd = dict_get(d, "cat.cmd", NULL);
-   const char *vfo = dict_get(d, "cat.state.vfo", NULL);
+   // Accept both the nested client format (cat.vfo) and the state format (cat.state.vfo)
+   const char *vfo = dict_get(d, "cat.vfo", NULL);
+   if (!vfo) vfo = dict_get(d, "cat.state.vfo", NULL);
    const char *state = dict_get(d, "cat.state", NULL);
 
    if (cptr->user->is_muted) {
@@ -244,6 +246,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
             return true;
          }
          long new_freq = dict_get_long(d, "cat.state.freq", 0);
+         if (new_freq <= 0) new_freq = dict_get_long(d, "cat.freq", 0);
 
          if (!vfo || new_freq <= 0) {
             Log(LOG_DEBUG, "ws.rigctl", "FREQ set without vfo or freq");
@@ -270,15 +273,14 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_free(cat_msg);
       } else if (strcasecmp(cmd, "mode") == 0) {
          const char *mode = dict_get(d, "cat.state.mode", NULL);
+         if (!mode) mode = dict_get(d, "cat.mode", NULL);
 
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
-            free( (void *)mode);
             return true;
          }
 
          if (!vfo || !mode) {
             Log(LOG_DEBUG, "ws.rigctl", "MODE set without vfo:<%p> or mode:<%p>", vfo, mode);
-            free( (void *)mode);
             return true;
          }
          rr_vfo_t c_vfo;
@@ -302,10 +304,9 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          Log(LOG_AUDIT, "mode", "User %s set VFO %s MODE to %s", cptr->chatname, vfo, mode);
          rr_mode_t new_mode = vfo_parse_mode(mode);
 
-         if (new_mode != MODE_NONE) {
-//            event_emit_dict();
-         }
-         free( (void *)mode);
+                   if (new_mode != MODE_NONE) {
+         //            event_emit_dict();
+                   }
       } else {
          const char *jp = dict2json(d);
          Log(LOG_DEBUG, "ws.rigctl", "Got unknown rig msg: |%s|", d);
