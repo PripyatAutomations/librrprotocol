@@ -68,6 +68,7 @@ extern bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr);
 extern bool ws_send_ptt_cmd(rrconn_t *cptr, const char *vfo, bool ptt);
 extern bool ws_send_mode_cmd(rrconn_t *cptr, const char *vfo, const char *mode);
 extern bool ws_send_freq_cmd(rrconn_t *cptr, const char *vfo, long freq);
+extern bool ws_send_width_cmd(rrconn_t *cptr, const char *vfo, const char *width);
 extern bool ws_send_notice(rrconn_t *cptr, const char *fmt, ...);
 
 //extern void ws_init(void);

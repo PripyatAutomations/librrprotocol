@@ -266,13 +266,6 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
          int channel = -1;
 
-         // XXX: We need to look up the channel ID for RX *FROM* the client
-         if (channel < 0) {
-            Log(LOG_CRIT, "ptt", "Couldn't find channel ID for TX stream, ignoring PTT event");
-            return true;
-            // XXX: send an error & ptt off notice
-         }
-
          // Update their last heard and PTT status
          cptr->last_heard = now;
          cptr->last_cat = now;         // last CAT message received from user
@@ -326,6 +319,47 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          Log(LOG_AUDIT, "ws.cat", "User %s set VFO %s FREQ to %d hz", cptr->chatname, vfo, new_freq);
          event_emit_dict("cat.freq", NULL, cat_msg);
          dict_free(cat_msg);
+
+         // NB: We can't call the backend directly from the library; send a
+         // rigctl event for the server program to apply (same path as the
+         // !freq chat command uses).
+         dict *cmd_d = dict_new();
+         dict_add(cmd_d, "msg.type", "rigctl");
+         dict_add(cmd_d, "rigctl.cmd", "freq");
+         dict_add_long(cmd_d, "rigctl.freq", new_freq);
+         dict_add(cmd_d, "rigctl.from", cptr->chatname);
+         dict_add(cmd_d, "rigctl.vfo", vfo);
+         event_emit_dict("rigctl", NULL, cmd_d);
+         dict_free(cmd_d);
+      } else if (strcasecmp(cmd, "width") == 0) {
+         const char *width = dict_get(d, "cat.state.width", NULL);
+         if (!width) width = dict_get(d, "cat.width", NULL);
+
+         if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
+            return true;
+         }
+
+         if (!vfo || !width) {
+            Log(LOG_DEBUG, "ws.rigctl", "WIDTH set without vfo:<%p> or width:<%p>", vfo, width);
+            return true;
+         }
+
+         cptr->last_cat = now;         // last CAT message received from user
+         cptr->last_heard = now;
+
+         Log(LOG_AUDIT, "ws.rigctl", "User %s set VFO %s WIDTH to %s", cptr->chatname, vfo, width);
+
+         // NB: We can't call the backend directly from the library; send a
+         // rigctl event for the server program to apply (same path as the
+         // !width chat command uses).
+         dict *cmd_d = dict_new();
+         dict_add(cmd_d, "msg.type", "rigctl");
+         dict_add(cmd_d, "rigctl.cmd", "width");
+         dict_add(cmd_d, "rigctl.width", width);
+         dict_add(cmd_d, "rigctl.from", cptr->chatname);
+         dict_add(cmd_d, "rigctl.vfo", vfo);
+         event_emit_dict("rigctl", NULL, cmd_d);
+         dict_free(cmd_d);
       } else if (strcasecmp(cmd, "mode") == 0) {
          const char *mode = dict_get(d, "cat.state.mode", NULL);
          if (!mode) mode = dict_get(d, "cat.mode", NULL);

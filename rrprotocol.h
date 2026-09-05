@@ -12,7 +12,6 @@
 #if     defined(USE_MONGOOSE)
 #include "ext/libmongoose/mongoose.h"
 #endif
-#include <librustyaxe/cat.h>
 #include <librrprotocol/vfo.h>
 #include <librrprotocol/auth.h>
 #include <librrprotocol/http.h>

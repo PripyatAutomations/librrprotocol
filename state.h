@@ -13,7 +13,6 @@
 #include <time.h>
 #include <stdbool.h>
 #include "build_config.h"
-#include <librustyaxe/cat.h>
 
 #define	PARSE_LINE_LEN 512
 

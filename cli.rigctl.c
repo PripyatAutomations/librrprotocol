@@ -131,6 +131,22 @@ bool ws_send_mode_cmd(rrconn_t *cptr, const char *vfo, const char *mode) {
    return false;
 }
 
+bool ws_send_width_cmd(rrconn_t *cptr, const char *vfo, const char *width) {
+   if (!cptr || !vfo || !width) {
+      return true;
+   }
+   dict *cat_msg = dict_new();
+   dict_add(cat_msg, "msg.type", "cat");
+   dict_add(cat_msg, "cat.cmd", "width");
+   dict_add(cat_msg, "cat.vfo", vfo);
+   dict_add(cat_msg, "cat.width", width);
+   dict_add_ulong(cat_msg, "msg.ts", now);
+   ws_send_dict(NULL, cptr, cat_msg, WEBSOCKET_OP_TEXT);
+   dict_free(cat_msg);
+
+   return false;
+}
+
 bool ws_send_freq_cmd(rrconn_t *cptr, const char *vfo, long freq) {
    if (!cptr || !vfo) {
       return true;
