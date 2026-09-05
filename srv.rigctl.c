@@ -304,9 +304,21 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          Log(LOG_AUDIT, "mode", "User %s set VFO %s MODE to %s", cptr->chatname, vfo, mode);
          rr_mode_t new_mode = vfo_parse_mode(mode);
 
-                   if (new_mode != MODE_NONE) {
-         //            event_emit_dict();
-                   }
+         if (new_mode != MODE_NONE) {
+            // NB: We can't call the backend directly from the library; send
+            // a rigctl event for the server program to apply (same path as
+            // the !mode chat command uses).
+            dict *cmd_d = dict_new();
+            dict_add(cmd_d, "msg.type", "rigctl");
+            dict_add(cmd_d, "rigctl.cmd", "mode");
+            dict_add(cmd_d, "rigctl.mode", mode);
+            dict_add(cmd_d, "rigctl.from", cptr->chatname);
+            dict_add(cmd_d, "rigctl.vfo", vfo);
+            event_emit_dict("rigctl", NULL, cmd_d);
+            dict_free(cmd_d);
+         } else {
+            Log(LOG_WARN, "ws.rigctl", "Couldn't parse mode %s", mode);
+         }
       } else {
          const char *jp = dict2json(d);
          Log(LOG_DEBUG, "ws.rigctl", "Got unknown rig msg: |%s|", d);

@@ -229,7 +229,12 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       ws_handle_auth_msg(cptr, d);
    } else if (strcasecmp(msg_type, "cat") == 0) {
       // RIG CONTROL/STATE RELATED
-      const char *c_cat_cmd = dict_get(d, "cat.cmd", NULL);
+      // If this msg contains a cat.cmd it's a client command (freq/mode/ptt
+      // etc) - route it to the rigctl handler. Messages without a cat.cmd
+      // are state broadcasts from the server and don't need processing here.
+      if (dict_get(d, "cat.cmd", NULL) ) {
+         result = ws_handle_rigctl_msg(cptr, d);
+      }
    } else if (strcasecmp(msg_type, "hello") == 0) {
       const char *hello_hwver = dict_get(d, "hello.hwver", "generic");
       const char *hello_swver = dict_get(d, "hello.swver", NULL);
