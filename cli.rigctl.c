@@ -68,13 +68,6 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
          if (real_mode && strlen(real_mode) > 0) {
             // XXX: We need to suppress sending a CAT message by disabling the
             // changed signal on the mode combo
-            if (strcasecmp(real_mode, "PKTUSB") == 0) {
-               memset(real_mode, 0, 6);
-               sprintf(real_mode, "D-U");
-            } else if (strcasecmp(real_mode, "PKTLSB") == 0) {
-               memset(real_mode, 0, 6);
-               sprintf(real_mode, "D-L");
-            }
 
             if (strcasecmp(old_mode, real_mode) == 0) {
                goto local_cleanup;
