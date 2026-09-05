@@ -311,6 +311,9 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_add(cat_msg, "msg.type", "cat");
          dict_add(cat_msg, "cat.cmd", "freq");
          dict_add_long(cat_msg, "cat.freq", new_freq);
+         // Include cat.state.* so client VFO state/UI updates immediately,
+         // without waiting for the next backend poll to publish cat.state
+         dict_add_long(cat_msg, "cat.state.freq", new_freq);
          dict_add_ulong(cat_msg, "msg.ts", now);
          dict_add(cat_msg, "cat.user", cptr->chatname);
          dict_add(cat_msg, "cat.vfo", vfo);
@@ -349,6 +352,19 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
          Log(LOG_AUDIT, "ws.rigctl", "User %s set VFO %s WIDTH to %s", cptr->chatname, vfo, width);
 
+         // Tell everyone immediately (with cat.state.* so client VFO state/UI
+         // updates without waiting for the next backend poll)
+         dict *cat_msg = dict_new();
+         dict_add(cat_msg, "msg.type", "cat");
+         dict_add(cat_msg, "cat.cmd", "width");
+         dict_add(cat_msg, "cat.width", width);
+         dict_add(cat_msg, "cat.state.width", width);
+         dict_add(cat_msg, "cat.user", cptr->chatname);
+         dict_add(cat_msg, "cat.vfo", vfo);
+         dict_add_ulong(cat_msg, "msg.ts", now);
+         ws_broadcast_dict(NULL, cat_msg, WEBSOCKET_OP_TEXT);
+         dict_free(cat_msg);
+
          // NB: We can't call the backend directly from the library; send a
          // rigctl event for the server program to apply (same path as the
          // !width chat command uses).
@@ -383,6 +399,9 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_add(cat_msg, "msg.type", "cat");
          dict_add(cat_msg, "cat.cmd", "mode");
          dict_add(cat_msg, "cat.mode", mode);
+         // Include cat.state.* so client VFO state/UI updates immediately,
+         // without waiting for the next backend poll to publish cat.state
+         dict_add(cat_msg, "cat.state.mode", mode);
          dict_add(cat_msg, "cat.user", cptr->chatname);
          dict_add(cat_msg, "cat.vfo", vfo);
          dict_add_ulong(cat_msg, "msg.ts", now);

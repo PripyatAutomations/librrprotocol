@@ -352,6 +352,13 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          dict_free(auth_msg);
          auth_msg = NULL;
 
+         // Push the current rig state to this freshly-authenticated client so
+         // their UI populates immediately instead of waiting for the next
+         // announce interval to elapse.
+         // NB: event_emit_dict() silently drops the event when data is NULL,
+         // so pass an empty payload; the handler doesn't read it.
+         event_emit("send-cat-state", cptr, "");
+
          // send a ping, XXX: this might be a duplicate, confirm?
          ws_send_ping(cptr);
 
