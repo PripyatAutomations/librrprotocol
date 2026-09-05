@@ -477,6 +477,10 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
                            if (new_mode != MODE_NONE) {
                               rr_set_mode(active_vfo, new_mode);
+
+                              // Audit trail: who changed the mode
+                              Log(LOG_AUDIT, "ws.chat", "User %s set VFO %s MODE to %s",
+                                 cptr->chatname, vfo_name(active_vfo), arg);
                            }
 
                         } else if (strcasecmp(cmd, "power") == 0) {
@@ -490,6 +494,10 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                               arg, cptr->chatname);
 
                            rr_set_width(active_vfo, arg);
+
+                           // Audit trail: who changed the passband width
+                           Log(LOG_AUDIT, "ws.chat", "User %s set VFO %s WIDTH to %s",
+                              cptr->chatname, vfo_name(active_vfo), arg);
 
                         } else if (strcasecmp(cmd, "vfo") == 0) {
                            Log(LOG_DEBUG, "ws.chat",
