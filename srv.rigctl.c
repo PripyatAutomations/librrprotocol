@@ -161,6 +161,15 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    if (!vfo) vfo = dict_get(d, "cat.state.vfo", NULL);
    const char *state = dict_get(d, "cat.state", NULL);
 
+   // This can be hit before login (or by ghosted sessions); without a user
+   // pointer we can't check privileges, so reject the command.
+   if (!cptr->user) {
+      Log(LOG_WARN, "ws.rigctl", "Ignoring %s command from unauthenticated client %s:<%p>",
+         (cmd ? cmd : "(null)"), cptr->chatname, cptr);
+      ws_send_error(cptr, "Not authenticated");
+      return true;
+   }
+
    if (cptr->user->is_muted) {
       Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they are muted!", cmd, cptr->chatname);
       // XXX: Inform the user they are muted and can't use rigctl
@@ -195,6 +204,52 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
             return true;
          }
          bool ptt_state = dict_get_bool(d, "cat.state.ptt", false);
+
+         // Enforce single-TX: nobody else may key up while someone holds PTT.
+         // Exception: the talker is a noob AND the requester is an admin,
+         // owner or elmer - in that case we halt the noob's TX and start
+         // their noob.cool-down (default 30 seconds) during which noob
+         // flagged users cannot TX.
+         if (ptt_state) {
+            rrconn_t *talker = whos_talking();
+
+            if (talker && talker != cptr) {
+               static int cfg_noob_cooldown = -1;
+
+               if (cfg_noob_cooldown < 0) {
+                  cfg_noob_cooldown = cfg_get_int("noob.cool-down", 30);
+               }
+
+               bool talker_is_noob = (talker->user && has_priv(talker->user->uid, "noob") );
+               bool i_can_halt = has_priv(cptr->user->uid, "admin|owner|elmer");
+
+               if (talker_is_noob && i_can_halt) {
+                  Log(LOG_AUDIT, "ptt", "User %s halted noob %s; noob cooldown %d sec",
+                     cptr->chatname, talker->chatname, cfg_noob_cooldown);
+                  talker->is_ptt = false;
+                  talker->noob_cooldown = now + cfg_noob_cooldown;
+                  // Same path as MUTE uses to force TX off
+                  event_emit("ptt.off", NULL, NULL);
+                  // Push updated TX state to everyone's userlist
+                  ws_send_userinfo(talker, NULL);
+               } else {
+                  Log(LOG_AUDIT, "ptt", "Denying PTT for %s: %s is already transmitting",
+                     cptr->chatname, talker->chatname);
+                  ws_send_error(cptr, "%s is already transmitting", talker->chatname);
+                  return true;
+               }
+            }
+
+            // Noobs in cooldown may not TX
+            if (client_has_flag(cptr, FLAG_NOOB) && now < cptr->noob_cooldown) {
+               Log(LOG_AUDIT, "ptt", "Denying PTT for noob %s: cooldown active (%d sec left)",
+                  cptr->chatname, (int)(cptr->noob_cooldown - now) );
+               ws_send_error(cptr, "PTT cooldown active: %d seconds remaining",
+                  (int)(cptr->noob_cooldown - now) );
+               return true;
+            }
+         }
+
          rr_vfo_t c_vfo = vfo_lookup(vfo[0]);
 
          // Gather some data about the VFO

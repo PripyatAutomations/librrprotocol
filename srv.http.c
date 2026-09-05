@@ -243,7 +243,8 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
 
       if (cptr->cli_version) {
          memset(cptr->cli_version, 0, HTTP_UA_LEN);
-         snprintf(cptr->cli_version, HTTP_UA_LEN, "%s@%s", hello_swver, (hello_hwver ? hello_hwver : "generic"));
+         snprintf(cptr->cli_version, HTTP_UA_LEN, "%s@%s", (hello_swver ? hello_swver : "unknown"),
+            (hello_hwver ? hello_hwver : "generic"));
       }
    } else if (strcasecmp(msg_type, "media") == 0) {
       // AUDIO/VIDEO MEDIA RELATED

@@ -31,7 +31,6 @@ char *hash_passwd(const char *passwd) {
    if (!passwd) {
       return NULL;
    }
-   unsigned char combined[(HTTP_HASH_LEN * 2) + 1];
    char *hex_output = (char *)malloc(HTTP_HASH_LEN * 2 + 1);   // Allocate space
 
    // for hex string
@@ -95,6 +94,7 @@ char *compute_wire_password(const char *password, const char *nonce) {
 
    size_t len = strlen( (char *)combined );   // Cast to (char *) for strlen
    unsigned char hash[20];   // Store the raw SHA1 hash
+   memset( hash, 0, sizeof(hash) );   // defensive: zero hash so non-mongoose builds don't leak stack garbage
 
 #if     defined(USE_MONGOOSE)
    // Compute SHA1 of the combined string
