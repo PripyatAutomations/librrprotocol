@@ -589,19 +589,38 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
       } else if (strcasecmp(cmd, "whois") == 0) {
          if (!target) {
             Log(LOG_DEBUG, "chat", "whois with no target");
+            ws_send_error(cptr, "No target given for WHOIS");
             return true;
          }
 
-         rrconn_t *acptr = http_client_list;
+         rrconn_t *acptr = http_find_client_by_name(target);
 
-         if (!acptr) {
-            Log(LOG_DEBUG, "chat", "whois no users online?!?");
+         if (!acptr || !acptr->user) {
+            ws_send_error(cptr, "WHOIS: no such user: %s", target);
             return true;
          }
 
-         /*
-          * Existing whois handling continues here.
-          */
+         // Flat whois reply, keyed off talk.<field> - shared by webui and
+         // rrclient (chat.whois.c). Clones is just the count (also in userinfo).
+         dict *wi = dict_new();
+
+         dict_add(wi, "msg.type", "talk");
+         dict_add(wi, "talk.cmd", "whois");
+         dict_add_ulong(wi, "msg.ts", now);
+
+         dict_add(wi, "talk.username", acptr->user->name);
+         dict_add(wi, "talk.email", acptr->user->email);
+         dict_add(wi, "talk.privs", acptr->user->privs);
+         dict_add_bool(wi, "talk.muted", acptr->user->is_muted);
+         dict_add_int(wi, "talk.clones", acptr->user->clones);
+
+         // Session info of the first matching connection
+         dict_add_ulong(wi, "talk.connected", (unsigned long)acptr->session_start);
+         dict_add_ulong(wi, "talk.last_heard", (unsigned long)acptr->last_heard);
+         dict_add(wi, "talk.ua", acptr->user_agent ? acptr->user_agent : "unknown");
+
+         ws_send_dict(NULL, cptr, wi, WEBSOCKET_OP_TEXT);
+         dict_free(wi);
       } else if (strcasecmp(cmd, "die") == 0) {
          ws_chat_cmd_die(cptr, reason);
 

@@ -547,7 +547,7 @@ bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...) {
    dict *alert_msg = dict_new();
    dict_add(alert_msg, "msg.type", "alert");
    dict_add(alert_msg, "alert.msg", escaped_msg);
-   dict_add_ulong(alert_msg, "msg.ts", now);
+   dict_add_ulong(alert_msg, "alert.ts", now);   // clients read alert.ts (see send_global_alert)
    ws_send_dict(NULL, cptr, alert_msg, WEBSOCKET_OP_TEXT);
    free(escaped_msg);
    dict_free(alert_msg);
