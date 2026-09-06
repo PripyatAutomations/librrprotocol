@@ -180,21 +180,23 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
          (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>"), msg_ts);
    }
 
-   // RTT measurement: echo the monotonic ping.ts back and diff it here
-   unsigned long ping_mono = dict_get_ulong(d, "ping.ts", 0);
+   // RTT measurement: echo the monotonic ping.ts (real microseconds) back and diff it here
+   long long ping_mono = dict_get_llong(d, "ping.ts", 0);
    if (ping_mono) {
-      long long rtt = mono_ms() - (long long)ping_mono;
-      if (rtt < 0) {
-         rtt = 0;                 // shouldn't happen on a monotonic clock
+      long long rtt_us = mono_us() - ping_mono;
+      if (rtt_us < 0) {
+         rtt_us = 0;              // shouldn't happen on a monotonic clock
       }
+      long long rtt = rtt_us / 1000;
       cptr->latency_ms = (int)rtt;
       last_ping_rtt_ms = rtt;
-      Log(LOG_INFO, "ping", "RTT to user %s: %lld ms (global last_ping_rtt_ms=%lld)",
-          cptr->chatname, rtt, last_ping_rtt_ms);
+      Log(LOG_INFO, "ping", "RTT to user %s: %lld ms (%lld us) (global last_ping_rtt_ms=%lld)",
+          cptr->chatname, rtt, rtt_us, last_ping_rtt_ms);
 
       // Let higher layers (audio/etc) track latency
       dict *lat = dict_new();
       dict_add_llong(lat, "latency.rtt", rtt);
+      dict_add_llong(lat, "latency.rtt_us", rtt_us);
       event_emit_dict("latency", cptr, lat);
       dict_free(lat);
    }
@@ -204,7 +206,7 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
 
    time_t ping_expiry = msg_ts + HTTP_PING_TIME;
    if ( (ping_expiry) < now) {
-      Log(LOG_AUDIT, "http.pong",
+      Log(LOG_DEBUG, "http.pong",
          "Late ping for cptr:<%p> from %s:%d ts: %li + %li (timeout) < now %li", cptr, ip, port,
          msg_ts, HTTP_PING_TIMEOUT, now);
       ws_kick_client(cptr, "Network Error: PING expired");
