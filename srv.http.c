@@ -451,30 +451,26 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
    }
    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
 
-   // Try to find the cptr for this mg_connection
+   // Try to find the cptr for this mg_connection. We only create one on
+   // connection-establishing events (OPEN/ACCEPT/HTTP_MSG) - creating one
+   // for ANY event re-added clients after MG_EV_CLOSE freed them, leaking
+   // unauthenticated entries.
    rrconn_t *cptr = http_find_client_by_c(c);
-   if (!cptr) {
-      cptr = http_add_client(c, false);
-      if (!cptr || !cptr->conn) {
-         Log(LOG_CRIT, "ws.core", "ws_http_cb failed to http_add_client(%p)", c);
-         return;
-      }
-      int port = cptr->conn->rem.port;
-      char ip[INET6_ADDRSTRLEN];   // Buffer to hold IPv4 or IPv6 address
-      memset(ip, 0, INET6_ADDRSTRLEN);
-
-      if (cptr->conn->rem.is_ip6) {
-         inet_ntop( AF_INET6, cptr->conn->rem.addr.ip6, ip, sizeof(ip) );
-      } else {
-         inet_ntop( AF_INET, &cptr->conn->rem.addr.ip4, ip, sizeof(ip) );
-      }
-   }
 
    if (ev == MG_EV_OPEN) {
-      if (cfg_get_bool("net.http.hex-dump", false) ) {
+      if (!cptr) {
+         cptr = http_add_client(c, false);
+      }
+
+      if (cptr && cfg_get_bool("net.http.hex-dump", false) ) {
          cptr->conn->is_hexdumping = 1;
       }
    } else if (ev == MG_EV_CONNECT) {
+      if (!cptr) {
+         Log(LOG_CRIT, "ws.core", "ws_http_cb MG_EV_CONNECT with no client for conn:<%p>", c);
+         return;
+      }
+
       if (cptr->conn->is_tls) {
          Log(LOG_DEBUG, "http", "Initializing TLS");
          struct mg_tls_opts opts;
@@ -482,6 +478,14 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          mg_tls_init(cptr->conn, &opts);
       }
    } else if (ev == MG_EV_ACCEPT) {
+      if (!cptr) {
+         cptr = http_add_client(c, false);
+      }
+
+      if (!cptr) {
+         Log(LOG_CRIT, "ws.core", "ws_http_cb failed to http_add_client(%p)", c);
+         return;
+      }
       char *ip = cptr->user_ip;
       int port = cptr->user_port;
       Log(LOG_CRAZY, "http", "Accepted connection on cptr:<%p> from %s:%d", cptr, ip, port);
@@ -493,10 +497,14 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       }
 #endif	// HTTP_USE_TLS
    } else if (ev == MG_EV_HTTP_MSG) {
-      rrconn_t *cptr = http_find_client_by_c(c);
       if (!cptr) {
          Log(LOG_CRAZY, "http.core", "ACCEPT: mg_ev_http_msg cptr doesn't exist, creating");
          cptr = http_add_client(c, false);
+      }
+
+      if (!cptr) {
+         Log(LOG_CRIT, "ws.core", "ws_http_cb failed to http_add_client(%p)", c);
+         return;
       }
 
       // Save the user-agent the first time
@@ -529,6 +537,10 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          http_static(hm, cptr);
       }
    } else if (ev == MG_EV_WS_OPEN) {
+      if (!cptr) {
+         Log(LOG_CRIT, "ws.core", "ws_http_cb MG_EV_WS_OPEN with no client for conn:<%p>", c);
+         return;
+      }
       char *ip = cptr->user_ip;
       int port = cptr->user_port;
 
@@ -543,9 +555,17 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
       dict_free(d);
    } else if (ev == MG_EV_WS_MSG) {
+      if (!cptr) {
+         Log(LOG_CRIT, "ws.core", "ws_http_cb MG_EV_WS_MSG with no client for conn:<%p>", c);
+         return;
+      }
       struct mg_ws_message *msg = (struct mg_ws_message *)ev_data;
       ws_handle(cptr, msg);
    } else if (ev == MG_EV_CLOSE) {
+      if (!cptr) {
+         // Already removed (or never added) - nothing to clean up
+         return;
+      }
       char resp_buf[HTTP_WS_MAX_MSG + 1];
       const char *ip = cptr ? cptr->user_ip : "(unknown)";
       Log(LOG_DEBUG, "http", "http_cb MG_EV_CLOSE for cptr:<%p> ip:%s", cptr, ip);

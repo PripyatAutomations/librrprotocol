@@ -144,7 +144,7 @@ rrconn_t *http_add_client(struct mg_connection *c, bool is_ws) {
       inet_ntop( AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
    }
 
-   // save the user's IP 
+   // save the user's IP
    snprintf(cptr->user_ip, sizeof(cptr->user_ip), "%s", ip);
    cptr->user_port = port;
 #endif
@@ -168,7 +168,7 @@ rrconn_t *http_find_client_by_c(struct mg_connection *c) {
 
    while (cptr) {
       if (cptr->conn == c) {
-         Log( LOG_CRAZY, "http.client", "find_client_by_c <%p> returning index %i: %p |%s|", 
+         Log( LOG_CRAZY, "http.client", "find_client_by_c <%p> returning index %i: %p |%s|",
               c, i, cptr, (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
          return cptr;
       }
@@ -211,16 +211,17 @@ void http_remove_client(struct mg_connection *c) {
                current->user->clones = 0;
             }
          }
+         int http_cli = http_count_clients();
+         Log( LOG_CRAZY, "http", "Removed client at cptr:<%p> with mgconn:<%p> (%d connections / %d users remain)",
+            current, c, http_count_connections() - 1, (http_cli > 0 ? http_cli - 1 : 0));
          memset( current, 0, sizeof(rrconn_t) );
          free(current);
          return;
       }
-      int http_cli = http_count_clients();
-      Log( LOG_CRAZY, "http", "Removed client at cptr:<%p> with mgconn:<%p> (%d connections / %d users remain)",
-         current, c, http_count_connections() - 1, (http_cli > 0 ? http_cli - 1 : 0));
       prev = current;
       current = current->next;
    }
+   Log(LOG_CRAZY, "http", "http_remove_client: no client found for conn:<%p>", c);
 }
 #endif // USE_MONGOOSE
 
