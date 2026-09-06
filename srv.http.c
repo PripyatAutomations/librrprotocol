@@ -583,11 +583,9 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
             cptr->cli_version = NULL;
          }
 
-         if (cptr->user->clones > 0) {
-            cptr->user->clones--;
-         }
-
-         // reduce the # of clones for the user / reset to 0
+         // clones are decremented in http_remove_client() (srv.client.c) when
+         // the client is unlinked from the list; doing it here as well caused
+         // a double decrement on authenticated WS clients.
          Log(LOG_CRAZY, "http", "Departing user %s had %d clones", cptr->chatname, cptr->user->clones);
 
          // We want to deal with clones
