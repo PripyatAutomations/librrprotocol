@@ -20,7 +20,6 @@
 #include <errno.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
-#include <ev.h>
 
 bool irc_init(void) {
    // XXX: These need to go into the irc_init() or
@@ -126,86 +125,90 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
    cptr->sendq[cur_len++] = '\n';
    cptr->sendq[cur_len] = '\0';
 
-   // attempt to send immediately
-   irc_try_send(cptr);
+       // attempt to send immediately
+       irc_try_send(cptr);
 
-   // watch for EV_WRITE only if there’s still data
-   if (cptr->sendq[0] != '\0') {
-      ev_io_set(&cptr->io_watcher, cptr->fd, EV_READ | EV_WRITE);
-      ev_io_start(EV_DEFAULT, &cptr->io_watcher);
-   } else {
-      ev_io_set(&cptr->io_watcher, cptr->fd, EV_READ);
+       // NB: Any leftover data in the sendq will be flushed by the periodic
+       // timer / poll loop calling irc_try_send() again, since we don't have
+       // an event loop to watch for writability anymore.
+
+       return true;
    }
 
-   return true;
-}
+/*
+ * Process incoming data from an IRC connection: read what's available and
+ * feed complete lines to irc_process_message(). Called from the poll loop /
+ * periodic timer (formerly a libev ev_io callback).
+ */
+void irc_io_poll(rrconn_t *cptr) {
+   if (!cptr || cptr->fd <= 0 || !cptr->connected) {
+      return;
+   }
 
-void irc_io_cb(EV_P_ ev_io *w, int revents) {
-   rrconn_t *cptr = (rrconn_t *)( ( (char*)w) - offsetof(rrconn_t, io_watcher) );
+   char buf[IRC_MSGLEN];
+   ssize_t n = recv(cptr->fd, buf, sizeof(buf) - 1, MSG_DONTWAIT);
 
-   if (revents & EV_READ) {
-      char buf[IRC_MSGLEN];
-      ssize_t n = recv(cptr->fd, buf, sizeof(buf), 0);
+   if (n == 0) {
+      close(cptr->fd);
+      cptr->fd = -1;
+      cptr->connected = false;
+      return;
+   }
 
-      if (n <= 0) {
-         ev_io_stop(EV_A_ w);
+   if (n < 0) {
+      if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+         Log(LOG_CRIT, "irc", "recv failed: %s", strerror(errno));
          close(cptr->fd);
+         cptr->fd = -1;
          cptr->connected = false;
-
-         return;
       }
-      buf[n] = '\0';
-
-      // append to recvq safely
-      size_t cur_len = strlen(cptr->recvq);
-
-      if (cur_len + n >= RECVQLEN) {
-         Log(LOG_WARN, "irc", "recvq overflow, resetting");
-         cptr->recvq[0] = '\0';
-         cur_len = 0;
-      }
-      memcpy(cptr->recvq + cur_len, buf, n);
-      cur_len += n;
-      cptr->recvq[cur_len] = '\0';
-
-      // process complete lines
-      char *start = cptr->recvq;
-      char *end;
-      while ( (end = strstr(start, "\r\n") ) ) {
-         *end = '\0';
-         Log(LOG_DEBUG, "net", "processing line: [%s]", start);
-         irc_process_message(cptr, start);
-
-         // send login on first server message
-         if (!cptr->sent_login) {
-//            ui_print(NULL,
-//               "[{green}%s{reset}] {bright-cyan}***{reset} Sending login
-// {bright-cyan}***{reset} ");
-
-            if (cptr->server->pass[0]) {
-               if (cptr->server->account[0]) {
-                  irc_send(cptr, "PASS %s:%s", cptr->server->account, cptr->server->pass);
-               } else {
-                  irc_send(cptr, "PASS %s", cptr->server->pass);
-               }
-            }
-            irc_send(cptr, "NICK %s", cptr->nick);
-            const char *ident = cptr->server->ident[0] ? cptr->server->ident : cptr->nick;
-            irc_send(cptr, "USER %s 0 * :%s", ident, cptr->nick);
-            cptr->sent_login = true;
-         }
-         start = end + 2;
-      }
-      // move leftover partial line to front
-      size_t leftover = strlen(start);
-      memmove(cptr->recvq, start, leftover + 1);
-   }
-
-   if (revents & EV_WRITE) {
+      // fallthrough: flush any pending sendq
       irc_try_send(cptr);
-
-      if (strchr(cptr->sendq, '\r') == NULL) {
-         ev_io_set(EV_A_ w, cptr->fd, EV_READ);
-      }
+      return;
    }
+
+   buf[n] = '\0';
+
+   // append to recvq safely
+   size_t cur_len = strlen(cptr->recvq);
+
+   if (cur_len + n >= RECVQLEN) {
+      Log(LOG_WARN, "irc", "recvq overflow, resetting");
+      cptr->recvq[0] = '\0';
+      cur_len = 0;
+   }
+   memcpy(cptr->recvq + cur_len, buf, n);
+   cur_len += n;
+   cptr->recvq[cur_len] = '\0';
+
+   // process complete lines
+   char *start = cptr->recvq;
+   char *end;
+   while ( (end = strstr(start, "\r\n") ) ) {
+      *end = '\0';
+      Log(LOG_DEBUG, "net", "processing line: [%s]", start);
+      irc_process_message(cptr, start);
+
+      // send login on first server message
+      if (!cptr->sent_login) {
+         if (cptr->server->pass[0]) {
+            if (cptr->server->account[0]) {
+               irc_send(cptr, "PASS %s:%s", cptr->server->account, cptr->server->pass);
+            } else {
+               irc_send(cptr, "PASS %s", cptr->server->pass);
+            }
+         }
+         irc_send(cptr, "NICK %s", cptr->nick);
+         const char *ident = cptr->server->ident[0] ? cptr->server->ident : cptr->nick;
+         irc_send(cptr, "USER %s 0 * :%s", ident, cptr->nick);
+         cptr->sent_login = true;
+      }
+      start = end + 2;
+   }
+   // move leftover partial line to front
+   size_t leftover = strlen(start);
+   memmove(cptr->recvq, start, leftover + 1);
+
+   // flush any pending sendq data
+   irc_try_send(cptr);
 }

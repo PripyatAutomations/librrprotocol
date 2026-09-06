@@ -88,6 +88,39 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
             snprintf(old_mode, sizeof(old_mode), "%s", real_mode);
          }
       }
+   } else if (dict_get(d, "cat.cmd", NULL) ) {
+      // This is a command broadcast (ptt/freq/mode/width) echoed by the
+      // server, possibly triggered by another user. On PTT we update the
+      // sender's TX flag in the userlist (drives the red PTT button label
+      // with their callsign) and let UI layers know.
+      const char *cmd = dict_get(d, "cat.cmd", NULL);
+      const char *cmd_user = dict_get(d, "cat.user", NULL);
+      const char *cmd_vfo = dict_get(d, "cat.vfo", NULL);
+      Log(LOG_CRAZY, "ws.cat", "Got cat.cmd %s from %s on vfo %s",
+         (cmd ? cmd : "?"), (cmd_user ? cmd_user : "?"), (cmd_vfo ? cmd_vfo : "?"));
+
+      if (cmd && strcasecmp(cmd, "ptt") == 0 && cmd_user && *cmd_user) {
+         bool cmd_ptt = dict_get_bool(d, "cat.ptt", false);
+         struct rr_user *u = userlist_find(cmd_user);
+
+         if (u) {
+            if (u->is_ptt != cmd_ptt) {
+               u->is_ptt = cmd_ptt;
+               Log(LOG_INFO, "ws.cat", "%s %s transmitting", cmd_user,
+                  (cmd_ptt ? "started" : "stopped") );
+
+               // Refresh the userlist + PTT button (shows TX'ing callsign)
+               if (ui_mode == UI_MODE_GTK) {
+#if     defined(USE_GTK)
+                  ptt_button_refresh();
+                  userlist_redraw_gtk();
+#endif
+               }
+            }
+         } else {
+            Log(LOG_DEBUG, "ws.cat", "PTT update for unknown user %s", cmd_user);
+         }
+      }
    } else {
       char *json_msg = dict2json(d);
 //      ui_print("[%s] ==> CAT: Unknown msg -- %s", get_chat_ts(ts), json_msg);

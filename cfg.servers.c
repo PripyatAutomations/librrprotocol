@@ -14,7 +14,6 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <librustyaxe/core.h>
-#include <ev.h>
 extern bool dying;
 extern time_t now;
 

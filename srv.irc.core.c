@@ -13,7 +13,6 @@
 #include <ctype.h>
 #include <time.h>
 #include <netdb.h>
-#include <ev.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
