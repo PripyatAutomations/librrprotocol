@@ -77,6 +77,9 @@ bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
    } else if (cmd && strcasecmp(cmd, "whois") == 0) {
       const char *whois_msg = dict_get(d, "talk.data", NULL);
       event_emit_dict("whois", cptr, d);
+   } else if (cmd && (strcasecmp(cmd, "replay-start") == 0 || strcasecmp(cmd, "replay-complete") == 0 ||
+                      strcasecmp(cmd, "replay-completed") == 0)) {
+      event_emit_dict("chat.replay", cptr, d);
    }
    return false;
 }

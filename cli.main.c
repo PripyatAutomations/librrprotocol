@@ -103,10 +103,11 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
    struct ws_msg_routes *rp = ws_routes_cli;
    const char *msg_type = dict_get(d, "msg.type", NULL);
 
-   // Send an even
+   // Send an event; messages with no msg.type (e.g. legacy media capab) emit
+   // a generic "ws.msg.unknown" event instead of "ws.msg.(null)"
    char evname[64];
    memset( evname, 0, sizeof(evname) );
-   snprintf(evname, sizeof(evname), "ws.msg.%s", msg_type);
+   snprintf(evname, sizeof(evname), "ws.msg.%s", (msg_type ? msg_type : "unknown"));
    event_emit_dict(evname, NULL, d);
 
    // Walk the table of handlers

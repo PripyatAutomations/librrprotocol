@@ -359,8 +359,11 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          // so pass an empty payload; the handler doesn't read it.
          event_emit("send-cat-state", cptr, "");
 
-         // send a ping, XXX: this might be a duplicate, confirm?
-         ws_send_ping(cptr);
+         // Don't send a ping here: the client is still busy syncing (UI setup,
+         // chat replay, media negotiation) and can't echo the pong promptly,
+         // which would report a bogus huge RTT. The session housekeeping loop
+         // (http_expire_sessions) sends the first ping HTTP_PING_TIME seconds
+         // after last_heard, i.e. once the connection has settled.
 
          Log(LOG_AUDIT, "auth", "User %s on cptr <%p> logged in from IP %s:%d (clone #%d/%d) with privs: %s",
             cptr->chatname, cptr, cptr->user_ip, cptr->user_port, cptr->user->clones, cptr->user->max_clones, cptr->user->privs);

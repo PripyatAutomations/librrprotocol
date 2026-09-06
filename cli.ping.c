@@ -37,10 +37,10 @@ bool ws_handle_ping_msg(rrconn_t *cptr, dict *d) {
       dict *pong_msg = dict_new();
       dict_add(pong_msg, "msg.type", "pong");
       dict_add_ulong(pong_msg, "msg.ts", ping_ts);
-      // Echo the server's monotonic ping.ts back so it can measure RTT
-      unsigned long mono_ts = dict_get_ulong(d, "ping.ts", 0);
+      // Echo the server's monotonic ping.ts (real microseconds) back so it can measure RTT
+      long long mono_ts = dict_get_llong(d, "ping.ts", 0);
       if (mono_ts) {
-         dict_add_ulong(pong_msg, "ping.ts", mono_ts);
+         dict_add_llong(pong_msg, "ping.ts", mono_ts);
       }
       ws_send_dict(NULL, cptr, pong_msg, WEBSOCKET_OP_TEXT);
       dict_free(pong_msg);

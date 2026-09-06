@@ -42,7 +42,7 @@ const char *media_capab_prepare(const char *codecs) {
    }
    // emit codec message
    char msgbuf[1024];
-   snprintf(msgbuf, sizeof(msgbuf), "{ \"media\": { \"cmd\": \"capab\", \"codecs\": \"%s\" } }", codecs);
+   snprintf(msgbuf, sizeof(msgbuf), "{ \"msg\": { \"type\": \"media\" }, \"media\": { \"cmd\": \"capab\", \"codecs\": \"%s\" } }", codecs);
 
    return strdup(msgbuf);
 }
