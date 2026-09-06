@@ -94,24 +94,18 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
    (void)sender;
 
    if (!d || !dest || !dest->conn) {
-      Log(LOG_WARN, "rrproto.srv",
-         "Unable to send msg dict:<%p> to conn:<%p> - invalid destination",
-         d, dest);
+      Log(LOG_WARN, "rrproto.srv", "Unable to send msg dict:<%p> to conn:<%p> - invalid destination", d, dest);
       return false;
    }
 
    const char *jp = dict2json(d);
 
    if (!jp) {
-      Log(LOG_WARN, "rrproto.srv",
-         "Unable to serialize msg dict:<%p> to conn:<%p>",
-         d, dest);
+      Log(LOG_WARN, "rrproto.srv", "Unable to serialize msg dict:<%p> to conn:<%p>", d, dest);
       return false;
    }
 
-   Log(LOG_CRAZY, "ws.proto",
-      "Sending dict <%p> to conn <%p>: %s",
-      (void *)d, (void *)dest, jp);
+   Log(LOG_CRAZY, "ws.proto", "Sending dict <%p> to conn <%p>: %s", (void *)d, (void *)dest, jp);
 
    mg_ws_send(dest->conn, jp, strlen(jp), data_type);
 

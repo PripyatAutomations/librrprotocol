@@ -111,7 +111,7 @@ const char *vfo_name(rr_vfo_t vfo) {
 }
 
 rr_mode_t vfo_parse_mode(const char *mode) {
-   Log(LOG_CRAZY, "vfo", "vfo_parse_mode: %s", mode);
+//   Log(LOG_CRAZY, "vfo", "vfo_parse_mode: %s", mode);
 
    if (strcasecmp(mode, vfo_mode_cw) == 0) {
       return MODE_CW;
@@ -134,7 +134,7 @@ rr_mode_t vfo_parse_mode(const char *mode) {
    } else if (strcasecmp(mode, vfo_mode_ft8) == 0) {
       return MODE_FT8;
    }
-   Log(LOG_DEBUG, "vfo", "vfo_parse_mode: Couldn't parse %s, returning MODE_NONE", mode);
+   Log(LOG_WARN, "vfo", "vfo_parse_mode: Couldn't parse %s, returning MODE_NONE", mode);
 
    return MODE_NONE;
 }

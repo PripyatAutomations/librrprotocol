@@ -365,8 +365,9 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          // (http_expire_sessions) sends the first ping HTTP_PING_TIME seconds
          // after last_heard, i.e. once the connection has settled.
 
-         Log(LOG_AUDIT, "auth", "User %s on cptr <%p> logged in from IP %s:%d (clone #%d/%d) with privs: %s",
-            cptr->chatname, cptr, cptr->user_ip, cptr->user_port, cptr->user->clones, cptr->user->max_clones, cptr->user->privs);
+         Log(LOG_AUDIT, "auth", "User %s on cptr <%p> logged in from IP %s:%d (clone #%d/%d) with privs: %s (client: %s, ua: %s)",
+            cptr->chatname, cptr, cptr->user_ip, cptr->user_port, cptr->user->clones, cptr->user->max_clones, cptr->user->privs,
+            (cptr->cli_version ? cptr->cli_version : "unknown"), (cptr->user_agent ? cptr->user_agent : "unknown"));
 
          // Send our capabilities
          const char *my_codecs = cfg_get_exp("codecs.allowed");

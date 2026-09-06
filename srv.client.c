@@ -175,7 +175,7 @@ rrconn_t *http_find_client_by_c(struct mg_connection *c) {
       i++;
       cptr = cptr->next;
    }
-   Log(LOG_CRAZY, "http.client", "find_client_by_c <%p> no matches!", c);
+//   Log(LOG_CRAZY, "http.client", "find_client_by_c <%p> no matches!", c);
    return NULL;
 }
 

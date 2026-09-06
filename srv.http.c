@@ -458,6 +458,13 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
    rrconn_t *cptr = http_find_client_by_c(c);
 
    if (ev == MG_EV_OPEN) {
+      // The listening socket itself fires MG_EV_OPEN when mg_http_listen()
+      // creates it. It is not a client - never register it, it never closes
+      // and would otherwise linger as a permanent UNAUTHENTICATED entry.
+      if (c->is_listening) {
+         return;
+      }
+
       if (!cptr) {
          cptr = http_add_client(c, false);
       }
@@ -478,6 +485,9 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          mg_tls_init(cptr->conn, &opts);
       }
    } else if (ev == MG_EV_ACCEPT) {
+      if (c->is_listening) {  // defensive: listeners never fire ACCEPT
+         return;
+      }
       if (!cptr) {
          cptr = http_add_client(c, false);
       }
