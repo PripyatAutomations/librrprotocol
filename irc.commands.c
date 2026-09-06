@@ -41,10 +41,6 @@ bool irc_builtin_join_cb(rrconn_t *cptr, irc_message_t *mp) {
    memset(tmp_nick, 0, NICKLEN + 1);
    snprintf(tmp_nick, NICKLEN + 1, "%.*s", nicklen, nick);
 
-   tui_window_t *tw = tui_window_create(mp->argv[1]);
-   tw->cptr = cptr;
-   tui_window_focus(mp->argv[1]);
-
    Log(LOG_INFO, "irc", "[%s] * %s joined %s", network, tmp_nick, mp->argv[1]);
 //   ui_print(tw,
 //      "%s [{green}%s{reset}] * {bright-cyan}%s{reset} joined
@@ -86,8 +82,6 @@ bool irc_builtin_notice_cb(rrconn_t *cptr, irc_message_t *mp) {
       is_private = false;
       win_title = mp->argv[1];
    }
-   tui_window_t *tw = tui_window_find(win_title);
-
    Log(LOG_INFO, "irc", "*notice* %s <%s> %s", irc_name(cptr), mp->argv[1], tmp_nick, mp->argv[2]);
 //   ui_print("status", "[%s] *%s* <%s> %s", network, mp->argv[1], tmp_nick,
 //      mp->argv[2]);
@@ -125,12 +119,7 @@ bool irc_builtin_part_cb(rrconn_t *cptr, irc_message_t *mp) {
    Log(LOG_INFO, "irc", "[%s] * %s left %s", network, tmp_nick, win_title);
 
    if (strcmp(cptr->nick, tmp_nick) == 0) {
-      // Find and destroy the window
-      tui_window_t *w = tui_window_find(win_title);
-
-      if (w) {
-         tui_window_destroy(w);
-      }
+      // rrclient handles window teardown via the irc.part event
 //      ui_print("status",
 //         "%s [{green}%s{reset}] * {bright-cyan}%s{reset} left
 // {bright-magenta}%s{reset}",
@@ -193,12 +182,6 @@ bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
       is_private = false;
       win_title = mp->argv[1];
    }
-   tui_window_t *wp = tui_window_find(win_title);
-
-   if (!wp) {
-      wp = NULL;
-   }
-
    if (*mp->argv[2] == '\001') {
       // CTCP parser
       // - Command
@@ -295,7 +278,6 @@ bool irc_builtin_quit_cb(rrconn_t *cptr, irc_message_t *mp) {
    // member; if so, display the message in that window
 ////   for (int i = 0; i < TUI_MAX_WINDOWS; i++) {
 ////      tui_window_t *wp = tui_windows[i];
-   tui_window_t *wp = "status";
 //   ui_print( wp,
 //      "[{green}%s{reset}] {red}* {bright-cyan}%s{cyan} has
 // disconnected.{reset}: \"%s\"", network,
@@ -322,13 +304,7 @@ bool irc_builtin_topic_cb(rrconn_t *cptr, irc_message_t *mp) {
    memset(tmp_nick, 0, NICKLEN + 1);
    snprintf(tmp_nick, NICKLEN + 1, "%.*s", nicklen, nick);
 
-   tui_window_t *tw = tui_window_find(chan);
-
-   if (tw) {
-      memset( tw->status_line, 0, sizeof(tw->status_line) );
-      snprintf(tw->status_line, sizeof(tw->status_line), "{green}*{reset} %s", topic);
-      tui_redraw_screen();
-   }
+   // rrclient updates the window status line via the irc.topic event
    event_emit("irc.topic", cptr, mp);
 
    return false;

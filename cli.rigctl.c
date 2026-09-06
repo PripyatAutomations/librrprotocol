@@ -52,14 +52,6 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
 
       if (user && *user) {
          Log(LOG_DEBUG, "ws.cat", "user:<%p> = |%s|", user, user);
-         struct rr_user *cptr = NULL;
-#if	0
-         if ((cptr = userlist_find(user))) {
-            Log(LOG_DEBUG, "ws.cat", "ptt set to %s for cptr:<%p>",
-              (cptr->is_ptt ? "true" : "false"), cptr);
-            cptr->is_ptt = ptt;
-         }
-#endif
 
          char real_mode[32];
          memset(real_mode, 0, sizeof(real_mode));
@@ -101,25 +93,16 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
 
       if (cmd && strcasecmp(cmd, "ptt") == 0 && cmd_user && *cmd_user) {
          bool cmd_ptt = dict_get_bool(d, "cat.ptt", false);
-         struct rr_user *u = userlist_find(cmd_user);
+         Log(LOG_INFO, "ws.cat", "%s %s transmitting", cmd_user,
+            (cmd_ptt ? "started" : "stopped") );
 
-         if (u) {
-            if (u->is_ptt != cmd_ptt) {
-               u->is_ptt = cmd_ptt;
-               Log(LOG_INFO, "ws.cat", "%s %s transmitting", cmd_user,
-                  (cmd_ptt ? "started" : "stopped") );
-
-               // Refresh the userlist + PTT button (shows TX'ing callsign)
-               if (ui_mode == UI_MODE_GTK) {
-#if     defined(USE_GTK)
-                  ptt_button_refresh();
-                  userlist_redraw_gtk();
-#endif
-               }
-            }
-         } else {
-            Log(LOG_DEBUG, "ws.cat", "PTT update for unknown user %s", cmd_user);
-         }
+         // Let any registered listeners know (rrclient UI, chat log, etc) --
+         // librrprotocol itself tracks no client-side UI state.
+         dict *tx_ev = dict_new();
+         dict_add(tx_ev, "tx.user", (char *)cmd_user);
+         dict_add_bool(tx_ev, "tx.state", cmd_ptt);
+         event_emit_dict("ptt.tx", NULL, tx_ev);
+         dict_free(tx_ev);
       }
    } else {
       char *json_msg = dict2json(d);

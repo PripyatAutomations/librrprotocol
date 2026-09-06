@@ -18,8 +18,6 @@
 #include <time.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
-#include <rrclient/connman.h>
-#include <rrclient/userlist.h>
 
 extern dict *cfg;
 extern time_t now;
@@ -98,7 +96,7 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
 
    char *hashed_pw = hash_passwd(passwd);
    char *temp_pw = NULL;
-   
+
    if (hashed_pw) {
       temp_pw = compute_wire_password(hashed_pw, nonce);
       explicit_bzero(hashed_pw, sizeof(hashed_pw));

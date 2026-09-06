@@ -41,18 +41,7 @@ bool irc_builtin_num001(rrconn_t *cptr, irc_message_t *mp) {
 //   ui_print("status", "%s [{green}%s{reset}] *** %s ***", get_chat_ts(0),
 //      irc_name(cptr), mp->argv[2]);
    cptr->connected = true;
-   tui_update_status( tui_active_window(),
-      "{bright-black}[{bright-yellow}Logging in{bright-black}]{reset} {bright-black}[{green}%s{bright-black}]{reset}",
-      irc_name(cptr) );
-   tui_window_t *tw = tui_active_window();
-
-   if (tw) {
-      // set the window's cptr
-      if (!tw->cptr) {
-         tw->cptr = cptr;
-      }
-      tui_window_focus(tw->title);
-   }
+   // rrclient updates its UI via the irc.connected event
    event_emit("irc.connected", cptr, mp);
 
    irc_send(cptr, "MODE %s +ix", cptr->nick);
@@ -332,13 +321,8 @@ bool irc_builtin_num332(rrconn_t *cptr, irc_message_t *mp) {
 //   ui_print("status", "prefix: %s argc: %d arg0: %s
 // arg1: %s arg2: %s arg3 %s", mp->prefix, mp->argc, mp->argv[0], mp->argv[1],
 // mp->argv[2], mp->argv[3]);
-   tui_window_t *tw = tui_window_find(chan);
-
-   if (tw) {
-      memset( tw->status_line, 0, sizeof(tw->status_line) );
-      snprintf(tw->status_line, sizeof(tw->status_line), "{green}*{reset} %s", topic);
-      tui_redraw_screen();
-   }
+   // rrclient updates the window status line via the irc.topic event
+   event_emit("irc.topic", cptr, mp);
 
    return false;
 }
