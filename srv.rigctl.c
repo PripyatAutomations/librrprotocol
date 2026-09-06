@@ -319,7 +319,6 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_add(cat_msg, "cat.vfo", vfo);
 
          ws_broadcast_dict(NULL, cat_msg, WEBSOCKET_OP_TEXT);
-         Log(LOG_AUDIT, "ws.cat", "User %s set VFO %s FREQ to %d hz", cptr->chatname, vfo, new_freq);
          event_emit_dict("cat.freq", NULL, cat_msg);
          dict_free(cat_msg);
 
@@ -350,10 +349,9 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          cptr->last_cat = now;         // last CAT message received from user
          cptr->last_heard = now;
 
-         Log(LOG_AUDIT, "ws.rigctl", "User %s set VFO %s WIDTH to %s", cptr->chatname, vfo, width);
-
          // Tell everyone immediately (with cat.state.* so client VFO state/UI
          // updates without waiting for the next backend poll)
+         // Audit trail is logged by the rigctl event handler
          dict *cat_msg = dict_new();
          dict_add(cat_msg, "msg.type", "cat");
          dict_add(cat_msg, "cat.cmd", "width");
@@ -409,7 +407,6 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          ws_broadcast_dict(NULL, cat_msg, WEBSOCKET_OP_TEXT);
          dict_free(cat_msg);
 
-         Log(LOG_AUDIT, "mode", "User %s set VFO %s MODE to %s", cptr->chatname, vfo, mode);
          rr_mode_t new_mode = vfo_parse_mode(mode);
 
          if (new_mode != MODE_NONE) {

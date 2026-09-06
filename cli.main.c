@@ -49,6 +49,7 @@ extern bool ws_handle_hello_msg(rrconn_t *cptr, dict *d);
 //extern bool ws_handle_media_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_notice_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_ping_msg(rrconn_t *cptr, dict *d);
+extern bool ws_handle_pong_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_syslog_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_talk_msg(rrconn_t *cptr, dict *d);
@@ -68,6 +69,7 @@ struct ws_msg_routes ws_routes_cli[] = {
 //   { .type = "media", .cb = ws_handle_media_msg },
    { .type = "notice", .cb = ws_handle_notice_msg },
    { .type = "ping",   .cb = ws_handle_ping_msg },
+   { .type = "pong",   .cb = ws_handle_pong_msg },
    { .type = "syslog", .cb = ws_handle_syslog_msg },
    { .type = "talk",   .cb = ws_handle_talk_msg },
    { .type = NULL,     .cb = NULL }
@@ -227,10 +229,6 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       if (!wm) {
          Log(LOG_CRIT, "rrprotocol.ws", "Empty message in MG_EV_WS_MSG");
          return;
-      }
-
-      if (cfg_http_debug_crazy) {
-         Log(LOG_CRAZY, "http", "http_handler: WS msg: %.*s", (int) wm->data.len, wm->data.buf);
       }
 
       if (wm->flags & WEBSOCKET_OP_BINARY) {

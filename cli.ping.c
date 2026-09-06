@@ -49,3 +49,22 @@ bool ws_handle_ping_msg(rrconn_t *cptr, dict *d) {
 
    return false;
 }
+
+// Handle a PONG reply from the server: log RTT like webui.latencycalc.js does
+bool ws_handle_pong_msg(rrconn_t *cptr, dict *d) {
+   if (!cptr || !d) {
+      Log(LOG_WARN, "http.ws", "pong_msg: got d:<%p> cptr:<%p>", d, cptr);
+      return true;
+   }
+
+   time_t pong_ts = dict_get_time_t(d, "msg.ts", 0);
+   if (!pong_ts) {
+      Log(LOG_WARN, "ws.pong", "PONG with no timestamp from server");
+      return true;
+   }
+
+   time_t now = time(NULL);
+   Log(LOG_CRAZY, "ws.pong", "* Pong! RTT: %lld secs *", (long long)(now - pong_ts));
+
+   return false;
+}

@@ -256,7 +256,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       if (ping_ts) {
          dict *pong = dict_new();
          dict_add(pong, "msg.type", "pong");
-         dict_add_ulong(pong, "pong.ts", ping_ts);
+         dict_add_ulong(pong, "msg.ts", ping_ts);
          ws_send_dict(NULL, cptr, pong, WEBSOCKET_OP_TEXT);
          dict_free(pong);
       } else {
