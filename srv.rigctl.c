@@ -272,9 +272,11 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          cptr->last_heard = now;
          cptr->last_cat = now;         // last CAT message received from user
          cptr->is_ptt = ptt_state;
+         // Remember which VFO they keyed, so a disconnect (or other forced
+         // key-down) can name & release the right one
+         cptr->ptt_vfo = (ptt_state ? vfo[0] : 0);
 
-         // Send to log file & consoles
-         Log(LOG_AUDIT, "ptt", "User %s set PTT to %s on vfo %s", cptr->chatname, (ptt_state ? "true" : "false"), vfo);
+         // Audit trail is logged by the rigctl event handler (rrserver/events.c)
          dict *cat_msg = dict_new();
          dict_add(cat_msg, "msg.type", "cat");
          dict_add(cat_msg, "cat.cmd", "ptt");

@@ -180,6 +180,25 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
          (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>"), msg_ts);
    }
 
+   // RTT measurement: echo the monotonic ping.ts back and diff it here
+   unsigned long ping_mono = dict_get_ulong(d, "ping.ts", 0);
+   if (ping_mono) {
+      long long rtt = mono_ms() - (long long)ping_mono;
+      if (rtt < 0) {
+         rtt = 0;                 // shouldn't happen on a monotonic clock
+      }
+      cptr->latency_ms = (int)rtt;
+      last_ping_rtt_ms = rtt;
+      Log(LOG_INFO, "ping", "RTT to user %s: %lld ms (global last_ping_rtt_ms=%lld)",
+          cptr->chatname, rtt, last_ping_rtt_ms);
+
+      // Let higher layers (audio/etc) track latency
+      dict *lat = dict_new();
+      dict_add_llong(lat, "latency.rtt", rtt);
+      event_emit_dict("latency", cptr, lat);
+      dict_free(lat);
+   }
+
    char *endptr;
    errno = 0;
 
@@ -542,6 +561,10 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
             dict_add(rig_msg, "cat.cmd", "ptt");
             dict_add_bool(rig_msg, "cat.ptt", false);
             dict_add(rig_msg, "cat.user", cptr->chatname);
+            if (cptr->ptt_vfo) {
+               char vfo_buf[2] = { cptr->ptt_vfo, '\0' };
+               dict_add(rig_msg, "cat.vfo", vfo_buf);
+            }
             // send it to rrserver to turn off ptt
             event_emit_dict("rig.ptt", NULL, rig_msg);
             dict_free(rig_msg);

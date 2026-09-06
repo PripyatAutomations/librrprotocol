@@ -25,6 +25,9 @@ extern time_t now;
 extern dict *cfg;                                // config.c
 bool cfg_show_pings = true;          // cfg:ui.show-pings=false in rrserver.cfg
 
+// Global last measured ping RTT in ms, updated by ws_handle_pong() in srv.http.c
+long long last_ping_rtt_ms = -1;
+
 bool ws_send_ping(rrconn_t *cptr) {
    if (!cptr || !cptr->is_ws) {
       return true;
@@ -61,6 +64,8 @@ bool ws_send_ping(rrconn_t *cptr) {
    dict *d = dict_new();
    dict_add(d, "msg.type", "ping");
    dict_add_ulong(d, "msg.ts", now);
+   // Monotonic ms timestamp for RTT measurement; echoed back in the pong
+   dict_add_ulong(d, "ping.ts", (unsigned long)mono_ms());
    ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
    return false;

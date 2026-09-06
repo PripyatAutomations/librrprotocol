@@ -55,6 +55,7 @@ extern bool ws_kick_client(rrconn_t *cptr, const char *reason);                 
 extern bool ws_kick_by_name(const char *name, const char *reason);
 extern bool ws_kick_by_uid(int uid, const char *reason);
 extern bool ws_send_ping(rrconn_t *cptr);
+extern long long last_ping_rtt_ms;   // srv.ping.c: last measured ping RTT (ms), -1 until first pong
 extern bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...);
 extern bool ws_send_error(rrconn_t *cptr, const char *fmt, ...);
 
