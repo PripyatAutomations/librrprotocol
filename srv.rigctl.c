@@ -203,7 +203,9 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
             Log(LOG_DEBUG, "ws.rigctl", "PTT set without vfo or ptt_state");
             return true;
          }
-         bool ptt_state = dict_get_bool(d, "cat.state.ptt", false);
+         // Client sends cat.ptt; server-originated echoes use cat.state.ptt
+         bool ptt_state = dict_get_bool(d, "cat.state.ptt",
+            dict_get_bool(d, "cat.ptt", false));
 
          // Enforce single-TX: nobody else may key up while someone holds PTT.
          // Exception: the talker is a noob AND the requester is an admin,
@@ -285,10 +287,20 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_add_int(cat_msg, "cat.width", dp->width);
          dict_add_ulong(cat_msg, "msg.ts", now);
          ws_broadcast_dict(NULL, cat_msg, WEBSOCKET_OP_TEXT);
-
-         // Send a PTT event
-         event_emit_dict("ptt", NULL, cat_msg);
          dict_free(cat_msg);
+
+         // NB: We can't call the backend directly from the library; send a
+         // rigctl event for the server program to apply (same path as the
+         // freq/mode/width commands use). Audit trail is logged by the
+         // rigctl event handler
+         dict *cmd_d = dict_new();
+         dict_add(cmd_d, "msg.type", "rigctl");
+         dict_add(cmd_d, "rigctl.cmd", "ptt");
+         dict_add_bool(cmd_d, "rigctl.ptt", ptt_state);
+         dict_add(cmd_d, "rigctl.from", cptr->chatname);
+         dict_add(cmd_d, "rigctl.vfo", vfo);
+         event_emit_dict("rigctl", NULL, cmd_d);
+         dict_free(cmd_d);
       } else if (strcasecmp(cmd, "freq") == 0) {
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
             return true;
