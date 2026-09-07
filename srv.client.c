@@ -168,8 +168,8 @@ rrconn_t *http_find_client_by_c(struct mg_connection *c) {
 
    while (cptr) {
       if (cptr->conn == c) {
-         Log( LOG_CRAZY, "http.client", "find_client_by_c <%p> returning index %i: %p |%s|",
-              c, i, cptr, (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
+//         Log( LOG_CRAZY, "http.client", "find_client_by_c <%p> returning index %i: %p |%s|",
+//              c, i, cptr, (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
          return cptr;
       }
       i++;

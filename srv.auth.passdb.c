@@ -226,3 +226,51 @@ int http_load_users(const char *filename) {
    fclose(file);
    return 0;
 }
+
+/*
+ * http_reload_users: (re)load the user database into the http_users array.
+ *
+ * If net.http.authdb-dynamic is true, we emit an "authdb.load" event and the
+ * embedding program (rrserver) is responsible for filling http_users[] from
+ * its own user store (e.g. the sqlite users table) -- the protocol library
+ * doesn't know about databases.
+ *
+ * Otherwise we load users from the file given by net.http.authdb (defaulting
+ * to the compile-time HTTP_AUTHDB_PATH fallback).
+ *
+ * Called by http_init() at startup and whenever the config is reloaded
+ * (see the reload_event_add() registrations in http_init() and the 'rehash'
+ * message handler in srv.http.c).
+ */
+/* PARITY: rustyrig-www/js/webui.login.js */
+int http_reload_users(void) {
+   const char *authdb = cfg_get_exp("net.http.authdb");
+
+   if (!authdb || authdb[0] == '\0') {
+      authdb = HTTP_AUTHDB_PATH;
+   }
+
+   // Let the program handle dynamic (sql) user storage if it wants to
+   if (cfg_get_bool("net.http.authdb-dynamic", false) ) {
+      Log(LOG_DEBUG, "auth", "authdb-dynamic: emitting authdb.load event for program");
+      event_emit_dict("authdb.load", NULL, NULL);
+      return 0;
+   }
+
+   int count = http_load_users(authdb);
+
+   if (count < 0) {
+      Log(LOG_WARN, "auth", "Error loading users from %s", authdb);
+   }
+   return count;
+}
+
+/*
+ * Callback wrapper for reload_event_add() -- the reload event system wants a
+ * bool cb(const char *key); we just discard the key and reload the users.
+ */
+bool http_reload_users_cb(const char *key) {
+   (void)key;
+   http_reload_users();
+   return false;
+}

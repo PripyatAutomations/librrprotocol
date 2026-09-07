@@ -292,6 +292,23 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       }
    } else if (strcasecmp(msg_type, "rigctl") == 0) {
       result = ws_handle_rigctl_msg(cptr, d);
+   } else if (strcasecmp(msg_type, "rehash") == 0) {
+      // Reload server config & user db. Restricted to admin/owner privs.
+      // PARITY: rustyrig-www/js/webui (send msg.type:rehash on /rehash)
+      if (!cptr->authenticated || !cptr->user ||
+          !(has_priv(cptr->user->uid, "admin|owner") ) ) {
+         Log(LOG_AUDIT, "auth", "Denied rehash request from %s on cptr:<%p> from %s:%d",
+            (cptr->chatname[0] != '\0' ? cptr->chatname : "(unauthenticated)"), cptr, cptr->user_ip, cptr->user_port);
+         dict *err = dict_new();
+         dict_add(err, "msg.type", "error");
+         dict_add(err, "error.msg", "You don't have permission to rehash");
+         dict_add_ulong(err, "msg.ts", now);
+         ws_send_dict(NULL, cptr, err, WEBSOCKET_OP_TEXT);
+         dict_free(err);
+         goto cleanup;
+      }
+      Log(LOG_INFO, "http.ws", "Rehash requested by %s", cptr->chatname);
+      event_emit_dict("rehash", cptr, d);
    } else if (strcasecmp(msg_type, "quit") == 0) {
       const char *talk_reason = dict_get(d, "quit.reason", NULL);
       int clones = dict_get_int(d, "quit.clones", 0);

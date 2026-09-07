@@ -13,11 +13,14 @@
 #include <librrprotocol/http.h>
 #include <librrprotocol/codecneg.h>
 
+
 extern http_user_t http_users[HTTP_MAX_USERS];
 extern int http_getuid(const char *user);
 extern rrconn_t *http_find_client_by_name(const char *name);
 extern bool http_save_users(const char *filename);
 extern int http_load_users(const char *filename);
+extern int http_reload_users(void);
+extern bool http_reload_users_cb(const char *key);
 extern bool has_priv(int uid, const char *priv);
 extern char *compute_wire_password(const char *password_hash, const char *nonce);
 extern const char *http_get_uname(int8_t uid);

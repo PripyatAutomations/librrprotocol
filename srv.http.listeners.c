@@ -134,9 +134,15 @@ bool http_init(struct mg_mgr *mgr) {
    free( (char *)cfg_www_root );
    cfg_www_root = NULL;
 
-   if (http_load_users(HTTP_AUTHDB_PATH) < 0) {
-      Log(LOG_WARN, "http.core", "Error loading users from %s", HTTP_AUTHDB_PATH);
+   int user_count = http_reload_users();
+
+   if (user_count < 0) {
+      Log(LOG_WARN, "http.core", "Error loading users from authdb");
    }
+
+   // Reload the user database whenever net.http.authdb* changes (rehash etc)
+   reload_event_add("net.http.authdb", http_reload_users_cb, "Reload HTTP users from authdb");
+   reload_event_add("net.http.authdb-dynamic", http_reload_users_cb, "Reload HTTP users from authdb");
    struct in_addr sa_bind;
    char listen_addr[255];
    int bind_port = cfg_get_int("net.http.port", 0);
