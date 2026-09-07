@@ -579,13 +579,12 @@ bool ws_send_notice(rrconn_t *cptr, const char *fmt, ...) {
    va_start(ap, fmt);
    vsnprintf(fullmsg, sizeof(fullmsg), fmt, ap);
    va_end(ap);
-   char *escaped_msg = escape_html(fullmsg);
+
    dict *notice_msg = dict_new();
    dict_add_ulong(notice_msg, "msg.ts", now);
    dict_add(notice_msg, "msg.type", "notice");
-   dict_add(notice_msg, "notice.msg", escaped_msg);
+   dict_add(notice_msg, "notice.msg", fullmsg);
    ws_send_dict(NULL, cptr, notice_msg, WEBSOCKET_OP_TEXT);
-   free(escaped_msg);
    dict_free(notice_msg);
    return false;
 }

@@ -431,25 +431,37 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
                         arg[i] = '\0';
 
-                        if (*cmd == '\0' || *arg == '\0') {
+                        // Stop only when there's no command left to parse.
+                        // Commands that take no argument (e.g. !help) must
+                        // still reach the dispatch below.
+                        if (*cmd == '\0') {
                            break;
                         }
 
                         if (strcasecmp(cmd, "help") == 0) {
                            // XXX: These should move to help/ and get served
                            // via that mechanism.
-                           ws_send_notice(cptr, "<span>***SERVER***"
-                              "<br/>*** !help for VFO commands ***<br>"
-                              "&nbsp;&nbsp;&nbsp;!freq <freq> - Set frequency to <freq> - can be 7200 7.2m 7200000 etc form<br/>"
-                              "&nbsp;&nbsp;&nbsp;!mode <mode> - Set mode to CW|AM|LSB|USB|FM|DL|DU<br/>"
-                              "&nbsp;&nbsp;&nbsp;!power <power> - Set power (NYI)<br/>"
-                              "&nbsp;&nbsp;&nbsp;!vfo <vfo> - Switch VFOs (A|B|C)<br/>"
-                              "&nbsp;&nbsp;&nbsp;!width <width> - Set passband width (narrow|normal|wide)<br/></span>");
+                           // Plain text, one notice per line: notices are
+                           // sent unescaped so both the C client and the
+                           // webui can display them as-is. (PARITY:
+                           // rustyrig-www/js/webui notice rendering)
+                           ws_send_notice(cptr, "***SERVER***");
+                           ws_send_notice(cptr, "*** !help for VFO commands ***");
+                           ws_send_notice(cptr, "  !freq <freq> - Set frequency to <freq> - can be 7200 7.2m 7200000 etc form");
+                           ws_send_notice(cptr, "  !mode <mode> - Set mode to CW|AM|LSB|USB|FM|DL|DU");
+                           ws_send_notice(cptr, "  !power <power> - Set power (NYI)");
+                           ws_send_notice(cptr, "  !vfo <vfo> - Switch VFOs (A|B|C)");
+                           ws_send_notice(cptr, "  !width <width> - Set passband width (narrow|normal|wide)");
 
                            return false;
 
                         } else if (strcasecmp(cmd, "freq") == 0) {
-                           long real_freq = parse_freq(arg);
+                          if (*arg == '\0') {
+                             ws_send_error(cptr, "!freq requires a frequency argument");
+                             return false;
+                          }
+
+                          long real_freq = parse_freq(arg);
 
                            Log(LOG_DEBUG, "ws.chat",
                               "Got !freq %lu (%s) from %s",
@@ -468,7 +480,12 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            dict_free(cmd_d);
 
                         } else if (strcasecmp(cmd, "mode") == 0) {
-                           Log(LOG_DEBUG, "ws.chat",
+                          if (*arg == '\0') {
+                             ws_send_error(cptr, "!mode requires a mode argument");
+                             return false;
+                          }
+
+                          Log(LOG_DEBUG, "ws.chat",
                               "Got !mode %s from %s",
                               arg, cptr->chatname);
 
@@ -487,7 +504,12 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                               arg, cptr->chatname);
 
                         } else if (strcasecmp(cmd, "width") == 0) {
-                           Log(LOG_DEBUG, "ws.chat",
+                          if (*arg == '\0') {
+                             ws_send_error(cptr, "!width requires an argument");
+                             return false;
+                          }
+
+                          Log(LOG_DEBUG, "ws.chat",
                               "Got !width %s from %s",
                               arg, cptr->chatname);
 
