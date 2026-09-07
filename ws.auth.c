@@ -58,7 +58,7 @@ bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
          goto cleanup;
       }
       const char *login_pass = get_server_property(server_name, "server.pass");
-      Log(LOG_AUDIT, "ws.auth", "Got CHALLENGE %s from server %s, sending password!", nonce, server_name);
+      Log(LOG_AUDIT, "auth.ws", "Got CHALLENGE %s from server %s, sending password!", nonce, server_name);
       ws_send_passwd(cptr, user, login_pass, nonce);
       event_emit_dict("logging-in", NULL, d);
    } else if (cmd && strcasecmp(cmd, "authorized") == 0) {
@@ -71,7 +71,7 @@ cleanup:
 
 bool ws_send_login(rrconn_t *cptr, const char *login_user) {
    if (!cptr || !login_user) {
-      Log(LOG_DEBUG, "ws.auth", "send_login cptr:<%p> login_user:<%p> |%s|", cptr, login_user, login_user);
+      Log(LOG_DEBUG, "auth.ws", "send_login cptr:<%p> login_user:<%p> |%s|", cptr, login_user, login_user);
       return true;
    }
    Log(LOG_INFO, "rrproto.auth", "Sending initial LOGIN!");
@@ -124,7 +124,7 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
 
 bool ws_send_logout(rrconn_t *cptr, const char *user, const char *token) {
    if (!user || !token || !cptr) {
-      Log(LOG_DEBUG, "ws.auth", "send_logout cptr:<%p> user:<%p> |%s|", cptr, user, user);
+      Log(LOG_DEBUG, "auth.ws", "send_logout cptr:<%p> user:<%p> |%s|", cptr, user, user);
       return true;
    }
 
@@ -141,7 +141,7 @@ bool ws_send_logout(rrconn_t *cptr, const char *user, const char *token) {
 
 bool ws_send_hello(rrconn_t *cptr) {
    if (!cptr) {
-      Log(LOG_DEBUG, "ws.auth", "send_hello cptr:<%p>", cptr);
+      Log(LOG_DEBUG, "auth.ws", "send_hello cptr:<%p>", cptr);
       return true;
    }
    char msgbuf[512];

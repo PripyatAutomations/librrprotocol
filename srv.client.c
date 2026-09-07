@@ -188,6 +188,11 @@ void http_remove_client(struct mg_connection *c) {
    rrconn_t *prev = NULL;
    rrconn_t *current = http_client_list;
 
+   // Count BEFORE unlinking, so the log reports the true state including
+   // the client being removed
+   int conns = http_count_connections();
+   int users = http_count_clients();
+
    while (current) {
       if (current->conn == c) {
          // Found the client to remove, mark it dead
@@ -211,9 +216,8 @@ void http_remove_client(struct mg_connection *c) {
                current->user->clones = 0;
             }
          }
-         int http_cli = http_count_clients();
          Log( LOG_CRAZY, "http", "Removed client at cptr:<%p> with mgconn:<%p> (%d connections / %d users remain)",
-            current, c, http_count_connections() - 1, (http_cli > 0 ? http_cli - 1 : 0));
+            current, c, conns - 1, (current->user && current->authenticated ? users - 1 : users));
          memset( current, 0, sizeof(rrconn_t) );
          free(current);
          return;

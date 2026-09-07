@@ -85,10 +85,10 @@ bool ws_handle_hello_msg(rrconn_t *cptr, dict *d) {
    const char *h_hwver = dict_get(d, "hello.hwver", NULL);
 
    if (h_swver && h_hwver) {
-      Log(LOG_INFO, "ws.auth", "*** server is running %s on %s ***", h_swver, h_hwver);
+      Log(LOG_INFO, "auth.ws", "*** server is running %s on %s ***", h_swver, h_hwver);
    } else {
       const char *jp = dict2json(d);
-      Log(LOG_INFO, "ws.auth", "*** server sent unparsable hello: %s", jp);
+      Log(LOG_INFO, "auth.ws", "*** server sent unparsable hello: %s", jp);
       free( (void *)jp );
    }
    return false;
