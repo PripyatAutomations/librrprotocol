@@ -30,7 +30,7 @@ bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
    const char *privs = dict_get(d, "talk.privs", NULL);
    const char *muted = dict_get(d, "talk.muted", NULL);
    const char *ts = dict_get(d, "msg.ts", NULL);
-   int clones = dict_get_int(d, "talk.clones", 11);
+   int sessions = dict_get_int(d, "talk.sessions", 1);
    bool rv = false;
    bool tx = dict_get_bool(d, "talk.state.tx", false);
 
@@ -44,8 +44,8 @@ bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
          rv = true;
          return true;
       }
-      Log(LOG_DEBUG, "ws.talk", "UserInfo: %s has privs '%s' (TX: %s, Muted: %s, clones: %d)", user, privs,
-         (tx ? "true" : "false"), (muted ? "true" : "false"), clones);
+      Log(LOG_DEBUG, "ws.talk", "UserInfo: %s has privs '%s' (TX: %s, Muted: %s, sessions: %d)", user, privs,
+         (tx ? "true" : "false"), (muted ? "true" : "false"), sessions);
       event_emit_dict("userinfo", cptr, d);
    } else if (cmd && strcasecmp(cmd, "msg") == 0) {
       const char *from = dict_get(d, "talk.from", NULL);

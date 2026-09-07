@@ -60,7 +60,7 @@ struct rr_user {
    time_t logged_in;
    time_t last_heard;
    uint32_t user_flags;
-   int clones;
+   int sessions;
    bool is_ptt;
    bool is_muted;
    bool in_store;       // <-- whether `iter` is valid

@@ -311,7 +311,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       event_emit_dict("rehash", cptr, d);
    } else if (strcasecmp(msg_type, "quit") == 0) {
       const char *talk_reason = dict_get(d, "quit.reason", NULL);
-      int clones = dict_get_int(d, "quit.clones", 0);
+      int sessions = dict_get_int(d, "quit.sessions", 0);
    } else if (strcasecmp(msg_type, "talk") == 0) {
       // CHAT RELATED
          result = ws_handle_chat_msg(cptr, d);
@@ -630,15 +630,15 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
             cptr->cli_version = NULL;
          }
 
-         // clones are decremented in http_remove_client() (srv.client.c) when
+         // sessions are decremented in http_remove_client() (srv.client.c) when
          // the client is unlinked from the list; doing it here as well caused
          // a double decrement on authenticated WS clients.
-         Log(LOG_CRAZY, "http", "Departing user %s had %d clones", cptr->chatname, cptr->user->clones);
+         Log(LOG_CRAZY, "http", "Departing user %s had %d sessions", cptr->chatname, cptr->user->sessions);
 
-         // We want to deal with clones
-         if (cptr->user->clones < 0) {
-            Log(LOG_CRIT, "http", "Likely bug in %s in %s:%d- cptr->user->clones < 1: %d", __FUNCTION__, __FILE__,
-               __LINE__, cptr->user->clones);
+         // We want to deal with sessions
+         if (cptr->user->sessions < 0) {
+            Log(LOG_CRIT, "http", "Likely bug in %s in %s:%d- cptr->user->sessions < 1: %d", __FUNCTION__, __FILE__,
+               __LINE__, cptr->user->sessions);
          }
 
          if (cptr->active) {
@@ -649,11 +649,11 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
             dict_add(rig_msg, "talk.ip", ip);
             dict_add(rig_msg, "talk.reason", "connection closed");
             dict_add(rig_msg, "talk.user", cptr->chatname);
-            dict_add_int(rig_msg, "talk.clones", cptr->user->clones);
+            dict_add_int(rig_msg, "talk.sessions", cptr->user->sessions);
             dict_add_ulong(rig_msg, "msg.ts", now);
             ws_broadcast_dict(NULL, rig_msg, WEBSOCKET_OP_TEXT);
             dict_free(rig_msg);
-            Log(LOG_AUDIT, "auth", "User %s on cptr:<%p> cptr:<%p> from %s:%d disconnected (%d clones)", cptr->chatname, cptr, cptr, ip, port, cptr->user->clones);
+            Log(LOG_AUDIT, "auth", "User %s on cptr:<%p> cptr:<%p> from %s:%d disconnected (%d sessions)", cptr->chatname, cptr, cptr, ip, port, cptr->user->sessions);
          }
       } else {
          if (!cptr) {

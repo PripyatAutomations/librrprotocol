@@ -198,22 +198,22 @@ int http_load_users(const char *filename) {
                break;
             }
             case 5: {
-               // max_clones limit
+               // max_sessions limit
                int val = atoi(token);
 
                if (val < 0 || val > HTTP_MAX_SESSIONS) {
-                  Log(LOG_CRIT, "auth.core", "Loading user %s has invalid maxclones: %d (min: 1, max: %d)", up->name,
+                  Log(LOG_CRIT, "auth.core", "Loading user %s has invalid maxsessions: %d (min: 1, max: %d)", up->name,
                      val, HTTP_MAX_SESSIONS);
                }
-               up->max_clones = val;
+               up->max_sessions = val;
                break;
             }
             case 6: {
                // Privileges
                strlcpy( up->privs, token, sizeof(up->privs) );
-               Log(LOG_DEBUG, "auth", "load_users: uid=%d, user=%s, email=%s, enabled=%s, privs=%s, max_clones=%d", uid,
+               Log(LOG_DEBUG, "auth", "load_users: uid=%d, user=%s, email=%s, enabled=%s, privs=%s, max_sessions=%d", uid,
                   (up->name[0] != '\0' ? up->name : "none"), (up->email[0] != '\0' ? up->email : "none"),
-                  (up->enabled ? "true" : "false"), (up->privs[0] != '\0' ? up->privs : "none"), up->max_clones);
+                  (up->enabled ? "true" : "false"), (up->privs[0] != '\0' ? up->privs : "none"), up->max_sessions);
                break;
             }
          }

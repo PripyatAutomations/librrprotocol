@@ -218,22 +218,22 @@ int http_load_users(const char *filename) {
                break;
             }
             case 5: {
-               // max_clones limit
+               // max_sessions limit
                int val = atoi(token);
 
                if (val < 0 || val > HTTP_MAX_SESSIONS) {
                   Log(LOG_CRIT, "auth.core", "Loading user %s has invalid maxclones: %d (min: 1, max: %d)", up->name,
                      val, HTTP_MAX_SESSIONS);
                }
-               up->max_clones = val;
+               up->max_sessions = val;
                break;
             }
             case 6: {
                // Privileges
                strlcpy( up->privs, token, sizeof(up->privs) );
-               Log(LOG_DEBUG, "auth", "load_users: uid=%d, user=%s, email=%s, enabled=%s, privs=%s, max_clones=%d", uid,
+               Log(LOG_DEBUG, "auth", "load_users: uid=%d, user=%s, email=%s, enabled=%s, privs=%s, max_sessions=%d", uid,
                   (up->name[0] != '\0' ? up->name : "none"), (up->email[0] != '\0' ? up->email : "none"),
-                  (up->enabled ? "true" : "false"), (up->privs[0] != '\0' ? up->privs : "none"), up->max_clones);
+                  (up->enabled ? "true" : "false"), (up->privs[0] != '\0' ? up->privs : "none"), up->max_sessions);
                break;
             }
          }
@@ -433,11 +433,11 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
       }
 
       if (cptr->user) {
-         if (cptr->user->clones + 1 > cptr->user->max_clones) {
-            Log(LOG_AUDIT, "auth.users", "User clone limit reached for %s: %d clones exceeds max %d", cptr->user->name,
-               cptr->user->clones, cptr->user->max_clones);
+         if (cptr->user->sessions + 1 > cptr->user->max_sessions) {
+            Log(LOG_AUDIT, "auth.users", "User clone limit reached for %s: %d sessions exceeds max %d", cptr->user->name,
+               cptr->user->sessions, cptr->user->max_sessions);
             // Kick the client
-            ws_kick_client(cptr, "Too many clones");
+            ws_kick_client(cptr, "Too many sessions");
             dict_free(d);
 
             return true;
@@ -540,7 +540,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
             prepare_msg(cptr->chatname, sizeof(cptr->chatname), "%s", up->name);
          }
          cptr->authenticated = true;
-         cptr->user->clones++;
+         cptr->user->sessions++;
 
          // Store some timestamps such as when user joined & session will
          // forcibly expire
@@ -588,7 +588,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          ws_send_ping(cptr);
 
          Log(LOG_AUDIT, "auth", "User %s on cptr <%x> logged in from IP %s:%d (clone #%d/%d) with privs: %s",
-            cptr->chatname, cptr, ip, port, cptr->user->clones, cptr->user->max_clones, cptr->user->privs);
+            cptr->chatname, cptr, ip, port, cptr->user->sessions, cptr->user->max_sessions, cptr->user->privs);
 
          // Send our capabilities
          const char *my_codecs = cfg_get_exp("codecs.allowed");
@@ -607,7 +607,7 @@ bool ws_handle_auth_msg(struct mg_ws_message *msg, struct mg_connection *c) {
          // blorp out a join to all chat users
          jp = dict2json_mkstr(VAL_STR, "talk.cmd", "join", VAL_STR, "talk.target", "&localrig", VAL_STR, "talk.user",
             cptr->chatname, VAL_ULONG, "talk.ts", now, VAL_STR, "talk.ip", ip, VAL_STR, "talk.privs", cptr->user->privs,
-            VAL_BOOL, "talk.muted", cptr->user->is_muted, VAL_INT, "talk.clones", cptr->user->clones);
+            VAL_BOOL, "talk.muted", cptr->user->is_muted, VAL_INT, "talk.sessions", cptr->user->sessions);
          struct mg_str ms = mg_str(jp);
          ws_broadcast(NULL, &ms, WEBSOCKET_OP_TEXT);
          free( (char *)jp );

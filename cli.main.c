@@ -449,7 +449,7 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
          dict_add(d, "msg.type", "quit");
          dict_add(d, "msg.user", cptr->chatname);
          dict_add(d, "quit.reason", reason);
-         dict_add_int(d, "quit.clones", cptr->user->clones - 1);
+         dict_add_int(d, "quit.sessions", cptr->user->sessions - 1);
          ws_broadcast_dict(NULL, d, WEBSOCKET_OP_TEXT);
          dict_free(d);
       }

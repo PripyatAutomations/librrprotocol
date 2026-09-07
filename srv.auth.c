@@ -219,11 +219,11 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       }
 
       if (cptr->user) {
-         if (cptr->user->clones + 1 > cptr->user->max_clones) {
-            Log(LOG_AUDIT, "auth.users", "User clone limit reached for %s: %d clones exceeds max %d", cptr->user->name,
-               cptr->user->clones, cptr->user->max_clones);
+         if (cptr->user->sessions + 1 > cptr->user->max_sessions) {
+            Log(LOG_AUDIT, "auth.users", "User session limit reached for %s: %d sessions exceeds max %d", cptr->user->name,
+               cptr->user->sessions, cptr->user->max_sessions);
             // Kick the client
-            ws_kick_client(cptr, "Too many clones");
+            ws_kick_client(cptr, "Too many sessions");
             return true;
          }
       } else {
@@ -299,7 +299,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
             prepare_msg(cptr->chatname, sizeof(cptr->chatname), "%s", up->name);
          }
          cptr->authenticated = true;
-         cptr->user->clones++;
+         cptr->user->sessions++;
 
          Log(LOG_AUDIT, "auth", "Verified credentials for %s", up->name);
 
@@ -365,8 +365,8 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          // (http_expire_sessions) sends the first ping HTTP_PING_TIME seconds
          // after last_heard, i.e. once the connection has settled.
 
-         Log(LOG_AUDIT, "auth", "User %s on cptr <%p> logged in from IP %s:%d (clone #%d/%d) with privs: %s (client: %s, ua: %s)",
-            cptr->chatname, cptr, cptr->user_ip, cptr->user_port, cptr->user->clones, cptr->user->max_clones, cptr->user->privs,
+         Log(LOG_AUDIT, "auth", "User %s on cptr <%p> logged in from IP %s:%d (session #%d/%d) with privs: %s (client: %s, ua: %s)",
+            cptr->chatname, cptr, cptr->user_ip, cptr->user_port, cptr->user->sessions, cptr->user->max_sessions, cptr->user->privs,
             (cptr->cli_version ? cptr->cli_version : "unknown"), (cptr->user_agent ? cptr->user_agent : "unknown"));
 
          // Send our capabilities
@@ -392,7 +392,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          dict_add(talk_msg, "talk.privs", cptr->user->privs);
          dict_add(talk_msg, "talk.target", "&localrig");
          dict_add(talk_msg, "talk.user", cptr->chatname);
-         dict_add_int(talk_msg, "talk.clones",  cptr->user->clones);
+         dict_add_int(talk_msg, "talk.sessions",  cptr->user->sessions);
          ws_broadcast_dict(NULL, talk_msg, WEBSOCKET_OP_TEXT);
          ws_send_users(NULL);
          dict_free(talk_msg);

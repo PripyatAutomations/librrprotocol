@@ -171,7 +171,7 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
    dict_add(talk_msg, "talk.privs", cptr->user->privs);
    dict_add(talk_msg, "talk.user", cptr->chatname);
    dict_add(talk_msg, "talk.cmd", "userinfo");
-   dict_add_int(talk_msg, "talk.clones", cptr->user->clones);
+   dict_add_int(talk_msg, "talk.sessions", cptr->user->sessions);
    dict_add_bool(talk_msg, "talk.muted", cptr->user->is_muted);
    dict_add_bool(talk_msg, "talk.tx", cptr->is_ptt);
    dict_add_long(talk_msg, "msg.ts", now);
@@ -634,7 +634,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          dict_add(wi, "talk.email", acptr->user->email);
          dict_add(wi, "talk.privs", acptr->user->privs);
          dict_add_bool(wi, "talk.muted", acptr->user->is_muted);
-         dict_add_int(wi, "talk.clones", acptr->user->clones);
+         dict_add_int(wi, "talk.sessions", acptr->user->sessions);
 
          // Session info of the first matching connection
          dict_add_ulong(wi, "talk.connected", (unsigned long)acptr->session_start);

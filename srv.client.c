@@ -207,13 +207,13 @@ void http_remove_client(struct mg_connection *c) {
          }
 
          if (current->user) {
-            if (current->authenticated && current->is_ws && current->user->clones > 0) {
-               current->user->clones--;
+            if (current->authenticated && current->is_ws && current->user->sessions > 0) {
+               current->user->sessions--;
             }
 
-            if (current->user->clones < 0) {
-               Log(LOG_WARN, "http", "Client at cptr:<%p> has %d clones??", current, current->user->clones);
-               current->user->clones = 0;
+            if (current->user->sessions < 0) {
+               Log(LOG_WARN, "http", "Client at cptr:<%p> has %d sessions??", current, current->user->sessions);
+               current->user->sessions = 0;
             }
          }
          Log( LOG_CRAZY, "http", "Removed client at cptr:<%p> with mgconn:<%p> (%d connections / %d users remain)",
