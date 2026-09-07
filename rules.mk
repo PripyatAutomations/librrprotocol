@@ -30,7 +30,6 @@ librrprotocol_objs += http.api.o
 #librrprotocol_objs += irc.server.o
 #librrprotocol_objs += irc.user.o
 librrprotocol_objs += is.o
-librrprotocol_objs += rrclient.o
 librrprotocol_objs += srv.auth.o
 librrprotocol_objs += srv.auth.passdb.o
 librrprotocol_objs += srv.chat.o

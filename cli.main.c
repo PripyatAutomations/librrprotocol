@@ -257,12 +257,14 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       ws_connected = 0;
 
       // Only act if this is the active connection - a stale connection's
-      // error must not close the new one (i.e. /server switching)
-      if (ws_conn && c == ws_conn->conn) {
+      // error must not close the new one (i.e. /server switching).
+      // NB: the client's active rrconn_t is c->fn_data; the library does
+      // not reference client connection globals (rrclient/rrclient.c).
+      if (cptr && cptr->conn == c) {
          mg_ws_send(c, NULL, 0, WEBSOCKET_OP_CLOSE);
 
-         if (ws_conn->conn) {
-            ws_conn->conn->is_closing = 1;
+         if (cptr->conn) {
+            cptr->conn->is_closing = 1;
          }
 
          if (ev_data) {
@@ -276,16 +278,15 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          }
       }
    } else if (ev == MG_EV_CLOSE) {
-      bool active = (ws_conn && c == ws_conn->conn);
+      bool active = (cptr && cptr->conn == c);
 
       ws_connected = 0;
 
-      // Only tear down the globals and emit "disconnected" if the ACTIVE
+      // Only tear down state and emit "disconnected" if the ACTIVE
       // connection closed. Stale connections (i.e. closed by /server switch)
       // must not nuke the new connection's state or trigger reconnects.
       if (active) {
-         ws_conn->conn = NULL;
-         ws_conn = NULL;
+         cptr->conn = NULL;
 
          dict *d = dict_new();
          dict_add(d, "msg.type", "auth");
@@ -343,9 +344,8 @@ void ws_client_init(void) {
    Log(LOG_DEBUG, "ws", "ws_init finished");
 }
 
-bool rrproto_ws_connect(int server) {
-   return false;
-}
+// NB: rrproto_ws_connect() removed - a stub that did nothing; connection
+// setup is client behavior and lives in rrclient/ (connman.c, rrclient.c)
 
 #ifdef	USE_MONGOOSE
 bool ws_init(struct mg_mgr *mgr) {

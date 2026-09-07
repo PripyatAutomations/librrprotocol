@@ -438,11 +438,11 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
 
    // Binary (audio, waterfall) frames
    if (msg->flags & WEBSOCKET_OP_BINARY) {
-      Log(LOG_CRAZY, "ws.binframe", "Incoming Binary frame: %li bytes", msg->data.len);
+      Log(LOG_CRAZY, "ws.frame.bin", "Incoming Binary frame: %li bytes", msg->data.len);
       ws_binframe_process_mg(cptr, msg->data.buf, msg->data.len);
    } else {
       // Text (mostly json) frames
-      Log(LOG_CRAZY, "ws", "Incoming Text frame: %li bytes: %.*s", msg->data.len, msg->data.len, msg->data.buf);
+      Log(LOG_CRAZY, "ws.frame.txt", "Incoming Text frame: %li bytes: %.*s", msg->data.len, msg->data.len, msg->data.buf);
       struct mg_str msg_data = msg->data;
       char buf[HTTP_WS_MAX_MSG + 1];
       memset( buf, 0, sizeof(buf) );

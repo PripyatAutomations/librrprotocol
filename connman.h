@@ -42,17 +42,9 @@ typedef struct rr_connection rr_connection_t;
 
 extern char active_server[512];
 extern rr_connection_t *active_connections;
-extern bool disconnect_server(const char *server);
-extern bool connect_server(const char *server);
 extern int ws_connected;
 extern int ws_tx_connected;
-#if defined(USE_MONGOOSE)
-extern rrconn_t *ws_conn;
-extern rrconn_t *ws_tx_conn;
-#endif
 extern bool server_ptt_state;
 extern const char *get_server_property(const char *server, const char *prop);
-
-extern void connman_autoconnect(void);
 
 #endif // __librrprotocol_connman_h

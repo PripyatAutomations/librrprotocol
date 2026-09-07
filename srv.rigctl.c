@@ -276,6 +276,11 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          // key-down) can name & release the right one
          cptr->ptt_vfo = (ptt_state ? vfo[0] : 0);
 
+         // Push the new TX state to everyone's userlist. Without this the
+         // clients' userlist keeps stale PTT state until something else
+         // triggers a userinfo broadcast
+         ws_send_userinfo(cptr, NULL);
+
          // Audit trail is logged by the rigctl event handler (rrserver/events.c)
          dict *cat_msg = dict_new();
          dict_add(cat_msg, "msg.type", "cat");
