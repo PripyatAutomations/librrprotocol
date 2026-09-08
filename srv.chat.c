@@ -449,7 +449,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            ws_send_notice(cptr, "*** !help for VFO commands ***");
                            ws_send_notice(cptr, "  !freq <freq> - Set frequency to <freq> - can be 7200 7.2m 7200000 etc form");
                            ws_send_notice(cptr, "  !mode <mode> - Set mode to CW|AM|LSB|USB|FM|DL|DU");
-                           ws_send_notice(cptr, "  !power <power> - Set power (NYI)");
+                           ws_send_notice(cptr, "  !power <power> - Set power in watts (e.g. !power 25)");
                            ws_send_notice(cptr, "  !vfo <vfo> - Switch VFOs (A|B|C)");
                            ws_send_notice(cptr, "  !width <width> - Set passband width (narrow|normal|wide)");
 
@@ -499,9 +499,28 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            }
 
                         } else if (strcasecmp(cmd, "power") == 0) {
-                           Log(LOG_DEBUG, "ws.chat",
-                              "Got !power %s from %s",
-                              arg, cptr->chatname);
+                          if (*arg == '\0') {
+                             ws_send_error(cptr, "!power requires a power argument (in watts)");
+                             return false;
+                          }
+
+                          float real_power = strtof(arg, NULL);
+
+                          Log(LOG_DEBUG, "ws.chat",
+                             "Got !power %f (%s) from %s",
+                             real_power, arg, cptr->chatname);
+
+                          dict *cmd_d = dict_new();
+                          dict_add(cmd_d, "msg.type", "rigctl");
+                          dict_add(cmd_d, "rigctl.cmd", "power");
+                          dict_add_float(cmd_d, "rigctl.power", real_power);
+                          dict_add(cmd_d, "rigctl.from",
+                             cptr->chatname);
+                          dict_add(cmd_d, "rigctl.vfo",
+                             (char *)vfo_name(active_vfo));
+
+                          event_emit_dict("rigctl", NULL, cmd_d);
+                          dict_free(cmd_d);
 
                         } else if (strcasecmp(cmd, "width") == 0) {
                           if (*arg == '\0') {
@@ -518,13 +537,41 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            // Audit trail is logged by the rigctl event handler
 
                         } else if (strcasecmp(cmd, "vfo") == 0) {
-                           Log(LOG_DEBUG, "ws.chat",
-                              "Got !vfo %s from %s",
-                              arg, cptr->chatname);
+                          if (*arg == '\0') {
+                             ws_send_error(cptr, "!vfo requires a vfo argument (A|B|C...)");
+                             return false;
+                          }
+
+                          Log(LOG_DEBUG, "ws.chat",
+                             "Got !vfo %s from %s",
+                             arg, cptr->chatname);
+
+                          rr_vfo_t new_vfo = vfo_lookup(toupper(arg[0]) );
+
+                          if (new_vfo < 0 || new_vfo >= MAX_VFOS) {
+                             ws_send_error(cptr, "Unknown VFO: !vfo %s (try A or B)", arg);
+                             return false;
+                          }
+
+                          if (new_vfo == active_vfo) {
+                             // no-op, but confirm to the user so it doesn't look hung
+                             ws_send_notice(cptr, "VFO %s is already active", vfo_name(new_vfo) );
+                          } else {
+                             Log(LOG_AUDIT, "ws.chat", "User %s switched active VFO %s -> %s",
+                                cptr->chatname, vfo_name(active_vfo), vfo_name(new_vfo) );
+                             active_vfo = new_vfo;
+
+                             // Nudge the rig poll so the new active VFO's state
+                             // gets broadcast promptly (cat.state.vfo etc)
+                             // NB: can't call rr_be_poll from the library; ask
+                             // the server to poll via an event
+                             event_emit("be.poll", NULL, NULL);
+                          }
 
                         } else {
                            Log(LOG_WARN, "ws.chat",
                               "Unknown command: %s", cmd);
+                           ws_send_error(cptr, "Unknown command: !%s - try !help", cmd);
                            return false;
                         }
                      }
