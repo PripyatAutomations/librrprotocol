@@ -17,7 +17,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define	MAX_VFOS 2                       // maximum VFOs
+#define	MAX_VFOS 26                      // maximum VFOs (A-Z); most rigs
+                                         // will use 2-3, backends pick the
+                                         // subset the rig supports
 #define	DEFAULT_TOT_TIME 300             // TOT time, if not set
 
 typedef enum rr_vfo_type {
@@ -29,11 +31,32 @@ typedef enum rr_vfo_type {
 
 enum rr_vfo {
    VFO_NONE = -1,
-   VFO_A,
+   VFO_A = 0,
    VFO_B,
    VFO_C,
    VFO_D,
-   VFO_E
+   VFO_E,
+   VFO_F,
+   VFO_G,
+   VFO_H,
+   VFO_I,
+   VFO_J,
+   VFO_K,
+   VFO_L,
+   VFO_M,
+   VFO_N,
+   VFO_O,
+   VFO_P,
+   VFO_Q,
+   VFO_R,
+   VFO_S,
+   VFO_T,
+   VFO_U,
+   VFO_V,
+   VFO_W,
+   VFO_X,
+   VFO_Y,
+   VFO_Z
 };
 typedef enum rr_vfo rr_vfo_t;
 

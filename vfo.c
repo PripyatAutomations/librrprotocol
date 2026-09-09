@@ -46,68 +46,27 @@ bool set_vfo_frequency(rr_vfo_type_t vfo_type, uint32_t input, long freq) {
 }
 
 rr_vfo_t vfo_lookup(const char vfo) {
-   rr_vfo_t c_vfo;
-
-   switch (vfo) {
-      case 'A': {
-         c_vfo = VFO_A;
-         break;
-      }
-      case 'B': {
-         c_vfo = VFO_B;
-         break;
-      }
-      case 'C': {
-         c_vfo = VFO_C;
-         break;
-      }
-      case 'D': {
-         c_vfo = VFO_D;
-         break;
-      }
-      case 'E': {
-         c_vfo = VFO_E;
-         break;
-      }
-      default: {
-         c_vfo = VFO_NONE;
-         break;
-      }
+   // VFOs are simply named A-Z; anything else is VFO_NONE
+   if (vfo >= 'A' && vfo <= 'Z') {
+      return (rr_vfo_t)(vfo - 'A');
+   }
+   if (vfo >= 'a' && vfo <= 'z') {
+      return (rr_vfo_t)(vfo - 'a');
    }
 
-   return c_vfo;
+   return VFO_NONE;
 }
 
 const char *vfo_name(rr_vfo_t vfo) {
-   switch (vfo) {
-      case VFO_A: {
-         return "A";
-         break;
-      }
-      case VFO_B: {
-         return "B";
-         break;
-      }
-      case VFO_C: {
-         return "C";
-         break;
-      }
-      case VFO_D: {
-         return "D";
-         break;
-      }
-      case VFO_E: {
-         return "E";
-         break;
-      }
-      case VFO_NONE:
-      default: {
-         return "*";
-         break;
-      }
+   static char name[2];
+
+   if (vfo < 0 || vfo >= MAX_VFOS) {
+      return "*";
    }
 
-   return "*";
+   name[0] = 'A' + vfo;
+   name[1] = '\0';
+   return name;
 }
 
 rr_mode_t vfo_parse_mode(const char *mode) {

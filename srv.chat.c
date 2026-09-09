@@ -549,7 +549,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                           rr_vfo_t new_vfo = vfo_lookup(toupper(arg[0]) );
 
                           if (new_vfo < 0 || new_vfo >= MAX_VFOS) {
-                             ws_send_error(cptr, "Unknown VFO: !vfo %s (try A or B)", arg);
+                             ws_send_error(cptr, "Unknown VFO: !vfo %s (try A-Z)", arg);
                              return false;
                           }
 
