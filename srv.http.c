@@ -242,6 +242,26 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       return true;
    }
 
+   // Unauthenticated clients may only send auth commands (login/pass), pong
+   // (in reply to the server's own keep-alive pings) and hello (client
+   // version negotiation on connect). Everything else - including client
+   // pings, which are an easy DoS/amplification vector - is denied.
+   // PARITY: rustyrig-www/js/webui.js (send_ping / webui.auth.js login flow)
+   if (!cptr->authenticated &&
+       strcasecmp(msg_type, "auth") != 0 &&
+       strcasecmp(msg_type, "pong") != 0 &&
+       strcasecmp(msg_type, "hello") != 0) {
+      Log(LOG_AUDIT, "auth", "Denied %s from unauthenticated client %s on cptr:<%p> from %s:%d",
+         msg_type, (cptr->chatname[0] != '\0' ? cptr->chatname : "(unknown)"), cptr, cptr->user_ip, cptr->user_port);
+
+      // Don't reply to ping at all (no amplification); tell the client
+      // why anything else was rejected.
+      if (strcasecmp(msg_type, "ping") != 0) {
+         ws_send_error(cptr, "Not authenticated");
+      }
+      goto cleanup;
+   }
+
    if (strcasecmp(msg_type, "alert") == 0) {
       const char *alert_from = dict_get(d, "alert.from", "*** SERVER ***");
    } else if (strcasecmp(msg_type, "error") == 0) {

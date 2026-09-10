@@ -46,7 +46,7 @@ extern bool ws_handle_alert_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_error_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_hello_msg(rrconn_t *cptr, dict *d);
-//extern bool ws_handle_media_msg(rrconn_t *cptr, dict *d);
+extern bool ws_handle_media_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_notice_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_ping_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_pong_msg(rrconn_t *cptr, dict *d);
@@ -66,7 +66,8 @@ struct ws_msg_routes ws_routes_cli[] = {
    { .type = "cat",    .cb = ws_handle_rigctl_cli_msg },
    { .type = "error",  .cb = ws_handle_error_msg },
    { .type = "hello",  .cb = ws_handle_hello_msg },
-//   { .type = "media", .cb = ws_handle_media_msg },
+//   { .type = "irc",   .cb = ws_handle_irc_msg },
+   { .type = "media",  .cb = ws_handle_media_msg },
    { .type = "notice", .cb = ws_handle_notice_msg },
    { .type = "ping",   .cb = ws_handle_ping_msg },
    { .type = "pong",   .cb = ws_handle_pong_msg },
@@ -139,14 +140,15 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
    return true;
 }
 
+// Deal with the binary frames we receive from the server
+// (audio, waterfall, modem data, etc). See doc/media-frames.md.
 bool ws_binframe_process(const char *data, size_t len) {
-   if (!data || len <= 10) {
-      // no real packet will EVER be under 10 bytes, even a keep-alive
-      Log(LOG_DEBUG, "ws", "%s: data:<%p> len: %d", __FUNCTION__, data, len);
+   if (!data || len < RR_BINFRAME_HDR_LEN) {
+      // no real packet will EVER be under the header size, even a keep-alive
+      Log(LOG_DEBUG, "ws", "%s: data:<%p> len: %zu", __FUNCTION__, data, len);
 
       return true;
    }
-
 #ifdef	DEBUG_WS_BINFRAMES
    char hex[128] = { 0 };
    size_t n = len < 16 ? len : 16;
@@ -158,8 +160,21 @@ bool ws_binframe_process(const char *data, size_t len) {
    Log(LOG_DEBUG, "http.ws", "binary: %zu bytes, hex: %s", len, hex);
 #endif	// DEBUG_WS_BINFRAMES
 
-//   audio_process_frame(data, len);
-   return false;
+   struct rr_binframe f;
+   int rv = rr_binframe_parse( (const uint8_t *)data, len, &f);
+
+   if (rv < 0) {
+      // invalid/unrecognized frame; parse already logged the reason
+      return true;
+   }
+   if (rv > 0) {
+      // legacy frame from an old peer: ignore for now
+      Log(LOG_DEBUG, "ws.binframe", "Received legacy frame of %zu bytes", len);
+
+      return false;
+   }
+   // Dispatch by subsystem; fires media.frame.* binary events
+   return rr_binframe_dispatch(&f, NULL);
 }
 
 #ifdef	USE_MONGOOSE
@@ -493,31 +508,54 @@ bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
 }
 #endif // USE_MONGOOSE
 
-// Deal with the binary requests
+// Deal with the binary requests from a server-side perspective
 bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
-   Log(LOG_DEBUG, "ws.binframe", "Binary frame of %li bytes", len);
-
-   // Here we need to pull out the channel ID and send it the users expecting
-   // this codec
-   if (len < 8) {
+   if (!cptr || !buf || len < RR_BINFRAME_HDR_LEN) {
       // This frame is too small to contain meaningful data, discard it
+      Log(LOG_DEBUG, "ws.binframe", "%s: dropping short frame (%zu bytes)", __FUNCTION__, len);
+
       return true;
    }
-   // Copy 4 bytes from the start of the buffer into a NULL-terminated string
-   char codec[5];
-   memset(codec, 0, 5);
-   memcpy(codec, buf, 4);
+   Log(LOG_DEBUG, "ws.binframe", "Binary frame of %zu bytes", len);
 
-   // Copy 4 bytes from the buffer into a NULL-terminated string for channel id
-   char channel[5];
-   memset(channel, 0, 5);
-   memcpy(channel, buf, 4);
+   struct rr_binframe f;
+   int rv = rr_binframe_parse( (const uint8_t *)buf, len, &f);
 
-   // Determine where to send the message, by channel #
-   int chan_num = atoi(channel);
-   Log(LOG_DEBUG, "ws.binframe", "Got message with codec %s for channel %d", codec, channel);
+   if (rv < 0) {
+      Log(LOG_DEBUG, "ws.binframe", "Dropping unparseable frame");
 
-   return false;
+      return true;
+   }
+   if (rv > 0) {
+      // Legacy frame from an old client: keep the old behavior of
+      // ignoring it until all clients speak binframe v2.
+      Log(LOG_DEBUG, "ws.binframe", "Dropping legacy frame of %zu bytes", len);
+
+      return false;
+   }
+   // The server may only accept media from authenticated users, and
+   // only for directions the connection has negotiated a codec for.
+   if (!cptr->authenticated) {
+      Log(LOG_AUDIT, "auth", "Dropping %zu byte binary frame from unauthenticated client %s on cptr:<%p>",
+         len, (cptr->chatname[0] != '\0' ? cptr->chatname : "(unknown)"), cptr);
+      return true;
+   }
+   bool is_tx_frame = (f.hdr.direction == RR_BINFRAME_DIR_TX);
+   const char *negotiated = is_tx_frame ? cptr->codec_tx : cptr->codec_rx;
+
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_AUDIO && negotiated[0] == '\0') {
+      Log(LOG_DEBUG, "ws.binframe", "Dropping audio frame: no codec negotiated for %s",
+         (is_tx_frame ? "tx" : "rx"));
+
+      return true;
+   }
+   // RR_BINFRAME_SUBSYS_AUDIO with direction TX: feed the encoder fwdsp
+   // child (cptr->codec_tx) and rebroadcast RX-direction frames to
+   // subscribed listeners.
+   // XXX: Wire this to the fwdsp subproc fds once codec spawning is
+   // re-enabled; for now dispatch to the binary event bus so modules
+   // can listen (media.frame.audio, etc).
+   return rr_binframe_dispatch(&f, cptr);
 }
 
 ///////////////////////////////////////////////////////////////
