@@ -693,6 +693,34 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
       } else if (strcasecmp(cmd, "die") == 0) {
          ws_chat_cmd_die(cptr, reason);
 
+      } else if (strcasecmp(cmd, "quota") == 0) {
+         // PARITY: rustyrig-www/js/webui.chat.js /quota (sends talk.cmd=quota)
+         // Admin/owner only; the server program does the quota work via the
+         // quota.cmd event (sqlite lives in rrserver, not in the library)
+         if (!has_priv(cptr->user->uid, "admin|owner") ) {
+            ws_chat_err_noprivs(cptr, "QUOTA");
+            return true;
+         }
+
+         // data is the command tail: LIST | SHOW <user>... | ADD <mins> <user>...
+         // | RESET <user>... | SET <mins> <user>...; target carries a single
+         // user name for the SHOW case (webui passes it via talk.target)
+         dict *q = dict_new();
+
+         if (!q) {
+            Log(LOG_WARN, "chat", "quota cmd: failed to create dict");
+            return true;
+         }
+         dict_add(q, "msg.type", "quota.cmd");
+         dict_add(q, "quota.from", cptr->chatname);
+         dict_add(q, "quota.data", data ? data : "");
+
+         if (target) {
+            dict_add(q, "quota.target", target);
+         }
+         event_emit_dict("quota.cmd", cptr, q);
+         dict_free(q);
+
       } else if (strcasecmp(cmd, "kick") == 0) {
          ws_chat_cmd_kick(cptr, target, reason);
 
