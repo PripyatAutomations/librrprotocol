@@ -71,5 +71,17 @@ bool ws_handle_pong_msg(rrconn_t *cptr, dict *d) {
    time_t now = time(NULL);
    Log(LOG_CRAZY, "ws.pong", "* Pong! RTT: %lld secs *", (long long)(now - pong_ts));
 
+   // Echoed monotonic ping.ts from the server's PING: diff against our own clock for ms RTT
+   // PARITY: librrprotocol/srv.http.c ws_handle_pong()
+   long long ping_mono = dict_get_llong(d, "ping.ts", 0);
+   if (ping_mono) {
+      long long rtt_ms = (mono_us() - ping_mono) / 1000;
+      if (rtt_ms < 0) {
+         rtt_ms = 0;
+      }
+      last_ping_rtt_ms = rtt_ms;
+      Log(LOG_CRAZY, "ws.pong", "Client-side RTT: %lldms", rtt_ms);
+   }
+
    return false;
 }

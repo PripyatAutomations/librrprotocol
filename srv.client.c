@@ -75,6 +75,20 @@ rrconn_t *http_find_client_by_name(const char *name) {
    if (!name) {
       return NULL;
    }
+
+   // Trailing spaces (e.g. from tab-completion) should never cause a
+   // lookup to fail. Trim and use a local copy for the match.
+   char namebuf[HTTP_USER_LEN + 1];
+   snprintf(namebuf, sizeof(namebuf), "%s", name);
+   char *nm = namebuf;
+   while (*nm == ' ' || *nm == '\t') {
+      nm++;
+   }
+   char *end = nm + strlen(nm);
+   while (end > nm && (end[-1] == ' ' || end[-1] == '\t')) {
+      *--end = '\0';
+   }
+
    while (cptr) {
       Log(LOG_CRAZY, "http.client", "find client by name: i: %d user:<%p> chatname: %s", i, cptr->user, cptr->chatname);
 
@@ -85,7 +99,7 @@ rrconn_t *http_find_client_by_name(const char *name) {
       }
 
       // match?
-      if (strcasecmp(cptr->chatname, name) == 0) {
+      if (strcasecmp(cptr->chatname, nm) == 0) {
          Log( LOG_CRAZY, "http.client", "find client by name |%s| found match at index %d: <%p> |%s|", name, i, cptr,
             (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
 
