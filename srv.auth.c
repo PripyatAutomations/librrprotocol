@@ -326,6 +326,12 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
             client_set_flag(cptr, FLAG_CAN_TX);
          }
 
+         // Media source connections (rrmedia, fwdsp feeds, remote relays)
+         // may push binframes for the channels they subscribe to
+         if (has_priv(cptr->user->uid, "media.source") ) {
+            client_set_flag(cptr, FLAG_MEDIA_SOURCE);
+         }
+
          // client cannot transmit unless a user with elmer flag is logged in
          if (has_priv(cptr->user->uid, "noob") ) {
             client_set_flag(cptr, FLAG_NOOB);

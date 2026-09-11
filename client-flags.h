@@ -23,6 +23,10 @@
                                           // owner|admin logged in
 #define	FLAG_ELMER 0x00000800            // user is an elmer, so noobs
                                           // can TX if they are present
+#define	FLAG_MEDIA_SOURCE 0x00001000     // connection is a media source
+                                          // (audio/waterfall feed); may push
+                                          // binframes for channels it subscribed
+                                          // to with the media.source command
 
 
 static inline bool client_has_flag(rrconn_t *cptr, u_int32_t user_flag) {

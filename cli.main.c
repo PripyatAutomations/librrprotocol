@@ -549,12 +549,52 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
 
       return true;
    }
-   // RR_BINFRAME_SUBSYS_AUDIO with direction TX: feed the encoder fwdsp
-   // child (cptr->codec_tx) and rebroadcast RX-direction frames to
-   // subscribed listeners.
-   // XXX: Wire this to the fwdsp subproc fds once codec spawning is
-   // re-enabled; for now dispatch to the binary event bus so modules
-   // can listen (media.frame.audio, etc).
+
+   // Media source connections (FLAG_MEDIA_SOURCE, granted via the
+   // media.source priv and the media.cmd:source handshake) push frames
+   // for the channels they registered. The frame's (subsystem, direction,
+   // vfo, rig) must match a channel that connection is subscribed to.
+   if (is_tx_frame && client_has_flag(cptr, FLAG_MEDIA_SOURCE) ) {
+      struct rr_mediachan *cp = media_chan_find(f.hdr.subsystem, f.hdr.direction,
+         f.hdr.vfo, f.hdr.rig);
+
+      if (!cp) {
+         Log(LOG_DEBUG, "ws.media", "Dropping source frame: no channel for subsys 0x%02X dir 0x%02X vfo %u rig %u",
+            f.hdr.subsystem, f.hdr.direction, f.hdr.vfo, f.hdr.rig);
+
+         return true;
+      }
+      u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
+
+      if (!chan_id_in_array(cptr->tx_channels, MAX_TX_CHANNELS, chan_id) ) {
+         Log(LOG_AUDIT, "ws.media", "Dropping source frame from %s for unsubscribed channel %s",
+            cptr->chatname, cp->uuid);
+
+         return true;
+      }
+      // Accept the frame: the server owns the wire values when it fans out
+      // (see doc/media-frames.md); rebuild direction/seq centrally and
+      // broadcast to the subscribers of this channel's RX counterpart.
+      struct rr_mediachan *rx = media_chan_find(cp->subsystem, RR_BINFRAME_DIR_RX, cp->vfo, cp->rig);
+
+      if (rx) {
+         ws_media_broadcast_subscribed(rx, f.data, f.len, f.hdr.codec);
+      } else {
+         // No RX counterpart (e.g. a TX-only subsystem); dispatch to the
+         // event bus so the program can decide what to do with it.
+         event_emit_binary("media.frame.audio", cptr, f.data, f.len);
+      }
+      return false;
+   }
+   // TX-direction audio from a non-source client is the legacy PTT
+   // microphone path; RX-direction frames arriving at the server are
+   // bogus - drop both rather than relay them.
+   if (is_tx_frame || f.hdr.direction != RR_BINFRAME_DIR_RX) {
+      return true;
+   }
+   // RX-direction frames arriving at the server are not valid client
+   // traffic; keep dispatching to the event bus for the program (legacy
+   // fwdsp pipe path) until that's fully retired.
    return rr_binframe_dispatch(&f, cptr);
 }
 

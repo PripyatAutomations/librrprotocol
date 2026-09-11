@@ -64,8 +64,15 @@ extern bool media_send_available_all(rrconn_t *cptr);
 extern void media_channels_free(void);
 
 // Server-side handler for media.* text frames with media.cmd
-// `list`/`subscribe`/`unsubscribe`. Returns false if handled.
+// `list`/`subscribe`/`unsubscribe`/`source`. Returns false if handled.
 extern bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d);
+
+// Fan one media payload out to every connection subscribed to channel `cp`;
+// builds a binframe with server-owned header fields. Returns false on OK.
+extern bool ws_media_broadcast_subscribed(struct rr_mediachan *cp,
+   const uint8_t *payload, size_t len, const char codec[4]);
+// Is chan_id present in a rx_channels[]/tx_channels[] style array?
+extern bool chan_id_in_array(u_int32_t *arr, int max, u_int32_t chan_id);
 
 // ---------- client side ----------
 // Client -> server: ask for the current channel list (media.cmd: list)
@@ -74,5 +81,8 @@ extern bool media_send_list(rrconn_t *cptr);
 extern bool media_send_subscribe(rrconn_t *cptr, const char *uuid);
 // Client -> server: unsubscribe from a channel by uuid (media.cmd: unsubscribe)
 extern bool media_send_unsubscribe(rrconn_t *cptr, const char *uuid);
+// Client -> server: register as a media source (media.cmd: source; needs the
+// media.source priv). uuid == NULL registers for all channels.
+extern bool media_send_source(rrconn_t *cptr, const char *uuid);
 
 #endif // !defined(_ws_mediachan_h)

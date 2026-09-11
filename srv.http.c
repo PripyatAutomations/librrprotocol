@@ -297,11 +297,13 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
          Log(LOG_DEBUG, "ws.media", "media message without media.cmd from %s", cptr->chatname);
          goto cleanup;
       }
-      // Channel subscription commands: list/subscribe/unsubscribe.
-      // capab/codec/isupport are negotiated in codecneg/ws.media paths.
+      // Channel subscription commands: list/subscribe/unsubscribe and the
+      // media source registration. capab/codec/isupport are negotiated in
+      // codecneg/ws.media paths.
       if (strcasecmp(media_cmd, "list") == 0 ||
           strcasecmp(media_cmd, "subscribe") == 0 ||
-          strcasecmp(media_cmd, "unsubscribe") == 0) {
+          strcasecmp(media_cmd, "unsubscribe") == 0 ||
+          strcasecmp(media_cmd, "source") == 0) {
          result = ws_handle_mediachan_msg(cptr, d);
          goto cleanup;
       }

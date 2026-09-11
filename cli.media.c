@@ -209,3 +209,27 @@ bool media_send_unsubscribe(rrconn_t *cptr, const char *uuid) {
 
    return false;
 }
+
+// Client -> server: register this connection as a media source. Requires
+// the account to have the media.source priv. With uuid == NULL the source
+// registers for all channels; with a uuid it registers for that channel.
+// PARITY: librrprotocol/ws.mediachan.c (source handling)
+bool media_send_source(rrconn_t *cptr, const char *uuid) {
+   if (!cptr) {
+      return true;
+   }
+   dict *d = dict_new();
+   dict_add(d, "msg.type", "media");
+   dict_add(d, "media.cmd", "source");
+   dict_add_ulong(d, "media.ts", now);
+
+   if (uuid && uuid[0] != '\0') {
+      dict_add(d, "media.chan-uuid", uuid);
+   }
+   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+   dict_free(d);
+   Log(LOG_INFO, "ws.media", "Registering as media source (channel %s)",
+      (uuid && uuid[0] ? uuid : "<all>"));
+
+   return false;
+}

@@ -155,6 +155,15 @@ bool media_send_available_all(rrconn_t *cptr) {
 
 // Helper: is chan_id already in the user's channel array?
 static bool chan_in_array(u_int32_t *arr, int max, u_int32_t chan_id) {
+   return chan_id_in_array(arr, max, chan_id);
+}
+
+// Is chan_id present in a rx_channels[]/tx_channels[] style array?
+// Exported so the binary frame router can validate source subscriptions.
+bool chan_id_in_array(u_int32_t *arr, int max, u_int32_t chan_id) {
+   if (!arr || chan_id == 0) {
+      return false;
+   }
    for (int i = 0 ; i < max ; i++) {
       if (arr[i] == chan_id) {
          return true;
@@ -189,8 +198,48 @@ static void chan_del_from_array(u_int32_t *arr, int max, u_int32_t chan_id) {
    }
 }
 
-// Server-side handler for client media.* frames with media.cmd:
-// `list`, `subscribe` and `unsubscribe`. Returns false if handled.
+// Per-channel central sequence number for fan-out frames (wraps)
+static uint32_t media_seq = 0;
+
+// Fan out one media payload to every connection subscribed to channel `cp`.
+// The server owns the wire header values (see doc/media-frames.md): we set
+// the header from the channel's routing quadruple with direction RX and a
+// centrally-assigned seq; the codec magic comes from the source frame (or
+// the channel's negotiated codec).
+bool ws_media_broadcast_subscribed(struct rr_mediachan *cp, const uint8_t *payload,
+   size_t len, const char codec[4]) {
+   if (!cp || cp->uuid[0] == '\0' || !payload || len > RR_BINFRAME_MAX_PAYLOAD) {
+      return true;
+   }
+   u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
+   char codecbuf[4] = { 0 };
+
+   if (codec && codec[0] != '\0') {
+      memcpy(codecbuf, codec, 4);
+   } else if (cp->codec[0] != '\0') {
+      memcpy(codecbuf, cp->codec, 4);
+   }
+   uint8_t *frame = NULL;
+   int flen = rr_binframe_frame(&frame, cp->subsystem, codecbuf,
+      RR_BINFRAME_DIR_RX, cp->vfo, cp->rig, (uint8_t)(chan_id & 0xFF),
+      ++media_seq, mono_us(), payload, len);
+
+   if (flen < 0) {
+      return true;
+   }
+   rrconn_t *cur = http_client_list;
+
+   while (cur) {
+      if (cur->is_ws && cur->authenticated && cur->conn &&
+          chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id) ) {
+         mg_ws_send(cur->conn, frame, flen, WEBSOCKET_OP_BINARY);
+      }
+      cur = cur->next;
+   }
+   free(frame);
+
+   return false;
+}
 bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       return true;
@@ -203,7 +252,62 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       return true;
    }
 
-   if (strcasecmp(media_cmd, "list") == 0) {
+   if (strcasecmp(media_cmd, "source") == 0) {
+      // Media source registration (rrmedia, fwdsp feeds, remote relays).
+      // Must be authenticated, and the account must carry the media.source
+      // priv (checked at auth time -> FLAG_MEDIA_SOURCE). The source tells
+      // us which channel(s) it will feed; the server confirms per channel.
+      if (!cptr->authenticated || !client_has_flag(cptr, FLAG_MEDIA_SOURCE) ) {
+         Log(LOG_AUDIT, "auth", "Denied media.source from %s on cptr:<%p> (no media.source priv or unauthenticated)",
+            (cptr->chatname[0] != '\0' ? cptr->chatname : "(unknown)"), cptr);
+         ws_send_error(cptr, "Not authorized as a media source");
+
+         return true;
+      }
+      // No uuid = register as a source for all channels (like media.available
+      // suggests); with a uuid, register for that one channel.
+      client_set_flag(cptr, FLAG_MEDIA_SOURCE);   // redundant; belt & braces
+      cptr->connection_type = CONN_AUDIO_RX;      // legacy marker: feeds media
+
+      if (uuid && uuid[0] != '\0') {
+         struct rr_mediachan *cp = media_chan_find_uuid(uuid);
+
+         if (!cp) {
+            ws_send_error(cptr, "No such media channel");
+
+            return true;
+         }
+         // A source subscribes to its feed channel in the push direction
+         u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
+         bool oom = (cp->direction == RR_BINFRAME_DIR_TX ?
+            chan_add_to_array(cptr->tx_channels, MAX_TX_CHANNELS, chan_id) :
+            chan_add_to_array(cptr->rx_channels, MAX_RX_CHANNELS, chan_id) );
+
+         if (oom) {
+            ws_send_error(cptr, "Too many media subscriptions");
+
+            return true;
+         }
+      }
+      dict *ack = dict_new();
+      dict_add(ack, "msg.type", "media");
+      dict_add(ack, "media.cmd", "source-ok");
+      dict_add_ulong(ack, "media.ts", now);
+
+      if (uuid && uuid[0] != '\0') {
+         dict_add(ack, "media.chan-uuid", uuid);
+      }
+      ws_send_dict(NULL, cptr, ack, WEBSOCKET_OP_TEXT);
+      dict_free(ack);
+      Log(LOG_INFO, "ws.media", "Media source registered: %s (cptr:<%p>, channel %s)",
+         cptr->chatname, cptr, (uuid && uuid[0] ? uuid : "<all>"));
+
+      // Let the program (rrserver) know a source joined, e.g. to hook the
+      // fwdsp pipeline up to this connection.
+      event_emit_dict("media.source", cptr, d);
+
+      return false;
+   } else if (strcasecmp(media_cmd, "list") == 0) {
       // Client wants the (possibly updated) channel list
       media_send_available_all(cptr);
 
