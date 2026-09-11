@@ -92,13 +92,8 @@ irc_message_t *irc_parse_message(const char *msg) {
          if (space) {
             *space = '\0';
          }
-         argv = realloc( argv, sizeof(char*) * (argc + 1) );
-
-         // XXX: make this more graceful
-         if (argv == NULL) {
-            abort();
-         }
-         argv[argc++] = strdup(s);
+         argv = xrealloc(argv, sizeof(char*) * (argc + 1));
+         argv[argc++] = xstrdup(s);
          s = space ? space + 1 : NULL;
       }
    }
@@ -112,22 +107,11 @@ irc_message_t *irc_parse_message(const char *msg) {
          break;
       }
       // resize the array
-      // XXX: Do we need to sanitize the new
-//      char *old_argv = argv;
-      argv = realloc( argv, sizeof(char*) * (argc + 1) );
+      argv = xrealloc(argv, sizeof(char*) * (argc + 1));
 
-      // XXX: make this more graceful
-      if (argv == NULL) {
-         abort();
-      }
-
-//      if (argv != old_argv) {
-      // we reallocated the string somewhere else
-//      } else {
-// }
       if (*s == ':') {
          s++;
-         argv[argc++] = strdup(s);
+         argv[argc++] = xstrdup(s);
          break;
       } else {
          char *space = strchr(s, ' ');
@@ -135,7 +119,7 @@ irc_message_t *irc_parse_message(const char *msg) {
          if (space) {
             *space = '\0';
          }
-         argv[argc++] = strdup(s);
+         argv[argc++] = xstrdup(s);
          s = space ? space + 1 : NULL;
       }
    }
