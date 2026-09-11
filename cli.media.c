@@ -20,6 +20,9 @@
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/codecneg.h>
 #include <librrprotocol/ws.h>
+#include <librrprotocol/ws.mediachan.h>
+
+// PARITY: librrprotocol/ws.mediachan.c (server side of the same messages)
 
 // Negotiation state for the connection; single-server client for now
 static char cli_common_codecs[256] = { 0 };
@@ -154,4 +157,55 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
    Log(LOG_DEBUG, "ws.media", "Unhandled media cmd: |%s|", media_cmd);
 
    return true;
+}
+
+// Client -> server: ask for the current media channel list
+// PARITY: librrprotocol/ws.mediachan.c (list handling)
+bool media_send_list(rrconn_t *cptr) {
+   if (!cptr) {
+      return true;
+   }
+   dict *d = dict_new();
+   dict_add(d, "msg.type", "media");
+   dict_add(d, "media.cmd", "list");
+   dict_add_ulong(d, "media.ts", now);
+   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+   dict_free(d);
+
+   return false;
+}
+
+// Client -> server: subscribe to a media channel by uuid
+// PARITY: rustyrig-www/js/webui.media.js (subscribeMediaChannel)
+bool media_send_subscribe(rrconn_t *cptr, const char *uuid) {
+   if (!cptr || !uuid || uuid[0] == '\0') {
+      Log(LOG_WARN, "ws.media", "media_send_subscribe: invalid args");
+      return true;
+   }
+   dict *d = dict_new();
+   dict_add(d, "msg.type", "media");
+   dict_add(d, "media.cmd", "subscribe");
+   dict_add(d, "media.chan-uuid", uuid);
+   dict_add_ulong(d, "media.ts", now);
+   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+   dict_free(d);
+   Log(LOG_INFO, "ws.media", "Subscribing to media channel |%s|", uuid);
+
+   return false;
+}
+
+// Client -> server: unsubscribe from a media channel by uuid
+bool media_send_unsubscribe(rrconn_t *cptr, const char *uuid) {
+   if (!cptr || !uuid || uuid[0] == '\0') {
+      return true;
+   }
+   dict *d = dict_new();
+   dict_add(d, "msg.type", "media");
+   dict_add(d, "media.cmd", "unsubscribe");
+   dict_add(d, "media.chan-uuid", uuid);
+   dict_add_ulong(d, "media.ts", now);
+   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+   dict_free(d);
+
+   return false;
 }

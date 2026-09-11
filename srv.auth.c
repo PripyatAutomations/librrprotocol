@@ -380,6 +380,10 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          } else {
             Log(LOG_CRIT, "ws.media", ">> No codecs negotiated");
          }
+         // Tell the client which media channels (RX/TX audio per VFO, etc)
+         // exist so it can subscribe; the event is handled by the program's
+         // media module which owns the channel registry.
+         event_emit("send-media-channels", cptr, "");
          /////////////////////
          // XXX: We should move this out to it's own function like
          // join_channel(cptr, "&localrig");

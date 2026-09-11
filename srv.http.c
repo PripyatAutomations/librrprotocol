@@ -288,8 +288,24 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
             (hello_hwver ? hello_hwver : "generic"));
       }
    } else if (strcasecmp(msg_type, "media") == 0) {
-      // AUDIO/VIDEO MEDIA RELATED
+      // AUDIO/VIDEO MEDIA RELATED. media.cmd values are handled by the
+      // codec negotiation (cli/srv media handlers) and the media channel
+      // (subscribe) protocol in ws.mediachan.c
       const char *media_cmd = dict_get(d, "media.cmd", NULL);
+
+      if (!media_cmd) {
+         Log(LOG_DEBUG, "ws.media", "media message without media.cmd from %s", cptr->chatname);
+         goto cleanup;
+      }
+      // Channel subscription commands: list/subscribe/unsubscribe.
+      // capab/codec/isupport are negotiated in codecneg/ws.media paths.
+      if (strcasecmp(media_cmd, "list") == 0 ||
+          strcasecmp(media_cmd, "subscribe") == 0 ||
+          strcasecmp(media_cmd, "unsubscribe") == 0) {
+         result = ws_handle_mediachan_msg(cptr, d);
+         goto cleanup;
+      }
+      Log(LOG_DEBUG, "ws.media", "Unhandled media cmd |%s| from %s", media_cmd, cptr->chatname);
    } else if (strcasecmp(msg_type, "ping") == 0) {
       // PING request
       const char *ping = dict_get(d, "ping", NULL);

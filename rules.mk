@@ -44,6 +44,7 @@ librrprotocol_objs += srv.irc.core.o
 librrprotocol_objs += srv.ping.o
 librrprotocol_objs += srv.rigctl.o
 librrprotocol_objs += srv.send.o
+librrprotocol_objs += ws.mediachan.o
 librrprotocol_objs += vfo.o
 #librrprotocol_objs += ws.audio.o
 # This needs merged into various other files...
