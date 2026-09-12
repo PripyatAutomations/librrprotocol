@@ -188,6 +188,9 @@ bool rr_binframe_dispatch(struct rr_binframe *f, void *ctx) {
       case RR_BINFRAME_SUBSYS_CONTROL:
          evname = "media.frame.control";
          break;
+      case RR_BINFRAME_SUBSYS_LOG:
+         evname = "media.frame.log";
+         break;
       case RR_BINFRAME_SUBSYS_KEEPALIVE:
          Log(LOG_DEBUG, "binframe", "keepalive frame seq=%u", f->hdr.seq);
          return false;
@@ -198,4 +201,43 @@ bool rr_binframe_dispatch(struct rr_binframe *f, void *ctx) {
    }
    event_emit_binary(evname, (rrconn_t *)ctx, f->data, f->len);
    return false;
+}
+
+// Pack a host log line into a SUBSYS_LOG binframe. The payload is a
+// fixed RR_LOGFRAME_HDR_LEN header (prio byte + NUL-padded subsys)
+// followed by the NUL-terminated log message, unmangled. Called from
+// the server's log callback (rrserver/hostlog.c); consumers parse it
+// back in the client (PARITY: rrclient/gtk.syslog.c host_log_frame_handler).
+int rr_logframe_frame(uint8_t **out, logpriority_t priority,
+   const char *subsys, const char *msg, size_t msg_len,
+   uint32_t seq, uint64_t ts) {
+   if (!out || !subsys || !msg) {
+      return -1;
+   }
+   size_t plen = RR_LOGFRAME_HDR_LEN + msg_len + 1;
+
+   if (plen > RR_BINFRAME_MAX_PAYLOAD) {
+      // Truncate over-long log lines rather than dropping them; a log
+      // viewer losing a tail is better than losing the line entirely.
+      plen = RR_BINFRAME_MAX_PAYLOAD;
+      msg_len = plen - RR_LOGFRAME_HDR_LEN - 1;
+   }
+   uint8_t *payload = malloc(plen);
+
+   if (!payload) {
+      Log(LOG_CRIT, "binframe", "OOM packing logframe");
+      return -1;
+   }
+   memset(payload, 0, plen);
+   payload[0] = (uint8_t)priority;
+   snprintf((char *)payload + 1, sizeof(struct rr_logframe) - 1, "%s", subsys);
+   memcpy(payload + RR_LOGFRAME_HDR_LEN, msg, msg_len);
+   // payload[RR_LOGFRAME_HDR_LEN + msg_len] is already NUL
+
+   int flen = rr_binframe_frame(out, RR_BINFRAME_SUBSYS_LOG, "text",
+      RR_BINFRAME_DIR_RX, RR_BINFRAME_VFO_NA, RR_BINFRAME_RIG_NA,
+      RR_BINFRAME_STREAM_NONE, seq, ts, payload, plen);
+   free(payload);
+
+   return flen;
 }

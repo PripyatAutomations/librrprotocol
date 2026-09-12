@@ -17,6 +17,7 @@
 #if     !defined(_ws_binframe_h)
 #define	_ws_binframe_h
 #include <librustyaxe/config.h>
+#include <librustyaxe/logger.h>
 #include <stdint.h>
 #include <stddef.h>
 
@@ -30,6 +31,7 @@
 #define	RR_BINFRAME_SUBSYS_MODEM	0x04
 #define	RR_BINFRAME_SUBSYS_FILE		0x05
 #define	RR_BINFRAME_SUBSYS_CONTROL	0x06
+#define	RR_BINFRAME_SUBSYS_LOG		0x07
 #define	RR_BINFRAME_SUBSYS_KEEPALIVE	0xFF
 
 // Direction byte (hdr.direction), sender's perspective
@@ -94,5 +96,23 @@ extern int rr_binframe_frame(uint8_t **out, uint8_t subsystem, const char codec[
 // Emits event_emit_binary("media.frame.<subsystem>", cptr, data, len).
 // Returns false if handled, true if dropped/unhandled.
 extern bool rr_binframe_dispatch(struct rr_binframe *f, void *ctx);
+
+// Host log line framing (SUBSYS_LOG payload). The log subsystem (ts,
+// priority, subsys) rides in a fixed NUL-padded header so the payload is
+// an unmangled NUL-terminated log line; see rrserver/hostlog.c.
+// PARITY: rrclient/gtk.syslog.c host_log_frame_handler()
+struct rr_logframe {
+   uint8_t  prio;                        // logpriority_t cast to uint8_t
+   char     subsys[16];                  // NUL padded log subsystem
+   // payload: the log message, NUL terminated (no trailing newline)
+};
+#define	RR_LOGFRAME_HDR_LEN	17        // 1 + 16
+
+// Pack a log line into a SUBSYS_LOG binframe (malloc'd, returned via
+// *out; total frame length returned, or -1). seq/ts are filled by the
+// caller (or 0/0 to let the transport decide).
+extern int rr_logframe_frame(uint8_t **out, logpriority_t priority,
+   const char *subsys, const char *msg, size_t msg_len,
+   uint32_t seq, uint64_t ts);
 
 #endif // !defined(_ws_binframe_h)
