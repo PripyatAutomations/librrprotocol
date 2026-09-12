@@ -117,6 +117,51 @@ void media_channels_free(void) {
    memset(media_channels, 0, sizeof(media_channels) );
 }
 
+// Remove a channel by uuid; returns false on OK. Does not notify clients -
+// pair with media_send_chan_removed_all() when the removal is user-visible.
+bool media_chan_remove(const char *uuid) {
+   struct rr_mediachan *cp = media_chan_find_uuid(uuid);
+
+   if (!cp) {
+      return true;
+   }
+   Log(LOG_INFO, "ws.media", "Removed media channel %s (subsys 0x%02X dir %s vfo %u rig %u)",
+      cp->uuid, cp->subsystem, (cp->direction == RR_BINFRAME_DIR_TX ? "tx" : "rx"),
+      cp->vfo, cp->rig);
+   memset(cp, 0, sizeof(*cp) );
+
+   return false;
+}
+
+// Send one media.chan-remove message for channel `cp` to client `cptr`
+bool media_send_chan_removed(rrconn_t *cptr, struct rr_mediachan *cp) {
+   if (!cptr || !cp || cp->uuid[0] == '\0') {
+      return true;
+   }
+   dict *d = dict_new();
+   dict_add(d, "msg.type", "media");
+   dict_add(d, "media.cmd", "chan-remove");
+   dict_add(d, "media.chan-uuid", cp->uuid);
+   dict_add_ulong(d, "media.ts", now);
+   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+   dict_free(d);
+
+   return false;
+}
+
+// Notify every connected client that channel `cp` was removed
+void media_send_chan_removed_all(struct rr_mediachan *cp) {
+   if (!cp || cp->uuid[0] == '\0') {
+      return;
+   }
+   rrconn_t *cur = http_client_list;
+
+   while (cur) {
+      media_send_chan_removed(cur, cp);
+      cur = cur->next;
+   }
+}
+
 // Send one media.available message to a client
 bool media_send_available(rrconn_t *cptr, struct rr_mediachan *cp) {
    if (!cptr || !cp || cp->uuid[0] == '\0') {
@@ -315,12 +360,30 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
    } else if (strcasecmp(media_cmd, "subscribe") == 0) {
       struct rr_mediachan *cp = media_chan_find_uuid(uuid);
 
+      // PARITY: rustyrig-www/js/webui.media.js (subscribeMediaChannel)
+      // A subscribe without a (known) uuid is a channel creation request:
+      // the client tells us what to make via media.subsys/dir/vfo/rig (the
+      // routing quadruple), we generate the uuid per the existing logic in
+      // media_chan_add(). Defaults: RX audio on the first rig.
       if (!cp) {
-         Log(LOG_WARN, "ws.media", "Subscribe for unknown channel |%s| from %s",
-            (uuid ? uuid : "<null>"), cptr->chatname);
-         ws_send_error(cptr, "No such media channel");
+         uint32_t subsys = dict_get_ulong(d, "media.subsys", RR_BINFRAME_SUBSYS_AUDIO);
+         uint32_t dir = dict_get_ulong(d, "media.dir", RR_BINFRAME_DIR_RX);
+         uint32_t vfo = dict_get_ulong(d, "media.vfo", 0);
+         uint32_t rig = dict_get_ulong(d, "media.rig", 0);
+         const char *descr = dict_get(d, "media.descr", NULL);
+         const char *codec = dict_get(d, "media.codec", NULL);
 
-         return true;
+         cp = media_chan_add( (uint8_t)subsys, (uint8_t)dir, (uint8_t)vfo,
+            (uint8_t)rig, codec, descr);
+
+         if (!cp) {
+            Log(LOG_WARN, "ws.media", "Subscribe-create failed for %s (table full?)", cptr->chatname);
+            ws_send_error(cptr, "No such media channel");
+
+            return true;
+         }
+         // Tell everyone (including the requester) about the new channel
+         media_send_available_all(cptr);
       }
       // Channel id is 1 + table index; 0 means "no channel" in the
       // rx_channels/tx_channels arrays
@@ -360,6 +423,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       struct rr_mediachan *cp = media_chan_find_uuid(uuid);
 
       if (!cp) {
+         ws_send_error(cptr, "No such media channel");
          return true;
       }
       u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
@@ -369,6 +433,13 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       } else {
          chan_del_from_array(cptr->rx_channels, MAX_RX_CHANNELS, chan_id);
       }
+      dict *unsub = dict_new();
+      dict_add(unsub, "msg.type", "media");
+      dict_add(unsub, "media.cmd", "unsubscribed");
+      dict_add(unsub, "media.chan-uuid", cp->uuid);
+      dict_add_ulong(unsub, "media.ts", now);
+      ws_send_dict(NULL, cptr, unsub, WEBSOCKET_OP_TEXT);
+      dict_free(unsub);
       Log(LOG_DEBUG, "ws.media", "Unsubscribed %s from channel %s", cptr->chatname, cp->uuid);
 
       return false;

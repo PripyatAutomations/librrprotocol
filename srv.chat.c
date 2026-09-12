@@ -736,6 +736,55 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
       } else if (strcasecmp(cmd, "syslog") == 0) {
          ws_chat_cmd_syslog(cptr, target);
 
+      } else if (strcasecmp(cmd, "media") == 0) {
+         // Media channel admin: /media LIST | SUBSCRIBE <uuid|#> |
+         // UNSUBSCRIBE <uuid|#> | REMOVE <uuid|#>. LIST/SUBSCRIBE/UNSUBSCRIBE
+         // are available to any authenticated user; REMOVE needs admin|owner.
+         // PARITY: rustyrig-www/js/webui.media.js (channel management)
+         char sub[32] = "LIST";
+         char marg[64] = "";
+
+         if (data && data[0] != '\0') {
+            size_t i = 0;
+
+            while (*data && !isspace( (unsigned char)*data) && i < sizeof(sub) - 1) {
+               sub[i++] = *data++;
+            }
+            sub[i] = '\0';
+            while (isspace( (unsigned char)*data) ) {
+               data++;
+            }
+            strlcpy(marg, data, sizeof(marg) );
+         }
+         if (strcasecmp(sub, "REMOVE") == 0 && !has_priv(cptr->user->uid, "admin|owner") ) {
+            ws_chat_err_noprivs(cptr, "MEDIA REMOVE");
+            return true;
+         }
+         dict *m = dict_new();
+
+         if (!m) {
+            return true;
+         }
+         if (strcasecmp(sub, "REMOVE") == 0) {
+            // Server program (rrserver) owns removal: it notifies all clients
+            // via media.chan-remove and clears the registry entry.
+            dict_add(m, "media.chan-uuid", marg);
+            event_emit_dict("remove-media-channel", cptr, m);
+            dict_free(m);
+
+            return false;
+         }
+         dict_add(m, "msg.type", "media");
+         dict_add(m, "media.cmd", strcasecmp(sub, "UNSUBSCRIBE") == 0 ? "unsubscribe" :
+                                 (strcasecmp(sub, "SUBSCRIBE") == 0 ? "subscribe" : "list"));
+         dict_add_ulong(m, "media.ts", now);
+
+         if (marg[0] != '\0') {
+            dict_add(m, "media.chan-uuid", marg);
+         }
+         ws_handle_mediachan_msg(cptr, m);
+         dict_free(m);
+
       } else if (strcasecmp(cmd, "unmute") == 0) {
          ws_chat_cmd_unmute(cptr, target);
       }

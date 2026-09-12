@@ -9,7 +9,7 @@
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 //
 // Protocol: media.* text frames with media.cmd of `available`, `list`,
-// `subscribe`, `unsubscribe` or `subscribed`. See doc/media-channels.md
+// `subscribe`, `unsubscribe`, `subscribed` or `chan-remove`. See doc/media-channels.md
 //
 // A media channel is one direction of media (RX or TX) for one subsystem
 // (audio, video, waterfall, modem...) on one rig/VFO, exactly matching
@@ -56,6 +56,13 @@ extern struct rr_mediachan *media_chan_find(uint8_t subsystem, uint8_t direction
    uint8_t vfo, uint8_t rig);
 // Find by uuid
 extern struct rr_mediachan *media_chan_find_uuid(const char *uuid);
+// Remove a channel by uuid. Returns false on OK. Does not notify clients -
+// pair with media_send_chan_removed_all() when the removal is user-visible.
+extern bool media_chan_remove(const char *uuid);
+// Send a media.chan-remove message for channel `cp` to client `cptr`
+extern bool media_send_chan_removed(rrconn_t *cptr, struct rr_mediachan *cp);
+// Notify every connected client that channel `cp` was removed
+extern void media_send_chan_removed_all(struct rr_mediachan *cp);
 // Send a media.available message for channel `cp` to client `cptr`
 extern bool media_send_available(rrconn_t *cptr, struct rr_mediachan *cp);
 // Send media.available for every registered channel to client `cptr`
