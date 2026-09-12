@@ -229,6 +229,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
                   Log(LOG_AUDIT, "ptt", "User %s halted noob %s; noob cooldown %d sec",
                      cptr->chatname, talker->chatname, cfg_noob_cooldown);
                   talker->is_ptt = false;
+                  talker->ptt_vfo = 0;
                   talker->noob_cooldown = now + cfg_noob_cooldown;
                   // Same path as MUTE uses to force TX off
                   event_emit("ptt.off", NULL, NULL);

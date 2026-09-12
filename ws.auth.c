@@ -40,6 +40,17 @@ bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
    const char *user = dict_get(d, "auth.user", NULL);
    time_t ts = dict_get_time_t(d, "auth.ts", now);
 
+   // An auth error (e.g. kicked: invalid login/password) is fatal for this
+   // session. Emit an event for the program/UI and don't process further.
+   // PARITY: www/js/webui.auth.js webui_parse_auth_msg() error branch
+   const char *error = dict_get(d, "auth.error", NULL);
+
+   if (error) {
+      event_emit_dict("auth.error", NULL, d);
+      rv = true;
+      goto cleanup;
+   }
+
    // Must always send a command and username during auth
    if (!cmd || !user) {
       rv = true;
