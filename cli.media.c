@@ -153,6 +153,14 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
          (media_codecs ? media_codecs : "<none>"), (media_preferred ? media_preferred : "<none>"));
 
       return false;
+   } else if (strcasecmp(media_cmd, "available") == 0 ||
+              strcasecmp(media_cmd, "subscribed") == 0 ||
+              strcasecmp(media_cmd, "unsubscribed") == 0 ||
+              strcasecmp(media_cmd, "chan-remove") == 0) {
+      // Channel subscription notifications: handled by the program via the
+      // ws.msg.media event (PARITY: rrclient/events.c rrclient_handle_media);
+      // nothing to do at the wire level here, so don't log it as unhandled.
+      return false;
    }
    Log(LOG_DEBUG, "ws.media", "Unhandled media cmd: |%s|", media_cmd);
 
