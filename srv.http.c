@@ -303,7 +303,8 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       if (strcasecmp(media_cmd, "list") == 0 ||
           strcasecmp(media_cmd, "subscribe") == 0 ||
           strcasecmp(media_cmd, "unsubscribe") == 0 ||
-          strcasecmp(media_cmd, "source") == 0) {
+          strcasecmp(media_cmd, "source") == 0 ||
+          strcasecmp(media_cmd, "codec") == 0) {
          result = ws_handle_mediachan_msg(cptr, d);
          goto cleanup;
       }
