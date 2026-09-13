@@ -47,11 +47,6 @@
 // Frames must fit within the websocket max message limit
 #define	RR_BINFRAME_MAX_PAYLOAD		(HTTP_WS_MAX_MSG - RR_BINFRAME_HDR_LEN)
 
-// Legacy subsystem values, kept for the old bin_frame_header_t users
-#define	BINFRAME_AUDIO RR_BINFRAME_SUBSYS_AUDIO
-#define	BINFRAME_VIDEO RR_BINFRAME_SUBSYS_VIDEO
-#define	BINFRAME_FILE  RR_BINFRAME_SUBSYS_FILE
-
 struct rr_binframe_hdr {
    uint8_t  magic[2];                    // 'R','R'
    uint8_t  version;                     // RR_BINFRAME_VERSION

@@ -57,36 +57,6 @@ int rr_binframe_pack_hdr(uint8_t *out, size_t outlen, uint8_t subsystem,
    return RR_BINFRAME_HDR_LEN;
 }
 
-// Is this one of the legacy formats that predate the v2 header?
-// Returns: 0 = not legacy, 1 = legacy 4-byte audio framing,
-// 2 = legacy 24-byte file-xfer framing, -1 = unrecognized garbage
-static int legacy_frame_check(const uint8_t *buf, size_t len) {
-   if (len < 4) {
-      return -1;
-   }
-   // ws.file-xfer.c chunk: 8-byte id then 4-byte chunk index; the top
-   // two bytes of an id are effectively random, not 'RR'
-   if (len >= 24) {
-      // Heuristic: chunk index is sane (< 2^24 chunks) and id is nonzero
-      uint32_t idx;
-      memcpy(&idx, buf + 8, sizeof(idx));
-      if (idx < 0x01000000) {
-         return 2;
-      }
-   }
-   // old audio framing: uint16 chan then uint16 seq (big-endian)
-   uint16_t chan, seq;
-   memcpy(&chan, buf, sizeof(chan));
-   memcpy(&seq, buf + 2, sizeof(seq));
-   chan = ntohs(chan);
-   seq = ntohs(seq);
-
-   if (chan != rr_binframe_magic[0] * 256 + rr_binframe_magic[1]) {
-      return 1;
-   }
-   return -1;
-}
-
 int rr_binframe_parse(const uint8_t *buf, size_t len, struct rr_binframe *f) {
    if (!buf || !f || len < RR_BINFRAME_HDR_LEN) {
       return -1;
@@ -94,7 +64,8 @@ int rr_binframe_parse(const uint8_t *buf, size_t len, struct rr_binframe *f) {
    memset(f, 0, sizeof(*f));
 
    if (buf[0] != rr_binframe_magic[0] || buf[1] != rr_binframe_magic[1]) {
-      return legacy_frame_check(buf, len);
+      Log(LOG_DEBUG, "binframe", "Dropping frame with bad magic %02X%02X", buf[0], buf[1]);
+      return -1;
    }
    if (buf[2] != RR_BINFRAME_VERSION) {
       Log(LOG_DEBUG, "binframe", "Dropping frame with unknown version %u", buf[2]);
