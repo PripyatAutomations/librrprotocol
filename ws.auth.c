@@ -161,6 +161,15 @@ bool ws_send_hello(rrconn_t *cptr) {
    dict *hello = dict_new();
    dict_add(hello, "msg.type", "hello");
    dict_add(hello, "hello.swver", VERSION);
+   dict_add(hello, "hello.hwver", HARDWARE);
+   // Connections which aren't ordinary users (e.g. webcam feeds) announce a
+   // role; the server flags them and keeps them out of the user lists.
+   // PARITY: librrprotocol/srv.http.c (hello.role parsing)
+   const char *role = cfg_get("client.role");
+
+   if (role && role[0] != '\0') {
+      dict_add(hello, "hello.role", (char *)role);
+   }
    ws_send_dict(NULL, cptr, hello, WEBSOCKET_OP_TEXT);
    dict_free(hello);
 

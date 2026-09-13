@@ -287,6 +287,17 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
          snprintf(cptr->cli_version, HTTP_UA_LEN, "%s@%s", (hello_swver ? hello_swver : "unknown"),
             (hello_hwver ? hello_hwver : "generic"));
       }
+      // hello.role marks connections which are not ordinary chat users (e.g.
+      // video-source webcams); they get their own flag and are excluded from
+      // the user list so they don't show up alongside normal users.
+      // PARITY: librrprotocol/cli.main.c ws_send_hello() (client side sender)
+      const char *hello_role = dict_get(d, "hello.role", NULL);
+
+      if (hello_role && strcasecmp(hello_role, "video-source") == 0) {
+         client_set_flag(cptr, FLAG_VIDEO_SOURCE);
+         Log(LOG_INFO, "ws", "Client at cptr:<%p> announced hello.role: video-source", cptr);
+      }
+      event_emit_dict("hello", cptr, d);
    } else if (strcasecmp(msg_type, "media") == 0) {
       // AUDIO/VIDEO MEDIA RELATED. media.cmd values are handled by the
       // codec negotiation (cli/srv media handlers) and the media channel
@@ -385,7 +396,17 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
       ws_binframe_process_mg(cptr, msg->data.buf, msg->data.len);
    } else {
       // Text (mostly json) frames
-      Log(LOG_CRAZY, "ws.frame.txt", "Incoming Text frame: %li bytes: %.*s", msg->data.len, msg->data.len, msg->data.buf);
+      Log(LOG_CRAZY, "ws.frame.txt", "Incoming Text frame: %li bytes: %.*s", msg->data.len, (int) msg->data.len, msg->data.buf);
+
+      // Drop oversized frames: copying into our fixed buffer without this
+      // check smashed the stack/heap and later crashed mg_iobuf_free
+      // ("double free or corruption") when the connection closed.
+      if (msg->data.len > HTTP_WS_MAX_MSG) {
+         Log(LOG_WARN, "http.ws", "Dropping oversized WS text frame (%zu bytes > %d) from cptr:<%p>",
+            msg->data.len, HTTP_WS_MAX_MSG, cptr);
+         return true;
+      }
+
       struct mg_str msg_data = msg->data;
       char buf[HTTP_WS_MAX_MSG + 1];
       memset( buf, 0, sizeof(buf) );

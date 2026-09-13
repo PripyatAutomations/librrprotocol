@@ -248,6 +248,13 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          // Text (mostly json) frames
          struct mg_str msg_data = wm->data;
 
+         // Drop oversized frames: copying into our fixed buffer without this
+         // check corrupts memory (seen as a crash in mg_iobuf_free on close)
+         if (msg_data.len > HTTP_WS_MAX_MSG) {
+            Log(LOG_WARN, "rrprotocol.ws", "Dropping oversized WS text frame (%zu bytes)", msg_data.len);
+            return;
+         }
+
          // Copy to a null terminated buffer
          char buf[HTTP_WS_MAX_MSG + 1];
          memset( buf, 0, sizeof(buf) );
@@ -541,7 +548,8 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    // media.source priv and the media.cmd:source handshake) push frames
    // for the channels they registered. The frame's (subsystem, direction,
    // vfo, rig) must match a channel that connection is subscribed to.
-   if (is_tx_frame && client_has_flag(cptr, FLAG_MEDIA_SOURCE) ) {
+   if (is_tx_frame &&
+       (client_has_flag(cptr, FLAG_MEDIA_SOURCE) || client_has_flag(cptr, FLAG_VIDEO_SOURCE) ) ) {
       struct rr_mediachan *cp = media_chan_find(f.hdr.subsystem, f.hdr.direction,
          f.hdr.vfo, f.hdr.rig);
 

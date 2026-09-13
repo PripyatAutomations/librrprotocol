@@ -302,8 +302,9 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       // Must be authenticated, and the account must carry the media.source
       // priv (checked at auth time -> FLAG_MEDIA_SOURCE). The source tells
       // us which channel(s) it will feed; the server confirms per channel.
-      if (!cptr->authenticated || !client_has_flag(cptr, FLAG_MEDIA_SOURCE) ) {
-         Log(LOG_AUDIT, "auth", "Denied media.source from %s on cptr:<%p> (no media.source priv or unauthenticated)",
+      if (!cptr->authenticated ||
+          !(client_has_flag(cptr, FLAG_MEDIA_SOURCE) || client_has_flag(cptr, FLAG_VIDEO_SOURCE) ) ) {
+         Log(LOG_AUDIT, "auth", "Denied media.source from %s on cptr:<%p> (no media.source/video-source priv or unauthenticated)",
             (cptr->chatname[0] != '\0' ? cptr->chatname : "(unknown)"), cptr);
          ws_send_error(cptr, "Not authorized as a media source");
 
@@ -455,6 +456,16 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          return true;
       }
       struct rr_mediachan *cp = (uuid ? media_chan_find_uuid(uuid) : NULL);
+      // Direction comes as media.channel: "rx"/"tx" (client) or media.dir (n).
+      // PARITY: librrprotocol/cli.media.c media_send_codec_select() sends media.channel
+      const char *channel = dict_get(d, "media.channel", NULL);
+      uint32_t dir = RR_BINFRAME_DIR_NA;
+
+      if (channel) {
+         dir = (strcasecmp(channel, "tx") == 0 ? RR_BINFRAME_DIR_TX : RR_BINFRAME_DIR_RX);
+      } else {
+         dir = dict_get_ulong(d, "media.dir", (uuid && cp ? cp->direction : RR_BINFRAME_DIR_RX));
+      }
 
       if (cp) {
          snprintf(cp->codec, sizeof(cp->codec), "%s", codec);
@@ -465,8 +476,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
 
       if (sel) {
          dict_add(sel, "media.codec", codec);
-         dict_add_ulong(sel, "media.dir", dict_get_ulong(d, "media.dir",
-            (uuid && cp ? cp->direction : RR_BINFRAME_DIR_RX)) );
+         dict_add_ulong(sel, "media.dir", dir);
          if (uuid && cp) {
             dict_add(sel, "media.chan-uuid", cp->uuid);
          }
@@ -478,7 +488,9 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       if (ack) {
          dict_add(ack, "msg.type", "media");
          dict_add(ack, "media.cmd", "isupport");
-         dict_add(ack, "media.codec", codec);
+         // PARITY: rrclient/events.c + cli.media.c read media.preferred/media.codecs
+         dict_add(ack, "media.codecs", codec);
+         dict_add(ack, "media.preferred", codec);
          dict_add_ulong(ack, "media.ts", now);
          if (cp) {
             dict_add(ack, "media.chan-uuid", cp->uuid);

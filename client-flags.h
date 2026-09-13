@@ -27,6 +27,10 @@
                                           // (audio/waterfall feed); may push
                                           // binframes for channels it subscribed
                                           // to with the media.source command
+#define	FLAG_VIDEO_SOURCE 0x00002000     // connection is a video source (webcam
+                                          // etc); announced via hello.role =
+                                          // video-source and hidden from the
+                                          // normal chat/user lists
 
 
 static inline bool client_has_flag(rrconn_t *cptr, u_int32_t user_flag) {

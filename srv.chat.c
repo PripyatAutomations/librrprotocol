@@ -166,6 +166,11 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
    if (!cptr || !cptr->authenticated || !cptr->user) {
       return true;
    }
+   // Video sources (webcam etc announcing hello.role: video-source) are not
+   // users; keep them out of the chat/user lists
+   if (client_has_flag(cptr, FLAG_VIDEO_SOURCE) ) {
+      return true;
+   }
    dict *talk_msg = dict_new();
    dict_add(talk_msg, "msg.type", "talk");
    dict_add(talk_msg, "talk.privs", cptr->user->privs);

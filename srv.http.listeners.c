@@ -168,7 +168,14 @@ bool http_init(struct mg_mgr *mgr) {
 
    if (!mg_http_listen(mgr, listen_addr, ws_http_cb, NULL) ) {
       Log(LOG_CRIT, "http", "Failed to start http listener -- is program already running or something else listening on port %d?", bind_port);
-      exit(1);
+
+      // If net.http.required is set, exit cleanly rather than limping along
+      if ( cfg_get_bool("net.http.required", false) ) {
+         Log(LOG_CRIT, "http", "net.http.required is set, exiting");
+         exit(EXIT_FAILURE);
+      }
+
+      Log(LOG_CRIT, "http", "Continuing without http listener (net.http.required is false)");
    }
 
    Log( LOG_INFO, "http", "HTTP listening at %s with www-root at %s", listen_addr,
@@ -202,7 +209,14 @@ bool http_init(struct mg_mgr *mgr) {
       if (!mg_http_listen(mgr, tls_listen_addr, ws_http_cb, NULL) ) {
          Log(LOG_CRIT, "http", "Failed to start https listener -- is program already running or something else listening on port %d?",
             tls_bind_port);
-         exit(1);
+
+         // If net.http.required is set, exit cleanly rather than limping along
+         if ( cfg_get_bool("net.http.required", false) ) {
+            Log(LOG_CRIT, "http", "net.http.required is set, exiting");
+            exit(EXIT_FAILURE);
+         }
+
+         Log(LOG_CRIT, "http", "Continuing without https listener (net.http.required is false)");
       }
       Log( LOG_INFO, "http", "HTTPS listening at %s with www-root at %s", tls_listen_addr,
          (cfg_www_root ? cfg_www_root : WWW_ROOT_FALLBACK) );
