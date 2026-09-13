@@ -77,8 +77,7 @@ extern int rr_binframe_pack_hdr(uint8_t *out, size_t outlen, uint8_t subsystem,
    uint8_t stream, uint32_t seq, uint32_t payload_len, uint64_t ts);
 
 // Parse and validate a frame from buf. Returns 0 and fills f on
-// success (f->data points into buf), >0 if this is a legacy frame (see
-// doc/media-frames.md), -1 on invalid/unparseable data.
+// success (f->data points into buf), -1 on invalid/unparseable data.
 extern int rr_binframe_parse(const uint8_t *buf, size_t len, struct rr_binframe *f);
 
 // Convenience: pack a complete frame (header + payload) into a

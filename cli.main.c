@@ -167,12 +167,6 @@ bool ws_binframe_process(const char *data, size_t len) {
       // invalid/unrecognized frame; parse already logged the reason
       return true;
    }
-   if (rv > 0) {
-      // legacy frame from an old peer: ignore for now
-      Log(LOG_DEBUG, "ws.binframe", "Received legacy frame of %zu bytes", len);
-
-      return false;
-   }
    // Dispatch by subsystem; fires media.frame.* binary events
    return rr_binframe_dispatch(&f, NULL);
 }
@@ -525,13 +519,6 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
       Log(LOG_DEBUG, "ws.binframe", "Dropping unparseable frame");
 
       return true;
-   }
-   if (rv > 0) {
-      // Legacy frame from an old client: keep the old behavior of
-      // ignoring it until all clients speak binframe v2.
-      Log(LOG_DEBUG, "ws.binframe", "Dropping legacy frame of %zu bytes", len);
-
-      return false;
    }
    // The server may only accept media from authenticated users, and
    // only for directions the connection has negotiated a codec for.
