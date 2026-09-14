@@ -114,10 +114,8 @@ bool match_priv(const char *user_privs, const char *priv) {
       memcpy(token, start, len);
       token[len] = '\0';
 
-      Log(LOG_CRAZY, "auth", "token=|%s|", token);
-
       if (strcmp(token, priv) == 0) {
-         Log(LOG_CRAZY, "auth", " ! exact match |%s|", token);
+//         Log(LOG_CRAZY, "auth", " ! exact match |%s|", token);
          return true;
       }
 
@@ -125,7 +123,7 @@ bool match_priv(const char *user_privs, const char *priv) {
          token[len - 2] = '\0';   // strip .*
 
          if (strncmp( priv, token, strlen(token) ) == 0 && priv[strlen(token)] == '.') {
-            Log(LOG_CRAZY, "auth", " ! wildcard match |%s|", token);
+//            Log(LOG_CRAZY, "auth", " ! wildcard match |%s|", token);
             return true;
          }
       }
