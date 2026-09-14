@@ -142,6 +142,12 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
       // Select this codec for both directions
       media_send_codec_select(cptr, cli_preferred_codec, "rx");
       media_send_codec_select(cptr, cli_preferred_codec, "tx");
+
+      // Tell the program (UI) negotiation completed so codec pickers can
+      // re-populate with the negotiated list. The dict already carries
+      // media.codecs + our selected codec; programs listen with event_on().
+      event_emit_dict("media.codecs", cptr, d);
+
       free(common);
 
       return false;
