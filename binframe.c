@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <inttypes.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/ws.binframe.h>
@@ -89,6 +90,7 @@ int rr_binframe_parse(const uint8_t *buf, size_t len, struct rr_binframe *f) {
    ts = be64toh(ts);
 
    memset(&f->hdr, 0, sizeof(f->hdr));
+   memcpy(f->hdr.magic, buf, sizeof(f->hdr.magic));
    f->hdr.version = buf[2];
    f->hdr.subsystem = buf[3];
    memcpy(f->hdr.codec, buf + 4, 4);
@@ -101,6 +103,12 @@ int rr_binframe_parse(const uint8_t *buf, size_t len, struct rr_binframe *f) {
    f->hdr.ts = ts;
    f->data = buf + RR_BINFRAME_HDR_LEN;
    f->len = payload_len;
+
+   Log(LOG_CRAZY, "ws.binframe",
+      "Binary frame: %zu bytes, magic: %02X%02X version: %u subsystem: %02X codec: %.*s direction: %u vfo: %u rig: %u stream: %u seq: %u payload_len: %u ts: %" PRIu64,
+      len, f->hdr.magic[0], f->hdr.magic[1], f->hdr.version, f->hdr.subsystem,
+      (int) sizeof(f->hdr.codec), f->hdr.codec, f->hdr.direction, f->hdr.vfo,
+      f->hdr.rig, f->hdr.stream, f->hdr.seq, f->hdr.payload_len, f->hdr.ts);
 
    return 0;
 }

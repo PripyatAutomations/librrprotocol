@@ -247,10 +247,7 @@ static void chan_del_from_array(u_int32_t *arr, int max, u_int32_t chan_id) {
 static uint32_t media_seq = 0;
 
 // Fan out one media payload to every connection subscribed to channel `cp`.
-// The server owns the wire header values (see doc/media-frames.md): we set
-// the header from the channel's routing quadruple with direction RX and a
-// centrally-assigned seq; the codec magic comes from the source frame (or
-// the channel's negotiated codec).
+// The server owns the wire header values (see doc/media-frames.md).
 bool ws_media_broadcast_subscribed(struct rr_mediachan *cp, const uint8_t *payload,
    size_t len, const char codec[4]) {
    if (!cp || cp->uuid[0] == '\0' || !payload || len > RR_BINFRAME_MAX_PAYLOAD) {
@@ -266,7 +263,7 @@ bool ws_media_broadcast_subscribed(struct rr_mediachan *cp, const uint8_t *paylo
    }
    uint8_t *frame = NULL;
    int flen = rr_binframe_frame(&frame, cp->subsystem, codecbuf,
-      RR_BINFRAME_DIR_RX, cp->vfo, cp->rig, (uint8_t)(chan_id & 0xFF),
+      cp->direction, cp->vfo, cp->rig, (uint8_t)(chan_id & 0xFF),
       ++media_seq, mono_us(), payload, len);
 
    if (flen < 0) {
@@ -276,7 +273,10 @@ bool ws_media_broadcast_subscribed(struct rr_mediachan *cp, const uint8_t *paylo
 
    while (cur) {
       if (cur->is_ws && cur->authenticated && cur->conn &&
-          chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id) ) {
+               ((cp->direction == RR_BINFRAME_DIR_TX &&
+                  chan_id_in_array(cur->tx_channels, MAX_TX_CHANNELS, chan_id)) ||
+                (cp->direction == RR_BINFRAME_DIR_RX &&
+                  chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id))) ) {
          mg_ws_send(cur->conn, frame, flen, WEBSOCKET_OP_BINARY);
       }
       cur = cur->next;

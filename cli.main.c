@@ -149,17 +149,6 @@ bool ws_binframe_process(const char *data, size_t len) {
 
       return true;
    }
-#ifdef	DEBUG_WS_BINFRAMES
-   char hex[128] = { 0 };
-   size_t n = len < 16 ? len : 16;
-
-   for (size_t i = 0 ; i < n ; i++) {
-      snprintf(hex + i * 3, sizeof(hex) - i * 3, "%02X ", (unsigned char)data[i]);
-   }
-
-   Log(LOG_DEBUG, "http.ws", "binary: %zu bytes, hex: %s", len, hex);
-#endif	// DEBUG_WS_BINFRAMES
-
    struct rr_binframe f;
    int rv = rr_binframe_parse( (const uint8_t *)data, len, &f);
 
@@ -517,8 +506,6 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
 
       return true;
    }
-   Log(LOG_DEBUG, "ws.binframe", "Binary frame of %zu bytes", len);
-
    struct rr_binframe f;
    int rv = rr_binframe_parse( (const uint8_t *)buf, len, &f);
 
