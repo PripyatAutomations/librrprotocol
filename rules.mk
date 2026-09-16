@@ -7,6 +7,7 @@ librrprotocol_objs += auth.hash.o
 librrprotocol_objs += binframe.o
 librrprotocol_objs += codecneg.o
 librrprotocol_objs += connman.o
+librrprotocol_objs += cfg.fwdsp.o		# config section callbacks for [fwdsp]/[pipeline]
 librrprotocol_objs += cfg.servers.o
 librrprotocol_objs += cli.alert.o
 librrprotocol_objs += cli.chat.o
