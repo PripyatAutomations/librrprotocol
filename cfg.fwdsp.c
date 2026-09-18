@@ -1,5 +1,5 @@
 //
-// rrserver/cfg.fwdsp.c: config section callbacks for the [fwdsp] and
+// librrprotocol/cfg.fwdsp.c: config section callbacks for the [fwdsp] and
 // [pipeline] sections. Part of rustyrig-fw.
 // https://github.com/pripyatautomations/rustyrig-fw
 //
@@ -111,7 +111,7 @@ bool config_pipeline_section_cb(const char *path, int line, const char *section,
 
    snprintf(fullkey, sizeof(fullkey), "pipeline:%s", id);
    dict_add(cfg, fullkey, val);
-   Log(LOG_DEBUG, "cfg.fwdsp", "Loaded %s from config", fullkey);
+   Log(LOG_DEBUG, "cfg.fwdsp", "Loaded %s=%s from config", fullkey, val);
    free(tmpbuf);
 
    return false;
