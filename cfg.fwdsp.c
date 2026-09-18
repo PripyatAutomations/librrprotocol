@@ -1,6 +1,6 @@
 //
 // librrprotocol/cfg.fwdsp.c: config section callbacks for the [fwdsp] and
-// [pipeline] sections. Part of rustyrig-fw.
+// [pipelines] sections. Part of rustyrig-fw.
 // https://github.com/pripyatautomations/rustyrig-fw
 //
 // Sections other than [general] and [server:*] are dropped by cfg_load()
@@ -10,9 +10,29 @@
 #include <strings.h>
 #include <stdlib.h>
 #include <librustyaxe/core.h>
+#include <librrprotocol/cfg.fwdsp.h>
+
+bool config_fwdsp_init(void) {
+   static bool initialized = false;
+
+   if (initialized) {
+      return false;
+   }
+
+   if (cfg_add_callback(NULL, "fwdsp", config_fwdsp_section_cb)) {
+      return true;
+   }
+
+   if (cfg_add_callback(NULL, "pipelines", config_pipeline_section_cb)) {
+      return true;
+   }
+
+   initialized = true;
+   return false;
+}
 
 // [fwdsp] keys are stored as fwdsp.<key> -- matching the defconfig names
-// (fwdsp.subproc.max, fwdsp.hangtime, subproc.debug, ...)
+// (fwdsp.subproc.max, fwdsp.hangtime, fwdsp.subproc.debug, ...)
 bool config_fwdsp_section_cb(const char *path, int line, const char *section, const char *buf) {
    if (!buf || section == NULL || strncasecmp(section, "fwdsp", 5) != 0) {
       return true;
@@ -62,7 +82,7 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
    return false;
 }
 
-// [pipeline] keys are stored as pipeline:<codec>.<dir> -- the format bin/fwdsp
+// [pipelines] keys are stored as pipeline:<codec>.<dir> -- the format bin/fwdsp
 // looks up with cfg_get() (see fwdsp/fwdsp.c)
 bool config_pipeline_section_cb(const char *path, int line, const char *section, const char *buf) {
    (void)line;
