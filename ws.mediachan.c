@@ -250,6 +250,11 @@ static uint32_t media_seq = 0;
 // The server owns the wire header values (see doc/media-frames.md).
 bool ws_media_broadcast_subscribed(struct rr_mediachan *cp, const uint8_t *payload,
    size_t len, const char codec[4]) {
+   return ws_media_send_frame(cp, NULL, payload, len, codec);
+}
+
+bool ws_media_send_frame(struct rr_mediachan *cp, rrconn_t *cptr,
+   const uint8_t *payload, size_t len, const char codec[4]) {
    if (!cp || cp->uuid[0] == '\0' || !payload || len > RR_BINFRAME_MAX_PAYLOAD) {
       return true;
    }
@@ -272,7 +277,7 @@ bool ws_media_broadcast_subscribed(struct rr_mediachan *cp, const uint8_t *paylo
    rrconn_t *cur = http_client_list;
 
    while (cur) {
-      if (cur->is_ws && cur->authenticated && cur->conn &&
+      if ((!cptr || cur == cptr) && cur->is_ws && cur->authenticated && cur->conn &&
                ((cp->direction == RR_BINFRAME_DIR_TX &&
                   chan_id_in_array(cur->tx_channels, MAX_TX_CHANNELS, chan_id)) ||
                 (cp->direction == RR_BINFRAME_DIR_RX &&
@@ -390,6 +395,9 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       // rx_channels/tx_channels arrays
       u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
       bool is_tx = (cp->direction == RR_BINFRAME_DIR_TX);
+      bool already_subscribed = is_tx ?
+         chan_in_array(cptr->tx_channels, MAX_TX_CHANNELS, chan_id) :
+         chan_in_array(cptr->rx_channels, MAX_RX_CHANNELS, chan_id);
       bool oom = (is_tx ?
          chan_add_to_array(cptr->tx_channels, MAX_TX_CHANNELS, chan_id) :
          chan_add_to_array(cptr->rx_channels, MAX_RX_CHANNELS, chan_id) );
@@ -416,6 +424,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          dict_add(sub, "media.codec", cp->codec);
       }
       ws_send_dict(NULL, cptr, sub, WEBSOCKET_OP_TEXT);
+      if (!already_subscribed) event_emit_dict("media.subscribed", cptr, sub);
       dict_free(sub);
       Log(LOG_DEBUG, "ws.media", "Subscribed %s to channel %s (stream %u)", cptr->chatname, cp->uuid, chan_id);
 

@@ -78,6 +78,9 @@ extern bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d);
 // builds a binframe with server-owned header fields. Returns false on OK.
 extern bool ws_media_broadcast_subscribed(struct rr_mediachan *cp,
    const uint8_t *payload, size_t len, const char codec[4]);
+// Send to one subscribed connection, or all subscribers when cptr is NULL.
+extern bool ws_media_send_frame(struct rr_mediachan *cp, rrconn_t *cptr,
+   const uint8_t *payload, size_t len, const char codec[4]);
 // Is chan_id present in a rx_channels[]/tx_channels[] style array?
 extern bool chan_id_in_array(u_int32_t *arr, int max, u_int32_t chan_id);
 
