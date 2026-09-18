@@ -445,61 +445,58 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
 
       return false;
    } else if (strcasecmp(media_cmd, "codec") == 0) {
-      // Client selects a codec for one direction of a channel. We record the
-      // negotiated codec on the channel and fire the codec-select event so
-      // the server program (rrserver) can spin up the fwdsp pipeline.
-      // PARITY: librrprotocol/cli.media.c media_send_codec_select()
+      // Codec selection is per concrete channel UUID. This matters for rigs
+      // with multiple independent VFO streams and also gives the fwdsp manager
+      // enough identity to switch one channel without disturbing another.
       const char *codec = dict_get(d, "media.codec", NULL);
+      struct rr_mediachan *cp = (uuid ? media_chan_find_uuid(uuid) : NULL);
 
       if (!codec || strlen(codec) != 4) {
          ws_send_error(cptr, "media.codec select: invalid codec");
          return true;
       }
-      struct rr_mediachan *cp = (uuid ? media_chan_find_uuid(uuid) : NULL);
-      // Direction comes as media.channel: "rx"/"tx" (client) or media.dir (n).
-      // PARITY: librrprotocol/cli.media.c media_send_codec_select() sends media.channel
-      const char *channel = dict_get(d, "media.channel", NULL);
-      uint32_t dir = RR_BINFRAME_DIR_NA;
-
-      if (channel) {
-         dir = (strcasecmp(channel, "tx") == 0 ? RR_BINFRAME_DIR_TX : RR_BINFRAME_DIR_RX);
-      } else {
-         dir = dict_get_ulong(d, "media.dir", (uuid && cp ? cp->direction : RR_BINFRAME_DIR_RX));
+      if (!cp) {
+         ws_send_error(cptr, "media.codec select: unknown or missing channel uuid");
+         return true;
       }
 
-      if (cp) {
-         snprintf(cp->codec, sizeof(cp->codec), "%s", codec);
-         // Re-announce the channel so all clients see the active codec
-         media_send_available_all(cptr);
+      char old_codec[5] = { 0 };
+      if (cp->codec[0] != '\0') {
+         memcpy(old_codec, cp->codec, 4);
       }
+
       dict *sel = dict_new();
-
       if (sel) {
          dict_add(sel, "media.codec", codec);
-         dict_add_ulong(sel, "media.dir", dir);
-         if (uuid && cp) {
-            dict_add(sel, "media.chan-uuid", cp->uuid);
+         dict_add_ulong(sel, "media.dir", cp->direction);
+         dict_add(sel, "media.chan-uuid", cp->uuid);
+         if (old_codec[0] != '\0') {
+            dict_add(sel, "media.old-codec", old_codec);
          }
          event_emit_dict("media.codec-select", cptr, sel);
          dict_free(sel);
       }
-      dict *ack = dict_new();
 
+      // The event handler starts the replacement pipeline synchronously. Once
+      // it returns, publish the selected codec on the channel and re-announce
+      // it so a waiting client can subscribe with the confirmed codec.
+      snprintf(cp->codec, sizeof(cp->codec), "%s", codec);
+      media_send_available(cptr, cp);
+
+      dict *ack = dict_new();
       if (ack) {
          dict_add(ack, "msg.type", "media");
          dict_add(ack, "media.cmd", "isupport");
-         // PARITY: rrclient/events.c + cli.media.c read media.preferred/media.codecs
          dict_add(ack, "media.codecs", codec);
          dict_add(ack, "media.preferred", codec);
+         dict_add(ack, "media.chan-uuid", cp->uuid);
+         dict_add_ulong(ack, "media.dir", cp->direction);
          dict_add_ulong(ack, "media.ts", now);
-         if (cp) {
-            dict_add(ack, "media.chan-uuid", cp->uuid);
-         }
          ws_send_dict(NULL, cptr, ack, WEBSOCKET_OP_TEXT);
          dict_free(ack);
       }
-      Log(LOG_INFO, "ws.media", "%s selected codec %s (%s)", cptr->chatname, codec,
-         (cp ? cp->uuid : "no channel"));
+      Log(LOG_INFO, "ws.media", "%s selected codec %s for %s",
+         cptr->chatname, codec, cp->uuid);
 
       return false;
    }

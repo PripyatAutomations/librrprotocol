@@ -91,8 +91,8 @@ extern bool media_send_unsubscribe(rrconn_t *cptr, const char *uuid);
 // Client -> server: register as a media source (media.cmd: source; needs the
 // media.source priv). uuid == NULL registers for all channels.
 extern bool media_send_source(rrconn_t *cptr, const char *uuid);
-// Client -> server: select a codec for one direction (media.cmd: codec)
-extern bool media_send_codec_select(rrconn_t *cptr, const char *codec, const char *channel);
+// Client -> server: select a codec for one concrete channel UUID (media.cmd: codec)
+extern bool media_send_codec_select(rrconn_t *cptr, const char *codec, const char *channel_uuid);
 // Negotiation state accessors (filled by ws_handle_media_msg on media.capab)
 extern const char *media_get_common_codecs(void);
 extern const char *media_get_preferred_codec(void);

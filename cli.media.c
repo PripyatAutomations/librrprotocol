@@ -44,29 +44,24 @@ const char *media_get_codec(bool is_tx) {
    return (is_tx ? cli_codec_tx : cli_codec_rx);
 }
 
-// Client -> server: select a codec for one direction
-bool media_send_codec_select(rrconn_t *cptr, const char *codec, const char *channel) {
-   if (!cptr || !codec || strlen(codec) != 4 || !channel) {
-      Log(LOG_WARN, "ws.media", "media.codec select: invalid args codec:<%p> channel:<%p>",
-         codec, channel);
+// Client -> server: select a codec for one concrete media channel.
+// The UUID is authoritative; direction comes from the server-owned channel.
+bool media_send_codec_select(rrconn_t *cptr, const char *codec, const char *channel_uuid) {
+   if (!cptr || !codec || strlen(codec) != 4 || !channel_uuid || !*channel_uuid) {
+      Log(LOG_WARN, "ws.media", "media.codec select: invalid args codec:<%p> uuid:<%p>",
+         codec, channel_uuid);
       return true;
    }
    dict *d = dict_new();
    dict_add(d, "msg.type", "media");
    dict_add(d, "media.cmd", "codec");
    dict_add(d, "media.codec", codec);
-   dict_add(d, "media.channel", channel);
+   dict_add(d, "media.chan-uuid", channel_uuid);
    dict_add_ulong(d, "media.ts", now);
    ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
 
-   if (strcasecmp(channel, "tx") == 0) {
-      memcpy(cli_codec_tx, codec, 4);
-   } else if (strcasecmp(channel, "rx") == 0) {
-      memcpy(cli_codec_rx, codec, 4);
-   }
-   Log(LOG_INFO, "ws.media", "Selected %s codec %s", channel, codec);
-
+   Log(LOG_INFO, "ws.media", "Selected codec %s for media channel %s", codec, channel_uuid);
    return false;
 }
 
@@ -139,9 +134,8 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
       snprintf(cli_common_codecs, sizeof(cli_common_codecs), "%s", common);
       Log(LOG_INFO, "ws.media", "Negotiated common codecs: %s (default: %s)", common, cli_preferred_codec);
 
-      // Select this codec for both directions
-      media_send_codec_select(cptr, cli_preferred_codec, "rx");
-      media_send_codec_select(cptr, cli_preferred_codec, "tx");
+      // Channel selection is UUID-specific and is performed by rrclient/media.c
+      // when each media.available announcement arrives.
 
       // Tell the program (UI) negotiation completed so codec pickers can
       // re-populate with the negotiated list. The dict already carries
@@ -154,7 +148,21 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
    } else if (strcasecmp(media_cmd, "isupport") == 0) {
       const char *media_codecs = dict_get(d, "media.codecs", NULL);
       const char *media_preferred = dict_get(d, "media.preferred", NULL);
+      uint32_t dir = dict_get_ulong(d, "media.dir", RR_BINFRAME_DIR_NA);
 
+      if (media_preferred && strlen(media_preferred) == 4) {
+         char *dst = NULL;
+
+         if (dir == RR_BINFRAME_DIR_TX) {
+            dst = cli_codec_tx;
+         } else if (dir == RR_BINFRAME_DIR_RX) {
+            dst = cli_codec_rx;
+         }
+         if (dst) {
+            memcpy(dst, media_preferred, 4);
+            dst[4] = '\0';
+         }
+      }
       Log(LOG_INFO, "ws.media", "Server confirms codecs: %s (preferred: %s)",
          (media_codecs ? media_codecs : "<none>"), (media_preferred ? media_preferred : "<none>"));
 
