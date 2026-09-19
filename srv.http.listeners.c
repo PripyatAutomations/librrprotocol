@@ -145,7 +145,7 @@ bool http_init(struct mg_mgr *mgr) {
    reload_event_add("net.http.authdb-dynamic", http_reload_users_cb, "Reload HTTP users from authdb");
    struct in_addr sa_bind;
    char listen_addr[255];
-   int bind_port = cfg_get_int("net.http.port", 0);
+   int bind_port = cfg_get_int("net.http.port", 8420);
 
 #ifdef	USE_EEPROM
    if (!bind_port) {
@@ -183,7 +183,7 @@ bool http_init(struct mg_mgr *mgr) {
 
 #ifdef	HTTP_USE_TLS
    if (cfg_get_bool("net.http.tls-enabled", false) ) {
-      int tls_bind_port = cfg_get_int("net.http.tls-port", 0);
+      int tls_bind_port = cfg_get_int("net.http.tls-port", 8443);
 
 #ifdef	USE_EEPROM
       if (!tls_bind_port) {

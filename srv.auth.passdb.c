@@ -251,7 +251,7 @@ int http_reload_users(void) {
    }
 
    // Let the program handle dynamic (sql) user storage if it wants to
-   if (cfg_get_bool("net.http.authdb-dynamic", false) ) {
+   if (cfg_get_bool("net.http.authdb-dynamic", true) ) {
       Log(LOG_DEBUG, "auth", "authdb-dynamic: emitting authdb.load event for program");
       // NB: event_emit_dict() drops the event when data is NULL, so emit
       // directly with an empty payload; the handler doesn't read it.

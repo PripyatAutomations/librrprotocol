@@ -143,10 +143,6 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
    return false;
 }
 
-/*
- time_t cfg_backed_poll_interval = 60;
- cfg_backed_poll_interval = cfg_get_int("backend.poll-interval", 60);
-*/
 bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    bool rv = false;
 
