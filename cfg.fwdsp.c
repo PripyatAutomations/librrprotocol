@@ -76,7 +76,7 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
       snprintf(fullkey, sizeof(fullkey), "fwdsp.%s", tmpbuf);
    }
    dict_add(cfg, fullkey, val);
-   Log(LOG_DEBUG, "cfg.fwdsp", "Loaded %s=%s from %s:%d", fullkey, val, path, line);
+   Log(LOG_CRAZY, "cfg.fwdsp", "Loaded %s=%s from %s:%d", fullkey, val, path, line);
    free(tmpbuf);
 
    return false;
@@ -131,7 +131,7 @@ bool config_pipeline_section_cb(const char *path, int line, const char *section,
 
    snprintf(fullkey, sizeof(fullkey), "pipeline:%s", id);
    dict_add(cfg, fullkey, val);
-   Log(LOG_DEBUG, "cfg.fwdsp", "Loaded %s=%s from config", fullkey, val);
+   Log(LOG_CRAZY, "cfg.fwdsp", "Loaded %s=%s from config", fullkey, val);
    free(tmpbuf);
 
    return false;
