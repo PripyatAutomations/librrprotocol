@@ -290,7 +290,7 @@ bool irc_remove_callback(irc_callback_t *cb) {
 // Register default command and numeric callbacks in our list //
 ////////////////////////////////////////////////////////////////
 //
-// XXX: This needs to be worked to use our kvstore stuff, so we don't have to
+// XXX: This needs to be worked to use our dict stuff, so we don't have to
 // walk the list every time an event happens
 //
 // load default callbacks, if not already set
