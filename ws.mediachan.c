@@ -112,6 +112,14 @@ struct rr_mediachan *media_chan_add(uint8_t subsystem, uint8_t direction,
       cp->vfo = vfo;
       cp->rig = rig;
 
+      const char *kind = direction == RR_BINFRAME_DIR_TX ? "tx" : "rx";
+      if (vfo != RR_BINFRAME_VFO_NA) {
+         snprintf(cp->name, sizeof(cp->name), "rig%u.vfo_%c.%s", rig,
+            (char)('a' + vfo), kind);
+      } else {
+         snprintf(cp->name, sizeof(cp->name), "rig%u.%s", rig, kind);
+      }
+
       if (codec) {
          snprintf(cp->codec, sizeof(cp->codec), "%s", codec);
       }
@@ -221,6 +229,9 @@ bool media_send_available(rrconn_t *cptr, struct rr_mediachan *cp) {
    dict_add_ulong(d, "media.vfo", cp->vfo);
    dict_add_ulong(d, "media.rig", cp->rig);
    dict_add_ulong(d, "media.ts", now);
+   if (cp->name[0] != '\0') {
+      dict_add(d, "media.name", cp->name);
+   }
 
    if (cp->codec[0] != '\0') {
       dict_add(d, "media.codec", cp->codec);

@@ -38,6 +38,7 @@ struct rr_mediachan {
    uint8_t direction;                // RR_BINFRAME_DIR_RX or RR_BINFRAME_DIR_TX
    uint8_t vfo;                      // rr_vfo_t (0 = VFO A; 0xFF = n/a)
    uint8_t rig;                      // rig index; 0 = default; 0xFF = n/a
+   char name[64];                     // stable endpoint name, e.g. rig0.vfo_a.rx
    char codec[5];                    // negotiated codec magic, or "" when unset
    char descr[128];                  // human-readable description
    bool active;                      // is this channel actually streaming?
