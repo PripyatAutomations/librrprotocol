@@ -28,9 +28,51 @@
 #include <stdbool.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librrprotocol/codecneg.h>
 #include <librrprotocol/ws.mediachan.h>
 
 extern time_t now;
+
+static bool media_codec_list_has(const char *list, const char *codec) {
+   if (!list || !codec || strlen(codec) != 4) {
+      return false;
+   }
+   const char *p = list;
+   while (*p) {
+      while (*p == ' ') p++;
+      if (!*p) break;
+      const char *start = p;
+      while (*p && *p != ' ') p++;
+      if ((size_t)(p - start) == 4 && memcmp(start, codec, 4) == 0) {
+         return true;
+      }
+   }
+   return false;
+}
+
+static bool media_client_supports_codec(rrconn_t *cptr, const char *codec) {
+   // Keep compatibility with clients predating media.capab. Once a client
+   // advertises capabilities, enforce them for every channel selection.
+   return !cptr || !cptr->media_codecs[0] ||
+      media_codec_list_has(cptr->media_codecs, codec);
+}
+
+static bool media_channel_all_clients_support(struct rr_mediachan *cp,
+   const char *codec) {
+   if (!cp || !codec) return false;
+   u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
+   rrconn_t *cur = http_client_list;
+   while (cur) {
+      bool subscribed = cp->direction == RR_BINFRAME_DIR_TX ?
+         chan_id_in_array(cur->tx_channels, MAX_TX_CHANNELS, chan_id) :
+         chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id);
+      if (subscribed && !media_client_supports_codec(cur, codec)) {
+         return false;
+      }
+      cur = cur->next;
+   }
+   return true;
+}
 
 #ifndef MAX_MEDIA_CHANNELS
 #define	MAX_MEDIA_CHANNELS 64
@@ -302,6 +344,37 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       return true;
    }
 
+   if (strcasecmp(media_cmd, "capab") == 0) {
+      const char *codecs = dict_get(d, "media.codecs", NULL);
+      if (!codecs || !*codecs || strlen(codecs) >= sizeof(cptr->media_codecs)) {
+         ws_send_error(cptr, "Invalid media codec capability list");
+         return true;
+      }
+      snprintf(cptr->media_codecs, sizeof(cptr->media_codecs), "%s", codecs);
+
+      const char *server_codecs = cfg_get_exp("codecs.allowed");
+      char *common = server_codecs ?
+         codec_filter_common(cptr->media_codecs, server_codecs) : NULL;
+      free((void *)server_codecs);
+      if (!common || !*common) {
+         free(common);
+         ws_send_error(cptr, "No audio codecs in common with server");
+         return true;
+      }
+
+      dict *ack = dict_new();
+      dict_add(ack, "msg.type", "media");
+      dict_add(ack, "media.cmd", "isupport");
+      dict_add(ack, "media.codecs", common);
+      char preferred[5] = { 0 };
+      memcpy(preferred, common, 4);
+      dict_add(ack, "media.preferred", preferred);
+      ws_send_dict(NULL, cptr, ack, WEBSOCKET_OP_TEXT);
+      dict_free(ack);
+      free(common);
+      return false;
+   }
+
    if (strcasecmp(media_cmd, "source") == 0) {
       // Media source registration (rrmedia, fwdsp feeds, remote relays).
       // Must be authenticated, and the account must carry the media.source
@@ -395,6 +468,10 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       // rx_channels/tx_channels arrays
       u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
       bool is_tx = (cp->direction == RR_BINFRAME_DIR_TX);
+      if (cp->codec[0] && !media_client_supports_codec(cptr, cp->codec)) {
+         ws_send_error(cptr, "This client does not support the channel codec");
+         return true;
+      }
       bool already_subscribed = is_tx ?
          chan_in_array(cptr->tx_channels, MAX_TX_CHANNELS, chan_id) :
          chan_in_array(cptr->rx_channels, MAX_RX_CHANNELS, chan_id);
@@ -436,6 +513,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          ws_send_error(cptr, "No such media channel");
          return true;
       }
+
       u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
 
       if (cp->direction == RR_BINFRAME_DIR_TX) {
@@ -469,9 +547,30 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          return true;
       }
 
+      const char *server_codecs = cfg_get_exp("codecs.allowed");
+      bool server_supports = server_codecs &&
+         media_codec_list_has(server_codecs, codec);
+      free((void *)server_codecs);
+      if (!server_supports) {
+         ws_send_error(cptr, "Server does not support the requested codec");
+         return true;
+      }
+
+      if (!media_client_supports_codec(cptr, codec) ||
+          !media_channel_all_clients_support(cp, codec)) {
+         ws_send_error(cptr,
+            "Codec is not supported by every subscriber on this channel");
+         return true;
+      }
+
       char old_codec[5] = { 0 };
       if (cp->codec[0] != '\0') {
          memcpy(old_codec, cp->codec, 4);
+      }
+
+      if (old_codec[0] && memcmp(old_codec, codec, 4) == 0) {
+         media_send_available(cptr, cp);
+         return false;
       }
 
       dict *sel = dict_new();
@@ -490,6 +589,11 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       // it returns, publish the selected codec on the channel and re-announce
       // it so a waiting client can subscribe with the confirmed codec.
       snprintf(cp->codec, sizeof(cp->codec), "%s", codec);
+      if (cp->direction == RR_BINFRAME_DIR_TX) {
+         snprintf(cptr->codec_tx, sizeof(cptr->codec_tx), "%s", codec);
+      } else if (cp->direction == RR_BINFRAME_DIR_RX) {
+         snprintf(cptr->codec_rx, sizeof(cptr->codec_rx), "%s", codec);
+      }
       media_send_available(cptr, cp);
 
       dict *ack = dict_new();
