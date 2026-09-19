@@ -63,10 +63,13 @@ static bool media_channel_all_clients_support(struct rr_mediachan *cp,
    u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
    rrconn_t *cur = http_client_list;
    while (cur) {
-      bool subscribed = cp->direction == RR_BINFRAME_DIR_TX ?
-         chan_id_in_array(cur->tx_channels, MAX_TX_CHANNELS, chan_id) :
-         chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id);
-      if (subscribed && !media_client_supports_codec(cur, codec)) {
+      // TX audio is a shared stream. Every authenticated WebSocket client
+      // must be able to decode its codec, even before it subscribes; this
+      // prevents a later listener from joining with no usable decoder.
+      bool relevant = cp->direction == RR_BINFRAME_DIR_TX ?
+         (cur->is_ws && cur->authenticated) :
+         (chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id));
+      if (relevant && !media_client_supports_codec(cur, codec)) {
          return false;
       }
       cur = cur->next;
@@ -232,6 +235,14 @@ bool media_send_available(rrconn_t *cptr, struct rr_mediachan *cp) {
 }
 
 bool media_send_available_all(rrconn_t *cptr) {
+   if (!cptr) {
+      rrconn_t *cur = http_client_list;
+      while (cur) {
+         media_send_available_all(cur);
+         cur = cur->next;
+      }
+      return false;
+   }
    for (int i = 0 ; i < MAX_MEDIA_CHANNELS ; i++) {
       if (media_channels[i].uuid[0] != '\0') {
          media_send_available(cptr, &media_channels[i]);
@@ -372,6 +383,9 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       ws_send_dict(NULL, cptr, ack, WEBSOCKET_OP_TEXT);
       dict_free(ack);
       free(common);
+      // A newly negotiated client changes the set of peers that can safely
+      // use a shared TX codec. Re-announce channel state to all clients.
+      media_send_available_all(NULL);
       return false;
    }
 
@@ -461,8 +475,8 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
 
             return true;
          }
-         // Tell everyone (including the requester) about the new channel
-         media_send_available_all(cptr);
+      // Tell everyone (including the requester) about the new channel
+      media_send_available_all(cptr);
       }
       // Channel id is 1 + table index; 0 means "no channel" in the
       // rx_channels/tx_channels arrays
@@ -504,6 +518,10 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       if (!already_subscribed) event_emit_dict("media.subscribed", cptr, sub);
       dict_free(sub);
       Log(LOG_DEBUG, "ws.media", "Subscribed %s to channel %s (stream %u)", cptr->chatname, cp->uuid, chan_id);
+      // A new subscriber may change the set of codecs that can safely be
+      // used for a shared TX stream. Re-announce the channel state so every
+      // client refreshes its capability view.
+      media_send_available_all(NULL);
 
       return false;
    } else if (strcasecmp(media_cmd, "unsubscribe") == 0) {
@@ -529,6 +547,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       ws_send_dict(NULL, cptr, unsub, WEBSOCKET_OP_TEXT);
       dict_free(unsub);
       Log(LOG_DEBUG, "ws.media", "Unsubscribed %s from channel %s", cptr->chatname, cp->uuid);
+      media_send_available_all(NULL);
 
       return false;
    } else if (strcasecmp(media_cmd, "codec") == 0) {
