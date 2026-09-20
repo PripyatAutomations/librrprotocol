@@ -63,12 +63,12 @@ static bool media_channel_all_clients_support(struct rr_mediachan *cp,
    u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
    rrconn_t *cur = http_client_list;
    while (cur) {
-      // TX audio is a shared stream. Every authenticated WebSocket client
-      // must be able to decode its codec, even before it subscribes; this
-      // prevents a later listener from joining with no usable decoder.
+      // TX audio is a shared VFO stream. Only clients subscribed to this
+      // concrete media channel constrain its codec; chat-room membership is
+      // intentionally unrelated to media routing.
       bool relevant = cp->direction == RR_BINFRAME_DIR_TX ?
-         (cur->is_ws && cur->authenticated) :
-         (chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id));
+         chan_id_in_array(cur->tx_channels, MAX_TX_CHANNELS, chan_id) :
+         chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id);
       if (relevant && !media_client_supports_codec(cur, codec)) {
          return false;
       }
@@ -394,8 +394,8 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       ws_send_dict(NULL, cptr, ack, WEBSOCKET_OP_TEXT);
       dict_free(ack);
       free(common);
-      // A newly negotiated client changes the set of peers that can safely
-      // use a shared TX codec. Re-announce channel state to all clients.
+      // Re-announce channel state after negotiation so clients can refresh
+      // their VFO media view. Room membership does not affect this.
       media_send_available_all(NULL);
       return false;
    }

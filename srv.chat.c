@@ -23,9 +23,147 @@
 #define	CHAT_MIN_REASON_LEN 10
 
 extern time_t now;
+extern rrconn_t *http_client_list;
 extern bool dying, restarting;
 extern bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action);
 extern bool ws_chat_error_need_reason(rrconn_t *cptr, const char *command);
+
+typedef struct {
+   char name[128];
+   bool has_vfos;
+   uint32_t vfo_mask;
+} ws_room_meta_t;
+
+static ws_room_meta_t room_meta[32];
+static const char *room_canonical(const char *room);
+
+static ws_room_meta_t *room_meta_find(const char *room, bool create) {
+   const char *canonical = room_canonical(room);
+   for (size_t i = 0; i < sizeof(room_meta) / sizeof(room_meta[0]); i++) {
+      if (room_meta[i].name[0] && strcasecmp(room_meta[i].name, canonical) == 0) {
+         return &room_meta[i];
+      }
+   }
+   if (!create) return NULL;
+   for (size_t i = 0; i < sizeof(room_meta) / sizeof(room_meta[0]); i++) {
+      if (!room_meta[i].name[0]) {
+         snprintf(room_meta[i].name, sizeof(room_meta[i].name), "%s", canonical);
+         return &room_meta[i];
+      }
+   }
+   return NULL;
+}
+
+const char *ws_authoritative_room(void) {
+   static char room[128];
+   char *configured = (char *)cfg_get_exp("rig.name");
+   const char *name = (configured && *configured) ? configured : "rig";
+   snprintf(room, sizeof(room), "#rig-%s", name);
+   free(configured);
+   ws_room_meta_t *meta = NULL;
+   for (size_t i = 0; i < sizeof(room_meta) / sizeof(room_meta[0]); i++) {
+      if (strcasecmp(room_meta[i].name, room) == 0) {
+         meta = &room_meta[i];
+         break;
+      }
+      if (!meta && !room_meta[i].name[0]) {
+         snprintf(room_meta[i].name, sizeof(room_meta[i].name), "%s", room);
+         meta = &room_meta[i];
+         break;
+      }
+   }
+   if (meta) {
+      int nvfos = cfg_get_int("rig.vfos", 2);
+      if (nvfos < 1) nvfos = 1;
+      if (nvfos > 32) nvfos = 32;
+      meta->has_vfos = true;
+      meta->vfo_mask = nvfos == 32 ? UINT32_MAX : ((UINT32_C(1) << nvfos) - 1);
+   }
+   return room;
+}
+
+bool ws_room_has_vfos(const char *room) {
+   ws_room_meta_t *meta = room_meta_find(room, false);
+   return meta ? meta->has_vfos : false;
+}
+
+uint32_t ws_room_vfo_mask(const char *room) {
+   ws_room_meta_t *meta = room_meta_find(room, false);
+   return meta ? meta->vfo_mask : 0;
+}
+
+static const char *room_canonical(const char *room) {
+   if (!room || !*room || strcasecmp(room, "&localrig") == 0) {
+      return ws_authoritative_room();
+   }
+   return room;
+}
+
+bool ws_client_in_room(const rrconn_t *cptr, const char *room) {
+   if (!cptr) {
+      return false;
+   }
+   const char *want = room_canonical(room);
+   char copy[AUTOJOIN_LEN];
+   snprintf(copy, sizeof(copy), "%s", cptr->rooms);
+   char *save = NULL;
+   for (char *tok = strtok_r(copy, ",", &save); tok; tok = strtok_r(NULL, ",", &save)) {
+      if (strcasecmp(tok, want) == 0) {
+         return true;
+      }
+   }
+   return false;
+}
+
+bool ws_client_join_room(rrconn_t *cptr, const char *room) {
+   if (!cptr || !room || !*room) {
+      return true;
+   }
+   const char *canonical = room_canonical(room);
+   if (canonical[0] != '#' && canonical[0] != '&') {
+      return true;
+   }
+   if (ws_client_in_room(cptr, canonical)) {
+      return false;
+   }
+   size_t used = strlen(cptr->rooms);
+   size_t need = strlen(canonical) + (used ? 1 : 0);
+   if (used + need + 1 >= sizeof(cptr->rooms)) {
+      return true;
+   }
+   if (used) strcat(cptr->rooms, ",");
+   strcat(cptr->rooms, canonical);
+   return false;
+}
+
+bool ws_client_part_room(rrconn_t *cptr, const char *room) {
+   if (!cptr || !room || strcasecmp(room, "&localrig") == 0 ||
+       strcasecmp(room, ws_authoritative_room()) == 0) {
+      return true;
+   }
+   const char *want = room_canonical(room);
+   char old[AUTOJOIN_LEN], out[AUTOJOIN_LEN] = "";
+   snprintf(old, sizeof(old), "%s", cptr->rooms);
+   char *save = NULL;
+   for (char *tok = strtok_r(old, ",", &save); tok; tok = strtok_r(NULL, ",", &save)) {
+      if (strcasecmp(tok, want) == 0) continue;
+      if (out[0]) strlcat(out, ",", sizeof(out));
+      strlcat(out, tok, sizeof(out));
+   }
+   snprintf(cptr->rooms, sizeof(cptr->rooms), "%s", out);
+   return false;
+}
+
+void ws_broadcast_room_dict(rrconn_t *sender, dict *d, const char *room) {
+   if (!d) return;
+   rrconn_t *cur = http_client_list;
+   while (cur) {
+      if (cur->is_ws && cur->authenticated && ws_client_in_room(cur, room)) {
+         ws_send_dict(sender, cur, d, WEBSOCKET_OP_TEXT);
+      }
+      cur = cur->next;
+   }
+}
 
 ///////////////////////////////
 // DIE: Makes the server die //
@@ -349,7 +487,29 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
    }
 
    if (cmd) {
-      if (strcasecmp(cmd, "msg") == 0) {
+      if (strcasecmp(cmd, "join") == 0 || strcasecmp(cmd, "part") == 0) {
+         const char *requested = target ? target : data;
+         bool joining = strcasecmp(cmd, "join") == 0;
+         bool failed = joining ? ws_client_join_room(cptr, requested) :
+            ws_client_part_room(cptr, requested);
+         if (failed) {
+            ws_send_error(cptr, "%s failed for room %s", joining ? "JOIN" : "PART",
+               requested ? requested : "(none)");
+            return true;
+         }
+         dict *room_msg = dict_new();
+         dict_add(room_msg, "msg.type", "talk");
+         dict_add(room_msg, "talk.cmd", joining ? "join" : "part");
+         dict_add(room_msg, "talk.target", room_canonical(requested));
+         dict_add(room_msg, "talk.room", room_canonical(requested));
+         dict_add_bool(room_msg, "room.has-vfos", ws_room_has_vfos(requested));
+         dict_add_ulong(room_msg, "room.vfo-mask", ws_room_vfo_mask(requested));
+         dict_add(room_msg, "talk.user", cptr->chatname);
+         dict_add_ulong(room_msg, "msg.ts", now);
+         ws_broadcast_room_dict(cptr, room_msg, room_canonical(requested));
+         dict_free(room_msg);
+         return false;
+      } else if (strcasecmp(cmd, "msg") == 0) {
          if (!data) {
             Log(LOG_DEBUG, "chat",
                "got msg for cptr <%p> with no data: chatname: %s",

@@ -384,6 +384,9 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          } else {
             Log(LOG_CRIT, "ws.media", ">> No codecs negotiated");
          }
+         // Every authenticated session is a member of the authoritative rig
+         // room. &localrig remains accepted as a local alias for it.
+         ws_client_join_room(cptr, ws_authoritative_room());
          // Tell the client which media channels (RX/TX audio per VFO, etc)
          // exist so it can subscribe; the event is handled by the program's
          // media module which owns the channel registry.
@@ -399,6 +402,9 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          dict_add(talk_msg, "talk.muted", (cptr->user->is_muted ? "true" : "false") );
          dict_add(talk_msg, "talk.privs", cptr->user->privs);
          dict_add(talk_msg, "talk.target", "&localrig");
+         dict_add(talk_msg, "talk.room", ws_authoritative_room());
+         dict_add_bool(talk_msg, "room.has-vfos", ws_room_has_vfos(ws_authoritative_room()));
+         dict_add_ulong(talk_msg, "room.vfo-mask", ws_room_vfo_mask(ws_authoritative_room()));
          dict_add(talk_msg, "talk.user", cptr->chatname);
          dict_add_int(talk_msg, "talk.sessions",  cptr->user->sessions);
          ws_broadcast_dict(NULL, talk_msg, WEBSOCKET_OP_TEXT);
@@ -408,6 +414,9 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          dict_add(talk_msg, "msg.type", "talk");
          dict_add_ulong(talk_msg, "msg.ts", now);
          dict_add(talk_msg, "talk.target", "&localrig");
+         dict_add(talk_msg, "talk.room", ws_authoritative_room());
+         dict_add_bool(talk_msg, "room.has-vfos", ws_room_has_vfos(ws_authoritative_room()));
+         dict_add_ulong(talk_msg, "room.vfo-mask", ws_room_vfo_mask(ws_authoritative_room()));
          dict_add(talk_msg, "talk.user", cptr->chatname);
          event_emit_dict("send-chat-replay", cptr, talk_msg);
          dict_free(talk_msg);
