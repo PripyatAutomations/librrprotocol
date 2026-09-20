@@ -239,6 +239,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       // Old protocol
       Log(LOG_CRIT, "rrproto.core", "ws_txtframe_process: msg_type unset!");
       dict_dump(d, stderr);
+      ws_send_error(cptr, "Invalid command: <missing msg.type>");
       return true;
    }
 
@@ -319,7 +320,8 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
          result = ws_handle_mediachan_msg(cptr, d);
          goto cleanup;
       }
-      Log(LOG_DEBUG, "ws.media", "Unhandled media cmd |%s| from %s", media_cmd, cptr->chatname);
+      Log(LOG_WARN, "ws.media", "Invalid media command |%s| from %s", media_cmd, cptr->chatname);
+      ws_send_error(cptr, "Invalid command: media.%s", media_cmd);
    } else if (strcasecmp(msg_type, "ping") == 0) {
       // PING request
       const char *ping = dict_get(d, "ping", NULL);
@@ -365,6 +367,11 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
    } else if (strcasecmp(msg_type, "talk") == 0) {
       // CHAT RELATED
          result = ws_handle_chat_msg(cptr, d);
+   } else {
+      Log(LOG_WARN, "http.ws", "Invalid command |%s| from %s", msg_type,
+         (cptr->chatname[0] ? cptr->chatname : "(unknown)"));
+      ws_send_error(cptr, "Invalid command: %s", msg_type);
+      result = true;
    }
 
    // Update last heard time

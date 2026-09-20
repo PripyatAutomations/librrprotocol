@@ -14,6 +14,8 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdio.h>
+#include <ctype.h>
 #include <time.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
@@ -25,6 +27,7 @@
 extern time_t now;
 extern rrconn_t *http_client_list;
 extern bool dying, restarting;
+extern const char *config_file;
 extern bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action);
 extern bool ws_chat_error_need_reason(rrconn_t *cptr, const char *command);
 
@@ -487,7 +490,44 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
    }
 
    if (cmd) {
-      if (strcasecmp(cmd, "join") == 0 || strcasecmp(cmd, "part") == 0) {
+      if (strcasecmp(cmd, "qrz") == 0) {
+         if (!data || !*data) {
+            ws_send_error(cptr, "Usage: /qrz CALLSIGN");
+            return true;
+         }
+         for (const unsigned char *p = (const unsigned char *)data; *p; p++) {
+            if (!isalnum(*p) && *p != '-' && *p != '/' && *p != '.') {
+               ws_send_error(cptr, "Invalid callsign: %s", data);
+               return true;
+            }
+         }
+         const char *program = cfg_get("callsign-lookup.path");
+         if (!program || !*program || !config_file || !*config_file) {
+            ws_send_error(cptr, "Callsign lookup is not configured on the server");
+            return true;
+         }
+         char command[2048];
+         snprintf(command, sizeof(command), "%s -f '%s' '%s' 2>&1", program,
+            config_file, data);
+         FILE *pipe = popen(command, "r");
+         if (!pipe) {
+            ws_send_error(cptr, "Unable to start callsign lookup on the server");
+            return true;
+         }
+         char line[1024];
+         while (fgets(line, sizeof(line), pipe)) {
+            line[strcspn(line, "\r\n")] = '\0';
+            if (*line) {
+               ws_send_notice(cptr, "%s", line);
+            }
+         }
+         int status = pclose(pipe);
+         if (status != 0) {
+            ws_send_error(cptr, "Callsign lookup failed for %s", data);
+            return true;
+         }
+         return false;
+      } else if (strcasecmp(cmd, "join") == 0 || strcasecmp(cmd, "part") == 0) {
          const char *requested = target ? target : data;
          bool joining = strcasecmp(cmd, "join") == 0;
          bool failed = joining ? ws_client_join_room(cptr, requested) :

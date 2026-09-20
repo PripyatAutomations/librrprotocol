@@ -57,7 +57,7 @@ librrprotocol_objs += ws.auth.o
 
 librrprotocol_cflags := ${CFLAGS} -I./modsrc/ -I./ -I./inc
 
-extra_clean += ${librustyaxe_objs} ${librustyaxe}
+extra_clean += ${librustyaxe_objs} ${librustyaxe} librrprotocol.so.0
 librrprotocol_headers := $(wildcard librrprotocol/*.h)
 librrprotocol_srcs = $(wildcard librrprotocol/*.c)
 
@@ -70,7 +70,8 @@ ${BUILD_DIR}/librrprotocol/.stamp:
 
 ${librrprotocol}: ${BUILD_DIR}/librrprotocol/.stamp ${real_librrprotocol_objs} ${librrprotocol_headers} GNUmakefile librrprotocol/rules.mk
 	@echo "[link] $@ from $(words ${real_librrprotocol_objs}) objects"
-	@${CC} ${LDFLAGS} ${LIB_LDFLAGS} -lm -o $@ ${real_librrprotocol_objs} || exit 2
+	@${CC} ${LDFLAGS} ${LIB_LDFLAGS} -Wl,-soname,librrprotocol.so.0 -lm -o $@ ${real_librrprotocol_objs} || exit 2
+	@ln -sf librrprotocol.so librrprotocol.so.0
 
 ${BUILD_DIR}/librrprotocol/%.o:librrprotocol/%.c GNUmakefile ${librrprotocol_headers} ${librustyaxe} ${librustyaxe_headers}
 	@echo "[compile] $< => $@"
