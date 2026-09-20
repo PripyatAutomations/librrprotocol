@@ -77,6 +77,45 @@ static bool media_channel_all_clients_support(struct rr_mediachan *cp,
    return true;
 }
 
+// Pick the channel format when its first subscriber arrives. The channel's
+// codec is shared, so the initial value must come from the intersection of
+// the server list and this client's negotiated capabilities. Subsequent
+// codec changes still require an explicit media.codec request.
+static bool media_init_channel_codec(rrconn_t *cptr, struct rr_mediachan *cp) {
+   if (!cptr || !cp || cp->codec[0] != '\0') {
+      return cp && cp->codec[0] != '\0';
+   }
+   const char *server_codecs = cfg_get_exp("codecs.allowed");
+   if (!server_codecs || !*server_codecs) {
+      free((void *)server_codecs);
+      return false;
+   }
+   char *common = cptr->media_codecs[0] ?
+      codec_filter_common(server_codecs, cptr->media_codecs) : strdup(server_codecs);
+   free((void *)server_codecs);
+   if (!common || strlen(common) < 4) {
+      free(common);
+      return false;
+   }
+
+   char codec[5] = { 0 };
+   memcpy(codec, common, 4);
+   free(common);
+
+   dict *sel = dict_new();
+   if (sel) {
+      dict_add(sel, "media.codec", codec);
+      dict_add_ulong(sel, "media.dir", cp->direction);
+      dict_add(sel, "media.chan-uuid", cp->uuid);
+      event_emit_dict("media.codec-select", cptr, sel);
+      dict_free(sel);
+   }
+   snprintf(cp->codec, sizeof(cp->codec), "%s", codec);
+   Log(LOG_INFO, "ws.media", "Selected initial codec %s for channel %s from %s's negotiated capabilities",
+      cp->codec, cp->uuid, cptr->chatname[0] ? cptr->chatname : "client");
+   return true;
+}
+
 #ifndef MAX_MEDIA_CHANNELS
 #define	MAX_MEDIA_CHANNELS 64
 #endif
@@ -491,6 +530,11 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       }
       // Channel id is 1 + table index; 0 means "no channel" in the
       // rx_channels/tx_channels arrays
+      if (!cp->codec[0] && !media_init_channel_codec(cptr, cp)) {
+         ws_send_error(cptr, "No negotiated codec is available for this media channel");
+         return true;
+      }
+      media_send_available_all(NULL);
       u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
       bool is_tx = (cp->direction == RR_BINFRAME_DIR_TX);
       if (cp->codec[0] && !media_client_supports_codec(cptr, cp->codec)) {
