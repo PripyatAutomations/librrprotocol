@@ -53,13 +53,22 @@ bool media_send_codec_select(rrconn_t *cptr, const char *codec, const char *chan
       return true;
    }
    dict *d = dict_new();
+   if (!d) {
+      Log(LOG_CRIT, "ws.media", "Unable to allocate codec selection for channel %s", channel_uuid);
+      return true;
+   }
    dict_add(d, "msg.type", "media");
    dict_add(d, "media.cmd", "codec");
    dict_add(d, "media.codec", codec);
    dict_add(d, "media.chan-uuid", channel_uuid);
    dict_add_ulong(d, "media.ts", now);
-   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
+
+   if (!sent) {
+      Log(LOG_WARN, "ws.media", "Unable to send codec %s selection for channel %s", codec, channel_uuid);
+      return true;
+   }
 
    Log(LOG_INFO, "ws.media", "Selected codec %s for media channel %s", codec, channel_uuid);
    return false;
@@ -78,13 +87,22 @@ bool media_send_client_capab(rrconn_t *cptr) {
       return true;
    }
    dict *d = dict_new();
+   if (!d) {
+      free((void *)my_codecs);
+      Log(LOG_CRIT, "ws.media", "Unable to allocate client media capability message");
+      return true;
+   }
    dict_add(d, "msg.type", "media");
    dict_add(d, "media.cmd", "capab");
    dict_add(d, "media.codecs", my_codecs);
    dict_add_ulong(d, "media.ts", now);
-   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
    free( (void *)my_codecs );
+   if (!sent) {
+      Log(LOG_WARN, "ws.media", "Unable to send client media capabilities");
+      return true;
+   }
    Log(LOG_DEBUG, "ws.media", "Sent client media.capab");
 
    return false;
@@ -188,12 +206,20 @@ bool media_send_list(rrconn_t *cptr) {
       return true;
    }
    dict *d = dict_new();
+   if (!d) {
+      Log(LOG_CRIT, "ws.media", "Unable to allocate media list request");
+      return true;
+   }
    dict_add(d, "msg.type", "media");
    dict_add(d, "media.cmd", "list");
    dict_add_ulong(d, "media.ts", now);
-   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
 
+   if (!sent) {
+      Log(LOG_WARN, "ws.media", "Unable to send media channel list request");
+      return true;
+   }
    return false;
 }
 
@@ -205,12 +231,20 @@ bool media_send_subscribe(rrconn_t *cptr, const char *uuid) {
       return true;
    }
    dict *d = dict_new();
+   if (!d) {
+      Log(LOG_CRIT, "ws.media", "Unable to allocate subscribe request for channel %s", uuid);
+      return true;
+   }
    dict_add(d, "msg.type", "media");
    dict_add(d, "media.cmd", "subscribe");
    dict_add(d, "media.chan-uuid", uuid);
    dict_add_ulong(d, "media.ts", now);
-   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
+   if (!sent) {
+      Log(LOG_WARN, "ws.media", "Unable to subscribe to media channel %s", uuid);
+      return true;
+   }
    Log(LOG_INFO, "ws.media", "Subscribing to media channel |%s|", uuid);
 
    return false;
@@ -222,12 +256,21 @@ bool media_send_unsubscribe(rrconn_t *cptr, const char *uuid) {
       return true;
    }
    dict *d = dict_new();
+   if (!d) {
+      Log(LOG_CRIT, "ws.media", "Unable to allocate unsubscribe request for channel %s", uuid);
+      return true;
+   }
    dict_add(d, "msg.type", "media");
    dict_add(d, "media.cmd", "unsubscribe");
    dict_add(d, "media.chan-uuid", uuid);
    dict_add_ulong(d, "media.ts", now);
-   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
+
+   if (!sent) {
+      Log(LOG_WARN, "ws.media", "Unable to unsubscribe from media channel %s", uuid);
+      return true;
+   }
 
    return false;
 }
@@ -241,6 +284,10 @@ bool media_send_source(rrconn_t *cptr, const char *uuid) {
       return true;
    }
    dict *d = dict_new();
+   if (!d) {
+      Log(LOG_CRIT, "ws.media", "Unable to allocate media source request");
+      return true;
+   }
    dict_add(d, "msg.type", "media");
    dict_add(d, "media.cmd", "source");
    dict_add_ulong(d, "media.ts", now);
@@ -248,8 +295,13 @@ bool media_send_source(rrconn_t *cptr, const char *uuid) {
    if (uuid && uuid[0] != '\0') {
       dict_add(d, "media.chan-uuid", uuid);
    }
-   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
+   if (!sent) {
+      Log(LOG_WARN, "ws.media", "Unable to register media source (channel %s)",
+         (uuid && uuid[0] ? uuid : "<all>"));
+      return true;
+   }
    Log(LOG_INFO, "ws.media", "Registering as media source (channel %s)",
       (uuid && uuid[0] ? uuid : "<all>"));
 
