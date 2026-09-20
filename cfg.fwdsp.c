@@ -76,6 +76,13 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
       snprintf(fullkey, sizeof(fullkey), "fwdsp.%s", tmpbuf);
    }
    dict_add(cfg, fullkey, val);
+   // Section values are conventionally addressable as section:key. Keep the
+   // historical dotted alias so existing callers/configuration continue to
+   // work while new code can use the section form.
+   char colonkey[128];
+   snprintf(colonkey, sizeof(colonkey), "fwdsp:%s",
+      strncmp(tmpbuf, "fwdsp.", 6) == 0 ? tmpbuf + 6 : tmpbuf);
+   dict_add(cfg, colonkey, val);
    Log(LOG_CRAZY, "cfg.fwdsp", "Loaded %s=%s from %s:%d", fullkey, val, path, line);
    free(tmpbuf);
 
