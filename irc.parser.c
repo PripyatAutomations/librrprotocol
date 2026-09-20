@@ -25,7 +25,19 @@
 extern const irc_command_t irc_commands[];
 
 static irc_callback_t *irc_callbacks = NULL;
+static dict *irc_callback_index = NULL;
 rrlist_t *irc_connections = NULL;
+
+static void irc_command_key(const char *command, char *key, size_t key_len) {
+   size_t i = 0;
+   if (!key || key_len == 0) return;
+   if (command) {
+      for (; command[i] && i + 1 < key_len; i++) {
+         key[i] = (char)tolower((unsigned char)command[i]);
+      }
+   }
+   key[i] = '\0';
+}
 
 void irc_message_free(irc_message_t *mp) {
    if (!mp) {
@@ -165,6 +177,14 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
          is_numeric = true;
       }
    }
+   if (!is_numeric && mp->argv[0] && irc_callback_index) {
+      char key[128];
+      irc_command_key(mp->argv[0], key, sizeof(key));
+      irc_callback_t *indexed = dict_get_ptr(irc_callback_index, key, NULL);
+      if (indexed) {
+         p = indexed;
+      }
+   }
    while (p) {
       nc++;
       Log(LOG_CRAZY, "dispatcher", "CB <%p> cmd: <%p> numeric: %d mp: <%p>", p->cb, p->cmd, p->numeric, mp->argv);
@@ -264,6 +284,13 @@ bool irc_remove_callback(irc_callback_t *cb) {
    irc_callback_t *p = irc_callbacks, *prev = NULL;
    while (p) {
       if (p == cb) {
+         if (irc_callback_index && p->cmd) {
+            char key[128];
+            irc_command_key(p->cmd, key, sizeof(key));
+            if (dict_get_ptr(irc_callback_index, key, NULL) == p) {
+               dict_del(irc_callback_index, key);
+            }
+         }
          if (p->cmd) {
             free(p->cmd);
          }
@@ -297,6 +324,17 @@ bool irc_remove_callback(irc_callback_t *cb) {
 bool irc_register_callback(irc_callback_t *cb) {
    if (!cb) {
       return true;
+   }
+
+   if (cb->cmd) {
+      if (!irc_callback_index) {
+         irc_callback_index = dict_new();
+      }
+      if (irc_callback_index) {
+         char key[128];
+         irc_command_key(cb->cmd, key, sizeof(key));
+         dict_add_ptr(irc_callback_index, key, cb);
+      }
    }
 
    if (!irc_callbacks) {

@@ -249,8 +249,11 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          memset( buf, 0, sizeof(buf) );
          memcpy(buf, msg_data.buf, msg_data.len);
 
-         Log(LOG_CRAZY, "http", "ws_handle_cli: msg=%s", buf);
          dict *d = json2dict(buf);
+         if (!d) {
+            Log(LOG_WARN, "http", "ws_handle_cli: invalid text frame len=%zu flags=0x%02x payload=%.*s",
+               msg_data.len, wm->flags, (int)msg_data.len, buf);
+         }
          ws_txtframe_dispatch(cptr, d);
          memset( buf, 0, sizeof(buf) );
          dict_free(d);

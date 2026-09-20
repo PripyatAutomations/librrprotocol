@@ -70,7 +70,7 @@ const char *vfo_name(rr_vfo_t vfo) {
 }
 
 rr_mode_t vfo_parse_mode(const char *mode) {
-   Log(LOG_CRAZY, "vfo", "vfo_parse_mode: %s", mode);
+//   Log(LOG_CRAZY, "vfo", "vfo_parse_mode: %s", mode);
 
    if (strcasecmp(mode, vfo_mode_cw) == 0) {
       return MODE_CW;

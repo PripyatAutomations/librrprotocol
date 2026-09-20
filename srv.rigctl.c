@@ -219,14 +219,18 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
                }
 
                bool talker_is_noob = (talker->user && has_priv(talker->user->uid, "noob") );
-               bool i_can_halt = has_priv(cptr->user->uid, "admin|owner|elmer");
+               bool i_can_halt = has_priv(cptr->user->uid, "admin|owner") ||
+                  (talker_is_noob && has_priv(cptr->user->uid, "elmer"));
 
-               if (talker_is_noob && i_can_halt) {
-                  Log(LOG_AUDIT, "ptt", "User %s halted noob %s; noob cooldown %d sec",
-                     cptr->chatname, talker->chatname, cfg_noob_cooldown);
+               if (i_can_halt) {
+                  Log(LOG_AUDIT, "ptt", "User %s halted %s%s",
+                     cptr->chatname, talker->chatname,
+                     talker_is_noob ? "; noob cooldown applied" : "");
                   talker->is_ptt = false;
                   talker->ptt_vfo = 0;
-                  talker->noob_cooldown = now + cfg_noob_cooldown;
+                  if (talker_is_noob) {
+                     talker->noob_cooldown = now + cfg_noob_cooldown;
+                  }
                   // Same path as MUTE uses to force TX off
                   event_emit("ptt.off", NULL, NULL);
                   // Push updated TX state to everyone's userlist

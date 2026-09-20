@@ -64,7 +64,6 @@ struct rr_user {
    bool is_ptt;
    bool is_muted;
    bool in_store;       // <-- whether `iter` is valid
-
    struct rr_user *next;
 };
 
