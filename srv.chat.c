@@ -718,6 +718,12 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                              return false;
                           }
 
+                          if (cptr->ptt_vfo) {
+                             ws_send_error(cptr, "Cannot switch VFO while transmitting on VFO %c",
+                                cptr->ptt_vfo);
+                             return false;
+                          }
+
                           if (new_vfo == active_vfo) {
                              // no-op, but confirm to the user so it doesn't look hung
                              ws_send_notice(cptr, "VFO %s is already active", vfo_name(new_vfo) );
