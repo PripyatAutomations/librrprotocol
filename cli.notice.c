@@ -37,3 +37,23 @@ bool ws_handle_notice_msg(rrconn_t *cptr, dict *d) {
    event_emit_dict("notice.msg", NULL, d);
    return true;
 }
+
+bool ws_handle_callsign_msg(rrconn_t *cptr, dict *d) {
+   if (!cptr || !d) return false;
+   if (!dict_get(d, "callsign.status", NULL) && !dict_get(d, "callsign.fields", NULL)) {
+      /* Dotted dictionaries do not expose a parent value; accept any field. */
+      const char *key = NULL;
+      char *value = NULL;
+      int rank = 0;
+      bool found = false;
+      while ((rank = dict_enumerate(d, rank, &key, &value)) >= 0) {
+         if (key && strncmp(key, "callsign.fields.", 16) == 0) {
+            found = true;
+            break;
+         }
+      }
+      if (!found) return false;
+   }
+   event_emit_dict("callsign.line", NULL, d);
+   return true;
+}

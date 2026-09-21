@@ -48,6 +48,7 @@ extern bool ws_handle_error_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_hello_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_media_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_notice_msg(rrconn_t *cptr, dict *d);
+extern bool ws_handle_callsign_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_ping_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_pong_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d);
@@ -64,6 +65,7 @@ struct ws_msg_routes ws_routes_cli[] = {
    { .type = "alert",  .cb = ws_handle_alert_msg },
    { .type = "auth",   .cb = ws_handle_client_auth_msg },
    { .type = "cat",    .cb = ws_handle_rigctl_cli_msg },
+   { .type = "callsign", .cb = ws_handle_callsign_msg },
    { .type = "error",  .cb = ws_handle_error_msg },
    { .type = "hello",  .cb = ws_handle_hello_msg },
 //   { .type = "irc",   .cb = ws_handle_irc_msg },

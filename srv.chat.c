@@ -37,35 +37,141 @@ extern const char *config_file;
 extern bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action);
 extern bool ws_chat_error_need_reason(rrconn_t *cptr, const char *command);
 
-static pid_t callsign_lookup_pid = -1;
-static FILE *callsign_lookup_in = NULL;
-static FILE *callsign_lookup_out = NULL;
+static rr_subproc_t callsign_lookup_process = { .pid = -1, .error_fd = -1 };
 static bool callsign_lookup_atexit_registered = false;
+static bool callsign_lookup_ready = false;
+static bool callsign_lookup_pending = false;
+static rrconn_t *callsign_lookup_client = NULL;
+static time_t callsign_lookup_deadline = 0;
+static char callsign_lookup_request_text[256];
+static char callsign_lookup_reply[HTTP_WS_MAX_MSG];
+static size_t callsign_lookup_reply_len = 0;
 
 static void callsign_lookup_stop(void) {
-   if (callsign_lookup_in) fclose(callsign_lookup_in);
-   if (callsign_lookup_out) fclose(callsign_lookup_out);
-   callsign_lookup_in = callsign_lookup_out = NULL;
-   if (callsign_lookup_pid > 0) {
-      kill(callsign_lookup_pid, SIGTERM);
-      waitpid(callsign_lookup_pid, NULL, 0);
-      callsign_lookup_pid = -1;
-   }
+   rr_subproc_stop(&callsign_lookup_process, SIGTERM);
+   callsign_lookup_ready = false;
+   callsign_lookup_pending = false;
+   callsign_lookup_client = NULL;
+   callsign_lookup_deadline = 0;
+   callsign_lookup_request_text[0] = '\0';
+   callsign_lookup_reply_len = 0;
 }
 
 static bool callsign_lookup_readline(char *line, size_t len, int timeout_ms) {
-   if (!callsign_lookup_out || !line || len < 2) return false;
-   struct pollfd pfd = { .fd = fileno(callsign_lookup_out), .events = POLLIN };
-   int rc;
-   do {
-      rc = poll(&pfd, 1, timeout_ms);
-   } while (rc < 0 && errno == EINTR);
-   if (rc <= 0 || !(pfd.revents & (POLLIN | POLLHUP))) return false;
-   return fgets(line, len, callsign_lookup_out) != NULL;
+   return rr_subproc_readline(&callsign_lookup_process, line, len, timeout_ms);
+}
+
+static bool callsign_lookup_wait_ready(int timeout_ms) {
+   if (callsign_lookup_ready) return true;
+   if (callsign_lookup_process.pid <= 0 || !callsign_lookup_process.input ||
+       !callsign_lookup_process.output) return false;
+
+   char line[1024];
+   while (callsign_lookup_readline(line, sizeof(line), timeout_ms)) {
+      if (strncmp(line, "+OK ", 4) == 0) {
+         callsign_lookup_ready = true;
+         Log(LOG_INFO, "callsign", "lookup helper ready (pid %ld)", (long)callsign_lookup_process.pid);
+         return true;
+      }
+      line[strcspn(line, "\r\n")] = '\0';
+      if (*line) Log(LOG_WARN, "callsign", "lookup startup: %s", line);
+   }
+
+   /* A zero-time probe is used from the WebSocket event loop.  No data yet
+    * means only that startup is still in progress; preserve the helper and
+    * let a later request probe it again. */
+   if (timeout_ms == 0) {
+      int status = 0;
+      pid_t ended = waitpid(callsign_lookup_process.pid, &status, WNOHANG);
+      if (ended == callsign_lookup_process.pid) {
+         if (WIFEXITED(status)) {
+            Log(LOG_WARN, "callsign", "lookup exited before ready (status %d)", WEXITSTATUS(status));
+         } else if (WIFSIGNALED(status)) {
+            Log(LOG_WARN, "callsign", "lookup terminated before ready by signal %d", WTERMSIG(status));
+         }
+         callsign_lookup_stop();
+      }
+      return false;
+   }
+
+   int status = 0;
+   pid_t ended = waitpid(callsign_lookup_process.pid, &status, WNOHANG);
+   if (ended == callsign_lookup_process.pid) {
+      if (WIFEXITED(status)) {
+         Log(LOG_WARN, "callsign", "lookup exited before ready (status %d)", WEXITSTATUS(status));
+      } else if (WIFSIGNALED(status)) {
+         Log(LOG_WARN, "callsign", "lookup terminated before ready by signal %d", WTERMSIG(status));
+      }
+   } else {
+      char *program = cfg_get_path("callsign-lookup:path");
+      Log(LOG_WARN, "callsign", "lookup did not report ready within %d seconds (program=%s, config=%s)",
+         (timeout_ms + 999) / 1000, (program && *program) ? program : "(unset)",
+         (config_file && *config_file) ? config_file : "(unset)");
+      free(program);
+   }
+   callsign_lookup_stop();
+   return false;
+}
+
+static bool callsign_lookup_send_reply(rrconn_t *cptr, const char *text) {
+   if (!cptr || !text) return false;
+   dict *message = dict_new();
+   if (!message) return false;
+   dict_add(message, "msg.type", "callsign");
+   dict_add_ulong(message, "msg.ts", now);
+   /* Keep the wire response machine-readable.  The dictionary serializer
+    * turns dotted keys into nested JSON objects. */
+   const char *line = text;
+   bool first = true;
+   while (*line) {
+      const char *end = strchr(line, '\n');
+      size_t line_len = end ? (size_t)(end - line) : strlen(line);
+      if (line_len > 0) {
+         const char *colon = memchr(line, ':', line_len);
+         if (first) {
+            char status[256];
+            size_t n = line_len < sizeof(status) - 1 ? line_len : sizeof(status) - 1;
+            memcpy(status, line, n);
+            status[n] = '\0';
+            dict_add(message, "callsign.status", status);
+            first = false;
+         } else if (colon && colon > line) {
+            char key[128];
+            size_t key_len = (size_t)(colon - line);
+            if (key_len >= sizeof(key)) key_len = sizeof(key) - 1;
+            size_t out = 0;
+            for (size_t i = 0; i < key_len && out + 1 < sizeof(key); i++) {
+               unsigned char ch = (unsigned char)line[i];
+               if (isalnum(ch)) key[out++] = (char)tolower(ch);
+               else if (out > 0 && key[out - 1] != '_') key[out++] = '_';
+            }
+            while (out > 0 && key[out - 1] == '_') out--;
+            key[out] = '\0';
+            if (out > 0) {
+               char field_key[160];
+               snprintf(field_key, sizeof(field_key), "callsign.fields.%s", key);
+               char value[1024];
+               size_t value_len = line_len - (size_t)(colon - line) - 1;
+               if (value_len >= sizeof(value)) value_len = sizeof(value) - 1;
+               memcpy(value, colon + 1, value_len);
+               value[value_len] = '\0';
+               while (*value == ' ') memmove(value, value + 1, strlen(value));
+               dict_add(message, field_key, value);
+            }
+         }
+      }
+      if (!end) break;
+      line = end + 1;
+   }
+   dict_add_bool(message, "callsign.done", true);
+   bool sent = ws_send_dict(NULL, cptr, message, WEBSOCKET_OP_TEXT);
+   dict_free(message);
+   return sent;
 }
 
 static bool callsign_lookup_start(void) {
-   if (callsign_lookup_pid > 0 && callsign_lookup_in && callsign_lookup_out) return true;
+   if (callsign_lookup_process.pid > 0 && callsign_lookup_process.input &&
+       callsign_lookup_process.output) return true;
 
    char *program = cfg_get_path("callsign-lookup:path");
    if (!program || !*program || !config_file || !*config_file) {
@@ -90,106 +196,95 @@ static bool callsign_lookup_start(void) {
       callsign_lookup_atexit_registered = true;
    }
 
-   int to_child[2] = { -1, -1 }, from_child[2] = { -1, -1 };
-   if (pipe(to_child) < 0 || pipe(from_child) < 0) {
-      Log(LOG_WARN, "callsign", "Cannot start lookup: pipe failed for %s: %s", program, strerror(errno));
-      if (to_child[0] >= 0) { close(to_child[0]); close(to_child[1]); }
-      if (from_child[0] >= 0) { close(from_child[0]); close(from_child[1]); }
-      free(program);
-      return false;
-   }
-   pid_t pid = fork();
-   if (pid < 0) {
-      Log(LOG_WARN, "callsign", "Cannot start lookup: fork failed for %s: %s", program, strerror(errno));
-      close(to_child[0]); close(to_child[1]); close(from_child[0]); close(from_child[1]);
-      free(program);
-      return false;
-   }
-   if (pid == 0) {
-      dup2(to_child[0], STDIN_FILENO);
-      dup2(from_child[1], STDOUT_FILENO);
-      dup2(from_child[1], STDERR_FILENO);
-      close(to_child[0]); close(to_child[1]); close(from_child[0]); close(from_child[1]);
-      execlp(program, program, "-q", "-f", config_file, (char *)NULL);
-      dprintf(STDERR_FILENO, "callsign-lookup exec failed for %s: %s\n", program, strerror(errno));
-      _exit(127);
-   }
-   close(to_child[0]);
-   close(from_child[1]);
-   callsign_lookup_pid = pid;
-   callsign_lookup_in = fdopen(to_child[1], "w");
-   callsign_lookup_out = fdopen(from_child[0], "r");
-   if (!callsign_lookup_in || !callsign_lookup_out) {
-      Log(LOG_WARN, "callsign", "Cannot start lookup: fdopen failed for %s: %s", program, strerror(errno));
+   const char *argv[] = { program, "-q", "-f", config_file, NULL };
+   if (!rr_subproc_spawn(&callsign_lookup_process, program, argv, true)) {
+      Log(LOG_WARN, "callsign", "Cannot start lookup: subprocess setup failed for %s: %s", program, strerror(errno));
       callsign_lookup_stop();
       free(program);
       return false;
-   }
-
-   char line[1024];
-   bool ready = false;
-   while (callsign_lookup_readline(line, sizeof(line), CALLSIGN_LOOKUP_START_TIMEOUT_MS)) {
-      if (strncmp(line, "+OK ", 4) == 0) { ready = true; break; }
-      line[strcspn(line, "\r\n")] = '\0';
-      if (*line) {
-         Log(LOG_WARN, "callsign", "lookup startup: %s", line);
-      }
-   }
-   if (!ready) {
-      int status = 0;
-      pid_t ended = waitpid(callsign_lookup_pid, &status, WNOHANG);
-      if (ended == callsign_lookup_pid) {
-         if (WIFEXITED(status)) {
-            Log(LOG_WARN, "callsign", "lookup exited before ready (status %d)", WEXITSTATUS(status));
-         } else if (WIFSIGNALED(status)) {
-            Log(LOG_WARN, "callsign", "lookup terminated before ready by signal %d", WTERMSIG(status));
-         }
-      } else {
-         Log(LOG_WARN, "callsign", "lookup did not report ready within %d seconds (program=%s, config=%s)",
-            CALLSIGN_LOOKUP_START_TIMEOUT_MS / 1000, program, config_file);
-      }
-      callsign_lookup_stop();
    }
    free(program);
-   if (ready) {
-      Log(LOG_INFO, "callsign", "lookup helper ready (pid %ld)", (long)callsign_lookup_pid);
-   }
-   return ready;
+   return true;
 }
 
 // Start the persistent lookup helper during server initialization rather
 // than making the first /qrz or /grid request pay the startup cost.
 bool ws_callsign_lookup_init(void) {
-   return callsign_lookup_start();
+   if (!callsign_lookup_start()) return false;
+   /* The helper is launched before the network listener.  Give its banner a
+    * bounded startup window here so the first request cannot race readiness,
+    * while keeping the old unbounded 60-second startup hang impossible. */
+   if (!callsign_lookup_wait_ready(5000)) {
+      Log(LOG_WARN, "callsign", "lookup helper did not become ready during initialization");
+   }
+   return callsign_lookup_ready;
 }
 
-static bool callsign_lookup_request(rrconn_t *cptr, const char *request) {
-   if (!callsign_lookup_start()) return false;
-   if (fprintf(callsign_lookup_in, "%s\n", request) < 0 || fflush(callsign_lookup_in) != 0) {
-      Log(LOG_WARN, "callsign", "lookup request failed while writing to helper (pid %ld): %s",
-         (long)callsign_lookup_pid, strerror(errno));
-      callsign_lookup_stop();
-      return false;
+/* Drain helper startup output from the server's periodic tick without ever
+ * blocking the WebSocket/media event loop. */
+void ws_callsign_lookup_poll(void) {
+   if (callsign_lookup_process.pid > 0 && !callsign_lookup_ready) {
+      (void)callsign_lookup_wait_ready(0);
    }
+   if (!callsign_lookup_pending || !callsign_lookup_ready) return;
 
    char line[1024];
-   bool complete = false;
-   while (callsign_lookup_readline(line, sizeof(line), 30000)) {
+   while (callsign_lookup_readline(line, sizeof(line), 0)) {
       line[strcspn(line, "\r\n")] = '\0';
       if (!*line || strncmp(line, "+NOTICE ", 8) == 0 ||
           strncmp(line, "+OK ", 4) == 0 || strncmp(line, "+PROTO ", 7) == 0 ||
           strncmp(line, "+GOODBYE", 8) == 0 || line[0] == '[' || line[0] == '<' ||
-          strncmp(line, "==", 2) == 0) {
-         continue;
+          strncmp(line, "==", 2) == 0) continue;
+      if (strcmp(line, "+EOR") == 0) {
+         callsign_lookup_reply[callsign_lookup_reply_len] = '\0';
+         if (callsign_lookup_client) {
+            callsign_lookup_send_reply(callsign_lookup_client, callsign_lookup_reply);
+         }
+         callsign_lookup_pending = false;
+         callsign_lookup_client = NULL;
+         callsign_lookup_deadline = 0;
+         callsign_lookup_request_text[0] = '\0';
+         return;
       }
-      if (strcmp(line, "+EOR") == 0) { complete = true; break; }
-      ws_send_notice(cptr, "%s", line);
+      size_t line_len = strlen(line);
+      if (callsign_lookup_reply_len + line_len + 2 < sizeof(callsign_lookup_reply)) {
+         memcpy(callsign_lookup_reply + callsign_lookup_reply_len, line, line_len);
+         callsign_lookup_reply_len += line_len;
+         callsign_lookup_reply[callsign_lookup_reply_len++] = '\n';
+      }
    }
-   if (!complete) {
-      Log(LOG_WARN, "callsign", "lookup helper did not finish request: %s", request);
+
+   if (callsign_lookup_deadline > 0 && now >= callsign_lookup_deadline) {
+      if (callsign_lookup_client) {
+         ws_send_error(callsign_lookup_client, "Callsign lookup timed out");
+      }
+      Log(LOG_WARN, "callsign", "lookup helper did not finish request: %s", callsign_lookup_request_text);
       callsign_lookup_stop();
    }
-   return complete;
+}
+
+static bool callsign_lookup_request(rrconn_t *cptr, const char *request) {
+   if (callsign_lookup_pending) return false;
+   if (!callsign_lookup_start()) return false;
+   /* This runs on the WebSocket/event-loop thread.  Allow only a short grace
+    * period for the startup banner to cross the pipe; the long startup wait
+    * must remain outside request handling so media cannot be stalled. */
+   if (!callsign_lookup_wait_ready(250)) {
+      Log(LOG_INFO, "callsign", "lookup helper is still starting; request will need to be retried");
+      return false;
+   }
+   if (!rr_subproc_write_line(&callsign_lookup_process, request)) {
+      Log(LOG_WARN, "callsign", "lookup request failed while writing to helper (pid %ld): %s",
+         (long)callsign_lookup_process.pid, strerror(errno));
+      callsign_lookup_stop();
+      return false;
+   }
+   snprintf(callsign_lookup_request_text, sizeof(callsign_lookup_request_text), "%s", request);
+   callsign_lookup_client = cptr;
+   callsign_lookup_pending = true;
+   callsign_lookup_deadline = now + 30;
+   callsign_lookup_reply_len = 0;
+   return true;
 }
 
 typedef struct {
@@ -656,15 +751,28 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             ws_send_error(cptr, "Usage: /%s VALUE", strcasecmp(cmd, "grid") == 0 ? "grid" : "qrz");
             return false;
          }
+         char lookup_data[256];
+         snprintf(lookup_data, sizeof(lookup_data), "%s", data);
+         bool no_cache = false;
          if (strcasecmp(cmd, "qrz") == 0) {
-            for (const unsigned char *p = (const unsigned char *)data; *p; p++) {
+            char *option = strpbrk(lookup_data, " \t");
+            if (option) {
+               *option++ = '\0';
+               while (*option == ' ' || *option == '\t') option++;
+               if (strcasecmp(option, "nocache") != 0) {
+                  ws_send_error(cptr, "Invalid /qrz option: %s", option);
+                  return false;
+               }
+               no_cache = true;
+            }
+            for (const unsigned char *p = (const unsigned char *)lookup_data; *p; p++) {
                if (!isalnum(*p) && *p != '-' && *p != '/' && *p != '.') {
-                  ws_send_error(cptr, "Invalid callsign: %s", data);
+                  ws_send_error(cptr, "Invalid callsign: %s", lookup_data);
                   return false;
                }
             }
          } else {
-            for (const unsigned char *p = (const unsigned char *)data; *p; p++) {
+            for (const unsigned char *p = (const unsigned char *)lookup_data; *p; p++) {
                if (!isalnum(*p) && *p != '-' && *p != '.' && *p != ',' &&
                    *p != '+' && *p != ' ') {
                   ws_send_error(cptr, "Invalid grid or coordinates: %s", data);
@@ -682,9 +790,10 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          }
          char request[256];
          snprintf(request, sizeof(request), "/%s %s",
-            strcasecmp(cmd, "grid") == 0 ? "GRID" : "CALL", data);
+            strcasecmp(cmd, "grid") == 0 ? "GRID" : "CALL", lookup_data);
+         if (no_cache) strncat(request, " NOCACHE", sizeof(request) - strlen(request) - 1);
          if (!callsign_lookup_request(cptr, request)) {
-            ws_send_error(cptr, "Unable to start callsign lookup on the server");
+            ws_send_error(cptr, "Callsign lookup is still starting; please retry shortly");
             return false;
          }
          return true;

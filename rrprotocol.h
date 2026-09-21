@@ -37,5 +37,7 @@ extern uint32_t ws_room_vfo_mask(const char *room);
 
 // Start the server's persistent callsign lookup helper after radio setup.
 extern bool ws_callsign_lookup_init(void);
+extern void ws_callsign_lookup_poll(void);
+extern bool ws_handle_callsign_msg(rrconn_t *cptr, dict *d);
 
 #endif // !defined(__rrprotocol_h)
