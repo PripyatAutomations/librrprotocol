@@ -130,7 +130,7 @@ bool http_init(struct mg_mgr *mgr) {
       // use the defaults
       prepare_msg(www_root, sizeof(www_root), "%s", WWW_ROOT_FALLBACK);
    }
-   Log(LOG_CRIT, "http.init", "set www-root to %s", www_root);
+   Log(LOG_INFO, "http.init", "Set www-root to %s", www_root);
    free( (char *)cfg_www_root );
    cfg_www_root = NULL;
 
@@ -143,7 +143,8 @@ bool http_init(struct mg_mgr *mgr) {
    // Reload the user database whenever net.http.authdb* changes (rehash etc)
    reload_event_add("net.http.authdb", http_reload_users_cb, "Reload HTTP users from authdb");
    reload_event_add("net.http.authdb-dynamic", http_reload_users_cb, "Reload HTTP users from authdb");
-   struct in_addr sa_bind;
+   struct in_addr sa_bind = { 0 };
+   sa_bind.s_addr = htonl(INADDR_ANY);
    char listen_addr[255];
    int bind_port = cfg_get_int("net.http.port", 8420);
 
@@ -179,7 +180,7 @@ bool http_init(struct mg_mgr *mgr) {
    }
 
    Log( LOG_INFO, "http", "HTTP listening at %s with www-root at %s", listen_addr,
-      (cfg_www_root ? cfg_www_root : WWW_ROOT_FALLBACK) );
+      www_root );
 
 #ifdef	HTTP_USE_TLS
    if (cfg_get_bool("net.http.tls-enabled", false) ) {
@@ -191,7 +192,8 @@ bool http_init(struct mg_mgr *mgr) {
       }
 #endif	// USE_EEPROM
 
-      struct in_addr sa_tls_bind;
+      struct in_addr sa_tls_bind = { 0 };
+      sa_tls_bind.s_addr = htonl(INADDR_ANY);
       s = cfg_get_exp("net.http.tls-bind");
 
       if (!s || !inet_aton(s, &sa_tls_bind) ) {
@@ -219,7 +221,7 @@ bool http_init(struct mg_mgr *mgr) {
          Log(LOG_CRIT, "http", "Continuing without https listener (net.http.required is false)");
       }
       Log( LOG_INFO, "http", "HTTPS listening at %s with www-root at %s", tls_listen_addr,
-         (cfg_www_root ? cfg_www_root : WWW_ROOT_FALLBACK) );
+         www_root );
    }
 #endif // HTTP_USE_TLS
 #endif // USE_MONGOOSE

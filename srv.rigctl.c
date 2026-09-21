@@ -140,6 +140,9 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
    }
    // update last sent and return success
    ws_rig_state_last_sent = now;
+   if (!force_send) {
+      free(diff);
+   }
    return false;
 }
 

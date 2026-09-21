@@ -181,6 +181,10 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
    }
 
    if (strcasecmp(cmd, "login") == 0) {
+      if (!user || !*user) {
+         Log(LOG_WARN, "auth", "Login request did not include a username");
+         return true;
+      }
       char resp_buf[HTTP_WS_MAX_MSG + 1];
       char *ip = cptr->user_ip;
       int port = cptr->user_port;

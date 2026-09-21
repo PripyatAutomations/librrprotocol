@@ -88,10 +88,13 @@ const char *http_content_type(const char *type) {
    }
    int items = (sizeof(http_res_types) / sizeof(struct http_res_types) );
 
-   for (int i = 0 ; i <= items ; i++) {
+   for (int i = 0 ; i < items ; i++) {
       // end of table marker?
       if (!http_res_types[i].shortname && !http_res_types[i].msg) {
          break;
+      }
+      if (!http_res_types[i].shortname || !http_res_types[i].msg) {
+         continue;
       }
 
       // compare the short name

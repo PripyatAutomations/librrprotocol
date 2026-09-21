@@ -154,6 +154,9 @@ bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr) {
       if (!http_routes[i].match && !http_routes[i].cb) {
          break;
       }
+      if (!http_routes[i].match || !http_routes[i].cb || !msg->uri.buf) {
+         continue;
+      }
       size_t match_len = strlen(http_routes[i].match);
 
 /*
