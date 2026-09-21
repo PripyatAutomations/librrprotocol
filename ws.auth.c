@@ -83,7 +83,7 @@ cleanup:
 bool ws_send_login(rrconn_t *cptr, const char *login_user) {
    if (!cptr || !login_user) {
       Log(LOG_DEBUG, "auth.ws", "send_login cptr:<%p> login_user:<%p> |%s|", cptr, login_user, login_user);
-      return true;
+      return false;
    }
    Log(LOG_INFO, "rrproto.auth", "Sending initial LOGIN!");
    dict *auth_msg = dict_new();
@@ -93,7 +93,7 @@ bool ws_send_login(rrconn_t *cptr, const char *login_user) {
    ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
    dict_free(auth_msg);
 
-   return false;
+   return true;
 }
 
 // Hashes the user stored password with the server nonce and returns it
@@ -102,7 +102,7 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
       Log(LOG_CRIT, "auth", "ws_send_passwd with invalid parameters, cptr:<%p> user:<%p> passwd:<%p> nonce:<%p>", cptr, user,
          passwd, nonce);
 
-      return true;
+      return false;
    }
 
    char *hashed_pw = hash_passwd(passwd);
@@ -117,7 +117,7 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
 
    if (!temp_pw) {
       Log(LOG_CRIT, "auth", "Failed to hash session password (nonce: |%s|)", nonce);
-      return true;
+      return false;
    }
 
    dict *auth_msg = dict_new();
@@ -130,13 +130,13 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
    dict_free(auth_msg);
    free(temp_pw);
 
-   return false;
+   return true;
 }
 
 bool ws_send_logout(rrconn_t *cptr, const char *user, const char *token) {
    if (!user || !token || !cptr) {
       Log(LOG_DEBUG, "auth.ws", "send_logout cptr:<%p> user:<%p> |%s|", cptr, user, user);
-      return true;
+      return false;
    }
 
    dict *auth_msg = dict_new();
@@ -147,13 +147,13 @@ bool ws_send_logout(rrconn_t *cptr, const char *user, const char *token) {
    ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
    dict_free(auth_msg);
 
-   return false;
+   return true;
 }
 
 bool ws_send_hello(rrconn_t *cptr) {
    if (!cptr) {
       Log(LOG_DEBUG, "auth.ws", "send_hello cptr:<%p>", cptr);
-      return true;
+      return false;
    }
    char msgbuf[512];
    const char *codec = "mu08,mu08";
@@ -173,5 +173,5 @@ bool ws_send_hello(rrconn_t *cptr) {
    ws_send_dict(NULL, cptr, hello, WEBSOCKET_OP_TEXT);
    dict_free(hello);
 
-   return false;
+   return true;
 }

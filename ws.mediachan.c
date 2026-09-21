@@ -126,9 +126,10 @@ struct rr_mediachan media_channels[MAX_MEDIA_CHANNELS];
 // Fill in a uuid for a new channel: use a random-ish but stable string
 static void media_gen_uuid(char *out, size_t len) {
    static uint64_t counter = 0;
+   uint64_t serial = counter++;
 
    snprintf(out, len, "%llx-%04llx", (unsigned long long)now,
-      (unsigned long long)((uintptr_t)&media_channels[counter] + ++counter));
+      (unsigned long long)((uintptr_t)&media_channels[serial % MAX_MEDIA_CHANNELS] + serial));
 }
 
 struct rr_mediachan *media_chan_add(uint8_t subsystem, uint8_t direction,

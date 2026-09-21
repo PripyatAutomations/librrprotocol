@@ -23,7 +23,7 @@ extern const char *get_server_property(const char *server, const char *prop);
 extern time_t now;
 extern int ws_connected;
 const char *tls_ca_path = NULL;
-bool cfg_http_debug_crazy = false;
+bool cfg_http_debug = false;
 const char *server_name = NULL;
 extern bool cfg_show_pings;
 #ifdef	USE_MONGOOSE
@@ -176,7 +176,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 
    if (ev == MG_EV_OPEN) {
 #ifdef	HTTP_DEBUG_CRAZY
-      if (cfg_http_debug_crazy) {
+      if (cfg_http_debug) {
          c->is_hexdumping = 1;
       }
 #endif	// HTTP_DEBUG_CRAZY
@@ -204,7 +204,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          }
          mg_tls_init(c, &opts);
       }
-      ws_connected = 1;
+      ws_connected = true;
 
       const char *login_user = get_server_property(this_server, "server.user");
       Log(LOG_DEBUG, "ws", "ev_ws_connect: server: |%s| user: |%s|", server_name, login_user);
@@ -262,7 +262,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
    } else if (ev == MG_EV_ERROR) {
       // send (char *)ev_data content
       // { \"error\": { \"msg\":
-      ws_connected = 0;
+      ws_connected = false;
 
       // Only act if this is the active connection - a stale connection's
       // error must not close the new one (i.e. /server switching).
@@ -288,7 +288,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
    } else if (ev == MG_EV_CLOSE) {
       bool active = (cptr && cptr->conn == c);
 
-      ws_connected = 0;
+      ws_connected = false;
 
       // Only tear down state and emit "disconnected" if the ACTIVE
       // connection closed. Stale connections (i.e. closed by /server switch)
@@ -323,7 +323,7 @@ void ws_client_init(void) {
 
    if (debug_crazy && (strcasecmp(debug_crazy, "true") == 0 ||
                        strcasecmp(debug_crazy, "yes") == 0) ) {
-      cfg_http_debug_crazy = true;
+      cfg_http_debug = true;
    }
    free( (void *)debug_crazy );
 
@@ -587,7 +587,7 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
 // Send an error message to the user
 bool ws_send_error(rrconn_t *cptr, const char *fmt, ...) {
    if (!fmt) {
-      return true;
+      return false;
    }
    char fullmsg[HTTP_WS_MAX_MSG - 55];
    memset( fullmsg, 0, sizeof(fullmsg) );
@@ -604,13 +604,13 @@ bool ws_send_error(rrconn_t *cptr, const char *fmt, ...) {
    dict_free(err_msg);
 
    va_end(ap);
-   return false;
+   return true;
 }
 
 // Send an alert message to the user
 bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...) {
    if (!fmt) {
-      return true;
+      return false;
    }
    char fullmsg[HTTP_WS_MAX_MSG - 55];
    memset( fullmsg, 0, sizeof(fullmsg) );
@@ -628,12 +628,12 @@ bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...) {
    free(escaped_msg);
    dict_free(alert_msg);
    va_end(ap);
-   return false;
+   return true;
 }
 
 bool ws_send_notice(rrconn_t *cptr, const char *fmt, ...) {
    if (!cptr || !fmt) {
-      return true;
+      return false;
    }
    char fullmsg[HTTP_WS_MAX_MSG - 55];
    memset( fullmsg, 0, sizeof(fullmsg) );
@@ -649,5 +649,5 @@ bool ws_send_notice(rrconn_t *cptr, const char *fmt, ...) {
    dict_add(notice_msg, "notice.msg", fullmsg);
    ws_send_dict(NULL, cptr, notice_msg, WEBSOCKET_OP_TEXT);
    dict_free(notice_msg);
-   return false;
+   return true;
 }

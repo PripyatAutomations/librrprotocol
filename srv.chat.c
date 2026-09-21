@@ -415,12 +415,12 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
 // everyone
 bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
    if (!cptr || !cptr->authenticated || !cptr->user) {
-      return true;
+      return false;
    }
    // Video sources (webcam etc announcing hello.role: video-source) are not
    // users; keep them out of the chat/user lists
    if (client_has_flag(cptr, FLAG_VIDEO_SOURCE) ) {
-      return true;
+      return false;
    }
    dict *talk_msg = dict_new();
    dict_add(talk_msg, "msg.type", "talk");
@@ -439,7 +439,7 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
    }
 
    dict_free(talk_msg);
-   return false;
+   return true;
 }
 
 // Send info on all online users to the user
@@ -457,11 +457,11 @@ bool ws_send_users(rrconn_t *cptr) {
       }
 
       if (!current->next) {
-         return false;
+         return true;
       }
       current = current->next;
    }
-   return false;
+   return true;
 }
 
 ///////////////////////

@@ -19,11 +19,11 @@ bool config_fwdsp_init(void) {
       return false;
    }
 
-   if (cfg_add_callback(NULL, "fwdsp", config_fwdsp_section_cb)) {
+   if (!cfg_add_callback(NULL, "fwdsp", config_fwdsp_section_cb)) {
       return true;
    }
 
-   if (cfg_add_callback(NULL, "pipelines", config_pipeline_section_cb)) {
+   if (!cfg_add_callback(NULL, "pipelines", config_pipeline_section_cb)) {
       return true;
    }
 
@@ -47,7 +47,7 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
    if (!val || !val[1]) {
       Log(LOG_CRIT, "cfg.fwdsp", "config error at %s:%d: missing value: %s", path, line, buf);
       free(tmpbuf);
-      return false;
+      return true;
    }
    *val++ = '\0';   // split at '='
 
@@ -99,7 +99,7 @@ bool config_pipeline_section_cb(const char *path, int line, const char *section,
    if (!val || !val[1]) {
       Log(LOG_CRIT, "cfg.fwdsp", "config error: pipeline entry missing value: %s", buf);
       free(tmpbuf);
-      return false;
+      return true;
    }
    *val++ = '\0';
 

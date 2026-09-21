@@ -20,7 +20,7 @@
 #include <librrprotocol/rrprotocol.h>
 
 extern const char *get_server_property(const char *server, const char *prop);
-extern bool cfg_http_debug_crazy;
+extern bool cfg_http_debug;
 extern time_t now;
 extern dict *cfg;                                // config.c
 bool cfg_show_pings = true;          // cfg:ui.show-pings=false in rrserver.cfg
@@ -30,13 +30,13 @@ long long last_ping_rtt_ms = -1;
 
 bool ws_send_ping(rrconn_t *cptr) {
    if (!cptr || !cptr->is_ws) {
-      return true;
+      return false;
    }
    char resp_buf[HTTP_WS_MAX_MSG + 1];
 
    if (!cptr) {
       Log(LOG_DEBUG, "auth", "ws_send_ping for null cptr!");
-      return true;
+      return false;
    }
 
 #ifdef	USE_MONGOOSE
@@ -44,7 +44,7 @@ bool ws_send_ping(rrconn_t *cptr) {
       Log( LOG_DEBUG, "auth", "ws_send_ping for cptr:<%p> has mg_conn:<%p> and is invalid", cptr,
          (cptr ? cptr->conn : NULL) );
 
-      return true;
+      return false;
    }
 #endif	// USE_MONGOOSE
 
@@ -68,5 +68,5 @@ bool ws_send_ping(rrconn_t *cptr) {
    dict_add_llong(d, "ping.ts", mono_us());
    ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
-   return false;
+   return true;
 }

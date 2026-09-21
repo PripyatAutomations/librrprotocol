@@ -21,8 +21,6 @@ extern struct mg_mgr mgr;  // provided by the application that uses mongoose
 char active_server[SERVERLEN] = { 0 };
 rr_connection_t *active_connections = NULL;
 int ws_connected = 0;
-int ws_tx_connected = 0;
-bool server_ptt_state = false;
 
 rr_connection_t *connection_find(const char *server) {
    if (!server) {

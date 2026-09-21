@@ -16,6 +16,7 @@
 // Returns false on success, true on error.
 extern bool config_fwdsp_init(void);
 
+// Section callbacks return true when the input is invalid and false when accepted.
 // [fwdsp] section callback.
 // Stores entries as fwdsp:<key>.
 extern bool config_fwdsp_section_cb(const char *path, int line,

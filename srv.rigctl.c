@@ -29,7 +29,7 @@ bool rr_set_mode(rr_vfo_t vfo, rr_mode_t mode) {
 
 extern time_t now;
 
-time_t cfg_backed_poll_interval = 60;
+time_t cfg_backend_poll_interval = 60;
 
 // TODO: Merge with existing rr_vfo_data_t
 typedef struct ws_rig_state {
@@ -40,7 +40,7 @@ typedef struct ws_rig_state {
 
 // Here we keep track of a few sets of VFO state
 static ws_rig_state_t vfo_states[MAX_VFOS], vfo_states_last[MAX_VFOS];
-time_t ws_rig_state_last_sent;
+static time_t ws_rig_state_last_sent;
 
 ws_rig_state_t *ws_rig_get_vfo_state(rr_vfo_t vfo) {
    return &vfo_states[vfo];
@@ -123,7 +123,7 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
    }
 
    // Nothing to return, see if we've iterated enough times to force a send
-   if (ws_rig_state_last_sent >= cfg_backed_poll_interval) {
+   if (ws_rig_state_last_sent >= cfg_backend_poll_interval) {
       force_send = true;
    }
    ws_rig_state_t *diff = NULL;
