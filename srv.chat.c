@@ -17,6 +17,11 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <time.h>
+#include <errno.h>
+#include <poll.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 #include <rrserver/backend.h>
@@ -30,6 +35,105 @@ extern bool dying, restarting;
 extern const char *config_file;
 extern bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action);
 extern bool ws_chat_error_need_reason(rrconn_t *cptr, const char *command);
+
+static pid_t callsign_lookup_pid = -1;
+static FILE *callsign_lookup_in = NULL;
+static FILE *callsign_lookup_out = NULL;
+static bool callsign_lookup_atexit_registered = false;
+
+static void callsign_lookup_stop(void) {
+   if (callsign_lookup_in) fclose(callsign_lookup_in);
+   if (callsign_lookup_out) fclose(callsign_lookup_out);
+   callsign_lookup_in = callsign_lookup_out = NULL;
+   if (callsign_lookup_pid > 0) {
+      kill(callsign_lookup_pid, SIGTERM);
+      waitpid(callsign_lookup_pid, NULL, 0);
+      callsign_lookup_pid = -1;
+   }
+}
+
+static bool callsign_lookup_readline(char *line, size_t len, int timeout_ms) {
+   if (!callsign_lookup_out || !line || len < 2) return false;
+   struct pollfd pfd = { .fd = fileno(callsign_lookup_out), .events = POLLIN };
+   int rc;
+   do {
+      rc = poll(&pfd, 1, timeout_ms);
+   } while (rc < 0 && errno == EINTR);
+   if (rc <= 0 || !(pfd.revents & (POLLIN | POLLHUP))) return false;
+   return fgets(line, len, callsign_lookup_out) != NULL;
+}
+
+static bool callsign_lookup_start(void) {
+   if (callsign_lookup_pid > 0 && callsign_lookup_in && callsign_lookup_out) return true;
+
+   const char *program = cfg_get("callsign-lookup:path");
+   if (!program || !*program || !config_file || !*config_file) return false;
+   if (!callsign_lookup_atexit_registered) {
+      atexit(callsign_lookup_stop);
+      callsign_lookup_atexit_registered = true;
+   }
+
+   int to_child[2] = { -1, -1 }, from_child[2] = { -1, -1 };
+   if (pipe(to_child) < 0 || pipe(from_child) < 0) {
+      if (to_child[0] >= 0) { close(to_child[0]); close(to_child[1]); }
+      if (from_child[0] >= 0) { close(from_child[0]); close(from_child[1]); }
+      return false;
+   }
+   pid_t pid = fork();
+   if (pid < 0) {
+      close(to_child[0]); close(to_child[1]); close(from_child[0]); close(from_child[1]);
+      return false;
+   }
+   if (pid == 0) {
+      dup2(to_child[0], STDIN_FILENO);
+      dup2(from_child[1], STDOUT_FILENO);
+      dup2(from_child[1], STDERR_FILENO);
+      close(to_child[0]); close(to_child[1]); close(from_child[0]); close(from_child[1]);
+      execlp(program, program, "-q", "-f", config_file, (char *)NULL);
+      _exit(127);
+   }
+   close(to_child[0]);
+   close(from_child[1]);
+   callsign_lookup_pid = pid;
+   callsign_lookup_in = fdopen(to_child[1], "w");
+   callsign_lookup_out = fdopen(from_child[0], "r");
+   if (!callsign_lookup_in || !callsign_lookup_out) {
+      callsign_lookup_stop();
+      return false;
+   }
+
+   char line[1024];
+   bool ready = false;
+   while (callsign_lookup_readline(line, sizeof(line), 10000)) {
+      if (strncmp(line, "+OK ", 4) == 0) { ready = true; break; }
+   }
+   if (!ready) callsign_lookup_stop();
+   return ready;
+}
+
+static bool callsign_lookup_request(rrconn_t *cptr, const char *request) {
+   if (!callsign_lookup_start()) return false;
+   if (fprintf(callsign_lookup_in, "%s\n", request) < 0 || fflush(callsign_lookup_in) != 0) {
+      callsign_lookup_stop();
+      return false;
+   }
+
+   char line[1024];
+   bool complete = false;
+   while (callsign_lookup_readline(line, sizeof(line), 30000)) {
+      line[strcspn(line, "\r\n")] = '\0';
+      if (!*line || strncmp(line, "+NOTICE ", 8) == 0 ||
+          strncmp(line, "+OK ", 4) == 0 || strncmp(line, "+PROTO ", 7) == 0 ||
+          strncmp(line, "+GOODBYE", 8) == 0 || line[0] == '[' || line[0] == '<' ||
+          strncmp(line, "==", 2) == 0) {
+         continue;
+      }
+      if (strcmp(line, "+EOR") == 0) { complete = true; break; }
+      ws_send_notice(cptr, "%s", line);
+   }
+   if (!complete) callsign_lookup_stop();
+   return complete;
+}
 
 typedef struct {
    char name[128];
@@ -490,40 +594,37 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
    }
 
    if (cmd) {
-      if (strcasecmp(cmd, "qrz") == 0) {
+      if (strcasecmp(cmd, "qrz") == 0 || strcasecmp(cmd, "grid") == 0) {
          if (!data || !*data) {
-            ws_send_error(cptr, "Usage: /qrz CALLSIGN");
+            ws_send_error(cptr, "Usage: /%s VALUE", strcasecmp(cmd, "grid") == 0 ? "grid" : "qrz");
             return true;
          }
-         for (const unsigned char *p = (const unsigned char *)data; *p; p++) {
-            if (!isalnum(*p) && *p != '-' && *p != '/' && *p != '.') {
-               ws_send_error(cptr, "Invalid callsign: %s", data);
-               return true;
+         if (strcasecmp(cmd, "qrz") == 0) {
+            for (const unsigned char *p = (const unsigned char *)data; *p; p++) {
+               if (!isalnum(*p) && *p != '-' && *p != '/' && *p != '.') {
+                  ws_send_error(cptr, "Invalid callsign: %s", data);
+                  return true;
+               }
+            }
+         } else {
+            for (const unsigned char *p = (const unsigned char *)data; *p; p++) {
+               if (!isalnum(*p) && *p != '-' && *p != '.' && *p != ',' &&
+                   *p != '+' && *p != ' ') {
+                  ws_send_error(cptr, "Invalid grid or coordinates: %s", data);
+                  return true;
+               }
             }
          }
-         const char *program = cfg_get("callsign-lookup.path");
-         if (!program || !*program || !config_file || !*config_file) {
+         if (!cfg_get("callsign-lookup:path") || !*cfg_get("callsign-lookup:path") ||
+             !config_file || !*config_file) {
             ws_send_error(cptr, "Callsign lookup is not configured on the server");
             return true;
          }
-         char command[2048];
-         snprintf(command, sizeof(command), "%s -f '%s' '%s' 2>&1", program,
-            config_file, data);
-         FILE *pipe = popen(command, "r");
-         if (!pipe) {
+         char request[256];
+         snprintf(request, sizeof(request), "/%s %s",
+            strcasecmp(cmd, "grid") == 0 ? "GRID" : "CALL", data);
+         if (!callsign_lookup_request(cptr, request)) {
             ws_send_error(cptr, "Unable to start callsign lookup on the server");
-            return true;
-         }
-         char line[1024];
-         while (fgets(line, sizeof(line), pipe)) {
-            line[strcspn(line, "\r\n")] = '\0';
-            if (*line) {
-               ws_send_notice(cptr, "%s", line);
-            }
-         }
-         int status = pclose(pipe);
-         if (status != 0) {
-            ws_send_error(cptr, "Callsign lookup failed for %s", data);
             return true;
          }
          return false;

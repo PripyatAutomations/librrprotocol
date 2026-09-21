@@ -31,8 +31,7 @@ bool config_fwdsp_init(void) {
    return false;
 }
 
-// [fwdsp] keys are stored as fwdsp.<key> -- matching the defconfig names
-// (fwdsp.subproc.max, fwdsp.hangtime, fwdsp.subproc.debug, ...)
+// [fwdsp] keys are stored as fwdsp:<key>.
 bool config_fwdsp_section_cb(const char *path, int line, const char *section, const char *buf) {
    if (!buf || section == NULL || strncasecmp(section, "fwdsp", 5) != 0) {
       return true;
@@ -68,21 +67,12 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
       *kend-- = '\0';
    }
    char fullkey[128];
-
-   if (strncmp(tmpbuf, "fwdsp.", 6) == 0) {
-      // Already prefixed
+   if (strncmp(tmpbuf, "fwdsp:", 6) == 0) {
       snprintf(fullkey, sizeof(fullkey), "%s", tmpbuf);
    } else {
-      snprintf(fullkey, sizeof(fullkey), "fwdsp.%s", tmpbuf);
+      snprintf(fullkey, sizeof(fullkey), "fwdsp:%s", tmpbuf);
    }
    dict_add(cfg, fullkey, val);
-   // Section values are conventionally addressable as section:key. Keep the
-   // historical dotted alias so existing callers/configuration continue to
-   // work while new code can use the section form.
-   char colonkey[128];
-   snprintf(colonkey, sizeof(colonkey), "fwdsp:%s",
-      strncmp(tmpbuf, "fwdsp.", 6) == 0 ? tmpbuf + 6 : tmpbuf);
-   dict_add(cfg, colonkey, val);
    Log(LOG_CRAZY, "cfg.fwdsp", "Loaded %s=%s from %s:%d", fullkey, val, path, line);
    free(tmpbuf);
 

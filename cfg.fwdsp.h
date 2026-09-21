@@ -17,7 +17,7 @@
 extern bool config_fwdsp_init(void);
 
 // [fwdsp] section callback.
-// Stores entries as fwdsp.<key>.
+// Stores entries as fwdsp:<key>.
 extern bool config_fwdsp_section_cb(const char *path, int line,
    const char *section, const char *buf);
 
