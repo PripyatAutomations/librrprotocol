@@ -25,9 +25,9 @@ extern bool cfg_show_pings;
 bool ws_handle_ping_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_WARN, "http.ws", "ping_msg: got d:<%p> cptr:<%p>", d, cptr);
-      return true;
+      return false;
    }
-   bool rv = false;
+   bool rv = true;
 
    char *ip = cptr->user_ip;
    int port = cptr->user_port;
@@ -52,20 +52,20 @@ bool ws_handle_ping_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_CRAZY, "ws.ping", "* Ping? Pong! %lld *", ping_ts);
    }
 
-   return false;
+   return true;
 }
 
 // Handle a PONG reply from the server: log RTT like webui.latencycalc.js does
 bool ws_handle_pong_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_WARN, "http.ws", "pong_msg: got d:<%p> cptr:<%p>", d, cptr);
-      return true;
+      return false;
    }
 
    time_t pong_ts = dict_get_time_t(d, "msg.ts", 0);
    if (!pong_ts) {
       Log(LOG_WARN, "ws.pong", "PONG with no timestamp from server");
-      return true;
+      return false;
    }
 
    time_t now = time(NULL);
@@ -83,5 +83,5 @@ bool ws_handle_pong_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_CRAZY, "ws.pong", "Client-side RTT: %lldms", rtt_ms);
    }
 
-   return false;
+   return true;
 }

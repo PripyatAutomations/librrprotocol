@@ -23,7 +23,7 @@ extern time_t now;		// main.c
 bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_DEBUG, "ws.chat", "handle_talk_msg: cptr:<%p> d:<%p>", cptr, d);
-      return true;
+      return false;
    }
    const char *cmd = dict_get(d, "talk.cmd", NULL);
    const char *user = dict_get(d, "talk.user", NULL);
@@ -31,18 +31,18 @@ bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
    const char *muted = dict_get(d, "talk.muted", NULL);
    const char *ts = dict_get(d, "msg.ts", NULL);
    int sessions = dict_get_int(d, "talk.sessions", 1);
-   bool rv = false;
+   bool rv = true;
    bool tx = dict_get_bool(d, "talk.state.tx", false);
 
    if (!cmd) {
       rv = true;
-      return true;
+      return false;
    }
 
    if (cmd && strcasecmp(cmd, "userinfo") == 0) {
       if (!user) {
          rv = true;
-         return true;
+         return false;
       }
       Log(LOG_DEBUG, "ws.talk", "UserInfo: %s has privs '%s' (TX: %s, Muted: %s, sessions: %d)", user, privs,
          (tx ? "true" : "false"), (muted ? "true" : "false"), sessions);
@@ -59,17 +59,17 @@ bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
       }
    } else if (cmd && strcasecmp(cmd, "join") == 0) {
       if (!user) {
-         return true;
+         return false;
       }
       event_emit_dict("join", cptr, d);
    } else if (cmd && strcasecmp(cmd, "quit") == 0) {
       if (!user) {
-         return true;
+         return false;
       }
       char *quit_user = strdup(user);
 
       if (!quit_user) {
-         return true;
+         return false;
       }
       Log(LOG_INFO, "ws.chat", "talk: sending quit for %s", quit_user);
       event_emit_dict("quit", cptr, d);
@@ -81,5 +81,5 @@ bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
                       strcasecmp(cmd, "replay-completed") == 0)) {
       event_emit_dict("chat.replay", cptr, d);
    }
-   return false;
+   return true;
 }

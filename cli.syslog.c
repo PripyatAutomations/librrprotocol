@@ -23,11 +23,11 @@ extern dict *cfg;                // config.c
 extern time_t now;
 
 bool ws_handle_syslog_msg(rrconn_t *cptr, dict *d) {
-   bool rv = false;
+   bool rv = true;
 
    if (!cptr || !d) {
       Log(LOG_WARN, "http.ws", "syslog_msg: got cptr:<%p> d:<%p>", cptr, d);
-      return true;
+      return false;
    }
 
    char *ip = cptr->user_ip;
@@ -54,5 +54,5 @@ bool ws_handle_syslog_msg(rrconn_t *cptr, dict *d) {
 // XXX: This needs some testing to make sure its robust
 //   logpriority_t log_priority = log_priority_from_str(prio);
    Log(LOG_DEBUG, "server.syslog", "remote syslog: [%s] <%s.%s> %s", my_timestamp, subsys, prio, data);
-   return false;
+   return true;
 }

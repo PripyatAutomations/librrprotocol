@@ -24,9 +24,9 @@ extern time_t now;
 bool ws_handle_error_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_WARN, "http.ws", "error_msg: got cptr:<%p> d:<%p>", cptr, d);
-      return true;
+      return false;
    }
-   bool rv = false;
+   bool rv = true;
 
    char *ip = cptr->user_ip;
    int port = cptr->user_port;
@@ -38,5 +38,5 @@ bool ws_handle_error_msg(rrconn_t *cptr, dict *d) {
       dict_add(d, "error.from", "***SERVER***");
    }
    event_emit_dict("error", NULL, d);
-   return false;
+   return true;
 }

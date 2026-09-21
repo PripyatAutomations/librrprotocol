@@ -16,19 +16,19 @@ bool config_fwdsp_init(void) {
    static bool initialized = false;
 
    if (initialized) {
-      return false;
+      return true;
    }
 
    if (!cfg_add_callback(NULL, "fwdsp", config_fwdsp_section_cb)) {
-      return true;
+      return false;
    }
 
    if (!cfg_add_callback(NULL, "pipelines", config_pipeline_section_cb)) {
-      return true;
+      return false;
    }
 
    initialized = true;
-   return false;
+   return true;
 }
 
 // [fwdsp] keys are stored as fwdsp:<key>.

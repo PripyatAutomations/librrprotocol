@@ -74,7 +74,7 @@ void ws_broadcast_audio(rrconn_t *sender, struct mg_str *msg_data, int data_type
 
 bool send_global_alert(const char *sender, const char *data) {
    if (!data) {
-      return true;
+      return false;
    }
    const char *escaped_msg = escape_html(data);
 
@@ -87,7 +87,7 @@ bool send_global_alert(const char *sender, const char *data) {
    free( (char *)escaped_msg );
    dict_free(alert_msg);
 
-   return false;
+   return true;
 }
 
 bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {

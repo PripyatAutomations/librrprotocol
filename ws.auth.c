@@ -25,11 +25,11 @@ extern const char *server_name;
 extern char session_token[HTTP_TOKEN_LEN + 1];	// TODO: Move into the ws_conn structure
 
 bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
-   bool rv = false;
+   bool rv = true;
 
    if (!cptr || !d) {
       Log(LOG_WARN, "http.ws", "auth_msg: got msg from cptr:<%p> msg:<%p>", cptr, d);
-      return true;
+      return false;
    }
 
    char *ip = cptr->user_ip;
@@ -87,13 +87,16 @@ bool ws_send_login(rrconn_t *cptr, const char *login_user) {
    }
    Log(LOG_INFO, "rrproto.auth", "Sending initial LOGIN!");
    dict *auth_msg = dict_new();
+   if (!auth_msg) {
+      return false;
+   }
    dict_add(auth_msg, "msg.type", "auth");
    dict_add(auth_msg, "auth.cmd", "login");
    dict_add(auth_msg, "auth.user", login_user);
-   ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
    dict_free(auth_msg);
 
-   return true;
+   return sent;
 }
 
 // Hashes the user stored password with the server nonce and returns it
@@ -121,16 +124,20 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
    }
 
    dict *auth_msg = dict_new();
+   if (!auth_msg) {
+      free(temp_pw);
+      return false;
+   }
    dict_add(auth_msg, "msg.type", "auth");
    dict_add(auth_msg, "auth.cmd", "pass");
    dict_add(auth_msg, "auth.user", user);
    dict_add(auth_msg, "auth.pass", temp_pw);
    dict_add(auth_msg, "auth.token", session_token);
-   ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
    dict_free(auth_msg);
    free(temp_pw);
 
-   return true;
+   return sent;
 }
 
 bool ws_send_logout(rrconn_t *cptr, const char *user, const char *token) {
@@ -140,14 +147,17 @@ bool ws_send_logout(rrconn_t *cptr, const char *user, const char *token) {
    }
 
    dict *auth_msg = dict_new();
+   if (!auth_msg) {
+      return false;
+   }
    dict_add(auth_msg, "msg.type", "auth");
    dict_add(auth_msg, "auth.cmd", "logout");
    dict_add(auth_msg, "auth.user", user);
    dict_add(auth_msg, "auth.token", token);
-   ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
    dict_free(auth_msg);
 
-   return true;
+   return sent;
 }
 
 bool ws_send_hello(rrconn_t *cptr) {
@@ -159,6 +169,9 @@ bool ws_send_hello(rrconn_t *cptr) {
    const char *codec = "mu08,mu08";
    int rate = 16000;
    dict *hello = dict_new();
+   if (!hello) {
+      return false;
+   }
    dict_add(hello, "msg.type", "hello");
    dict_add(hello, "hello.swver", VERSION);
    dict_add(hello, "hello.hwver", HARDWARE);
@@ -170,8 +183,8 @@ bool ws_send_hello(rrconn_t *cptr) {
    if (role && role[0] != '\0') {
       dict_add(hello, "hello.role", (char *)role);
    }
-   ws_send_dict(NULL, cptr, hello, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, hello, WEBSOCKET_OP_TEXT);
    dict_free(hello);
 
-   return true;
+   return sent;
 }

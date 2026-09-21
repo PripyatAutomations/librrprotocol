@@ -28,6 +28,7 @@
 
 // minimum reason length for kick/ban/etc
 #define	CHAT_MIN_REASON_LEN 10
+#define CALLSIGN_LOOKUP_START_TIMEOUT_MS 60000
 
 extern time_t now;
 extern rrconn_t *http_client_list;
@@ -68,6 +69,19 @@ static bool callsign_lookup_start(void) {
 
    char *program = cfg_get_path("callsign-lookup:path");
    if (!program || !*program || !config_file || !*config_file) {
+      Log(LOG_WARN, "callsign", "Cannot start lookup: callsign-lookup:path or server config is missing (program=%s, config=%s)",
+         (program && *program) ? program : "(unset)",
+         (config_file && *config_file) ? config_file : "(unset)");
+      free(program);
+      return false;
+   }
+   if (access(program, X_OK) != 0) {
+      Log(LOG_WARN, "callsign", "Cannot start lookup: %s is not executable: %s", program, strerror(errno));
+      free(program);
+      return false;
+   }
+   if (access(config_file, R_OK) != 0) {
+      Log(LOG_WARN, "callsign", "Cannot start lookup: config %s is not readable: %s", config_file, strerror(errno));
       free(program);
       return false;
    }
@@ -78,6 +92,7 @@ static bool callsign_lookup_start(void) {
 
    int to_child[2] = { -1, -1 }, from_child[2] = { -1, -1 };
    if (pipe(to_child) < 0 || pipe(from_child) < 0) {
+      Log(LOG_WARN, "callsign", "Cannot start lookup: pipe failed for %s: %s", program, strerror(errno));
       if (to_child[0] >= 0) { close(to_child[0]); close(to_child[1]); }
       if (from_child[0] >= 0) { close(from_child[0]); close(from_child[1]); }
       free(program);
@@ -85,6 +100,7 @@ static bool callsign_lookup_start(void) {
    }
    pid_t pid = fork();
    if (pid < 0) {
+      Log(LOG_WARN, "callsign", "Cannot start lookup: fork failed for %s: %s", program, strerror(errno));
       close(to_child[0]); close(to_child[1]); close(from_child[0]); close(from_child[1]);
       free(program);
       return false;
@@ -95,31 +111,57 @@ static bool callsign_lookup_start(void) {
       dup2(from_child[1], STDERR_FILENO);
       close(to_child[0]); close(to_child[1]); close(from_child[0]); close(from_child[1]);
       execlp(program, program, "-q", "-f", config_file, (char *)NULL);
+      dprintf(STDERR_FILENO, "callsign-lookup exec failed for %s: %s\n", program, strerror(errno));
       _exit(127);
    }
    close(to_child[0]);
    close(from_child[1]);
-   free(program);
    callsign_lookup_pid = pid;
    callsign_lookup_in = fdopen(to_child[1], "w");
    callsign_lookup_out = fdopen(from_child[0], "r");
    if (!callsign_lookup_in || !callsign_lookup_out) {
+      Log(LOG_WARN, "callsign", "Cannot start lookup: fdopen failed for %s: %s", program, strerror(errno));
       callsign_lookup_stop();
+      free(program);
       return false;
    }
 
    char line[1024];
    bool ready = false;
-   while (callsign_lookup_readline(line, sizeof(line), 10000)) {
+   while (callsign_lookup_readline(line, sizeof(line), CALLSIGN_LOOKUP_START_TIMEOUT_MS)) {
       if (strncmp(line, "+OK ", 4) == 0) { ready = true; break; }
+      line[strcspn(line, "\r\n")] = '\0';
+      if (*line) {
+         Log(LOG_WARN, "callsign", "lookup startup: %s", line);
+      }
    }
-   if (!ready) callsign_lookup_stop();
+   if (!ready) {
+      int status = 0;
+      pid_t ended = waitpid(callsign_lookup_pid, &status, WNOHANG);
+      if (ended == callsign_lookup_pid) {
+         if (WIFEXITED(status)) {
+            Log(LOG_WARN, "callsign", "lookup exited before ready (status %d)", WEXITSTATUS(status));
+         } else if (WIFSIGNALED(status)) {
+            Log(LOG_WARN, "callsign", "lookup terminated before ready by signal %d", WTERMSIG(status));
+         }
+      } else {
+         Log(LOG_WARN, "callsign", "lookup did not report ready within %d seconds (program=%s, config=%s)",
+            CALLSIGN_LOOKUP_START_TIMEOUT_MS / 1000, program, config_file);
+      }
+      callsign_lookup_stop();
+   }
+   free(program);
+   if (ready) {
+      Log(LOG_INFO, "callsign", "lookup helper ready (pid %ld)", (long)callsign_lookup_pid);
+   }
    return ready;
 }
 
 static bool callsign_lookup_request(rrconn_t *cptr, const char *request) {
    if (!callsign_lookup_start()) return false;
    if (fprintf(callsign_lookup_in, "%s\n", request) < 0 || fflush(callsign_lookup_in) != 0) {
+      Log(LOG_WARN, "callsign", "lookup request failed while writing to helper (pid %ld): %s",
+         (long)callsign_lookup_pid, strerror(errno));
       callsign_lookup_stop();
       return false;
    }
@@ -137,7 +179,10 @@ static bool callsign_lookup_request(rrconn_t *cptr, const char *request) {
       if (strcmp(line, "+EOR") == 0) { complete = true; break; }
       ws_send_notice(cptr, "%s", line);
    }
-   if (!complete) callsign_lookup_stop();
+   if (!complete) {
+      Log(LOG_WARN, "callsign", "lookup helper did not finish request: %s", request);
+      callsign_lookup_stop();
+   }
    return complete;
 }
 
@@ -230,29 +275,29 @@ bool ws_client_in_room(const rrconn_t *cptr, const char *room) {
 
 bool ws_client_join_room(rrconn_t *cptr, const char *room) {
    if (!cptr || !room || !*room) {
-      return true;
+      return false;
    }
    const char *canonical = room_canonical(room);
    if (canonical[0] != '#' && canonical[0] != '&') {
-      return true;
+      return false;
    }
    if (ws_client_in_room(cptr, canonical)) {
-      return false;
+      return true;
    }
    size_t used = strlen(cptr->rooms);
    size_t need = strlen(canonical) + (used ? 1 : 0);
    if (used + need + 1 >= sizeof(cptr->rooms)) {
-      return true;
+      return false;
    }
-   if (used) strcat(cptr->rooms, ",");
-   strcat(cptr->rooms, canonical);
-   return false;
+   if (used) strlcat(cptr->rooms, ",", sizeof(cptr->rooms));
+   strlcat(cptr->rooms, canonical, sizeof(cptr->rooms));
+   return true;
 }
 
 bool ws_client_part_room(rrconn_t *cptr, const char *room) {
    if (!cptr || !room || strcasecmp(room, "&localrig") == 0 ||
        strcasecmp(room, ws_authoritative_room()) == 0) {
-      return true;
+      return false;
    }
    const char *want = room_canonical(room);
    char old[AUTOJOIN_LEN], out[AUTOJOIN_LEN] = "";
@@ -264,7 +309,7 @@ bool ws_client_part_room(rrconn_t *cptr, const char *room) {
       strlcat(out, tok, sizeof(out));
    }
    snprintf(cptr->rooms, sizeof(cptr->rooms), "%s", out);
-   return false;
+   return true;
 }
 
 void ws_broadcast_room_dict(rrconn_t *sender, dict *d, const char *room) {
@@ -573,12 +618,12 @@ static bool ws_chat_cmd_syslog(rrconn_t *cptr, const char *state) {
 
 bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
-      return true;
+      return false;
    }
 
    if (!cptr->user) {
       Log(LOG_WARN, "chat", "talk parse, cptr:<%p> ->user NULL", cptr);
-      return true;
+      return false;
    }
 
    cptr->last_heard = now;
@@ -603,13 +648,13 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
       if (strcasecmp(cmd, "qrz") == 0 || strcasecmp(cmd, "grid") == 0) {
          if (!data || !*data) {
             ws_send_error(cptr, "Usage: /%s VALUE", strcasecmp(cmd, "grid") == 0 ? "grid" : "qrz");
-            return true;
+            return false;
          }
          if (strcasecmp(cmd, "qrz") == 0) {
             for (const unsigned char *p = (const unsigned char *)data; *p; p++) {
                if (!isalnum(*p) && *p != '-' && *p != '/' && *p != '.') {
                   ws_send_error(cptr, "Invalid callsign: %s", data);
-                  return true;
+                  return false;
                }
             }
          } else {
@@ -617,7 +662,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                if (!isalnum(*p) && *p != '-' && *p != '.' && *p != ',' &&
                    *p != '+' && *p != ' ') {
                   ws_send_error(cptr, "Invalid grid or coordinates: %s", data);
-                  return true;
+                  return false;
                }
             }
          }
@@ -627,25 +672,25 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          free(lookup_program);
          if (!lookup_configured) {
             ws_send_error(cptr, "Callsign lookup is not configured on the server");
-            return true;
+            return false;
          }
          char request[256];
          snprintf(request, sizeof(request), "/%s %s",
             strcasecmp(cmd, "grid") == 0 ? "GRID" : "CALL", data);
          if (!callsign_lookup_request(cptr, request)) {
             ws_send_error(cptr, "Unable to start callsign lookup on the server");
-            return true;
+            return false;
          }
-         return false;
+         return true;
       } else if (strcasecmp(cmd, "join") == 0 || strcasecmp(cmd, "part") == 0) {
          const char *requested = target ? target : data;
          bool joining = strcasecmp(cmd, "join") == 0;
-         bool failed = joining ? ws_client_join_room(cptr, requested) :
+         bool room_ok = joining ? ws_client_join_room(cptr, requested) :
             ws_client_part_room(cptr, requested);
-         if (failed) {
+         if (!room_ok) {
             ws_send_error(cptr, "%s failed for room %s", joining ? "JOIN" : "PART",
                requested ? requested : "(none)");
-            return true;
+            return false;
          }
          dict *room_msg = dict_new();
          dict_add(room_msg, "msg.type", "talk");
@@ -658,19 +703,19 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          dict_add_ulong(room_msg, "msg.ts", now);
          ws_broadcast_room_dict(cptr, room_msg, room_canonical(requested));
          dict_free(room_msg);
-         return false;
+         return true;
       } else if (strcasecmp(cmd, "msg") == 0) {
          if (!data) {
             Log(LOG_DEBUG, "chat",
                "got msg for cptr <%p> with no data: chatname: %s",
                cptr, user);
-            return true;
+            return false;
          }
 
          // If the message is empty, just return success
          if (strlen(data) == 0) {
             Log(LOG_CRAZY, "chat", "talk msg has no data");
-            return false;
+            return true;
          }
 
          if (!has_priv(cptr->user->uid, "admin|owner|chat")) {
@@ -681,13 +726,13 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             // XXX: Alert the user that their message was NOT delivered
             // because they aren't allowed to send it.
             ws_send_error(cptr, "You do not have CHAT privilege.");
-            return true;
+            return false;
          }
 
          // sanity check
          if (!user) {
             Log(LOG_CRAZY, "chat", "talk parse, msg has no user field");
-            return true;
+            return false;
          }
 
          if (msg_type) {
@@ -712,7 +757,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                      if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") ||
                          cptr->user->is_muted) {
                         /// XXX: we should send an error alert
-                        return true;
+                        return false;
                      }
 
                      while (*input) {
@@ -768,7 +813,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            ws_send_notice(cptr, "  !vfo <vfo> - Switch VFOs (A|B|C)");
                            ws_send_notice(cptr, "  !width <width> - Set passband width (narrow|normal|wide)");
 
-                           return false;
+                           return true;
 
                         } else if (strcasecmp(cmd, "freq") == 0) {
                           if (*arg == '\0') {
@@ -899,7 +944,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
                      // These events shouldn't get relayed because the CAT
                      // events generated above will be relayed separately.
-                     return false;
+                     return true;
                   }
                }
 
@@ -969,7 +1014,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                   "Returned from talk.msg event");
 
                dict_free(talk_msg);
-               return false;
+               return true;
 
             } else {
                Log(LOG_DEBUG, "ws.chat",
@@ -980,14 +1025,14 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          if (!target) {
             Log(LOG_DEBUG, "chat", "whois with no target");
             ws_send_error(cptr, "No target given for WHOIS");
-            return true;
+            return false;
          }
 
          rrconn_t *acptr = http_find_client_by_name(target);
 
          if (!acptr || !acptr->user) {
             ws_send_error(cptr, "WHOIS: no such user: %s", target);
-            return true;
+            return false;
          }
 
          // Flat whois reply, keyed off talk.<field> - shared by webui and
@@ -1020,7 +1065,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          // quota.cmd event (sqlite lives in rrserver, not in the library)
          if (!has_priv(cptr->user->uid, "admin|owner") ) {
             ws_chat_err_noprivs(cptr, "QUOTA");
-            return true;
+            return false;
          }
 
          // data is the command tail: LIST | SHOW <user>... | ADD <mins> <user>...
@@ -1030,7 +1075,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
          if (!q) {
             Log(LOG_WARN, "chat", "quota cmd: failed to create dict");
-            return true;
+            return false;
          }
          dict_add(q, "msg.type", "quota.cmd");
          dict_add(q, "quota.from", cptr->chatname);
@@ -1079,12 +1124,12 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          }
          if (strcasecmp(sub, "REMOVE") == 0 && !has_priv(cptr->user->uid, "admin|owner") ) {
             ws_chat_err_noprivs(cptr, "MEDIA REMOVE");
-            return true;
+            return false;
          }
          dict *m = dict_new();
 
          if (!m) {
-            return true;
+            return false;
          }
          if (strcasecmp(sub, "REMOVE") == 0) {
             // Server program (rrserver) owns removal: it notifies all clients
@@ -1093,7 +1138,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             event_emit_dict("remove-media-channel", cptr, m);
             dict_free(m);
 
-            return false;
+            return true;
          }
          dict_add(m, "msg.type", "media");
          dict_add(m, "media.cmd", strcasecmp(sub, "UNSUBSCRIBE") == 0 ? "unsubscribe" :
@@ -1108,6 +1153,10 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
       } else if (strcasecmp(cmd, "unmute") == 0) {
          ws_chat_cmd_unmute(cptr, target);
+      } else {
+         Log(LOG_WARN, "chat", "Unknown command: %s", cmd);
+         ws_send_error(cptr, "Invalid command: %s", cmd);
+         return false;
       }
    }
 

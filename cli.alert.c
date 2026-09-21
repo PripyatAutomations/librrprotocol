@@ -25,16 +25,16 @@ extern time_t now;
 bool ws_handle_alert_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_WARN, "http.ws", "alert_msg: got cptr:<%p> d:<%p>", cptr, d);
-      return true;
+      return false;
    }
-   bool rv = false;
+   bool rv = true;
    char *ip = cptr->user_ip;
    int port = cptr->user_port;
 
    const char *alert_msg = dict_get(d, "alert.msg", NULL);
 
    if (!alert_msg) {
-      return true;
+      return false;
    }
 
    const char *alert_from = dict_get(d, "alert.from", NULL);
@@ -49,5 +49,5 @@ bool ws_handle_alert_msg(rrconn_t *cptr, dict *d) {
    }
 
    event_emit_dict("alert", NULL, d);
-   return false;
+   return true;
 }

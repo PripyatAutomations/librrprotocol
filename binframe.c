@@ -144,7 +144,7 @@ int rr_binframe_frame(uint8_t **out, uint8_t subsystem, const char codec[4],
 // event_on_binary("media.frame.<subsystem>", cb, user) to subscribe.
 bool rr_binframe_dispatch(struct rr_binframe *f, void *ctx) {
    if (!f) {
-      return true;
+      return false;
    }
    const char *evname = NULL;
 
@@ -172,14 +172,14 @@ bool rr_binframe_dispatch(struct rr_binframe *f, void *ctx) {
          break;
       case RR_BINFRAME_SUBSYS_KEEPALIVE:
          Log(LOG_DEBUG, "binframe", "keepalive frame seq=%u", f->hdr.seq);
-         return false;
+         return true;
       default:
          Log(LOG_DEBUG, "binframe", "Dropping frame with unknown subsystem 0x%02X",
             f->hdr.subsystem);
-         return true;
+         return false;
    }
    event_emit_binary(evname, (rrconn_t *)ctx, f->data, f->len);
-   return false;
+   return true;
 }
 
 // Pack a host log line into a SUBSYS_LOG binframe. The payload is a

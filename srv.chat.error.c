@@ -29,11 +29,11 @@ extern bool dying, restarting;
 // privileges in chat
 bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action) {
    if (!action || !cptr) {
-      return true;
+      return false;
    }
 
    if (!cptr->user) {
-      return true;
+      return false;
    }
    Log(LOG_CRAZY, "core", "Unprivileged user %s (uid: %d with privs %s) requested to do %s and was denied",
       cptr->chatname, cptr->user->uid, cptr->user->privs, action);
@@ -46,12 +46,12 @@ bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action) {
    ws_send_dict(NULL, cptr, err_msg, WEBSOCKET_OP_TEXT);
    dict_free(err_msg);
 
-   return false;
+   return true;
 }
 
 bool ws_chat_error_need_reason(rrconn_t *cptr, const char *command) {
    if (!cptr || !command) {
-      return true;
+      return false;
    }
    char msgbuf[HTTP_WS_MAX_MSG + 1];
    prepare_msg(msgbuf, sizeof(msgbuf), "You MUST provide a reason for using'%s' command", now, command);
@@ -63,5 +63,5 @@ bool ws_chat_error_need_reason(rrconn_t *cptr, const char *command) {
    ws_send_dict(NULL, cptr, err_msg, WEBSOCKET_OP_TEXT);
    dict_free(err_msg);
 
-   return false;
+   return true;
 }

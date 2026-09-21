@@ -50,12 +50,12 @@ bool media_send_codec_select(rrconn_t *cptr, const char *codec, const char *chan
    if (!cptr || !codec || strlen(codec) != 4 || !channel_uuid || !*channel_uuid) {
       Log(LOG_WARN, "ws.media", "media.codec select: invalid args codec:<%p> uuid:<%p>",
          codec, channel_uuid);
-      return true;
+      return false;
    }
    dict *d = dict_new();
    if (!d) {
       Log(LOG_CRIT, "ws.media", "Unable to allocate codec selection for channel %s", channel_uuid);
-      return true;
+      return false;
    }
    dict_add(d, "msg.type", "media");
    dict_add(d, "media.cmd", "codec");
@@ -67,30 +67,30 @@ bool media_send_codec_select(rrconn_t *cptr, const char *codec, const char *chan
 
    if (!sent) {
       Log(LOG_WARN, "ws.media", "Unable to send codec %s selection for channel %s", codec, channel_uuid);
-      return true;
+      return false;
    }
 
    Log(LOG_INFO, "ws.media", "Selected codec %s for media channel %s", codec, channel_uuid);
-   return false;
+   return true;
 }
 
 // Client -> server: send our own capability list
 bool media_send_client_capab(rrconn_t *cptr) {
    if (!cptr) {
-      return true;
+      return false;
    }
    const char *my_codecs = cfg_get_exp("codecs.allowed");
 
    if (!my_codecs || !*my_codecs) {
       free( (void *)my_codecs );
       Log(LOG_WARN, "ws.media", "codecs.allowed not set; cannot send client capab");
-      return true;
+      return false;
    }
    dict *d = dict_new();
    if (!d) {
       free((void *)my_codecs);
       Log(LOG_CRIT, "ws.media", "Unable to allocate client media capability message");
-      return true;
+      return false;
    }
    dict_add(d, "msg.type", "media");
    dict_add(d, "media.cmd", "capab");
@@ -101,24 +101,24 @@ bool media_send_client_capab(rrconn_t *cptr) {
    free( (void *)my_codecs );
    if (!sent) {
       Log(LOG_WARN, "ws.media", "Unable to send client media capabilities");
-      return true;
+      return false;
    }
    Log(LOG_DEBUG, "ws.media", "Sent client media.capab");
 
-   return false;
+   return true;
 }
 
 // Handle a media.* text frame from the server. Registered in the
 // ws_routes_cli route table.
 bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
-      return true;
+      return false;
    }
    const char *media_cmd = dict_get(d, "media.cmd", NULL);
 
    if (!media_cmd) {
       Log(LOG_DEBUG, "ws.media", "media message without media.cmd");
-      return true;
+      return false;
    }
 
    if (strcasecmp(media_cmd, "capab") == 0) {
@@ -128,13 +128,13 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
 
       if (!media_codecs || !*media_codecs) {
          Log(LOG_WARN, "ws.media", "media.capab without codecs list");
-         return true;
+         return false;
       }
       const char *my_codecs = cfg_get_exp("codecs.allowed");
 
       if (!my_codecs) {
          Log(LOG_CRIT, "ws.media", "codecs.allowed must be set to negotiate codecs!");
-         return true;
+         return false;
       }
       char *common = codec_filter_common(my_codecs, media_codecs);
       free( (void *)my_codecs );
@@ -144,7 +144,7 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
             (common ? common : "<none>"), media_codecs);
          free(common);
 
-         return true;
+         return false;
       }
       // The first common codec is our default/preferred
       memset(cli_preferred_codec, 0, sizeof(cli_preferred_codec));
@@ -162,7 +162,7 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
 
       free(common);
 
-      return false;
+      return true;
    } else if (strcasecmp(media_cmd, "isupport") == 0) {
       const char *media_codecs = dict_get(d, "media.codecs", NULL);
       const char *media_preferred = dict_get(d, "media.preferred", NULL);
@@ -184,7 +184,7 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_INFO, "ws.media", "Server confirms codecs: %s (preferred: %s)",
          (media_codecs ? media_codecs : "<none>"), (media_preferred ? media_preferred : "<none>"));
 
-      return false;
+      return true;
    } else if (strcasecmp(media_cmd, "available") == 0 ||
               strcasecmp(media_cmd, "subscribed") == 0 ||
               strcasecmp(media_cmd, "unsubscribed") == 0 ||
@@ -192,23 +192,23 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
       // Channel subscription notifications: handled by the program via the
       // ws.msg.media event (PARITY: rrclient/events.c rrclient_handle_media);
       // nothing to do at the wire level here, so don't log it as unhandled.
-      return false;
+      return true;
    }
    Log(LOG_DEBUG, "ws.media", "Unhandled media cmd: |%s|", media_cmd);
 
-   return true;
+   return false;
 }
 
 // Client -> server: ask for the current media channel list
 // PARITY: librrprotocol/ws.mediachan.c (list handling)
 bool media_send_list(rrconn_t *cptr) {
    if (!cptr) {
-      return true;
+      return false;
    }
    dict *d = dict_new();
    if (!d) {
       Log(LOG_CRIT, "ws.media", "Unable to allocate media list request");
-      return true;
+      return false;
    }
    dict_add(d, "msg.type", "media");
    dict_add(d, "media.cmd", "list");
@@ -218,9 +218,9 @@ bool media_send_list(rrconn_t *cptr) {
 
    if (!sent) {
       Log(LOG_WARN, "ws.media", "Unable to send media channel list request");
-      return true;
+      return false;
    }
-   return false;
+   return true;
 }
 
 // Client -> server: subscribe to a media channel by uuid
@@ -228,12 +228,12 @@ bool media_send_list(rrconn_t *cptr) {
 bool media_send_subscribe(rrconn_t *cptr, const char *uuid) {
    if (!cptr || !uuid || uuid[0] == '\0') {
       Log(LOG_WARN, "ws.media", "media_send_subscribe: invalid args");
-      return true;
+      return false;
    }
    dict *d = dict_new();
    if (!d) {
       Log(LOG_CRIT, "ws.media", "Unable to allocate subscribe request for channel %s", uuid);
-      return true;
+      return false;
    }
    dict_add(d, "msg.type", "media");
    dict_add(d, "media.cmd", "subscribe");
@@ -243,22 +243,22 @@ bool media_send_subscribe(rrconn_t *cptr, const char *uuid) {
    dict_free(d);
    if (!sent) {
       Log(LOG_WARN, "ws.media", "Unable to subscribe to media channel %s", uuid);
-      return true;
+      return false;
    }
    Log(LOG_INFO, "ws.media", "Subscribing to media channel |%s|", uuid);
 
-   return false;
+   return true;
 }
 
 // Client -> server: unsubscribe from a media channel by uuid
 bool media_send_unsubscribe(rrconn_t *cptr, const char *uuid) {
    if (!cptr || !uuid || uuid[0] == '\0') {
-      return true;
+      return false;
    }
    dict *d = dict_new();
    if (!d) {
       Log(LOG_CRIT, "ws.media", "Unable to allocate unsubscribe request for channel %s", uuid);
-      return true;
+      return false;
    }
    dict_add(d, "msg.type", "media");
    dict_add(d, "media.cmd", "unsubscribe");
@@ -269,10 +269,10 @@ bool media_send_unsubscribe(rrconn_t *cptr, const char *uuid) {
 
    if (!sent) {
       Log(LOG_WARN, "ws.media", "Unable to unsubscribe from media channel %s", uuid);
-      return true;
+      return false;
    }
 
-   return false;
+   return true;
 }
 
 // Client -> server: register this connection as a media source. Requires
@@ -281,12 +281,12 @@ bool media_send_unsubscribe(rrconn_t *cptr, const char *uuid) {
 // PARITY: librrprotocol/ws.mediachan.c (source handling)
 bool media_send_source(rrconn_t *cptr, const char *uuid) {
    if (!cptr) {
-      return true;
+      return false;
    }
    dict *d = dict_new();
    if (!d) {
       Log(LOG_CRIT, "ws.media", "Unable to allocate media source request");
-      return true;
+      return false;
    }
    dict_add(d, "msg.type", "media");
    dict_add(d, "media.cmd", "source");
@@ -300,10 +300,10 @@ bool media_send_source(rrconn_t *cptr, const char *uuid) {
    if (!sent) {
       Log(LOG_WARN, "ws.media", "Unable to register media source (channel %s)",
          (uuid && uuid[0] ? uuid : "<all>"));
-      return true;
+      return false;
    }
    Log(LOG_INFO, "ws.media", "Registering as media source (channel %s)",
       (uuid && uuid[0] ? uuid : "<all>"));
 
-   return false;
+   return true;
 }

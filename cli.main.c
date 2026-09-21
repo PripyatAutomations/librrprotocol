@@ -80,7 +80,7 @@ bool ws_handle_hello_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_DEBUG, "ws", "hello: cptr:<%p> d:<%p>", cptr, d);
 
-      return true;
+      return false;
    }
    const char *h_swver = dict_get(d, "hello.swver", NULL);
    const char *h_hwver = dict_get(d, "hello.hwver", NULL);
@@ -92,13 +92,13 @@ bool ws_handle_hello_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_INFO, "auth.ws", "*** server sent unparsable hello: %s", jp);
       free( (void *)jp );
    }
-   return false;
+   return true;
 }
 
 static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_DEBUG, "ws", "txtframe_dispatch: cptr:<%p> d:<%p>", cptr, d);
-      return true;
+      return false;
    }
    char json_req[65];
    struct ws_msg_routes *rp = ws_routes_cli;
@@ -126,8 +126,7 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
           * in-process handlers. The existing handler is still called afterwards for
           * backward compatibility. */
          // Call the stored handler
-         rp[i].cb(cptr, d);
-         return false;
+         return rp[i].cb(cptr, d);
       }
       i++;
    }
@@ -137,7 +136,7 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
    const char *jp = dict2json(d);
    Log(LOG_CRAZY, "http.ws", "%s: No matches for message: %s", __FUNCTION__, jp);
    free( (void *)jp );
-   return true;
+   return false;
 }
 
 // Deal with the binary frames we receive from the server
@@ -147,14 +146,14 @@ bool ws_binframe_process(const char *data, size_t len) {
       // no real packet will EVER be under the header size, even a keep-alive
       Log(LOG_DEBUG, "ws", "%s: data:<%p> len: %zu", __FUNCTION__, data, len);
 
-      return true;
+      return false;
    }
    struct rr_binframe f;
    int rv = rr_binframe_parse( (const uint8_t *)data, len, &f);
 
    if (rv < 0) {
       // invalid/unrecognized frame; parse already logged the reason
-      return true;
+      return false;
    }
    // Dispatch by subsystem; fires media.frame.* binary events
    return rr_binframe_dispatch(&f, NULL);
@@ -397,8 +396,8 @@ void ws_send_to_name(rrconn_t *sender, const char *username, struct mg_str *msg_
 #endif // USE_MONGOOSE
 
 bool ws_kick_by_name(const char *name, const char *reason) {
-   if (!http_client_list) {
-      return true;
+   if (!name) {
+      return false;
    }
 
    rrconn_t *curr = http_client_list;
@@ -408,29 +407,25 @@ bool ws_kick_by_name(const char *name, const char *reason) {
       }
       curr = curr->next;
    }
-   return false;
+   return true;
 }
 
 bool ws_kick_by_uid(int uid, const char *reason) {
-   if (!http_client_list) {
-      return true;
-   }
-
    rrconn_t *curr = http_client_list;
    while (curr) {
-      if (uid == curr->user->uid) {
+      if (curr->user && uid == curr->user->uid) {
          ws_kick_client(curr, reason);
       }
       curr = curr->next;
    }
-   return false;
+   return true;
 }
 
 bool ws_kick_client(rrconn_t *cptr, const char *reason) {
    // skip freeing resources if no client structure
    if (!cptr) {
       Log( LOG_DEBUG, "auth", "ws_kick_client with NULL cptr and reason: %s", (reason ? reason : "(none)") );
-      return true;
+      return false;
    }
 
 
@@ -466,7 +461,7 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
    if (!cptr->conn) {
       Log( LOG_DEBUG, "auth", "ws_kick_client for cptr <%p> has mg_conn <%p> and is invalid", cptr,
          (cptr ? cptr->conn : NULL) );
-      return true;
+      return false;
    }
 
 #ifdef	USE_MONGOOSE
@@ -477,11 +472,10 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
 
 #ifdef	USE_MONGOOSE
 bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
-   bool rv = false;
    char resp_buf[HTTP_WS_MAX_MSG + 1];
 
    if (!c) {
-      return true;
+      return false;
    }
 
    // Tell their client they've been disconnected
@@ -497,7 +491,7 @@ bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
    event_emit_dict("disconnected", NULL, d);
    dict_free(d);
    free((void *)jp);
-   return rv;
+   return true;
 }
 #endif // USE_MONGOOSE
 
@@ -507,7 +501,7 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
       // This frame is too small to contain meaningful data, discard it
       Log(LOG_DEBUG, "ws.binframe", "%s: dropping short frame (%zu bytes)", __FUNCTION__, len);
 
-      return true;
+      return false;
    }
    struct rr_binframe f;
    int rv = rr_binframe_parse( (const uint8_t *)buf, len, &f);
@@ -515,14 +509,14 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    if (rv < 0) {
       Log(LOG_DEBUG, "ws.binframe", "Dropping unparseable frame");
 
-      return true;
+      return false;
    }
    // The server may only accept media from authenticated users, and
    // only for directions the connection has negotiated a codec for.
    if (!cptr->authenticated) {
       Log(LOG_AUDIT, "auth", "Dropping %zu byte binary frame from unauthenticated client %s on cptr:<%p>",
          len, (cptr->chatname[0] != '\0' ? cptr->chatname : "(unknown)"), cptr);
-      return true;
+      return false;
    }
    bool is_tx_frame = (f.hdr.direction == RR_BINFRAME_DIR_TX);
    const char *negotiated = is_tx_frame ? cptr->codec_tx : cptr->codec_rx;
@@ -531,7 +525,7 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
       Log(LOG_DEBUG, "ws.binframe", "Dropping audio frame: no codec negotiated for %s",
          (is_tx_frame ? "tx" : "rx"));
 
-      return true;
+      return false;
    }
 
    // Media source connections (FLAG_MEDIA_SOURCE, granted via the
@@ -547,7 +541,7 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
          Log(LOG_DEBUG, "ws.media", "Dropping source frame: no channel for subsys 0x%02X dir 0x%02X vfo %u rig %u",
             f.hdr.subsystem, f.hdr.direction, f.hdr.vfo, f.hdr.rig);
 
-         return true;
+         return false;
       }
       u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
 
@@ -555,7 +549,7 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
          Log(LOG_AUDIT, "ws.media", "Dropping source frame from %s for unsubscribed channel %s",
             cptr->chatname, cp->uuid);
 
-         return true;
+         return false;
       }
       // Accept the frame: the server owns the wire values when it fans out
       // (see doc/media-frames.md); rebuild direction/seq centrally and
@@ -569,13 +563,13 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
          // event bus so the program can decide what to do with it.
          event_emit_binary("media.frame.audio", cptr, f.data, f.len);
       }
-      return false;
+      return true;
    }
    // TX-direction audio from a non-source client is the legacy PTT
    // microphone path; RX-direction frames arriving at the server are
    // bogus - drop both rather than relay them.
    if (is_tx_frame || f.hdr.direction != RR_BINFRAME_DIR_RX) {
-      return true;
+      return false;
    }
    // RX-direction frames arriving at the server are not valid client
    // traffic; keep dispatching to the event bus for the program (legacy
@@ -599,12 +593,12 @@ bool ws_send_error(rrconn_t *cptr, const char *fmt, ...) {
    dict_add(err_msg, "msg.type", "error");
    dict_add(err_msg, "error.msg", escaped_msg);
    dict_add_ulong(err_msg, "msg.ts", now);
-   ws_send_dict(NULL, cptr, err_msg, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, err_msg, WEBSOCKET_OP_TEXT);
    free(escaped_msg);
    dict_free(err_msg);
 
    va_end(ap);
-   return true;
+   return sent;
 }
 
 // Send an alert message to the user
@@ -624,11 +618,11 @@ bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...) {
    dict_add(alert_msg, "msg.type", "alert");
    dict_add(alert_msg, "alert.msg", escaped_msg);
    dict_add_ulong(alert_msg, "alert.ts", now);   // clients read alert.ts (see send_global_alert)
-   ws_send_dict(NULL, cptr, alert_msg, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, alert_msg, WEBSOCKET_OP_TEXT);
    free(escaped_msg);
    dict_free(alert_msg);
    va_end(ap);
-   return true;
+   return sent;
 }
 
 bool ws_send_notice(rrconn_t *cptr, const char *fmt, ...) {
@@ -647,7 +641,7 @@ bool ws_send_notice(rrconn_t *cptr, const char *fmt, ...) {
    dict_add_ulong(notice_msg, "msg.ts", now);
    dict_add(notice_msg, "msg.type", "notice");
    dict_add(notice_msg, "notice.msg", fullmsg);
-   ws_send_dict(NULL, cptr, notice_msg, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, notice_msg, WEBSOCKET_OP_TEXT);
    dict_free(notice_msg);
-   return true;
+   return sent;
 }

@@ -13,7 +13,7 @@
 #include <stdbool.h>
 
 // Register the [fwdsp] and [pipelines] configuration section handlers.
-// Returns false on success, true on error.
+// Returns true on success, false on error.
 extern bool config_fwdsp_init(void);
 
 // Section callbacks return true when the input is invalid and false when accepted.

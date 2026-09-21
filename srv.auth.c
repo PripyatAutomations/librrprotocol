@@ -163,11 +163,11 @@ bool has_priv(int uid, const char *priv) {
 
 ///////////////////////////////////////
 bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
-   bool rv = false;
+   bool rv = true;
 
    if (!cptr || !d) {
       Log(LOG_WARN, "http.ws", "auth_msg: got cptr:<%p> d:<%p>", cptr, d);
-      return true;
+      return false;
    }
    const char *cmd = dict_get(d, "auth.cmd", NULL);
    const char *pass = dict_get(d, "auth.pass", NULL);
@@ -177,13 +177,13 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
 
    // Must always send a command and username during auth
    if (!cmd || (!user && !token) ) {
-      return true;
+      return false;
    }
 
    if (strcasecmp(cmd, "login") == 0) {
       if (!user || !*user) {
          Log(LOG_WARN, "auth", "Login request did not include a username");
-         return true;
+         return false;
       }
       char resp_buf[HTTP_WS_MAX_MSG + 1];
       char *ip = cptr->user_ip;
@@ -203,13 +203,13 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       if (cptr->user == NULL) {
          Log(LOG_AUDIT, "auth.users", "No such account %s", user);
          ws_kick_client(cptr, "Invalid account/password");
-         return true;
+         return false;
       }
 
       if (cptr->user->enabled == false) {
          Log(LOG_AUDIT, "auth.users", "User account %s is disabled", user);
          ws_kick_client(cptr, "Account disabled");
-         return true;
+         return false;
       }
 
       int curr_clients = http_count_clients();
@@ -217,7 +217,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          Log(LOG_AUDIT, "auth.users", "Server is full! %d clients exceeds max %d", curr_clients, HTTP_MAX_SESSIONS);
          // kick the user
          ws_kick_client(cptr, "Server full! Try again later.");
-         return true;
+         return false;
       }
 
       if (cptr->user) {
@@ -226,7 +226,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
                cptr->user->sessions, cptr->user->max_sessions);
             // Kick the client
             ws_kick_client(cptr, "Too many sessions");
-            return true;
+            return false;
          }
       } else {
          Log(LOG_CRIT, "auth.users", "login request has no cptr->user for cptr:<%p>?!", cptr);
@@ -250,7 +250,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       if (pass == NULL || token == NULL) {
          Log(LOG_DEBUG, "auth", "auth pass command without password <%p> / token <%p>", pass, token);
          ws_kick_client_by_c(cptr->conn, "auth.pass message incomplete/invalid. Goodbye");
-         return true;
+         return false;
       }
 
       char *ip = cptr->user_ip;
@@ -259,33 +259,33 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       if (cptr->user == NULL) {
          Log(LOG_WARN, "auth", "cptr-> user == NULL handling conn from ip %s:%d, Kicking!", ip, port);
          ws_kick_client(cptr, "Invalid login/password");
-         return true;
+         return false;
       }
 
       int login_uid = cptr->user->uid;
       if (login_uid < 0 || login_uid > HTTP_MAX_USERS) {
          Log(LOG_WARN, "auth", "Invalid uid for username |%s| from IP %s:%d", cptr->chatname, ip, port);
          ws_kick_client(cptr, "Invalid login/passowrd");
-         return true;
+         return false;
       }
 
       http_user_t *up = &http_users[login_uid];
       if (up == NULL) {
          Log(LOG_WARN, "auth", "Uid %d returned NULL http_user_t", login_uid);
-         return true;
+         return false;
       }
 
       // Deal with double-hashed (reply-protected) responses
       char *nonce = cptr->nonce;
       if (nonce == NULL) {
          Log(LOG_WARN, "auth", "No nonce for user %d", login_uid);
-         return true;
+         return false;
       }
 
       temp_pw = compute_wire_password(up->pass, nonce);
       if (temp_pw == NULL) {
          Log(LOG_WARN, "auth", "Got NULL return from compute_wire_password for cptr:<%p>, kicking!", cptr);
-         return true;
+         return false;
       }
       Log(LOG_CRAZY, "auth", "Saved: |%s|, hashed (server): |%s|, received: |%s|", up->pass, temp_pw, pass);
 
@@ -427,6 +427,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       } else {
          Log(LOG_AUDIT, "auth", "User %s on cptr <%p> from IP %s:%d gave wrong password. Kicking!", cptr->user, cptr, ip, port);
          ws_kick_client(cptr, "Invalid login/password");
+         rv = false;
       }
 
       // AUDIT: Sanitize buffers containing sensitive data before freeing

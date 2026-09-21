@@ -403,21 +403,21 @@ bool ws_media_send_frame(struct rr_mediachan *cp, rrconn_t *cptr,
 }
 bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
-      return true;
+      return false;
    }
    const char *media_cmd = dict_get(d, "media.cmd", NULL);
    const char *uuid = dict_get(d, "media.chan-uuid", NULL);
 
    if (!media_cmd) {
       Log(LOG_DEBUG, "ws.media", "media message without media.cmd");
-      return true;
+      return false;
    }
 
    if (strcasecmp(media_cmd, "capab") == 0) {
       const char *codecs = dict_get(d, "media.codecs", NULL);
       if (!codecs || !*codecs || strlen(codecs) >= sizeof(cptr->media_codecs)) {
          ws_send_error(cptr, "Invalid media codec capability list");
-         return true;
+         return false;
       }
       snprintf(cptr->media_codecs, sizeof(cptr->media_codecs), "%s", codecs);
 
@@ -428,7 +428,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       if (!common || !*common) {
          free(common);
          ws_send_error(cptr, "No audio codecs in common with server");
-         return true;
+         return false;
       }
 
       dict *ack = dict_new();
@@ -444,7 +444,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       // Re-announce channel state after negotiation so clients can refresh
       // their VFO media view. Room membership does not affect this.
       media_send_available_all(NULL);
-      return false;
+      return true;
    }
 
    if (strcasecmp(media_cmd, "source") == 0) {
@@ -458,7 +458,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
             (cptr->chatname[0] != '\0' ? cptr->chatname : "(unknown)"), cptr);
          ws_send_error(cptr, "Not authorized as a media source");
 
-         return true;
+         return false;
       }
       // No uuid = register as a source for all channels (like media.available
       // suggests); with a uuid, register for that one channel.
@@ -471,7 +471,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          if (!cp) {
             ws_send_error(cptr, "No such media channel");
 
-            return true;
+            return false;
          }
          // A source subscribes to its feed channel in the push direction
          u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
@@ -482,7 +482,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          if (oom) {
             ws_send_error(cptr, "Too many media subscriptions");
 
-            return true;
+            return false;
          }
       }
       dict *ack = dict_new();
@@ -502,12 +502,12 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       // fwdsp pipeline up to this connection.
       event_emit_dict("media.source", cptr, d);
 
-      return false;
+      return true;
    } else if (strcasecmp(media_cmd, "list") == 0) {
       // Client wants the (possibly updated) channel list
       media_send_available_all(cptr);
 
-      return false;
+      return true;
    } else if (strcasecmp(media_cmd, "subscribe") == 0) {
       struct rr_mediachan *cp = media_chan_find_uuid(uuid);
 
@@ -531,7 +531,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
             Log(LOG_WARN, "ws.media", "Subscribe-create failed for %s (table full?)", cptr->chatname);
             ws_send_error(cptr, "No such media channel");
 
-            return true;
+            return false;
          }
       // Tell everyone (including the requester) about the new channel
       media_send_available_all(cptr);
@@ -540,14 +540,14 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       // rx_channels/tx_channels arrays
       if (!cp->codec[0] && !media_init_channel_codec(cptr, cp)) {
          ws_send_error(cptr, "No negotiated codec is available for this media channel");
-         return true;
+         return false;
       }
       media_send_available_all(NULL);
       u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
       bool is_tx = (cp->direction == RR_BINFRAME_DIR_TX);
       if (cp->codec[0] && !media_client_supports_codec(cptr, cp->codec)) {
          ws_send_error(cptr, "This client does not support the channel codec");
-         return true;
+         return false;
       }
       bool already_subscribed = is_tx ?
          chan_in_array(cptr->tx_channels, MAX_TX_CHANNELS, chan_id) :
@@ -561,7 +561,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
             cptr->chatname, cp->uuid);
          ws_send_error(cptr, "Too many media subscriptions");
 
-         return true;
+         return false;
       }
       dict *sub = dict_new();
       dict_add(sub, "msg.type", "media");
@@ -586,13 +586,13 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       // client refreshes its capability view.
       media_send_available_all(NULL);
 
-      return false;
+      return true;
    } else if (strcasecmp(media_cmd, "unsubscribe") == 0) {
       struct rr_mediachan *cp = media_chan_find_uuid(uuid);
 
       if (!cp) {
          ws_send_error(cptr, "No such media channel");
-         return true;
+         return false;
       }
 
       u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
@@ -612,7 +612,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_DEBUG, "ws.media", "Unsubscribed %s from channel %s", cptr->chatname, cp->uuid);
       media_send_available_all(NULL);
 
-      return false;
+      return true;
    } else if (strcasecmp(media_cmd, "codec") == 0) {
       // Codec selection is per concrete channel UUID. This matters for rigs
       // with multiple independent VFO streams and also gives the fwdsp manager
@@ -622,11 +622,11 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
 
       if (!codec || strlen(codec) != 4) {
          ws_send_error(cptr, "media.codec select: invalid codec");
-         return true;
+         return false;
       }
       if (!cp) {
          ws_send_error(cptr, "media.codec select: unknown or missing channel uuid");
-         return true;
+         return false;
       }
 
       const char *server_codecs = cfg_get_exp("codecs.allowed");
@@ -635,14 +635,14 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       free((void *)server_codecs);
       if (!server_supports) {
          ws_send_error(cptr, "Server does not support the requested codec");
-         return true;
+         return false;
       }
 
       if (!media_client_supports_codec(cptr, codec) ||
           !media_channel_all_clients_support(cp, codec)) {
          ws_send_error(cptr,
             "Codec is not supported by every subscriber on this channel");
-         return true;
+         return false;
       }
 
       char old_codec[5] = { 0 };
@@ -652,7 +652,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
 
       if (old_codec[0] && memcmp(old_codec, codec, 4) == 0) {
          media_send_available(cptr, cp);
-         return false;
+         return true;
       }
 
       dict *sel = dict_new();
@@ -693,9 +693,9 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_INFO, "ws.media", "%s selected codec %s for %s",
          cptr->chatname, codec, cp->uuid);
 
-      return false;
+      return true;
    }
    Log(LOG_DEBUG, "ws.media", "Unhandled media cmd: |%s|", media_cmd);
 
-   return true;
+   return false;
 }

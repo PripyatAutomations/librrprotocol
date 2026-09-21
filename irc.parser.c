@@ -214,7 +214,7 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
          }
       } else if (mp->argv[0]) {
          // commands
-         if (strcasecmp(p->cmd, mp->argv[0]) == 0) {
+         if (p->cmd && strcasecmp(p->cmd, mp->argv[0]) == 0) {
             if (p->cb) {
                Log(LOG_CRAZY, "dispatcher", "Callback for %s is <%p>, passing %d args", mp->argv[0], p->cb, mp->argc);
                nm++;

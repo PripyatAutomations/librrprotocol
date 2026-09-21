@@ -62,11 +62,14 @@ bool ws_send_ping(rrconn_t *cptr) {
          cptr->ping_attempts);
    }
    dict *d = dict_new();
+   if (!d) {
+      return false;
+   }
    dict_add(d, "msg.type", "ping");
    dict_add_ulong(d, "msg.ts", now);
    // Monotonic microsecond timestamp for RTT measurement; echoed back in the pong
    dict_add_llong(d, "ping.ts", mono_us());
-   ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
-   return true;
+   return sent;
 }

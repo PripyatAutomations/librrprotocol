@@ -98,7 +98,10 @@ const char *get_server_property(const char *server, const char *prop) {
    memset( fullkey, 0, sizeof(fullkey) );
    snprintf(fullkey, sizeof(fullkey), "server:%s.%s", server, prop);
 
-   return dict_get(cfg, fullkey, NULL);
+   // Use the configuration accessor so user values and built-in defaults are
+   // resolved consistently.  The returned pointer is borrowed, matching the
+   // existing get_server_property() API.
+   return cfg_get(fullkey);
 }
 
 // Public API used by callers. These call through to the underlying transport.

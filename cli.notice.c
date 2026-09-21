@@ -24,9 +24,9 @@ extern time_t now;
 bool ws_handle_notice_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_WARN, "http.ws", "notice_msg: got cptr:<%p> d:<%p>", cptr, d);
-      return true;
+      return false;
    }
-   bool rv = false;
+   bool rv = true;
    char *ip = cptr->user_ip;
    int port = cptr->user_port;
    const char *notice_msg = dict_get(d, "talk.msg", NULL);
@@ -34,5 +34,5 @@ bool ws_handle_notice_msg(rrconn_t *cptr, dict *d) {
    time_t ts = dict_get_time_t(d, "msg.ts", now);
 
    event_emit_dict("talk.msg", NULL, d);
-   return false;
+   return true;
 }

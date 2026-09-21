@@ -29,7 +29,7 @@ char old_mode[16];
 bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_DEBUG, "ws.rigctl", "handle_rigctl_msg invalid args: cptr:<%p> d:<%p>", cptr, d);
-      return true;
+      return false;
    }
    time_t ts = dict_get_time_t(d, "msg.ts", now);
 
@@ -37,7 +37,7 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
 // XXX: Implement this - state message throttling & dict_diff usage
 /*
       if (poll_block_expire < now) {
-         return false;
+         return true;
       }
       poll_block_expire = now + poll_block_delay;
  */
@@ -112,7 +112,7 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
    }
 
 local_cleanup:
-   return false;
+   return true;
 }
 
 bool ws_send_ptt_cmd(rrconn_t *cptr, const char *vfo, bool ptt) {
@@ -120,15 +120,18 @@ bool ws_send_ptt_cmd(rrconn_t *cptr, const char *vfo, bool ptt) {
       return false;
    }
    dict *cat_msg = dict_new();
+   if (!cat_msg) {
+      return false;
+   }
    dict_add(cat_msg, "msg.type", "cat");
    dict_add(cat_msg, "cat.cmd", "ptt");
    dict_add(cat_msg, "cat.vfo", vfo);
    dict_add_bool(cat_msg, "cat.ptt", ptt);
    dict_add_ulong(cat_msg, "msg.ts", now);
-   ws_send_dict(NULL, cptr, cat_msg, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, cat_msg, WEBSOCKET_OP_TEXT);
    dict_free(cat_msg);
 
-   return true;
+   return sent;
 }
 
 bool ws_send_mode_cmd(rrconn_t *cptr, const char *vfo, const char *mode) {
@@ -136,15 +139,18 @@ bool ws_send_mode_cmd(rrconn_t *cptr, const char *vfo, const char *mode) {
       return false;
    }
    dict *cat_msg = dict_new();
+   if (!cat_msg) {
+      return false;
+   }
    dict_add(cat_msg, "msg.type", "cat");
    dict_add(cat_msg, "cat.cmd", "mode");
    dict_add(cat_msg, "cat.vfo", vfo);
    dict_add(cat_msg, "cat.mode", mode);
    dict_add_ulong(cat_msg, "msg.ts", now);
-   ws_send_dict(NULL, cptr, cat_msg, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, cat_msg, WEBSOCKET_OP_TEXT);
    dict_free(cat_msg);
 
-   return true;
+   return sent;
 }
 
 bool ws_send_width_cmd(rrconn_t *cptr, const char *vfo, const char *width) {
@@ -152,15 +158,18 @@ bool ws_send_width_cmd(rrconn_t *cptr, const char *vfo, const char *width) {
       return false;
    }
    dict *cat_msg = dict_new();
+   if (!cat_msg) {
+      return false;
+   }
    dict_add(cat_msg, "msg.type", "cat");
    dict_add(cat_msg, "cat.cmd", "width");
    dict_add(cat_msg, "cat.vfo", vfo);
    dict_add(cat_msg, "cat.width", width);
    dict_add_ulong(cat_msg, "msg.ts", now);
-   ws_send_dict(NULL, cptr, cat_msg, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, cat_msg, WEBSOCKET_OP_TEXT);
    dict_free(cat_msg);
 
-   return true;
+   return sent;
 }
 
 bool ws_send_freq_cmd(rrconn_t *cptr, const char *vfo, long freq) {
@@ -168,13 +177,16 @@ bool ws_send_freq_cmd(rrconn_t *cptr, const char *vfo, long freq) {
       return false;
    }
    dict *cat_msg = dict_new();
+   if (!cat_msg) {
+      return false;
+   }
    dict_add(cat_msg, "msg.type", "cat");
    dict_add(cat_msg, "cat.cmd", "freq");
    dict_add(cat_msg, "cat.vfo", vfo);
    dict_add_long(cat_msg, "cat.freq", freq);
    dict_add_ulong(cat_msg, "msg.ts", now);
-   ws_send_dict(NULL, cptr, cat_msg, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_dict(NULL, cptr, cat_msg, WEBSOCKET_OP_TEXT);
    dict_free(cat_msg);
 
-   return true;
+   return sent;
 }

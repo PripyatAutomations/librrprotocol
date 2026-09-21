@@ -147,10 +147,10 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
 }
 
 bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
-   bool rv = false;
+   bool rv = true;
 
    if (!cptr) {
-      return true;
+      return false;
    }
    cptr->last_heard = now;       // avoid unneeded keep-alives
    cptr->last_cat = now;         // last CAT message received from user
@@ -166,7 +166,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_WARN, "ws.rigctl", "Ignoring %s command from unauthenticated client %s:<%p>",
          (cmd ? cmd : "(null)"), cptr->chatname, cptr);
       ws_send_error(cptr, "Not authenticated");
-      return true;
+      return false;
    }
 
    if (cptr->user->is_muted) {
@@ -179,7 +179,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       dict_add(d_err, "error.target", cptr->chatname);
       ws_send_dict(NULL, cptr, d_err, WEBSOCKET_OP_TEXT);
       dict_free(d_err);
-      return true;
+      return false;
    }
 
    // Support for 'noob' class users who can only control rig if an elmer is
@@ -189,18 +189,18 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    if (client_has_flag(cptr, FLAG_NOOB) && !is_elmer_online() ) {
       Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they're a noob and no elmers are online", cmd,
          cptr->chatname);
-      return true;
+      return false;
    }
 
    if (cmd) {
       if (strcasecmp(cmd, "ptt") == 0) {
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
-            return true;
+            return false;
          }
 
          if (!vfo) {
             Log(LOG_DEBUG, "ws.rigctl", "PTT set without vfo or ptt_state");
-            return true;
+            return false;
          }
          // Client sends cat.ptt; server-originated echoes use cat.state.ptt
          bool ptt_state = dict_get_bool(d, "cat.state.ptt",
@@ -242,7 +242,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
                   Log(LOG_AUDIT, "ptt", "Denying PTT for %s: %s is already transmitting",
                      cptr->chatname, talker->chatname);
                   ws_send_error(cptr, "%s is already transmitting", talker->chatname);
-                  return true;
+                  return false;
                }
             }
 
@@ -252,7 +252,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
                   cptr->chatname, (int)(cptr->noob_cooldown - now) );
                ws_send_error(cptr, "PTT cooldown active: %d seconds remaining",
                   (int)(cptr->noob_cooldown - now) );
-               return true;
+               return false;
             }
          }
 
@@ -265,7 +265,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          vfo_id = vfo_lookup(vfo[0]);
 
          if (vfo_id < 0) {
-            return true;
+            return false;
          }
          rr_vfo_data_t *dp = &vfos[vfo_id];
          mode_name = vfo_mode_name(dp->mode);
@@ -314,14 +314,14 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_free(cmd_d);
       } else if (strcasecmp(cmd, "freq") == 0) {
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
-            return true;
+            return false;
          }
          long new_freq = dict_get_long(d, "cat.state.freq", 0);
          if (new_freq <= 0) new_freq = dict_get_long(d, "cat.freq", 0);
 
          if (!vfo || new_freq <= 0) {
             Log(LOG_DEBUG, "ws.rigctl", "FREQ set without vfo or freq");
-            return true;
+            return false;
          }
 
          rr_vfo_t c_vfo;
@@ -361,12 +361,12 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          if (!width) width = dict_get(d, "cat.width", NULL);
 
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
-            return true;
+            return false;
          }
 
          if (!vfo || !width) {
             Log(LOG_DEBUG, "ws.rigctl", "WIDTH set without vfo:<%p> or width:<%p>", vfo, width);
-            return true;
+            return false;
          }
 
          cptr->last_cat = now;         // last CAT message received from user
@@ -402,12 +402,12 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          if (!mode) mode = dict_get(d, "cat.mode", NULL);
 
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
-            return true;
+            return false;
          }
 
          if (!vfo || !mode) {
             Log(LOG_DEBUG, "ws.rigctl", "MODE set without vfo:<%p> or mode:<%p>", vfo, mode);
-            return true;
+            return false;
          }
          rr_vfo_t c_vfo;
          char msgbuf[HTTP_WS_MAX_MSG + 1];
@@ -454,5 +454,5 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          free( (void *)jp );
       }
    }
-   return true;
+   return false;
 }

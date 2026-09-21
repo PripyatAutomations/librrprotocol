@@ -69,7 +69,7 @@ static bool http_help(struct mg_http_message *msg, rrconn_t *cptr) {
    if (check_url(topic) ) {
       Log(LOG_AUDIT, "http.api", "Topic |%s| contains sketch characters, bailing from http_help", help_path);
 
-      return true;
+      return false;
    }
    snprintf(help_path, h_sz, "%s/help/%s.html", www_root, topic);
 
@@ -78,20 +78,20 @@ static bool http_help(struct mg_http_message *msg, rrconn_t *cptr) {
    }
    mg_http_serve_file(cptr->conn, msg, help_path, &http_opts);
 
-   return false;
+   return true;
 }
 
 static bool http_api_ping(struct mg_http_message *msg, rrconn_t *cptr) {
    // XXX: We should send back the first GET argument
    mg_http_reply(cptr->conn, 200, http_content_type("json"), "{%m:%d}\n", MG_ESC("status"), 1);
 
-   return false;
+   return true;
 }
 
 static bool http_api_time(struct mg_http_message *msg, rrconn_t *cptr) {
    mg_http_reply( cptr->conn, 200, http_content_type("json"), "{%m:%lu}\n", MG_ESC("time"), time(NULL) );
 
-   return false;
+   return true;
 }
 
 static bool http_api_ws(struct mg_http_message *msg, rrconn_t *cptr) {
@@ -99,14 +99,14 @@ static bool http_api_ws(struct mg_http_message *msg, rrconn_t *cptr) {
    mg_ws_upgrade(cptr->conn, msg, NULL);
    cptr->conn->data[0] = 'W';
 
-   return false;
+   return true;
 }
 
 static bool http_api_version(struct mg_http_message *msg, rrconn_t *cptr) {
    mg_http_reply(cptr->conn, 200, http_content_type("json"), "{ \"version\": { \"firmware\": \"%s\", \"hardware\": \"%s\" } }",
       VERSION, HARDWARE);
 
-   return false;
+   return true;
 }
 
 static bool http_api_stats(struct mg_http_message *msg, rrconn_t *cptr) {
@@ -122,7 +122,7 @@ static bool http_api_stats(struct mg_http_message *msg, rrconn_t *cptr) {
    }
 
    mg_http_printf_chunk(cptr->conn, "");   // Don't forget the last empty chunk
-   return false;
+   return true;
 }
 
 static http_route_t http_routes[HTTP_MAX_ROUTES] = {
@@ -143,7 +143,7 @@ static http_route_t http_routes[HTTP_MAX_ROUTES] = {
 ////////////////////////////////////////////////////////////////////////
 bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr) {
    if (!cptr || !msg) {
-      return true;
+      return false;
    }
    int items = (sizeof(http_routes) / sizeof(http_route_t) ) - 1;
 
@@ -173,14 +173,13 @@ bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr) {
             msg->uri.len--;
          }
          rv = http_routes[i].cb(msg, cptr);
-
-         return false;
+         return rv != 0;
       } else {
          Log(LOG_CRAZY, "http.req", "Failed to match %.*s: %d: %s", (int)msg->uri.len, msg->uri.buf, i,
             http_routes[i].match);
       }
    }
 
-   return true;  // No match found, let static handler take over
+   return false;  // No match found, let static handler take over
 }
 #endif // USE_MONGOOSE

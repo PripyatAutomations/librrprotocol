@@ -75,6 +75,9 @@ static struct http_res_types http_res_types[] = {
 // Perform various checks on synthesized URLs to make sure the user isn't up to
 // anything shady...
 bool check_url(const char *path) {
+   if (!path) {
+      return true;
+   }
    if (strstr(path, "..")) {
       return true;
    }
@@ -110,13 +113,17 @@ const char *http_content_type(const char *type) {
 bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
    struct mg_http_serve_opts opts = http_opts;
 
-   if (!msg) {
+   if (!msg || !cptr || !cptr->conn || !msg->uri.buf) {
       return true;
    }
    // Copy URI into null-terminated buffer
    char path[4096];
    memset( path, 0, sizeof(path) );
-   snprintf(path, sizeof(path), "%.*s", (int)msg->uri.len, msg->uri.buf);
+   int path_len = snprintf(path, sizeof(path), "%.*s", (int)(msg->uri.len > INT_MAX ? INT_MAX : msg->uri.len), msg->uri.buf);
+   if (path_len < 0 || (size_t)path_len >= sizeof(path) || check_url(path)) {
+      Log(LOG_WARN, "http.core", "Rejecting unsafe or oversized static path");
+      return true;
+   }
    char real_path[8192];
    memset( real_path, 0, sizeof(real_path) );
 
@@ -129,7 +136,11 @@ bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
       memset( path, 0, sizeof(path) );
       snprintf(path, sizeof(path), "index.html");
    }
-   snprintf(real_path, sizeof(real_path), "%s/%s", www_root, path);
+   int real_len = snprintf(real_path, sizeof(real_path), "%s/%s", www_root, path);
+   if (real_len < 0 || (size_t)real_len >= sizeof(real_path)) {
+      Log(LOG_WARN, "http.core", "Rejecting oversized static path");
+      return true;
+   }
 
    if (file_exists(real_path) ) {
       // Find last '.' in the path for the extension
@@ -163,11 +174,11 @@ bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
 }
 
 static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
-   bool rv = false;
+   bool rv = true;
 
    if (!cptr || !d) {
       Log( LOG_CRAZY, "http.ws", "ws_handle_pong got cptr:<%p> dict<%p>", cptr, d);
-      rv = true;
+      rv = false;
       goto cleanup;
    }
    char *ip = cptr->user_ip;
@@ -176,7 +187,7 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
    time_t msg_ts = dict_get_ulong(d, "msg.ts", 0);
    if (!msg_ts) {
       Log(LOG_WARN, "http.ws", "ws_handle_pong: PONG from user with no timestamp");
-      rv = true;
+      rv = false;
       goto cleanup;
    } else {
       Log(LOG_CRAZY, "http.ws", "ws_handle_pong: PONG from user %s with ts:|%lu|",
@@ -204,16 +215,12 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
       dict_free(lat);
    }
 
-   char *endptr;
-   errno = 0;
-
-   time_t ping_expiry = msg_ts + HTTP_PING_TIME;
-   if ( (ping_expiry) < now) {
+   if (msg_ts > now || now - msg_ts > HTTP_PING_TIME) {
       Log(LOG_DEBUG, "http.pong",
          "Late ping for cptr:<%p> from %s:%d ts: %li + %li (timeout) < now %li", cptr, ip, port,
          msg_ts, HTTP_PING_TIMEOUT, now);
       ws_kick_client(cptr, "Network Error: PING expired");
-      rv = true;
+      rv = false;
       goto cleanup;
    } else {
       cptr->last_heard = now;
@@ -243,7 +250,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       Log(LOG_CRIT, "rrproto.core", "ws_txtframe_process: msg_type unset!");
       dict_dump(d, stderr);
       ws_send_error(cptr, "Invalid command: <missing msg.type>");
-      return true;
+      return false;
    }
 
    // Unauthenticated clients may only send auth commands (login/pass), pong
@@ -268,10 +275,14 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
 
    if (strcasecmp(msg_type, "alert") == 0) {
       const char *alert_from = dict_get(d, "alert.from", "*** SERVER ***");
+      (void)alert_from;
+      result = true;
    } else if (strcasecmp(msg_type, "error") == 0) {
       const char *error_msg = dict_get(d, "error.msg", NULL);
+      (void)error_msg;
+      result = true;
    } else if (strcasecmp(msg_type, "auth") == 0) {
-      ws_handle_auth_msg(cptr, d);
+      result = ws_handle_auth_msg(cptr, d);
    } else if (strcasecmp(msg_type, "cat") == 0) {
       // RIG CONTROL/STATE RELATED
       // If this msg contains a cat.cmd it's a client command (freq/mode/ptt
@@ -284,6 +295,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       const char *hello_hwver = dict_get(d, "hello.hwver", "generic");
       const char *hello_swver = dict_get(d, "hello.swver", NULL);
       Log(LOG_DEBUG, "ws", "Got HELLO from client at cptr:<%p>: swver=%s, hwver=%s", cptr, hello_swver, (hello_hwver ? hello_hwver : "generic"));
+      free(cptr->cli_version);
       cptr->cli_version = malloc(HTTP_UA_LEN);
 
       if (cptr->cli_version) {
@@ -302,6 +314,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
          Log(LOG_INFO, "ws", "Client at cptr:<%p> announced hello.role: video-source", cptr);
       }
       event_emit_dict("hello", cptr, d);
+      result = (cptr->cli_version != NULL);
    } else if (strcasecmp(msg_type, "media") == 0) {
       // AUDIO/VIDEO MEDIA RELATED. media.cmd values are handled by the
       // codec negotiation (cli/srv media handlers) and the media channel
@@ -335,6 +348,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
          dict_add_ulong(pong, "msg.ts", ping_ts);
          ws_send_dict(NULL, cptr, pong, WEBSOCKET_OP_TEXT);
          dict_free(pong);
+         result = true;
       } else {
          // XXX: for now just complain
          Log(LOG_DEBUG, "srv.http", "PING with no TS from cptr:<%p>", cptr);
@@ -364,9 +378,13 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       }
       Log(LOG_INFO, "http.ws", "Rehash requested by %s", cptr->chatname);
       event_emit_dict("rehash", cptr, d);
+      result = true;
    } else if (strcasecmp(msg_type, "quit") == 0) {
       const char *talk_reason = dict_get(d, "quit.reason", NULL);
       int sessions = dict_get_int(d, "quit.sessions", 0);
+      (void)talk_reason;
+      (void)sessions;
+      result = true;
    } else if (strcasecmp(msg_type, "talk") == 0) {
       // CHAT RELATED
          result = ws_handle_chat_msg(cptr, d);
@@ -374,7 +392,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       Log(LOG_WARN, "http.ws", "Invalid command |%s| from %s", msg_type,
          (cptr->chatname[0] ? cptr->chatname : "(unknown)"));
       ws_send_error(cptr, "Invalid command: %s", msg_type);
-      result = true;
+      result = false;
    }
 
    // Update last heard time
@@ -393,20 +411,22 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
    if (!cptr || !msg || !msg->data.buf) {
       Log( LOG_DEBUG, "http.ws", "ws_handle got msg:<%p> c:<%p> data:<%p>", msg, cptr, (msg ? msg->data.buf : NULL) );
 
-      return true;
+      return false;
    }
 #if     defined(HTTP_DEBUG_CRAZY) || defined(DEBUG_PROTO)
    // XXX: This should be moved to an option in config perhaps?
-   Log(LOG_CRAZY, "http", "ws_handle WS msg: %.*s", (int) msg->data.len, msg->data.buf);
+   Log(LOG_CRAZY, "http", "ws_handle WS msg: %.*s",
+      (int)(msg->data.len > INT_MAX ? INT_MAX : msg->data.len), msg->data.buf);
 #endif
 
    // Binary (audio, waterfall) frames
    if (msg->flags & WEBSOCKET_OP_BINARY) {
-      Log(LOG_CRAZY, "ws.frame.bin", "Incoming Binary frame: %li bytes", msg->data.len);
-      ws_binframe_process_mg(cptr, msg->data.buf, msg->data.len);
+      Log(LOG_CRAZY, "ws.frame.bin", "Incoming Binary frame: %zu bytes", msg->data.len);
+      return ws_binframe_process_mg(cptr, msg->data.buf, msg->data.len);
    } else {
       // Text (mostly json) frames
-      Log(LOG_CRAZY, "ws.frame.txt", "Incoming Text frame: %li bytes: %.*s", msg->data.len, (int) msg->data.len, msg->data.buf);
+      Log(LOG_CRAZY, "ws.frame.txt", "Incoming Text frame: %zu bytes: %.*s", msg->data.len,
+         (int)(msg->data.len > INT_MAX ? INT_MAX : msg->data.len), msg->data.buf);
 
       // Drop oversized frames: copying into our fixed buffer without this
       // check smashed the stack/heap and later crashed mg_iobuf_free
@@ -414,7 +434,7 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
       if (msg->data.len > HTTP_WS_MAX_MSG) {
          Log(LOG_WARN, "http.ws", "Dropping oversized WS text frame (%zu bytes > %d) from cptr:<%p>",
             msg->data.len, HTTP_WS_MAX_MSG, cptr);
-         return true;
+         return false;
       }
 
       struct mg_str msg_data = msg->data;
@@ -425,12 +445,13 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
       dict *d = json2dict(buf);
       if (!d) {
          Log(LOG_CRIT, "rrproto.cli.main", "ws_handle: d is null!");
-         return true;
+         return false;
       }
 
-      ws_txtframe_process(cptr, d);
+      bool result = ws_txtframe_process(cptr, d);
       dict_free(d);
       memset(buf, 0, sizeof(buf) );
+      return result;
    }
    return false;
 }
@@ -533,7 +554,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       }
 
       // Send the request to our HTTP router
-      if (hm && http_dispatch_route(hm, cptr) == true) {
+      if (hm && !http_dispatch_route(hm, cptr)) {
          Log(LOG_CRAZY, "http.core", "fall through to http_static");
          http_static(hm, cptr);
       }
@@ -654,7 +675,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
 // Combine some common, safe string handling into one call
 bool prepare_msg(char *buf, size_t len, const char *fmt, ...) {
    if (!buf || !fmt) {
-      return true;
+      return false;
    }
    va_list ap;
    memset(buf, 0, len);
@@ -662,5 +683,5 @@ bool prepare_msg(char *buf, size_t len, const char *fmt, ...) {
    vsnprintf(buf, len, fmt, ap);
    va_end(ap);
 
-   return false;
+   return true;
 }
