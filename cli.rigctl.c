@@ -77,7 +77,7 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
  */
             // save the old mode so we can compare next time
             memset( old_mode, 0, sizeof(old_mode) );
-            snprintf(old_mode, sizeof(old_mode), "%s", real_mode);
+            strlcpy(old_mode, real_mode, sizeof(old_mode));
          }
       }
    } else if (dict_get(d, "cat.cmd", NULL) ) {

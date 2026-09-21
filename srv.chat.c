@@ -66,8 +66,11 @@ static bool callsign_lookup_readline(char *line, size_t len, int timeout_ms) {
 static bool callsign_lookup_start(void) {
    if (callsign_lookup_pid > 0 && callsign_lookup_in && callsign_lookup_out) return true;
 
-   const char *program = cfg_get("callsign-lookup:path");
-   if (!program || !*program || !config_file || !*config_file) return false;
+   char *program = cfg_get_path("callsign-lookup:path");
+   if (!program || !*program || !config_file || !*config_file) {
+      free(program);
+      return false;
+   }
    if (!callsign_lookup_atexit_registered) {
       atexit(callsign_lookup_stop);
       callsign_lookup_atexit_registered = true;
@@ -77,11 +80,13 @@ static bool callsign_lookup_start(void) {
    if (pipe(to_child) < 0 || pipe(from_child) < 0) {
       if (to_child[0] >= 0) { close(to_child[0]); close(to_child[1]); }
       if (from_child[0] >= 0) { close(from_child[0]); close(from_child[1]); }
+      free(program);
       return false;
    }
    pid_t pid = fork();
    if (pid < 0) {
       close(to_child[0]); close(to_child[1]); close(from_child[0]); close(from_child[1]);
+      free(program);
       return false;
    }
    if (pid == 0) {
@@ -94,6 +99,7 @@ static bool callsign_lookup_start(void) {
    }
    close(to_child[0]);
    close(from_child[1]);
+   free(program);
    callsign_lookup_pid = pid;
    callsign_lookup_in = fdopen(to_child[1], "w");
    callsign_lookup_out = fdopen(from_child[0], "r");
@@ -615,8 +621,11 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                }
             }
          }
-         if (!cfg_get("callsign-lookup:path") || !*cfg_get("callsign-lookup:path") ||
-             !config_file || !*config_file) {
+         char *lookup_program = cfg_get_path("callsign-lookup:path");
+         bool lookup_configured = lookup_program && *lookup_program &&
+            config_file && *config_file;
+         free(lookup_program);
+         if (!lookup_configured) {
             ws_send_error(cptr, "Callsign lookup is not configured on the server");
             return true;
          }

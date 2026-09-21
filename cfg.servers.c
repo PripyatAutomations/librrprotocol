@@ -122,10 +122,10 @@ bool add_server(const char *network, const char *str) {
 
       if (colon) {
          *colon = '\0';
-         snprintf(new_cfg->nick, sizeof(new_cfg->nick), "%s", hostbuf);
-         snprintf(new_cfg->pass, sizeof(new_cfg->pass), "%s", colon + 1);
+         strlcpy(new_cfg->nick, hostbuf, sizeof(new_cfg->nick));
+         strlcpy(new_cfg->pass, colon + 1, sizeof(new_cfg->pass));
       } else {
-         snprintf(new_cfg->nick, sizeof(new_cfg->nick), "%s", hostbuf);
+         strlcpy(new_cfg->nick, hostbuf, sizeof(new_cfg->nick));
       }
       memmove(hostbuf, at + 1, strlen(at + 1) + 1);
    }

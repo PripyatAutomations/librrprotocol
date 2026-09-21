@@ -353,11 +353,11 @@ static uint32_t media_seq = 0;
 // The server owns the wire header values (see doc/media-frames.md).
 bool ws_media_broadcast_subscribed(struct rr_mediachan *cp, const uint8_t *payload,
    size_t len, const char codec[4]) {
-   return ws_media_send_frame(cp, NULL, payload, len, codec);
+   return ws_media_broadcast_subscribed_except(cp, NULL, payload, len, codec);
 }
 
-bool ws_media_send_frame(struct rr_mediachan *cp, rrconn_t *cptr,
-   const uint8_t *payload, size_t len, const char codec[4]) {
+static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *target,
+   rrconn_t *exclude, const uint8_t *payload, size_t len, const char codec[4]) {
    if (!cp || cp->uuid[0] == '\0' || !payload || len > RR_BINFRAME_MAX_PAYLOAD) {
       return true;
    }
@@ -374,24 +374,31 @@ bool ws_media_send_frame(struct rr_mediachan *cp, rrconn_t *cptr,
       cp->direction, cp->vfo, cp->rig, (uint8_t)(chan_id & 0xFF),
       ++media_seq, mono_us(), payload, len);
 
-   if (flen < 0) {
-      return true;
-   }
+   if (flen < 0) return true;
    rrconn_t *cur = http_client_list;
-
    while (cur) {
-      if ((!cptr || cur == cptr) && cur->is_ws && cur->authenticated && cur->conn &&
-               ((cp->direction == RR_BINFRAME_DIR_TX &&
-                  chan_id_in_array(cur->tx_channels, MAX_TX_CHANNELS, chan_id)) ||
-                (cp->direction == RR_BINFRAME_DIR_RX &&
-                  chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id))) ) {
+      if ((!target || cur == target) && cur != exclude && cur->is_ws &&
+          cur->authenticated && cur->conn &&
+          ((cp->direction == RR_BINFRAME_DIR_TX &&
+             chan_id_in_array(cur->tx_channels, MAX_TX_CHANNELS, chan_id)) ||
+           (cp->direction == RR_BINFRAME_DIR_RX &&
+             chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id)))) {
          mg_ws_send(cur->conn, frame, flen, WEBSOCKET_OP_BINARY);
       }
       cur = cur->next;
    }
    free(frame);
-
    return false;
+}
+
+bool ws_media_broadcast_subscribed_except(struct rr_mediachan *cp, rrconn_t *exclude,
+   const uint8_t *payload, size_t len, const char codec[4]) {
+   return ws_media_send_frame_filtered(cp, NULL, exclude, payload, len, codec);
+}
+
+bool ws_media_send_frame(struct rr_mediachan *cp, rrconn_t *cptr,
+   const uint8_t *payload, size_t len, const char codec[4]) {
+   return ws_media_send_frame_filtered(cp, cptr, NULL, payload, len, codec);
 }
 bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {

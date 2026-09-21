@@ -562,8 +562,8 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
       // broadcast to the subscribers of this channel's RX counterpart.
       struct rr_mediachan *rx = media_chan_find(cp->subsystem, RR_BINFRAME_DIR_RX, cp->vfo, cp->rig);
 
-      if (rx) {
-         ws_media_broadcast_subscribed(rx, f.data, f.len, f.hdr.codec);
+         if (rx) {
+            ws_media_broadcast_subscribed_except(rx, cptr, f.data, f.len, f.hdr.codec);
       } else {
          // No RX counterpart (e.g. a TX-only subsystem); dispatch to the
          // event bus so the program can decide what to do with it.
