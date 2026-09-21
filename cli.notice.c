@@ -26,13 +26,14 @@ bool ws_handle_notice_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_WARN, "http.ws", "notice_msg: got cptr:<%p> d:<%p>", cptr, d);
       return false;
    }
-   bool rv = true;
-   char *ip = cptr->user_ip;
-   int port = cptr->user_port;
-   const char *notice_msg = dict_get(d, "talk.msg", NULL);
-   const char *notice_from = dict_get(d, "talk.from", NULL);
-   time_t ts = dict_get_time_t(d, "msg.ts", now);
-
-   event_emit_dict("talk.msg", NULL, d);
+   // Notices use their own namespace.  Reading talk.msg here silently drops
+   // server replies such as callsign lookup results and also misclassifies
+   // them as chat events for consumers of the protocol library.
+   const char *notice_msg = dict_get(d, "notice.msg", NULL);
+   if (!notice_msg) {
+      Log(LOG_DEBUG, "http.ws", "notice_msg: notice.msg is missing");
+      return false;
+   }
+   event_emit_dict("notice.msg", NULL, d);
    return true;
 }

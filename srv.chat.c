@@ -157,6 +157,12 @@ static bool callsign_lookup_start(void) {
    return ready;
 }
 
+// Start the persistent lookup helper during server initialization rather
+// than making the first /qrz or /grid request pay the startup cost.
+bool ws_callsign_lookup_init(void) {
+   return callsign_lookup_start();
+}
+
 static bool callsign_lookup_request(rrconn_t *cptr, const char *request) {
    if (!callsign_lookup_start()) return false;
    if (fprintf(callsign_lookup_in, "%s\n", request) < 0 || fflush(callsign_lookup_in) != 0) {
