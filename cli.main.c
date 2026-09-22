@@ -567,10 +567,35 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
       }
       return true;
    }
-   // TX-direction audio from a non-source client is the legacy PTT
-   // microphone path; RX-direction frames arriving at the server are
-   // bogus - drop both rather than relay them.
-   if (is_tx_frame || f.hdr.direction != RR_BINFRAME_DIR_RX) {
+   // A transmitting user's audio is shared with the other clients on that
+   // VFO, but never echoed back to the originating connection. The server
+   // also receives the payload on a program event so rrserver can decode it
+   // into the rig TX PCM sink.
+   if (is_tx_frame) {
+      if (f.hdr.subsystem != RR_BINFRAME_SUBSYS_AUDIO || !cptr->is_ptt ||
+          cptr->ptt_vfo != (char)('A' + f.hdr.vfo)) {
+         return false;
+      }
+      struct rr_mediachan *tx = media_chan_find(f.hdr.subsystem, RR_BINFRAME_DIR_TX,
+         f.hdr.vfo, f.hdr.rig);
+      if (!tx || !tx->codec[0] || strncmp(tx->codec, (const char *)f.hdr.codec, 4) != 0 ||
+          strncmp(cptr->codec_tx, tx->codec, 4) != 0) {
+         Log(LOG_AUDIT, "ws.media", "Dropping TX frame from %s: channel codec/PTT mismatch",
+            cptr->chatname);
+         return false;
+      }
+      u_int32_t chan_id = (u_int32_t)(tx - media_channels) + 1;
+      if (!chan_id_in_array(cptr->tx_channels, MAX_TX_CHANNELS, chan_id)) {
+         Log(LOG_AUDIT, "ws.media", "Dropping TX frame from %s for unsubscribed channel %s",
+            cptr->chatname, tx->uuid);
+         return false;
+      }
+      ws_media_broadcast_subscribed_except(tx, cptr, f.data, f.len, tx->codec);
+      event_emit_binary("media.frame.tx", cptr, f.data, f.len);
+      return true;
+   }
+   // RX-direction frames arriving at the server are not valid client traffic.
+   if (f.hdr.direction != RR_BINFRAME_DIR_RX) {
       return false;
    }
    // RX-direction frames arriving at the server are not valid client

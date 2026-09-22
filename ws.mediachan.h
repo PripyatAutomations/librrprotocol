@@ -77,6 +77,7 @@ extern bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d);
 
 // Fan one media payload out to every connection subscribed to channel `cp`;
 // builds a binframe with server-owned header fields. Returns false on OK.
+extern bool ws_media_channel_has_subscribers(const struct rr_mediachan *cp);
 extern bool ws_media_broadcast_subscribed(struct rr_mediachan *cp,
    const uint8_t *payload, size_t len, const char codec[4]);
 /* Broadcast to subscribers while excluding the originating connection. */

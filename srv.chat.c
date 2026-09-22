@@ -315,9 +315,9 @@ static ws_room_meta_t *room_meta_find(const char *room, bool create) {
 
 const char *ws_authoritative_room(void) {
    static char room[128];
-   char *configured = (char *)cfg_get_exp("rig.name");
-   const char *name = (configured && *configured) ? configured : "rig";
-   snprintf(room, sizeof(room), "#rig-%s", name);
+   char *configured = (char *)cfg_get_exp("station.name");
+   const char *name = (configured && *configured) ? configured : "rustyrig";
+   snprintf(room, sizeof(room), "#%s-rig0", name);
    free(configured);
    ws_room_meta_t *meta = NULL;
    for (size_t i = 0; i < sizeof(room_meta) / sizeof(room_meta[0]); i++) {
