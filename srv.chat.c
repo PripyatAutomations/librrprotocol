@@ -585,6 +585,10 @@ static bool ws_send_userinfo_room(rrconn_t *cptr, rrconn_t *acptr, const char *r
    dict_add_int(talk_msg, "talk.sessions", cptr->user->sessions);
    dict_add_bool(talk_msg, "talk.muted", cptr->user->is_muted);
    dict_add_bool(talk_msg, "talk.tx", cptr->is_ptt);
+   if (cptr->ptt_vfo) {
+      char ptt_vfo[2] = { cptr->ptt_vfo, '\0' };
+      dict_add(talk_msg, "talk.ptt-vfo", ptt_vfo);
+   }
    dict_add_long(talk_msg, "msg.ts", now);
 
    if (acptr) {
@@ -846,7 +850,8 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          event_emit_dict("room.list", cptr, list);
          dict_free(list);
          return true;
-      } else if (strcasecmp(cmd, "chan") == 0) {
+      } else if (strcasecmp(cmd, "chan") == 0 || strcasecmp(cmd, "room") == 0) {
+         const char *room_cmd = strcasecmp(cmd, "room") == 0 ? "room" : "chan";
          char argbuf[256];
          snprintf(argbuf, sizeof(argbuf), "%s", data ? data : "");
          char *save = NULL;
@@ -862,7 +867,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             char *binding = strtok_r(NULL, " \t", &save);
             if (!room || !binding || (strcasecmp(action, "add") != 0 && strcasecmp(action, "remove") != 0) ||
                 !has_priv(cptr->user->uid, "admin|owner")) {
-               ws_send_error(cptr, "Usage: /chan vfo add|remove #room [rig0.]vfo_a (admin or owner required)");
+               ws_send_error(cptr, "Usage: /%s vfo add|remove #room [rig0.]vfo_a (admin or owner required)", room_cmd);
                return false;
             }
             char normalized[128];
@@ -881,7 +886,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          char *name = strtok_r(NULL, " \t", &save_delete);
          if (!sub_delete || strcasecmp(sub_delete, "delete") != 0 || !name ||
              !has_priv(cptr->user->uid, "admin|owner")) {
-            ws_send_error(cptr, "Usage: /chan delete #room (admin or owner required)");
+            ws_send_error(cptr, "Usage: /%s delete #room (admin or owner required)", room_cmd);
             return false;
          }
          if (strcasecmp(name, ws_authoritative_room()) == 0) {

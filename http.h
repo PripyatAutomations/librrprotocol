@@ -63,6 +63,7 @@ struct rr_user {
    uint32_t user_flags;
    int sessions;
    bool is_ptt;
+   char ptt_vfo;
    bool is_muted;
    bool in_store;       // <-- whether `iter` is valid
    struct rr_user *next;
