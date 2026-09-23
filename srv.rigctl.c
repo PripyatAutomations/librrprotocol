@@ -171,10 +171,12 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
    if (cptr->user->is_muted) {
       Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they are muted!", cmd, cptr->chatname);
-      // XXX: Inform the user they are muted and can't use rigctl
+      /* Return the actual policy failure.  "Invalid target" made a muted
+       * user's PTT failure look like a malformed VFO or username. */
       dict *d_err = dict_new();
       dict_add(d_err, "msg.type", "error");
-      dict_add(d_err, "error.msg", "Invalid target");
+      dict_add(d_err, "error.msg", "You are muted and cannot use rig controls");
+      dict_add(d_err, "error.code", "muted");
       dict_add(d_err, "error.vfo", vfo);
       dict_add(d_err, "error.target", cptr->chatname);
       ws_send_dict(NULL, cptr, d_err, WEBSOCKET_OP_TEXT);
