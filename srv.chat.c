@@ -295,6 +295,7 @@ typedef struct {
 
 static ws_room_meta_t room_meta[32];
 static const char *room_canonical(const char *room);
+static char authoritative_room_override[128];
 
 static ws_room_meta_t *room_meta_find(const char *room, bool create) {
    const char *canonical = room_canonical(room);
@@ -315,6 +316,9 @@ static ws_room_meta_t *room_meta_find(const char *room, bool create) {
 
 const char *ws_authoritative_room(void) {
    static char room[128];
+   if (authoritative_room_override[0]) {
+      return authoritative_room_override;
+   }
    char *configured = (char *)cfg_get_exp("station.name");
    const char *name = (configured && *configured) ? configured : "rustyrig";
    snprintf(room, sizeof(room), "#%s-rig0", name);
@@ -341,6 +345,13 @@ const char *ws_authoritative_room(void) {
    return room;
 }
 
+void ws_set_authoritative_room(const char *room) {
+   if (!room || room[0] != '#' || strlen(room) >= sizeof(authoritative_room_override)) {
+      return;
+   }
+   snprintf(authoritative_room_override, sizeof(authoritative_room_override), "%s", room);
+}
+
 bool ws_room_has_vfos(const char *room) {
    ws_room_meta_t *meta = room_meta_find(room, false);
    return meta ? meta->has_vfos : false;
@@ -352,10 +363,7 @@ uint32_t ws_room_vfo_mask(const char *room) {
 }
 
 static const char *room_canonical(const char *room) {
-   if (!room || !*room || strcasecmp(room, "&localrig") == 0) {
-      return ws_authoritative_room();
-   }
-   return room;
+   return (room && *room) ? room : ws_authoritative_room();
 }
 
 bool ws_client_in_room(const rrconn_t *cptr, const char *room) {
@@ -396,7 +404,7 @@ bool ws_client_join_room(rrconn_t *cptr, const char *room) {
 }
 
 bool ws_client_part_room(rrconn_t *cptr, const char *room) {
-   if (!cptr || !room || strcasecmp(room, "&localrig") == 0 ||
+   if (!cptr || !room ||
        strcasecmp(room, ws_authoritative_room()) == 0) {
       return false;
    }
@@ -559,7 +567,7 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
 
 // Send the updated userinfo for a single user; see ws_send_users below for
 // everyone
-bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
+static bool ws_send_userinfo_room(rrconn_t *cptr, rrconn_t *acptr, const char *room) {
    if (!cptr || !cptr->authenticated || !cptr->user) {
       return false;
    }
@@ -572,6 +580,7 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
    dict_add(talk_msg, "msg.type", "talk");
    dict_add(talk_msg, "talk.privs", cptr->user->privs);
    dict_add(talk_msg, "talk.user", cptr->chatname);
+   dict_add(talk_msg, "talk.room", room ? room : ws_authoritative_room());
    dict_add(talk_msg, "talk.cmd", "userinfo");
    dict_add_int(talk_msg, "talk.sessions", cptr->user->sessions);
    dict_add_bool(talk_msg, "talk.muted", cptr->user->is_muted);
@@ -588,25 +597,55 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
    return true;
 }
 
+bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
+   if (acptr) return ws_send_userinfo_room(cptr, acptr, ws_authoritative_room());
+   if (!cptr) return false;
+   char copy[AUTOJOIN_LEN];
+   snprintf(copy, sizeof(copy), "%s", cptr->rooms);
+   char *save = NULL;
+   bool sent = false;
+   for (char *room = strtok_r(copy, ",", &save); room;
+        room = strtok_r(NULL, ",", &save)) {
+      for (rrconn_t *recipient = http_client_list; recipient; recipient = recipient->next) {
+         if (ws_client_in_room(recipient, room)) {
+            ws_send_userinfo_room(cptr, recipient, room);
+            sent = true;
+         }
+      }
+   }
+   if (!sent) ws_send_userinfo_room(cptr, NULL, ws_authoritative_room());
+   return true;
+}
+
+bool ws_send_room_users(rrconn_t *cptr, const char *room) {
+   if (!cptr || !room) return false;
+   for (rrconn_t *current = http_client_list; current; current = current->next) {
+      if (ws_client_in_room(current, room))
+         ws_send_userinfo_room(current, cptr, room);
+   }
+   return true;
+}
+
 // Send info on all online users to the user
 bool ws_send_users(rrconn_t *cptr) {
-   rrconn_t *current = http_client_list;
-
-   // iterate over all the users
-   while (current) {
-      // should this be sent to a single user?
-      if (cptr) {
-         ws_send_userinfo(current, cptr);
-      } else {
-         // nope, broadcast it
-         ws_send_userinfo(current, NULL);
+   if (cptr) {
+      /* A roster is scoped to the rooms the recipient has joined.  Include
+       * the room on each userinfo record so clients can keep independent
+       * user lists for side chats. */
+      char copy[AUTOJOIN_LEN];
+      snprintf(copy, sizeof(copy), "%s", cptr->rooms);
+      char *save = NULL;
+      for (char *room = strtok_r(copy, ",", &save); room;
+           room = strtok_r(NULL, ",", &save)) {
+         for (rrconn_t *current = http_client_list; current; current = current->next) {
+            if (ws_client_in_room(current, room))
+               ws_send_userinfo_room(current, cptr, room);
+         }
       }
-
-      if (!current->next) {
-         return true;
-      }
-      current = current->next;
+      return true;
    }
+   for (rrconn_t *current = http_client_list; current; current = current->next)
+      ws_send_userinfo(current, NULL);
    return true;
 }
 
@@ -738,8 +777,8 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
    const char *msg_type = dict_get(d, "talk.msg_type", NULL);
    const char *user = cptr->chatname;
 
-   // set a default of &localrig, but use target if passed
-   const char *channel = "&localrig";
+   // Use the authoritative rig room unless the client explicitly targets a room.
+   const char *channel = ws_authoritative_room();
 
    if (target) {
       channel = target;
@@ -788,7 +827,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             ws_send_error(cptr, "Callsign lookup is not configured on the server");
             return false;
          }
-         char request[256];
+         /* lookup_data is bounded to 255 bytes above; leave room for the
+          * command prefix and optional NOCACHE suffix. */
+         char request[512];
          snprintf(request, sizeof(request), "/%s %s",
             strcasecmp(cmd, "grid") == 0 ? "GRID" : "CALL", lookup_data);
          if (no_cache) strncat(request, " NOCACHE", sizeof(request) - strlen(request) - 1);
@@ -796,6 +837,65 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             ws_send_error(cptr, "Callsign lookup is still starting; please retry shortly");
             return false;
          }
+         return true;
+      } else if (strcasecmp(cmd, "list") == 0) {
+         dict *list = dict_new();
+         dict_add(list, "msg.type", "talk");
+         dict_add(list, "talk.cmd", "room-list");
+         dict_add_ulong(list, "msg.ts", now);
+         event_emit_dict("room.list", cptr, list);
+         dict_free(list);
+         return true;
+      } else if (strcasecmp(cmd, "chan") == 0) {
+         char argbuf[256];
+         snprintf(argbuf, sizeof(argbuf), "%s", data ? data : "");
+         char *save = NULL;
+         char *sub = strtok_r(argbuf, " \t", &save);
+         char *action = strtok_r(NULL, " \t", &save);
+         if (sub && strcasecmp(sub, "vfo") == 0) {
+            if (!action || strcasecmp(action, "list") == 0) {
+               dict *list = dict_new(); dict_add(list, "msg.type", "talk");
+               dict_add(list, "talk.cmd", "room-vfo-list"); dict_add_ulong(list, "msg.ts", now);
+               event_emit_dict("room.vfo-list", cptr, list); dict_free(list); return true;
+            }
+            char *room = strtok_r(NULL, " \t", &save);
+            char *binding = strtok_r(NULL, " \t", &save);
+            if (!room || !binding || (strcasecmp(action, "add") != 0 && strcasecmp(action, "remove") != 0) ||
+                !has_priv(cptr->user->uid, "admin|owner")) {
+               ws_send_error(cptr, "Usage: /chan vfo add|remove #room [rig0.]vfo_a (admin or owner required)");
+               return false;
+            }
+            char normalized[128];
+            if (strncasecmp(binding, "rig", 3) != 0) snprintf(normalized, sizeof(normalized), "rig0.%s", binding);
+            else snprintf(normalized, sizeof(normalized), "%s", binding);
+            dict *vm = dict_new(); dict_add(vm, "msg.type", "talk");
+            dict_add(vm, "talk.cmd", "room-vfo"); dict_add(vm, "talk.action", action);
+            dict_add(vm, "talk.room", room_canonical(room)); dict_add(vm, "talk.vfo", normalized);
+            dict_add(vm, "talk.user", cptr->chatname); dict_add_ulong(vm, "msg.ts", now);
+            event_emit_dict("room.vfo", cptr, vm); dict_free(vm); return true;
+         }
+         // /chan delete #room
+         snprintf(argbuf, sizeof(argbuf), "%s", data ? data : "");
+         char *save_delete = NULL;
+         char *sub_delete = strtok_r(argbuf, " \t", &save_delete);
+         char *name = strtok_r(NULL, " \t", &save_delete);
+         if (!sub_delete || strcasecmp(sub_delete, "delete") != 0 || !name ||
+             !has_priv(cptr->user->uid, "admin|owner")) {
+            ws_send_error(cptr, "Usage: /chan delete #room (admin or owner required)");
+            return false;
+         }
+         if (strcasecmp(name, ws_authoritative_room()) == 0) {
+            ws_send_error(cptr, "The authoritative rig room cannot be deleted");
+            return false;
+         }
+         dict *deleted = dict_new();
+         dict_add(deleted, "msg.type", "talk");
+         dict_add(deleted, "talk.cmd", "chan-deleted");
+         dict_add(deleted, "talk.room", room_canonical(name));
+         dict_add(deleted, "talk.user", cptr->chatname);
+         dict_add_ulong(deleted, "msg.ts", now);
+         event_emit_dict("room.delete", cptr, deleted);
+         dict_free(deleted);
          return true;
       } else if (strcasecmp(cmd, "join") == 0 || strcasecmp(cmd, "part") == 0) {
          const char *requested = target ? target : data;
@@ -817,6 +917,8 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          dict_add(room_msg, "talk.user", cptr->chatname);
          dict_add_ulong(room_msg, "msg.ts", now);
          ws_broadcast_room_dict(cptr, room_msg, room_canonical(requested));
+         if (joining) ws_send_room_users(cptr, room_canonical(requested));
+         if (joining) event_emit_dict("room.join", cptr, room_msg);
          dict_free(room_msg);
          return true;
       } else if (strcasecmp(cmd, "msg") == 0) {

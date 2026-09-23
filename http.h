@@ -56,6 +56,7 @@
 // XXX: Merge this with http_user
 struct rr_user {
    char name[HTTP_USER_LEN + 1];
+   char room[128];
    char privs[200];
    time_t logged_in;
    time_t last_heard;

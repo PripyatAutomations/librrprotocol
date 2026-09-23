@@ -66,6 +66,7 @@ extern bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action);
 extern bool ws_handle_chat_msg(rrconn_t *cptr, dict *d);
 extern bool ws_send_users(rrconn_t *cptr);
 extern bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr);
+extern bool ws_send_room_users(rrconn_t *cptr, const char *room);
 
 // Send messages
 extern bool ws_send_ptt_cmd(rrconn_t *cptr, const char *vfo, bool ptt);

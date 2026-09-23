@@ -18,7 +18,7 @@ int cfg_get_int(const char *key, int def) {
 
 int main(void) {
    assert(strcmp(ws_authoritative_room(), "#rplywv00-rig0") == 0);
-   assert(ws_room_has_vfos("&localrig"));
+   assert(!ws_room_has_vfos("&localrig"));
    assert(ws_room_vfo_mask("#rplywv00-rig0") == 3);
 
    configured_station_name = "w8abc";

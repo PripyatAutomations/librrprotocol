@@ -25,9 +25,11 @@
 #include <librrprotocol/cfg.fwdsp.h>
 extern const char *server_name;
 
-// WebSocket room membership. &localrig remains an alias for the
-// authoritative rig room; media subscriptions are independent of rooms.
+// WebSocket room membership. The authoritative room is named from the
+// configured station and rig; media subscriptions are independent of rooms.
 extern const char *ws_authoritative_room(void);
+/* Client-side room identity learned from the server's authenticated room event. */
+extern void ws_set_authoritative_room(const char *room);
 extern bool ws_client_in_room(const rrconn_t *cptr, const char *room);
 extern bool ws_client_join_room(rrconn_t *cptr, const char *room);
 extern bool ws_client_part_room(rrconn_t *cptr, const char *room);
