@@ -46,6 +46,12 @@
 #define	HTTP_PING_TRIES 3                // We'll try this many times
                                           // before kicking the client
 
+#if defined(USE_MONGOOSE)
+/* The public prototypes below only need incomplete Mongoose types. */
+struct mg_mgr;
+struct mg_http_message;
+#endif // defined(USE_MONGOOSE)
+
 // ws.cat protocol
 #define	HTTP_API_RIGPOLL_PAUSE 2         // time to delay polling the rig
                                           // after a freq message on
