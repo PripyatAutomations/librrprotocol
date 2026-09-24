@@ -66,7 +66,7 @@ bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
       event_emit_dict("part", cptr, d);
    } else if (cmd && strcasecmp(cmd, "room-list") == 0) {
       event_emit_dict("room.list", cptr, d);
-   } else if (cmd && strcasecmp(cmd, "chan-deleted") == 0) {
+   } else if (cmd && strcasecmp(cmd, "room-removed") == 0) {
       event_emit_dict("room.deleted", cptr, d);
    } else if (cmd && strcasecmp(cmd, "room-vfo-list") == 0) {
       event_emit_dict("room.vfo-list", cptr, d);

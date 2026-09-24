@@ -850,13 +850,21 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          event_emit_dict("room.list", cptr, list);
          dict_free(list);
          return true;
-      } else if (strcasecmp(cmd, "chan") == 0 || strcasecmp(cmd, "room") == 0) {
-         const char *room_cmd = strcasecmp(cmd, "room") == 0 ? "room" : "chan";
+      } else if (strcasecmp(cmd, "room") == 0) {
          char argbuf[256];
          snprintf(argbuf, sizeof(argbuf), "%s", data ? data : "");
          char *save = NULL;
          char *sub = strtok_r(argbuf, " \t", &save);
          char *action = strtok_r(NULL, " \t", &save);
+         if (!sub) {
+            ws_send_error(cptr, "Usage: /room list|remove #room|vfo add|list|remove #room [rig0.]vfo_a");
+            return false;
+         }
+         if (sub && strcasecmp(sub, "list") == 0) {
+            dict *list = dict_new(); dict_add(list, "msg.type", "talk");
+            dict_add(list, "talk.cmd", "room-list"); dict_add_ulong(list, "msg.ts", now);
+            event_emit_dict("room.list", cptr, list); dict_free(list); return true;
+         }
          if (sub && strcasecmp(sub, "vfo") == 0) {
             if (!action || strcasecmp(action, "list") == 0) {
                dict *list = dict_new(); dict_add(list, "msg.type", "talk");
@@ -867,7 +875,11 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             char *binding = strtok_r(NULL, " \t", &save);
             if (!room || !binding || (strcasecmp(action, "add") != 0 && strcasecmp(action, "remove") != 0) ||
                 !has_priv(cptr->user->uid, "admin|owner")) {
-               ws_send_error(cptr, "Usage: /%s vfo add|remove #room [rig0.]vfo_a (admin or owner required)", room_cmd);
+               ws_send_error(cptr, "Usage: /room vfo add|remove #room [rig0.]vfo_a (admin or owner required)");
+               return false;
+            }
+            if (room[0] != '#' && room[0] != '&') {
+               ws_send_error(cptr, "Invalid room name: %s (room names must start with # or &)", room);
                return false;
             }
             char normalized[128];
@@ -879,14 +891,18 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             dict_add(vm, "talk.user", cptr->chatname); dict_add_ulong(vm, "msg.ts", now);
             event_emit_dict("room.vfo", cptr, vm); dict_free(vm); return true;
          }
-         // /chan delete #room
+         // /room remove #room
          snprintf(argbuf, sizeof(argbuf), "%s", data ? data : "");
          char *save_delete = NULL;
          char *sub_delete = strtok_r(argbuf, " \t", &save_delete);
          char *name = strtok_r(NULL, " \t", &save_delete);
-         if (!sub_delete || strcasecmp(sub_delete, "delete") != 0 || !name ||
-             !has_priv(cptr->user->uid, "admin|owner")) {
-            ws_send_error(cptr, "Usage: /%s delete #room (admin or owner required)", room_cmd);
+         if (!sub_delete || strcasecmp(sub_delete, "remove") != 0 || !name ||
+            !has_priv(cptr->user->uid, "admin|owner")) {
+            ws_send_error(cptr, "Usage: /room remove #room (admin or owner required)");
+            return false;
+         }
+         if (name[0] != '#' && name[0] != '&') {
+            ws_send_error(cptr, "Invalid room name: %s (room names must start with # or &)", name);
             return false;
          }
          if (strcasecmp(name, ws_authoritative_room()) == 0) {
@@ -895,7 +911,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          }
          dict *deleted = dict_new();
          dict_add(deleted, "msg.type", "talk");
-         dict_add(deleted, "talk.cmd", "chan-deleted");
+         dict_add(deleted, "talk.cmd", "room-removed");
          dict_add(deleted, "talk.room", room_canonical(name));
          dict_add(deleted, "talk.user", cptr->chatname);
          dict_add_ulong(deleted, "msg.ts", now);
@@ -905,6 +921,10 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
       } else if (strcasecmp(cmd, "join") == 0 || strcasecmp(cmd, "part") == 0) {
          const char *requested = target ? target : data;
          bool joining = strcasecmp(cmd, "join") == 0;
+         if (requested && *requested && requested[0] != '#' && requested[0] != '&') {
+            ws_send_error(cptr, "Invalid room name: %s (room names must start with # or &)", requested);
+            return false;
+         }
          bool room_ok = joining ? ws_client_join_room(cptr, requested) :
             ws_client_part_room(cptr, requested);
          if (!room_ok) {
@@ -960,7 +980,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          if (msg_type) {
             if (strcasecmp(msg_type, "file_chunk") == 0 ||
                 strcasecmp(msg_type, "pub") == 0 ||
-                strcasecmp(msg_type, "action") == 0) {
+                strcasecmp(msg_type, "action") == 0 ||
+                strcasecmp(msg_type, "priv") == 0 ||
+                strcasecmp(msg_type, "privmsg") == 0) {
 
                /*
                 * Commands are handled locally and don't become chat
@@ -1177,9 +1199,16 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                 * rrserver event handler is responsible for broadcasting,
                 * logging, persistence, and other server-side actions.
                 */
+               bool private_msg = strcasecmp(msg_type, "priv") == 0 ||
+                  strcasecmp(msg_type, "privmsg") == 0;
+               if (private_msg && (!channel || (channel[0] == '#' || channel[0] == '&'))) {
+                  ws_send_error(cptr, "Private message target must be a username");
+                  return false;
+               }
+
                bool global_msg = false;
 
-               if (channel[0] != '&') {
+               if (channel && channel[0] != '&') {
                   // Send the message to all connected servers.
                   global_msg = true;
                }
@@ -1194,6 +1223,10 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                dict_add(talk_msg, "talk.msg_type", msg_type);
                dict_add_bool(talk_msg, "talk.msg.global", global_msg);
                dict_add_ulong(talk_msg, "msg.ts", now);
+
+               if (private_msg) {
+                  dict_add(talk_msg, "talk.msg_type", "priv");
+               }
 
                /*
                 * File chunks need their additional metadata preserved.
