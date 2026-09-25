@@ -918,6 +918,38 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          event_emit_dict("room.delete", cptr, deleted);
          dict_free(deleted);
          return true;
+      } else if (strcasecmp(cmd, "topic") == 0) {
+         const char *requested = target ? target : channel;
+         if (!requested || (requested[0] != '#' && requested[0] != '&')) {
+            ws_send_error(cptr, "Invalid room name: %s (room names must start with # or &)",
+               requested ? requested : "(none)");
+            return false;
+         }
+         requested = room_canonical(requested);
+         if (!ws_client_in_room(cptr, requested)) {
+            ws_send_error(cptr, "You are not joined to room %s", requested);
+            return false;
+         }
+         if (!data) data = "";
+         if (strlen(data) > 512) {
+            ws_send_error(cptr, "Topic is too long (maximum 512 characters)");
+            return false;
+         }
+         if (*data && !has_priv(cptr->user->uid, "admin|owner|chat")) {
+            ws_send_error(cptr, "You do not have CHAT privilege.");
+            return false;
+         }
+         dict *topic = dict_new();
+         dict_add(topic, "msg.type", "talk");
+         dict_add(topic, "talk.cmd", "topic");
+         dict_add(topic, "talk.room", requested);
+         dict_add(topic, "talk.topic", data);
+         dict_add(topic, "talk.user", cptr->chatname);
+         dict_add_bool(topic, "talk.query", *data == '\0');
+         dict_add_ulong(topic, "msg.ts", now);
+         event_emit_dict("room.topic", cptr, topic);
+         dict_free(topic);
+         return true;
       } else if (strcasecmp(cmd, "join") == 0 || strcasecmp(cmd, "part") == 0) {
          const char *requested = target ? target : data;
          bool joining = strcasecmp(cmd, "join") == 0;
@@ -942,6 +974,16 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          dict_add(room_msg, "talk.user", cptr->chatname);
          dict_add_ulong(room_msg, "msg.ts", now);
          ws_broadcast_room_dict(cptr, room_msg, room_canonical(requested));
+         /* Removing the room from cptr->rooms above means the normal room
+          * broadcast no longer reaches the departing session.  Send the PART
+          * confirmation directly so its client can close the tab. */
+         if (!joining) {
+            /* The session token is an authentication secret; include it only
+             * in the departing client's private confirmation, never in the
+             * room broadcast. */
+            dict_add(room_msg, "talk.session", cptr->token);
+            ws_send_dict(cptr, cptr, room_msg, WEBSOCKET_OP_TEXT);
+         }
          if (joining) ws_send_room_users(cptr, room_canonical(requested));
          if (joining) event_emit_dict("room.join", cptr, room_msg);
          dict_free(room_msg);

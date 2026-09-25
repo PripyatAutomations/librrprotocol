@@ -72,6 +72,8 @@ bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
       event_emit_dict("room.vfo-list", cptr, d);
    } else if (cmd && strcasecmp(cmd, "room-vfo") == 0) {
       event_emit_dict("room.vfo", cptr, d);
+   } else if (cmd && strcasecmp(cmd, "topic") == 0) {
+      event_emit_dict("room.topic", cptr, d);
    } else if (cmd && strcasecmp(cmd, "quit") == 0) {
       if (!user) {
          return false;
