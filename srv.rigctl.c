@@ -217,11 +217,8 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
             rrconn_t *talker = whos_talking();
 
             if (talker && talker != cptr) {
-               static int cfg_noob_cooldown = -1;
-
-               if (cfg_noob_cooldown < 0) {
-                  cfg_noob_cooldown = cfg_get_int("noob.cool-down", 30);
-               }
+               int cfg_noob_cooldown = cfg_get_int("noob.cool-down", 30);
+               if (cfg_noob_cooldown < 0) cfg_noob_cooldown = 30;
 
                bool talker_is_noob = (talker->user && has_priv(talker->user->uid, "noob") );
                bool i_can_halt = has_priv(cptr->user->uid, "admin|owner") ||
