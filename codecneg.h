@@ -51,4 +51,14 @@ extern const char *media_capab_prepare(const char *codecs);
 // parties or NULL. *MUST* be freed if not NULL!
 extern char *codec_filter_common(const char *preferred, const char *available);
 
+// Return a copy of codecs with test IDs (the four-character IDs ending in
+// uppercase 'T' or 'P') removed when test_mode is false. In test mode, add
+// missing built-in tone/pink siblings for configured audio formats. The
+// returned string must be freed by the caller.
+extern char *codec_filter_test_mode(const char *codecs, bool test_mode);
+
+// Test variants are server-side RX sources. They must not be selected for a
+// radio TX channel, where the client supplies the audio.
+extern bool codec_is_test_variant(const char codec[4]);
+
 #endif // !defined(__common_codecneg_h)

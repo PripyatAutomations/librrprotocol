@@ -79,16 +79,19 @@ bool media_send_client_capab(rrconn_t *cptr) {
    if (!cptr) {
       return false;
    }
-   const char *my_codecs = cfg_get_exp("codecs.allowed");
+   const char *configured_codecs = cfg_get_exp("codecs.allowed");
+   char *my_codecs = codec_filter_test_mode(configured_codecs,
+      cfg_get_bool("audio.test-mode", true));
+   free((void *)configured_codecs);
 
    if (!my_codecs || !*my_codecs) {
-      free( (void *)my_codecs );
+      free(my_codecs);
       Log(LOG_WARN, "ws.media", "codecs.allowed not set; cannot send client capab");
       return false;
    }
    dict *d = dict_new();
    if (!d) {
-      free((void *)my_codecs);
+      free(my_codecs);
       Log(LOG_CRIT, "ws.media", "Unable to allocate client media capability message");
       return false;
    }
@@ -98,7 +101,7 @@ bool media_send_client_capab(rrconn_t *cptr) {
    dict_add_ulong(d, "media.ts", now);
    bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
-   free( (void *)my_codecs );
+   free(my_codecs);
    if (!sent) {
       Log(LOG_WARN, "ws.media", "Unable to send client media capabilities");
       return false;
@@ -130,14 +133,17 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
          Log(LOG_WARN, "ws.media", "media.capab without codecs list");
          return false;
       }
-      const char *my_codecs = cfg_get_exp("codecs.allowed");
+      const char *configured_codecs = cfg_get_exp("codecs.allowed");
+      char *my_codecs = codec_filter_test_mode(configured_codecs,
+         cfg_get_bool("audio.test-mode", true));
+      free((void *)configured_codecs);
 
       if (!my_codecs) {
          Log(LOG_CRIT, "ws.media", "codecs.allowed must be set to negotiate codecs!");
          return false;
       }
       char *common = codec_filter_common(my_codecs, media_codecs);
-      free( (void *)my_codecs );
+      free(my_codecs);
 
       if (!common || strlen(common) < 4) {
          Log(LOG_CRIT, "ws.media", "No codecs in common with server! (mine: |%s|, server: |%s|)",

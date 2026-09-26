@@ -85,7 +85,10 @@ static bool media_init_channel_codec(rrconn_t *cptr, struct rr_mediachan *cp) {
    if (!cptr || !cp || cp->codec[0] != '\0') {
       return cp && cp->codec[0] != '\0';
    }
-   const char *server_codecs = cfg_get_exp("codecs.allowed");
+   const char *configured_codecs = cfg_get_exp("codecs.allowed");
+   char *server_codecs = codec_filter_test_mode(configured_codecs,
+      cfg_get_bool("audio.test-mode", true));
+   free((void *)configured_codecs);
    if (!server_codecs || !*server_codecs) {
       free((void *)server_codecs);
       return false;
@@ -99,7 +102,24 @@ static bool media_init_channel_codec(rrconn_t *cptr, struct rr_mediachan *cp) {
    }
 
    char codec[5] = { 0 };
-   memcpy(codec, common, 4);
+   const char *selected = common;
+   if (cp->direction == RR_BINFRAME_DIR_TX && codec_is_test_variant(selected)) {
+      /* Test codecs generate radio RX audio. A radio TX channel must start
+       * with a codec fed by the client microphone instead. */
+      while (*selected) {
+         if (codec_is_test_variant(selected)) {
+            while (*selected && *selected != ' ') selected++;
+            while (*selected == ' ') selected++;
+            continue;
+         }
+         break;
+      }
+      if (!*selected) {
+         free(common);
+         return false;
+      }
+   }
+   memcpy(codec, selected, 4);
    free(common);
 
    dict *sel = dict_new();
@@ -435,7 +455,10 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       }
       snprintf(cptr->media_codecs, sizeof(cptr->media_codecs), "%s", codecs);
 
-      const char *server_codecs = cfg_get_exp("codecs.allowed");
+      const char *configured_codecs = cfg_get_exp("codecs.allowed");
+      char *server_codecs = codec_filter_test_mode(configured_codecs,
+         cfg_get_bool("audio.test-mode", true));
+      free((void *)configured_codecs);
       char *common = server_codecs ?
          codec_filter_common(cptr->media_codecs, server_codecs) : NULL;
       free((void *)server_codecs);
@@ -643,7 +666,15 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          return false;
       }
 
-      const char *server_codecs = cfg_get_exp("codecs.allowed");
+      if (cp->direction == RR_BINFRAME_DIR_TX && codec_is_test_variant(codec)) {
+         ws_send_error(cptr, "Test codecs are only available on RX channels");
+         return false;
+      }
+
+      const char *configured_codecs = cfg_get_exp("codecs.allowed");
+      char *server_codecs = codec_filter_test_mode(configured_codecs,
+         cfg_get_bool("audio.test-mode", true));
+      free((void *)configured_codecs);
       bool server_supports = server_codecs &&
          media_codec_list_has(server_codecs, codec);
       free((void *)server_codecs);

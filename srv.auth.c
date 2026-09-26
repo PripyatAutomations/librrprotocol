@@ -20,6 +20,7 @@
 #include <arpa/inet.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librrprotocol/codecneg.h>
 
 // This defines a hard-coded fallback path for httpd root, if not set in config
 #ifdef	HOST_POSIX
@@ -378,9 +379,12 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
             (cptr->cli_version ? cptr->cli_version : "unknown"), (cptr->user_agent ? cptr->user_agent : "unknown"));
 
          // Send our capabilities
-         const char *my_codecs = cfg_get_exp("codecs.allowed");
+         const char *configured_codecs = cfg_get_exp("codecs.allowed");
+         char *my_codecs = codec_filter_test_mode(configured_codecs,
+            cfg_get_bool("audio.test-mode", true));
          const char *capab_msg = media_capab_prepare(my_codecs);
-         free( (void *)my_codecs );
+         free((void *)configured_codecs);
+         free((void *)my_codecs);
 
          if (capab_msg) {
             mg_ws_send(cptr->conn, capab_msg, strlen(capab_msg), WEBSOCKET_OP_TEXT);
