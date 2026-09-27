@@ -357,6 +357,9 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          dict_add(auth_msg, "auth.privs", cptr->user->privs);
          dict_add(auth_msg, "auth.token", token);
          dict_add(auth_msg, "auth.user", cptr->chatname);
+         dict_add_bool(auth_msg, "auth.password-change-required", cptr->user->password_change_required);
+         dict_add_ulong(auth_msg, "auth.password-set", (unsigned long)cptr->user->password_set);
+         dict_add_ulong(auth_msg, "auth.password-expires", (unsigned long)cptr->user->password_expires);
          dict_add_ulong(auth_msg, "auth.ts", now);
          ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
          dict_free(auth_msg);

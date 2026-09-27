@@ -1405,6 +1405,24 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          event_emit_dict("quota.cmd", cptr, q);
          dict_free(q);
 
+      } else if (strcasecmp(cmd, "user") == 0) {
+         /* User administration is implemented by the server because the
+          * protocol library must not know how accounts are persisted. */
+         if (!has_priv(cptr->user->uid, "admin|owner")) {
+            ws_chat_err_noprivs(cptr, "USER");
+            return false;
+         }
+         dict *u = dict_new();
+         if (!u) {
+            ws_send_error(cptr, "USER: out of memory");
+            return false;
+         }
+         dict_add(u, "msg.type", "user.cmd");
+         dict_add(u, "user.from", cptr->chatname);
+         dict_add(u, "user.data", data ? data : "");
+         event_emit_dict("user.cmd", cptr, u);
+         dict_free(u);
+
       } else if (strcasecmp(cmd, "kick") == 0) {
          ws_chat_cmd_kick(cptr, target, reason);
 

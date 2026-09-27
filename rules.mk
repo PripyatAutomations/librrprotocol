@@ -58,7 +58,10 @@ librrprotocol_objs += ws.auth.o
 librrprotocol_cflags := ${CFLAGS} -I./modsrc/ -I./ -I./inc
 
 extra_clean += ${librustyaxe_objs} ${librustyaxe} librrprotocol.so.0
-librrprotocol_headers := $(wildcard librrprotocol/*.h)
+# librrprotocol headers include librustyaxe's public structs.  Make those
+# headers prerequisites too, otherwise a shared-struct change can leave the
+# protocol library with a stale definition of global arrays such as http_users.
+librrprotocol_headers := $(wildcard librrprotocol/*.h) $(wildcard librustyaxe/*.h) $(wildcard inc/librustyaxe/*.h)
 librrprotocol_srcs = $(wildcard librrprotocol/*.c)
 
 real_librrprotocol_objs := $(foreach x, ${librrprotocol_objs}, ${BUILD_DIR}/librrprotocol/${x})
