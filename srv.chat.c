@@ -854,70 +854,91 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          char argbuf[256];
          snprintf(argbuf, sizeof(argbuf), "%s", data ? data : "");
          char *save = NULL;
-         char *sub = strtok_r(argbuf, " \t", &save);
+         char *room_or_list = strtok_r(argbuf, " \t", &save);
          char *action = strtok_r(NULL, " \t", &save);
-         if (!sub) {
-            ws_send_error(cptr, "Usage: /room list|remove #room|vfo add|list|remove #room [rig0.]vfo_a");
+         const char *usage = "Usage: /room list|#room add|remove|vfo (add|list|remove) [rig0.]vfo_a";
+         if (!room_or_list) {
+            ws_send_error(cptr, usage);
             return false;
          }
-         if (sub && strcasecmp(sub, "list") == 0) {
+         if (strcasecmp(room_or_list, "list") == 0) {
+            if (action) {
+               ws_send_error(cptr, usage);
+               return false;
+            }
             dict *list = dict_new(); dict_add(list, "msg.type", "talk");
             dict_add(list, "talk.cmd", "room-list"); dict_add_ulong(list, "msg.ts", now);
             event_emit_dict("room.list", cptr, list); dict_free(list); return true;
          }
-         if (sub && strcasecmp(sub, "vfo") == 0) {
-            if (!action || strcasecmp(action, "list") == 0) {
-               dict *list = dict_new(); dict_add(list, "msg.type", "talk");
-               dict_add(list, "talk.cmd", "room-vfo-list"); dict_add_ulong(list, "msg.ts", now);
-               event_emit_dict("room.vfo-list", cptr, list); dict_free(list); return true;
-            }
-            char *room = strtok_r(NULL, " \t", &save);
-            char *binding = strtok_r(NULL, " \t", &save);
-            if (!room || !binding || (strcasecmp(action, "add") != 0 && strcasecmp(action, "remove") != 0) ||
-                !has_priv(cptr->user->uid, "admin|owner")) {
-               ws_send_error(cptr, "Usage: /room vfo add|remove #room [rig0.]vfo_a (admin or owner required)");
+         if (room_or_list[0] != '#' && room_or_list[0] != '&') {
+            ws_send_error(cptr, "Invalid room name: %s (room names must start with # or &)", room_or_list);
+            return false;
+         }
+         const char *room = room_canonical(room_or_list);
+         if (!action) {
+            ws_send_error(cptr, usage);
+            return false;
+         }
+         if (strcasecmp(action, "add") == 0 || strcasecmp(action, "remove") == 0) {
+            if (strtok_r(NULL, " \t", &save) || !has_priv(cptr->user->uid, "admin|owner")) {
+               ws_send_error(cptr, "Usage: /room #room add|remove (admin or owner required)");
                return false;
             }
-            if (room[0] != '#' && room[0] != '&') {
-               ws_send_error(cptr, "Invalid room name: %s (room names must start with # or &)", room);
+            if (strcasecmp(action, "remove") == 0) {
+               if (strcasecmp(room, ws_authoritative_room()) == 0) {
+                  ws_send_error(cptr, "The authoritative rig room cannot be deleted");
+                  return false;
+               }
+               dict *deleted = dict_new();
+               dict_add(deleted, "msg.type", "talk");
+               dict_add(deleted, "talk.cmd", "room-removed");
+               dict_add(deleted, "talk.room", room);
+               dict_add(deleted, "talk.user", cptr->chatname);
+               dict_add_ulong(deleted, "msg.ts", now);
+               event_emit_dict("room.delete", cptr, deleted);
+               dict_free(deleted);
+            } else {
+               dict *added = dict_new();
+               dict_add(added, "msg.type", "talk");
+               dict_add(added, "talk.cmd", "room-added");
+               dict_add(added, "talk.room", room);
+               dict_add(added, "talk.user", cptr->chatname);
+               dict_add_ulong(added, "msg.ts", now);
+               event_emit_dict("room.add", cptr, added);
+               dict_free(added);
+            }
+            return true;
+         }
+         if (strcasecmp(action, "vfo") == 0) {
+            char *vfo_action = strtok_r(NULL, " \t", &save);
+            char *binding = strtok_r(NULL, " \t", &save);
+            if (!vfo_action || (strcasecmp(vfo_action, "list") != 0 && !binding) ||
+                strtok_r(NULL, " \t", &save)) {
+               ws_send_error(cptr, usage);
+               return false;
+            }
+            if (strcasecmp(vfo_action, "list") == 0) {
+               dict *list = dict_new(); dict_add(list, "msg.type", "talk");
+               dict_add(list, "talk.cmd", "room-vfo-list"); dict_add(list, "talk.room", room);
+               dict_add_ulong(list, "msg.ts", now);
+               event_emit_dict("room.vfo-list", cptr, list); dict_free(list); return true;
+            }
+            if ((strcasecmp(vfo_action, "add") != 0 && strcasecmp(vfo_action, "remove") != 0) ||
+                !has_priv(cptr->user->uid, "admin|owner")) {
+               ws_send_error(cptr, "Usage: /room #room vfo add|remove [rig0.]vfo_a (admin or owner required)");
                return false;
             }
             char normalized[128];
             if (strncasecmp(binding, "rig", 3) != 0) snprintf(normalized, sizeof(normalized), "rig0.%s", binding);
             else snprintf(normalized, sizeof(normalized), "%s", binding);
             dict *vm = dict_new(); dict_add(vm, "msg.type", "talk");
-            dict_add(vm, "talk.cmd", "room-vfo"); dict_add(vm, "talk.action", action);
-            dict_add(vm, "talk.room", room_canonical(room)); dict_add(vm, "talk.vfo", normalized);
+            dict_add(vm, "talk.cmd", "room-vfo"); dict_add(vm, "talk.action", vfo_action);
+            dict_add(vm, "talk.room", room); dict_add(vm, "talk.vfo", normalized);
             dict_add(vm, "talk.user", cptr->chatname); dict_add_ulong(vm, "msg.ts", now);
             event_emit_dict("room.vfo", cptr, vm); dict_free(vm); return true;
          }
-         // /room remove #room
-         snprintf(argbuf, sizeof(argbuf), "%s", data ? data : "");
-         char *save_delete = NULL;
-         char *sub_delete = strtok_r(argbuf, " \t", &save_delete);
-         char *name = strtok_r(NULL, " \t", &save_delete);
-         if (!sub_delete || strcasecmp(sub_delete, "remove") != 0 || !name ||
-            !has_priv(cptr->user->uid, "admin|owner")) {
-            ws_send_error(cptr, "Usage: /room remove #room (admin or owner required)");
-            return false;
-         }
-         if (name[0] != '#' && name[0] != '&') {
-            ws_send_error(cptr, "Invalid room name: %s (room names must start with # or &)", name);
-            return false;
-         }
-         if (strcasecmp(name, ws_authoritative_room()) == 0) {
-            ws_send_error(cptr, "The authoritative rig room cannot be deleted");
-            return false;
-         }
-         dict *deleted = dict_new();
-         dict_add(deleted, "msg.type", "talk");
-         dict_add(deleted, "talk.cmd", "room-removed");
-         dict_add(deleted, "talk.room", room_canonical(name));
-         dict_add(deleted, "talk.user", cptr->chatname);
-         dict_add_ulong(deleted, "msg.ts", now);
-         event_emit_dict("room.delete", cptr, deleted);
-         dict_free(deleted);
-         return true;
+         ws_send_error(cptr, usage);
+         return false;
       } else if (strcasecmp(cmd, "topic") == 0) {
          const char *requested = target ? target : channel;
          if (!requested || (requested[0] != '#' && requested[0] != '&')) {

@@ -46,6 +46,32 @@ extern char www_headers[32768];
 extern char www_404_path[PATH_MAX];
 extern rrconn_t *http_client_list;
 
+/* Configuration values may come from the normal dictionary or EEPROM.  Keep
+ * ownership local and expand ~/$HOME before checking installed/development
+ * paths. */
+static char *http_config_path(const char *key, const char *eeprom_key) {
+   char *raw = (char *)cfg_get_exp(key);
+
+#ifdef USE_EEPROM
+   if (!raw && eeprom_key) {
+      const char *eeprom_path = eeprom_get_str(eeprom_key);
+      if (eeprom_path) {
+         raw = strdup(eeprom_path);
+      }
+   }
+#else
+   (void)eeprom_key;
+#endif
+
+   if (!raw) {
+      return NULL;
+   }
+
+   char *expanded = expand_path(raw);
+   free(raw);
+   return expanded;
+}
+
 #ifdef	USE_MONGOOSE
 extern struct mg_mgr mg_mgr;
 
@@ -93,18 +119,8 @@ bool http_init(struct mg_mgr *mgr) {
 
       return true;
    }
-   const char *cfg_www_root = cfg_get_exp("net.http.www-root");
-   const char *cfg_404_path = cfg_get_exp("net.http.404-path");
-
-#ifdef	USE_EEPROM
-   if (!cfg_www_root) {
-      cfg_www_root = eeprom_get_str("net/http/www-root");
-   }
-
-   if (!cfg_404_path) {
-      cfg_404_path = eeprom_get_str("net/http/404-path");
-   }
-#endif	// USE_EEPROM
+   char *cfg_www_root = http_config_path("net.http.www-root", "net/http/www-root");
+   char *cfg_404_path = http_config_path("net.http.404-path", "net/http/404-path");
 
 #if     0 // XXX: fix this
    // store firmware version in www_fw_ver
@@ -112,27 +128,48 @@ bool http_init(struct mg_mgr *mgr) {
 
    // and make our headers
    prepare_msg(www_headers, sizeof(www_headers), "%s\r\n", www_fw_ver);
-#endif	// 0
+#endif  // 0
 
-   // store the 404 path if available
-   if (cfg_404_path) {
-      prepare_msg(www_404_path, sizeof(www_404_path), "%s", WWW_404_FALLBACK);
-   } else {
-      prepare_msg(www_404_path, sizeof(www_404_path), "%s", WWW_404_FALLBACK);
+   // Use a configured root when it exists. A package config can remain
+   // installed while the daemon is run from a source tree, so fall back to
+   // the current directory (and the normal package state directory) if the
+   // configured path is unavailable.
+   const char *selected_root = NULL;
+   if (cfg_www_root && is_dir(cfg_www_root)) {
+      selected_root = cfg_www_root;
    }
-   free( (char *)cfg_404_path );
-   cfg_404_path = NULL;
-
-   // set the www-root if configured
-   if (cfg_www_root) {
-      prepare_msg(www_root, sizeof(www_root), "%s", cfg_www_root);
-   } else {
-      // use the defaults
-      prepare_msg(www_root, sizeof(www_root), "%s", WWW_ROOT_FALLBACK);
+#ifdef HOST_POSIX
+   if (!selected_root) {
+      const char *fallbacks[] = { WWW_ROOT_FALLBACK, "/var/lib/rustyrig/www",
+         "./share/rustyrig/www", NULL };
+      for (int i = 0; fallbacks[i]; i++) {
+         if (is_dir(fallbacks[i])) {
+            selected_root = fallbacks[i];
+            Log(LOG_INFO, "http.init", "Configured www-root unavailable; using %s", selected_root);
+            break;
+         }
+      }
    }
+#endif
+   prepare_msg(www_root, sizeof(www_root), "%s",
+      selected_root ? selected_root : (cfg_www_root ? cfg_www_root : WWW_ROOT_FALLBACK));
    Log(LOG_INFO, "http.init", "Set www-root to %s", www_root);
-   free( (char *)cfg_www_root );
-   cfg_www_root = NULL;
+
+   // Prefer an existing configured 404 page, then the selected root's page,
+   // and finally the platform fallback.
+   if (cfg_404_path && is_file(cfg_404_path)) {
+      prepare_msg(www_404_path, sizeof(www_404_path), "%s", cfg_404_path);
+   } else {
+      char root_404[PATH_MAX];
+      snprintf(root_404, sizeof(root_404), "%s/404.html", www_root);
+      if (is_file(root_404)) {
+         prepare_msg(www_404_path, sizeof(www_404_path), "%s", root_404);
+      } else {
+         prepare_msg(www_404_path, sizeof(www_404_path), "%s", WWW_404_FALLBACK);
+      }
+   }
+   free(cfg_404_path);
+   free(cfg_www_root);
 
    int user_count = http_reload_users();
 

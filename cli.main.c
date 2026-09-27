@@ -307,10 +307,10 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 }
 #endif // USE_MONGOOSE
 void ws_client_init(void) {
-   const char *debug = cfg_get_exp("debug.http");
+   const char *log_http = cfg_get_exp("log.http");
 
-   if (debug && (strcasecmp(debug, "true") == 0 ||
-                 strcasecmp(debug, "yes") == 0) ) {
+   if (log_http && (strcasecmp(log_http, "true") == 0 ||
+                    strcasecmp(log_http, "yes") == 0) ) {
 #ifdef	USE_MONGOOSE
       mg_log_set(MG_LL_DEBUG);   // or MG_LL_VERBOSE for even more
 #endif	// USE_MONGOOSE
@@ -319,14 +319,14 @@ void ws_client_init(void) {
       mg_log_set(MG_LL_ERROR);
 #endif	// USE_MONGOOSE
    }
-   free( (void *)debug );
-   const char *debug_crazy = cfg_get_exp("debug.http.crazy");
+   free((void *)log_http);
+   const char *log_http_crazy = cfg_get_exp("log.http.crazy");
 
-   if (debug_crazy && (strcasecmp(debug_crazy, "true") == 0 ||
-                       strcasecmp(debug_crazy, "yes") == 0) ) {
+   if (log_http_crazy && (strcasecmp(log_http_crazy, "true") == 0 ||
+                          strcasecmp(log_http_crazy, "yes") == 0) ) {
       cfg_http_debug = true;
    }
-   free( (void *)debug_crazy );
+   free((void *)log_http_crazy);
 
 #ifdef	USE_MONGOOSE
    mg_mgr_init(&mgr);

@@ -24,6 +24,14 @@ int main(void) {
    configured_station_name = "w8abc";
    assert(strcmp(ws_authoritative_room(), "#w8abc-rig0") == 0);
    assert(ws_room_has_vfos("#w8abc-rig0"));
+
+   /* User-provided room overrides must remain channel names. */
+   ws_set_authoritative_room("invalid");
+   assert(strcmp(ws_authoritative_room(), "#w8abc-rig0") == 0);
+   ws_set_authoritative_room("&invalid");
+   assert(strcmp(ws_authoritative_room(), "#w8abc-rig0") == 0);
+   ws_set_authoritative_room("#custom-rig0");
+   assert(strcmp(ws_authoritative_room(), "#custom-rig0") == 0);
    puts("PASS: station.name selects the authoritative rig0 room");
    return 0;
 }
