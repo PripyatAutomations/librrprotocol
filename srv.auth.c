@@ -95,7 +95,8 @@ static rrconn_t *http_find_client_by_nonce(const char *nonce) {
 }
 
 bool match_priv(const char *user_privs, const char *priv) {
-   Log(LOG_CRAZY, "auth.priv", "match_priv(): comparing |%s| to |%s|", user_privs, priv);
+   Log(LOG_CRAZY, "auth.priv", "match_priv(): comparing |%s| to |%s|",
+      user_privs ? user_privs : "(null)", priv ? priv : "(null)");
 
    if (user_privs == NULL || priv == NULL) {
       return false;

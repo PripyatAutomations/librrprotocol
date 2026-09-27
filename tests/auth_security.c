@@ -41,9 +41,29 @@ static void test_wire_password(void) {
    assert(compute_wire_password("abc", NULL) == NULL);
 }
 
+static void test_nonce_generation(void) {
+   char nonce[HTTP_TOKEN_LEN + 1];
+   int generated = auth_generate_nonce(nonce, sizeof(nonce));
+   assert(generated == HTTP_TOKEN_LEN);
+   assert(strlen(nonce) == HTTP_TOKEN_LEN);
+   for (size_t i = 0; i < strlen(nonce); i++) {
+      assert((nonce[i] >= 'A' && nonce[i] <= 'Z') ||
+             (nonce[i] >= 'a' && nonce[i] <= 'z') ||
+             (nonce[i] >= '0' && nonce[i] <= '9') ||
+             nonce[i] == '+' || nonce[i] == '/');
+   }
+
+   char tiny[2] = { 'x', 'x' };
+   assert(auth_generate_nonce(tiny, sizeof(tiny)) == 1);
+   assert(tiny[1] == '\0');
+   assert(auth_generate_nonce(NULL, sizeof(tiny)) == -1);
+   assert(auth_generate_nonce(tiny, 1) == -1);
+}
+
 int main(void) {
    test_privileges();
    test_wire_password();
-   puts("PASS: authentication hashes, privilege matching, and invalid inputs");
+   test_nonce_generation();
+   puts("PASS: authentication hashes, nonce bounds, privilege matching, and invalid inputs");
    return 0;
 }

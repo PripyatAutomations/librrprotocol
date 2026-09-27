@@ -9,21 +9,18 @@
 #include <librrprotocol/rrprotocol.h>
 
 int auth_generate_nonce(char *buffer, size_t length) {
-   if (!buffer || length <= 0) {
+   if (!buffer || length < 2) {
       return -1;
    }
    static const char base64_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-   size_t i;
-   if (length < 8) {
-      length = 8;
-   }
-
-   for (i = 0 ; i < (length - 2) ; i++) {
+   /* length is the complete buffer size, including its terminator. */
+   size_t generated = length - 1;
+   for (size_t i = 0 ; i < generated ; i++) {
       buffer[i] = base64_chars[rand() % 64];
    }
-   buffer[length] = '\0';
-   return length;
+   buffer[generated] = '\0';
+   return (int)generated;
 }
 
 #ifdef	USE_MONGOOSE
