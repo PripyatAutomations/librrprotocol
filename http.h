@@ -49,6 +49,7 @@
 #if defined(USE_MONGOOSE)
 /* The public prototypes below only need incomplete Mongoose types. */
 struct mg_mgr;
+struct mg_connection;
 struct mg_http_message;
 #endif // defined(USE_MONGOOSE)
 
@@ -115,6 +116,8 @@ extern void http_remove_client(struct mg_connection *c);
 extern rrconn_t *http_find_client_by_token(const char *token);
 extern rrconn_t *http_find_client_by_guest_id(int gid);
 extern rrconn_t *http_find_client_by_name(const char *name);
+/* Release a departing client's PTT and notify the server-side rig handler. */
+extern void ws_release_ptt_on_disconnect(rrconn_t *cptr);
 
 // http.api.c:
 // Ping clients, drop pinged out ones, etc

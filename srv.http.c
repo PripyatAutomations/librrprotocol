@@ -456,6 +456,35 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
    return false;
 }
 
+/*
+ * Release PTT before an authenticated WebSocket client disappears. Keep this
+ * separate from the Mongoose callback so the disconnect safety path can be
+ * exercised without a live socket in regression tests.
+ */
+void ws_release_ptt_on_disconnect(rrconn_t *cptr) {
+   if (!cptr || !cptr->is_ptt) {
+      return;
+   }
+
+   cptr->is_ptt = false;
+   dict *rig_msg = dict_new();
+   if (!rig_msg) {
+      Log(LOG_CRIT, "http", "Unable to allocate disconnect PTT release for %s",
+         cptr->chatname[0] ? cptr->chatname : "(unknown)");
+      return;
+   }
+   dict_add(rig_msg, "msg.type", "cat");
+   dict_add(rig_msg, "cat.cmd", "ptt");
+   dict_add_bool(rig_msg, "cat.ptt", false);
+   dict_add(rig_msg, "cat.user", cptr->chatname);
+   if (cptr->ptt_vfo) {
+      char vfo_buf[2] = { cptr->ptt_vfo, '\0' };
+      dict_add(rig_msg, "cat.vfo", vfo_buf);
+   }
+   event_emit_dict("rig.ptt", NULL, rig_msg);
+   dict_free(rig_msg);
+}
+
 ///// Main HTTP callback
 void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
    if (!c) {
@@ -597,22 +626,9 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          char *ip = cptr->user_ip;
          int port = cptr->user_port;
 
-         // Does the user hold PTT? if so turn it off
-         if (cptr->is_ptt) {
-            cptr->is_ptt = false;
-            dict *rig_msg = dict_new();
-            dict_add(rig_msg, "msg.type", "cat");
-            dict_add(rig_msg, "cat.cmd", "ptt");
-            dict_add_bool(rig_msg, "cat.ptt", false);
-            dict_add(rig_msg, "cat.user", cptr->chatname);
-            if (cptr->ptt_vfo) {
-               char vfo_buf[2] = { cptr->ptt_vfo, '\0' };
-               dict_add(rig_msg, "cat.vfo", vfo_buf);
-            }
-            // send it to rrserver to turn off ptt
-            event_emit_dict("rig.ptt", NULL, rig_msg);
-            dict_free(rig_msg);
-         }
+         // Does the user hold PTT? If so, release the keyed VFO before the
+         // connection is removed from the client list.
+         ws_release_ptt_on_disconnect(cptr);
 
          // Free the resources, if any, for the user_agent
          if (cptr->user_agent) {
