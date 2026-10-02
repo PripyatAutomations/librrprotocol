@@ -112,6 +112,33 @@ rrconn_t *http_find_client_by_name(const char *name) {
    return NULL;
 }
 
+void http_client_free_resources(rrconn_t *cptr) {
+   if (!cptr) {
+      return;
+   }
+   free(cptr->user_agent);
+   cptr->user_agent = NULL;
+   free(cptr->cli_version);
+   cptr->cli_version = NULL;
+}
+
+bool http_client_set_user_agent(rrconn_t *cptr, const char *ua, size_t len) {
+   if (!cptr || !ua) {
+      return false;
+   }
+   size_t copy_len = len < HTTP_UA_LEN ? len : HTTP_UA_LEN;
+   char *copy = malloc(copy_len + 1);
+
+   if (!copy) {
+      return false;
+   }
+   memcpy(copy, ua, copy_len);
+   copy[copy_len] = '\0';
+   free(cptr->user_agent);
+   cptr->user_agent = copy;
+   return true;
+}
+
 void http_dump_clients(void) {
    rrconn_t *cptr = http_client_list;
    int i = 0;
@@ -140,8 +167,7 @@ rrconn_t *http_add_client(struct mg_connection *c, bool is_ws) {
    // create some randomness for login hashing and session
    auth_generate_nonce( cptr->token, sizeof(cptr->token) );
    auth_generate_nonce( cptr->nonce, sizeof(cptr->nonce) );
-   Log(LOG_CRAZY, "http", "add_client: token:<%p> |%s|, nonce:<%p> |%s|", cptr->token, cptr->token, cptr->nonce,
-      cptr->nonce);
+   Log(LOG_CRAZY, "http", "add_client: generated session token and nonce for cptr:<%p>", cptr);
    cptr->connected = now;
    cptr->authenticated = false;
    cptr->active = true;
@@ -232,6 +258,7 @@ void http_remove_client(struct mg_connection *c) {
          }
          Log( LOG_CRAZY, "http", "Removed client at cptr:<%p> with mgconn:<%p> (%d connections / %d users remain)",
             current, c, conns - 1, (current->user && current->authenticated ? users - 1 : users));
+         http_client_free_resources(current);
          memset( current, 0, sizeof(rrconn_t) );
          free(current);
          return;

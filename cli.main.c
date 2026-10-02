@@ -431,16 +431,8 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
    }
 
 
-   // If we have a client structure attached, release it's resources
-   if (cptr->user_agent) {
-      free(cptr->user_agent);
-      cptr->user_agent = NULL;
-   }
-
-   if (cptr->cli_version) {
-      free(cptr->cli_version);
-      cptr->cli_version = NULL;
-   }
+   // If we have a client structure attached, release its resources.
+   http_client_free_resources(cptr);
 
    // make sure we're not accessing unsafe memory
    if (cptr->user && cptr->chatname[0] != '\0') {
@@ -534,8 +526,7 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    // media.source priv and the media.cmd:source handshake) push frames
    // for the channels they registered. The frame's (subsystem, direction,
    // vfo, rig) must match a channel that connection is subscribed to.
-   if (is_tx_frame &&
-       (client_has_flag(cptr, FLAG_MEDIA_SOURCE) || client_has_flag(cptr, FLAG_VIDEO_SOURCE) ) ) {
+   if (is_tx_frame && client_has_flag(cptr, FLAG_MEDIA_SOURCE) ) {
       struct rr_mediachan *cp = media_chan_find(f.hdr.subsystem, f.hdr.direction,
          f.hdr.vfo, f.hdr.rig);
 

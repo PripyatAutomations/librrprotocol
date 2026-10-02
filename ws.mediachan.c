@@ -435,6 +435,18 @@ bool ws_media_send_frame(struct rr_mediachan *cp, rrconn_t *cptr,
    const uint8_t *payload, size_t len, const char codec[4]) {
    return ws_media_send_frame_filtered(cp, cptr, NULL, payload, len, codec);
 }
+
+bool media_source_authorized(rrconn_t *cptr) {
+   if (!cptr || !cptr->authenticated || !cptr->user) {
+      return false;
+   }
+   if (client_has_flag(cptr, FLAG_MEDIA_SOURCE)) {
+      return true;
+   }
+   return client_has_flag(cptr, FLAG_VIDEO_SOURCE) &&
+      has_priv(cptr->user->uid, "video-src");
+}
+
 bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       return false;
@@ -486,12 +498,10 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
 
    if (strcasecmp(media_cmd, "source") == 0) {
       // Media source registration (rrmedia, fwdsp feeds, remote relays).
-      // Must be authenticated, and the account must carry the media.source
-      // priv (checked at auth time -> FLAG_MEDIA_SOURCE). The source tells
-      // us which channel(s) it will feed; the server confirms per channel.
-      if (!cptr->authenticated ||
-          !(client_has_flag(cptr, FLAG_MEDIA_SOURCE) || client_has_flag(cptr, FLAG_VIDEO_SOURCE) ) ) {
-         Log(LOG_AUDIT, "auth", "Denied media.source from %s on cptr:<%p> (no media.source/video-source priv or unauthenticated)",
+      // Generic sources need media.source. A connection claiming the
+      // video-source role also needs the account's video-src privilege.
+      if (!media_source_authorized(cptr)) {
+         Log(LOG_AUDIT, "auth", "Denied media.source from %s on cptr:<%p> (missing media.source/video-src privilege or unauthenticated)",
             (cptr->chatname[0] != '\0' ? cptr->chatname : "(unknown)"), cptr);
          ws_send_error(cptr, "Not authorized as a media source");
 

@@ -564,20 +564,13 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
             struct mg_str *ua_hdr = mg_http_get_header(hm, "User-Agent");
 
             if (ua_hdr) {
-               size_t ua_len = ua_hdr->len < HTTP_UA_LEN ? ua_hdr->len : HTTP_UA_LEN;
-
-               // allocate the memory
-               cptr->user_agent = malloc(ua_len);
-
-               if (!cptr->user_agent) {
-                  fprintf(stderr, "OOM in http_cb EV_HTTP_MSG\n");
-                  abort();
+               if (!http_client_set_user_agent(cptr, ua_hdr->buf, ua_hdr->len)) {
+                  Log(LOG_CRIT, "http.core", "Unable to save HTTP User-Agent");
+                  c->is_closing = 1;
                   return;
                }
-               memset(cptr->user_agent, 0, ua_len);
-               memcpy(cptr->user_agent, ua_hdr->buf, ua_len);
-               Log(LOG_DEBUG, "http.core", "New session cptr:<%p> User-Agent: %s (%d)", cptr,
-                  (cptr->user_agent ? cptr->user_agent : "none"), ua_len);
+               Log(LOG_DEBUG, "http.core", "New session cptr:<%p> User-Agent: %s (%zu)", cptr,
+                  cptr->user_agent, strlen(cptr->user_agent));
             }
          }
       }
@@ -635,17 +628,6 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          // Does the user hold PTT? If so, release the keyed VFO before the
          // connection is removed from the client list.
          ws_release_ptt_on_disconnect(cptr);
-
-         // Free the resources, if any, for the user_agent
-         if (cptr->user_agent) {
-            free(cptr->user_agent);
-            cptr->user_agent = NULL;
-         }
-
-         if (cptr->cli_version) {
-            free(cptr->cli_version);
-            cptr->cli_version = NULL;
-         }
 
          // sessions are decremented in http_remove_client() (srv.client.c) when
          // the client is unlinked from the list; doing it here as well caused

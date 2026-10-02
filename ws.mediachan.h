@@ -74,6 +74,8 @@ extern void media_channels_free(void);
 // Server-side handler for media.* text frames with media.cmd
 // `list`/`subscribe`/`unsubscribe`/`source`. Returns false if handled.
 extern bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d);
+/* A video source needs both the announced role and the video-src privilege. */
+extern bool media_source_authorized(rrconn_t *cptr);
 
 // Fan one media payload out to every connection subscribed to channel `cp`;
 // builds a binframe with server-owned header fields. Returns false on OK.
@@ -97,7 +99,8 @@ extern bool media_send_subscribe(rrconn_t *cptr, const char *uuid);
 // Client -> server: unsubscribe from a channel by uuid (media.cmd: unsubscribe)
 extern bool media_send_unsubscribe(rrconn_t *cptr, const char *uuid);
 // Client -> server: register as a media source (media.cmd: source; needs the
-// media.source priv). uuid == NULL registers for all channels.
+// media.source priv, or video-src with hello.role=video-source). uuid == NULL
+// registers for all channels.
 extern bool media_send_source(rrconn_t *cptr, const char *uuid);
 // Client -> server: select a codec for one concrete channel UUID (media.cmd: codec)
 extern bool media_send_codec_select(rrconn_t *cptr, const char *codec, const char *channel_uuid);

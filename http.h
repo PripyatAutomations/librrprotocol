@@ -10,6 +10,7 @@
 #if     !defined(__http_h)
 #define	__http_h
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <arpa/inet.h>
 #include <limits.h>
@@ -115,6 +116,10 @@ extern rrconn_t *http_add_client(struct mg_connection *c, bool is_ws);
 #endif // defined(USE_MONGOOSE)
 
 extern void http_remove_client(struct mg_connection *c);
+/* Release heap-owned fields held by a connection. Safe to call repeatedly. */
+extern void http_client_free_resources(rrconn_t *cptr);
+/* Store a bounded, NUL-terminated copy of an HTTP User-Agent header. */
+extern bool http_client_set_user_agent(rrconn_t *cptr, const char *ua, size_t len);
 extern rrconn_t *http_find_client_by_token(const char *token);
 extern rrconn_t *http_find_client_by_guest_id(int gid);
 extern rrconn_t *http_find_client_by_name(const char *name);

@@ -69,7 +69,7 @@ bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
          goto cleanup;
       }
       const char *login_pass = get_server_property(server_name, "server.pass");
-      Log(LOG_AUDIT, "auth.ws", "Got CHALLENGE %s from server %s, sending password!", nonce, server_name);
+      Log(LOG_AUDIT, "auth.ws", "Got login challenge from server %s", server_name);
       ws_send_passwd(cptr, user, login_pass, nonce);
       event_emit_dict("logging-in", NULL, d);
    } else if (cmd && strcasecmp(cmd, "authorized") == 0) {
@@ -113,18 +113,19 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
 
    if (hashed_pw) {
       temp_pw = compute_wire_password(hashed_pw, nonce);
-      explicit_bzero(hashed_pw, sizeof(hashed_pw));
+      explicit_bzero(hashed_pw, strlen(hashed_pw));
       free( (void *)hashed_pw);
       hashed_pw = NULL;
    }
 
    if (!temp_pw) {
-      Log(LOG_CRIT, "auth", "Failed to hash session password (nonce: |%s|)", nonce);
+      Log(LOG_CRIT, "auth", "Failed to hash session password");
       return false;
    }
 
    dict *auth_msg = dict_new();
    if (!auth_msg) {
+      explicit_bzero(temp_pw, strlen(temp_pw));
       free(temp_pw);
       return false;
    }
@@ -135,6 +136,7 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
    dict_add(auth_msg, "auth.token", session_token);
    bool sent = ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
    dict_free(auth_msg);
+   explicit_bzero(temp_pw, strlen(temp_pw));
    free(temp_pw);
 
    return sent;

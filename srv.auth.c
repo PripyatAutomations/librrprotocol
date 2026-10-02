@@ -74,22 +74,21 @@ static rrconn_t *http_find_client_by_nonce(const char *nonce) {
    rrconn_t *cptr = http_client_list;
    int i = 0;
 
-   if (nonce == NULL) {
-      return NULL;
-   }
    while (cptr) {
       if (cptr->nonce[0] == '\0') {
+         i++;
+         cptr = cptr->next;
          continue;
       }
 
-      if (memcmp( cptr->nonce, nonce, strlen(cptr->nonce) ) == 0) {
-         Log(LOG_CRAZY, "http.core", "hfcbn returning index [%i] for nonce |%s|", cptr->nonce);
+      if (strcmp(cptr->nonce, nonce) == 0) {
+         Log(LOG_CRAZY, "http.core", "Found client at index %d by nonce", i);
          return cptr;
       }
       i++;
       cptr = cptr->next;
    }
-   Log(LOG_CRAZY, "http.core", "hfcbn |%s| no matches!", nonce);
+   Log(LOG_CRAZY, "http.core", "No client matched nonce");
 
    return NULL;
 }
@@ -239,7 +238,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       dict_add(auth_msg, "auth.nonce", cptr->nonce);
       dict_add(auth_msg, "auth.user", user);
       dict_add(auth_msg, "auth.token", cptr->token);
-      Log(LOG_CRAZY, "auth", "Sending login challenge |%s| to cptr <%p>, token |%s|", cptr->nonce, cptr, cptr->token);
+      Log(LOG_CRAZY, "auth", "Sending login challenge to cptr <%p>", cptr);
       ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
       dict_free(auth_msg);
    } else if (strcasecmp(cmd, "logout") == 0 || strcasecmp(cmd, "quit") == 0) {
@@ -265,7 +264,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       }
 
       int login_uid = cptr->user->uid;
-      if (login_uid < 0 || login_uid > HTTP_MAX_USERS) {
+      if (login_uid < 0 || login_uid >= HTTP_MAX_USERS) {
          Log(LOG_WARN, "auth", "Invalid uid for username |%s| from IP %s:%d", cptr->chatname, ip, port);
          ws_kick_client(cptr, "Invalid login/passowrd");
          return false;
@@ -289,8 +288,6 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          Log(LOG_WARN, "auth", "Got NULL return from compute_wire_password for cptr:<%p>, kicking!", cptr);
          return false;
       }
-      Log(LOG_CRAZY, "auth", "Saved: |%s|, hashed (server): |%s|, received: |%s|", up->pass, temp_pw, pass);
-
       if (strcmp(temp_pw, pass) == 0) {
          // special handling for guests; we generate a random suffix
          // force rewriting if they use any nick starting with Guest.
@@ -437,7 +434,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       }
 
       // AUDIT: Sanitize buffers containing sensitive data before freeing
-      explicit_bzero( temp_pw, sizeof(temp_pw) );
+      explicit_bzero( temp_pw, strlen(temp_pw) );
       free(temp_pw);
    }
 cleanup:
