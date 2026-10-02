@@ -582,6 +582,12 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          }
       }
 
+      if (cptr->user_agent && is_http_banned(cptr->user_agent)) {
+         Log(LOG_INFO, "http", "Rejecting banned User-Agent: %s", cptr->user_agent);
+         mg_http_reply(c, 403, "Content-Type: text/plain\r\n", "Forbidden\n");
+         return;
+      }
+
       // Send the request to our HTTP router
       if (hm && !http_dispatch_route(hm, cptr)) {
          Log(LOG_CRAZY, "http.core", "fall through to http_static");

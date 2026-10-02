@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <limits.h>
+#include <regex.h>
 #include <arpa/inet.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
@@ -24,6 +25,8 @@
 #ifdef	USE_HTTP
 struct http_ua_ban {
    char *useragent;      // saved user agent regex
+   regex_t regex;
+   bool regex_compiled;
    char *description;    // Description
    bool enabled;         // is this ban enabled?
    struct http_ua_ban *next;  // next ban
@@ -41,8 +44,8 @@ bool is_http_banned(const char *ua) {
    // Check user-agent against the the user-agent bans
    struct http_ua_ban *b = http_ua_bans;
    while (b) {
-      // XXX: regex match the user agent
-      if (/* ... */ false) {
+      if (b->enabled && b->regex_compiled &&
+          regexec(&b->regex, ua, 0, NULL, 0) == 0) {
          return true;
       }
       b = b->next;
@@ -90,24 +93,21 @@ bool load_http_ua_bans(const char *path) {
       if (line[0] == '\n' || line[0] == '\0') {
          continue;
       }
-      // If we made it this far, it's probably a valid line, parse it
-      http_ua_ban_t *p = http_ua_bans;
-
-      // find the end of list
-      while (p) {
-         // ensure we return a non-null pointer
-         if (p->next) {
-            p = p->next;
-         } else {
-            break;
-         }
+      http_ua_ban_t *new_ban = calloc(1, sizeof(*new_ban));
+      if (!new_ban) { fclose(fp); return true; }
+      new_ban->useragent = strdup(line);
+      if (!new_ban->useragent) { free(new_ban); fclose(fp); return true; }
+      int regex_rc = regcomp(&new_ban->regex, new_ban->useragent,
+         REG_EXTENDED | REG_NOSUB);
+      if (regex_rc != 0) {
+         free(new_ban->useragent);
+         free(new_ban);
+         continue;
       }
-
-      // Add to the linked list at the tail
-      if (p) {
-         http_ua_ban_t *new_ban = malloc( sizeof(http_ua_ban_t) );
-         p->next = new_ban;
-      }
+      new_ban->regex_compiled = true;
+      new_ban->enabled = true;
+      new_ban->next = http_ua_bans;
+      http_ua_bans = new_ban;
    }
    fclose(fp);
 

@@ -132,7 +132,7 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
       // send the entire latest update to the users
       diff = &vfo_states[vfo];
    } else {
-      ws_rigctl_state_diff(vfo);
+      diff = ws_rigctl_state_diff(vfo);
 
       if (!diff) {
          return false;

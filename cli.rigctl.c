@@ -93,7 +93,7 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
 
       if (cmd && strcasecmp(cmd, "ptt") == 0 && cmd_user && *cmd_user) {
          bool cmd_ptt = dict_get_bool(d, "cat.ptt", false);
-         Log(LOG_INFO, "ws.cat", "%s %s transmitting", cmd_user,
+            Log(LOG_DEBUG, "ws.cat", "%s %s transmitting", cmd_user,
             (cmd_ptt ? "started" : "stopped") );
 
          // Let any registered listeners know (rrclient UI, chat log, etc) --

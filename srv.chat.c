@@ -571,6 +571,12 @@ static bool ws_send_userinfo_room(rrconn_t *cptr, rrconn_t *acptr, const char *r
    if (!cptr || !cptr->authenticated || !cptr->user) {
       return false;
    }
+   const char *target_room = (room && *room) ? room : ws_authoritative_room();
+   if (!target_room || !*target_room) {
+      Log(LOG_WARN, "ws.chat", "Refusing userinfo for %s without a room",
+         cptr->chatname ? cptr->chatname : "<unknown>");
+      return false;
+   }
    // Video sources (webcam etc announcing hello.role: video-source) are not
    // users; keep them out of the chat/user lists
    if (client_has_flag(cptr, FLAG_VIDEO_SOURCE) ) {
@@ -580,7 +586,7 @@ static bool ws_send_userinfo_room(rrconn_t *cptr, rrconn_t *acptr, const char *r
    dict_add(talk_msg, "msg.type", "talk");
    dict_add(talk_msg, "talk.privs", cptr->user->privs);
    dict_add(talk_msg, "talk.user", cptr->chatname);
-   dict_add(talk_msg, "talk.room", room ? room : ws_authoritative_room());
+   dict_add(talk_msg, "talk.room", target_room);
    dict_add(talk_msg, "talk.cmd", "userinfo");
    dict_add_int(talk_msg, "talk.sessions", cptr->user->sessions);
    dict_add_bool(talk_msg, "talk.muted", cptr->user->is_muted);
