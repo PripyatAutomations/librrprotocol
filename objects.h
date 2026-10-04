@@ -11,6 +11,9 @@
 /* Wire contract (dotted dict keys serialize as nested JSON):
  * msg.type=object, object.cmd=snapshot/unsubscribe (requests),
  * begin/descriptor/added/removed/end/result (responses/events).
+ * object.cmd=inventory requests one-shot discovery, with inventory-entry and
+ * inventory-end replies (request.id correlated; independent of stream/cache).
+ * See doc/resource-discovery.md in rustyrig-fw for inventory fields.
  * msg.type=property, property.cmd=set (request),
  * descriptor/state/changed/result (responses/events).
  * Objects: object.uuid/type/owner/alias/name/lifecycle[/backend].
