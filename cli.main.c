@@ -54,6 +54,7 @@ extern bool ws_handle_pong_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_syslog_msg(rrconn_t *cptr, dict *d);
 extern bool ws_handle_talk_msg(rrconn_t *cptr, dict *d);
+extern bool rr_object_client_message(rrconn_t *cptr, dict *d);
 
 struct ws_msg_routes {
    const char *type;             // auth|ping|talk|cat|alert|error|hello etc
@@ -62,6 +63,8 @@ struct ws_msg_routes {
 };
 
 struct ws_msg_routes ws_routes_cli[] = {
+   { .type = "object", .cb = rr_object_client_message },
+   { .type = "property", .cb = rr_object_client_message },
    { .type = "alert",  .cb = ws_handle_alert_msg },
    { .type = "auth",   .cb = ws_handle_client_auth_msg },
    { .type = "cat",    .cb = ws_handle_rigctl_cli_msg },
