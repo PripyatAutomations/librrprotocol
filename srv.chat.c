@@ -294,6 +294,7 @@ typedef struct {
 } ws_room_meta_t;
 
 static ws_room_meta_t room_meta[32];
+static uint32_t authoritative_vfo_mask = 3;
 static const char *room_canonical(const char *room);
 static char authoritative_room_override[128];
 
@@ -336,11 +337,8 @@ const char *ws_authoritative_room(void) {
       }
    }
    if (meta) {
-      int nvfos = cfg_get_int("rig.vfos", 2);
-      if (nvfos < 1) nvfos = 1;
-      if (nvfos > 32) nvfos = 32;
-      meta->has_vfos = true;
-      meta->vfo_mask = nvfos == 32 ? UINT32_MAX : ((UINT32_C(1) << nvfos) - 1);
+      meta->has_vfos = authoritative_vfo_mask != 0;
+      meta->vfo_mask = authoritative_vfo_mask;
    }
    return room;
 }
@@ -360,6 +358,15 @@ bool ws_room_has_vfos(const char *room) {
 uint32_t ws_room_vfo_mask(const char *room) {
    ws_room_meta_t *meta = room_meta_find(room, false);
    return meta ? meta->vfo_mask : 0;
+}
+
+void ws_set_authoritative_vfo_mask(uint32_t mask) {
+   authoritative_vfo_mask = mask;
+   ws_room_meta_t *meta = room_meta_find(ws_authoritative_room(), true);
+   if (meta) {
+      meta->has_vfos = mask != 0;
+      meta->vfo_mask = mask;
+   }
 }
 
 static const char *room_canonical(const char *room) {
