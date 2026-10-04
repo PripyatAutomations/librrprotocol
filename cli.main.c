@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librrprotocol/ws.serial.h>
 
 extern const char *get_server_property(const char *server, const char *prop);
 extern time_t now;
@@ -63,6 +64,7 @@ struct ws_msg_routes {
 };
 
 struct ws_msg_routes ws_routes_cli[] = {
+   { .type = "serial", .cb = ws_handle_serial_cli_msg },
    { .type = "object", .cb = rr_object_client_message },
    { .type = "property", .cb = rr_object_client_message },
    { .type = "alert",  .cb = ws_handle_alert_msg },
@@ -114,7 +116,7 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
    char evname[64];
    memset( evname, 0, sizeof(evname) );
    snprintf(evname, sizeof(evname), "ws.msg.%s", (msg_type ? msg_type : "unknown"));
-   event_emit_dict(evname, NULL, d);
+   event_emit_dict(evname, msg_type && !strcmp(msg_type,"serial") ? cptr : NULL, d);
 
    // Walk the table of handlers
    int i = 0;
@@ -146,7 +148,7 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
 
 // Deal with the binary frames we receive from the server
 // (audio, waterfall, modem data, etc). See doc/media-frames.md.
-bool ws_binframe_process(const char *data, size_t len) {
+static bool ws_binframe_process_client(rrconn_t *client, const char *data, size_t len) {
    if (!data || len < RR_BINFRAME_HDR_LEN) {
       // no real packet will EVER be under the header size, even a keep-alive
       Log(LOG_DEBUG, "ws", "%s: data:<%p> len: %zu", __FUNCTION__, data, len);
@@ -160,8 +162,25 @@ bool ws_binframe_process(const char *data, size_t len) {
       // invalid/unrecognized frame; parse already logged the reason
       return false;
    }
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_SERIAL_FRAME_CODEC, 4)) {
+      if (!rr_serial_frame_valid(&f) || len != RR_BINFRAME_HDR_LEN + f.len) return false;
+      event_emit_binary(RR_SERIAL_FRAME_EVENT, client, data, len);
+      return true;
+   }
+   // GPS is a fixed-format, read-only MODEM channel, separate from raw serial.
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_GPS_FRAME_CODEC, 4)) {
+      if (f.hdr.direction != RR_BINFRAME_DIR_RX || f.hdr.vfo != RR_BINFRAME_VFO_NA ||
+          !f.hdr.stream || !f.len || f.len > 511 ||
+          len != RR_BINFRAME_HDR_LEN + f.len) return false;
+      event_emit_binary(RR_GPS_FRAME_EVENT, client, data, len);
+      return true;
+   }
    // Dispatch by subsystem; fires media.frame.* binary events
    return rr_binframe_dispatch(&f, NULL);
+}
+
+bool ws_binframe_process(const char *data, size_t len) {
+   return ws_binframe_process_client(NULL,data,len);
 }
 
 #ifdef	USE_MONGOOSE
@@ -236,7 +255,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 
       if (wm->flags & WEBSOCKET_OP_BINARY) {
          // Binary (audio, waterfall, etc) frames
-         ws_binframe_process(wm->data.buf, wm->data.len);
+         ws_binframe_process_client(cptr,wm->data.buf,wm->data.len);
       } else {
          // Text (mostly json) frames
          struct mg_str msg_data = wm->data;
@@ -515,6 +534,15 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
          len, (cptr->chatname[0] != '\0' ? cptr->chatname : "(unknown)"), cptr);
       return false;
    }
+   // Serial ownership/privileges are checked by rrserver, independently of PTT/audio.
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_SERIAL_FRAME_CODEC, 4)) {
+      if (!rr_serial_frame_valid(&f) || f.hdr.direction != RR_BINFRAME_DIR_TX ||
+          len != RR_BINFRAME_HDR_LEN + f.len) return false;
+      event_emit_binary(RR_SERIAL_FRAME_EVENT, cptr, buf, len);
+      return true;
+   }
+   // GPS position is produced only by configured server adapters/configuration.
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_GPS_FRAME_CODEC, 4)) return false;
    bool is_tx_frame = (f.hdr.direction == RR_BINFRAME_DIR_TX);
    const char *negotiated = is_tx_frame ? cptr->codec_tx : cptr->codec_rx;
 
@@ -572,7 +600,7 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
       }
       struct rr_mediachan *tx = media_chan_find(f.hdr.subsystem, RR_BINFRAME_DIR_TX,
          f.hdr.vfo, f.hdr.rig);
-      if (!tx || !tx->codec[0] || strncmp(tx->codec, (const char *)f.hdr.codec, 4) != 0 ||
+      if (!tx || (cptr->ptt_room[0] && strcasecmp(cptr->ptt_room, tx->room)) || !media_client_in_channel_room(cptr, tx) || !tx->codec[0] || strncmp(tx->codec, (const char *)f.hdr.codec, 4) != 0 ||
           strncmp(cptr->codec_tx, tx->codec, 4) != 0) {
          Log(LOG_AUDIT, "ws.media", "Dropping TX frame from %s: channel codec/PTT mismatch",
             cptr->chatname);
@@ -585,6 +613,7 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
          return false;
       }
       ws_media_broadcast_subscribed_except(tx, cptr, f.data, f.len, tx->codec);
+      event_emit_binary("media.frame.tx.channel", cptr, buf, len);
       event_emit_binary("media.frame.tx", cptr, f.data, f.len);
       return true;
    }

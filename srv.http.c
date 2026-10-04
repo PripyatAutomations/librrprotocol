@@ -276,6 +276,9 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
    if (!strcmp(msg_type, "object") || !strcmp(msg_type, "property")) {
       extern bool rr_object_server_request(rrconn_t *, dict *);
       result = rr_object_server_request(cptr, d);
+   } else if (strcasecmp(msg_type, "serial") == 0) {
+      event_emit_dict("serial.request", cptr, d);
+      result = true;
    } else if (strcasecmp(msg_type, "alert") == 0) {
       const char *alert_from = dict_get(d, "alert.from", "*** SERVER ***");
       (void)alert_from;
@@ -619,6 +622,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          // Already removed (or never added) - nothing to clean up
          return;
       }
+      event_emit("serial.session.closed", cptr, NULL);
       char resp_buf[HTTP_WS_MAX_MSG + 1];
       const char *ip = cptr ? cptr->user_ip : "(unknown)";
       Log(LOG_DEBUG, "http", "http_cb MG_EV_CLOSE for cptr:<%p> ip:%s", cptr, ip);
