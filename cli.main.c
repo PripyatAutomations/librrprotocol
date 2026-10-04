@@ -175,6 +175,14 @@ static bool ws_binframe_process_client(rrconn_t *client, const char *data, size_
       event_emit_binary(RR_GPS_FRAME_EVENT, client, data, len);
       return true;
    }
+   // RX audio carries its stream id and codec in the header; consumers route
+   // by those instead of mutable channel-table state (codec switches would
+   // otherwise cross-feed frames into the wrong decoder). Emitted as a full
+   // frame; the payload-only media.frame.audio event is still dispatched
+   // below for legacy subscribers.
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_AUDIO && f.hdr.direction == RR_BINFRAME_DIR_RX) {
+      event_emit_binary(RR_AUDIO_FRAME_EVENT, client, data, len);
+   }
    // Dispatch by subsystem; fires media.frame.* binary events
    return rr_binframe_dispatch(&f, NULL);
 }
@@ -613,8 +621,10 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
          return false;
       }
       ws_media_broadcast_subscribed_except(tx, cptr, f.data, f.len, tx->codec);
+      // Full frame (header included) so the handler can resolve the channel
+      // and negotiated codec; payload-only consumers were retired with the
+      // legacy fwdsp pipe path.
       event_emit_binary("media.frame.tx.channel", cptr, buf, len);
-      event_emit_binary("media.frame.tx", cptr, f.data, f.len);
       return true;
    }
    // RX-direction frames arriving at the server are not valid client traffic.
