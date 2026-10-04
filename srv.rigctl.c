@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
+#include <ctype.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 #include <rrserver/backend.h>
@@ -194,6 +195,22 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       return false;
    }
 
+   const char *control_room = dict_get(d, "cat.room", ws_authoritative_room());
+   bool releasing = cmd && !strcasecmp(cmd, "ptt") &&
+      !dict_get_bool(d, "cat.state.ptt", dict_get_bool(d, "cat.ptt", false));
+   if (releasing && cptr->is_ptt && cptr->ptt_room[0]) control_room = cptr->ptt_room;
+   if (cmd && !(releasing && cptr->is_ptt) &&
+       !ws_room_control_allowed(cptr, control_room, !strcasecmp(cmd, "freq"))) {
+      ws_send_error(cptr, "Control is not allowed from room %s", control_room);
+      return false;
+   }
+   if (cmd && !strcasecmp(cmd, "freq") && !ws_room_tx_control(control_room)) {
+      rr_vfo_t index = vfo && vfo[0] ? vfo_lookup(toupper((unsigned char)vfo[0])) : VFO_NONE;
+      if (index < 0 || index >= 32 || !(ws_room_rx_tuning_mask(control_room) & (UINT32_C(1) << index))) {
+         ws_send_error(cptr, "This RX VFO cannot tune without moving the shared LO");
+         return false;
+      }
+   }
    if (cmd) {
       if (strcasecmp(cmd, "ptt") == 0) {
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
@@ -274,6 +291,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          // Update their last heard and PTT status
          cptr->last_heard = now;
          cptr->last_cat = now;         // last CAT message received from user
+         if (ptt_state) snprintf(cptr->ptt_room, sizeof(cptr->ptt_room), "%s", control_room);
          cptr->is_ptt = ptt_state;
          // Remember which VFO they keyed, so a disconnect (or other forced
          // key-down) can name & release the right one
@@ -287,6 +305,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          // Audit trail is logged by the rigctl event handler (rrserver/events.c)
          dict *cat_msg = dict_new();
          dict_add(cat_msg, "msg.type", "cat");
+         dict_add(cat_msg, "cat.room", control_room);
          dict_add(cat_msg, "cat.cmd", "ptt");
          dict_add(cat_msg, "cat.mode", mode_name);
          dict_add_bool(cat_msg, "cat.ptt", ptt_state);
@@ -305,6 +324,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          // rigctl event handler
          dict *cmd_d = dict_new();
          dict_add(cmd_d, "msg.type", "rigctl");
+         dict_add(cmd_d, "rigctl.room", control_room);
          dict_add(cmd_d, "rigctl.cmd", "ptt");
          dict_add_bool(cmd_d, "rigctl.ptt", ptt_state);
          dict_add(cmd_d, "rigctl.from", cptr->chatname);
@@ -331,6 +351,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          // tell everyone about it
          dict *cat_msg = dict_new();
          dict_add(cat_msg, "msg.type", "cat");
+         dict_add(cat_msg, "cat.room", control_room);
          dict_add(cat_msg, "cat.cmd", "freq");
          dict_add_long(cat_msg, "cat.freq", new_freq);
          // Include cat.state.* so client VFO state/UI updates immediately,
@@ -349,6 +370,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          // !freq chat command uses).
          dict *cmd_d = dict_new();
          dict_add(cmd_d, "msg.type", "rigctl");
+         dict_add(cmd_d, "rigctl.room", control_room);
          dict_add(cmd_d, "rigctl.cmd", "freq");
          dict_add_long(cmd_d, "rigctl.freq", new_freq);
          dict_add(cmd_d, "rigctl.from", cptr->chatname);
@@ -376,6 +398,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          // Audit trail is logged by the rigctl event handler
          dict *cat_msg = dict_new();
          dict_add(cat_msg, "msg.type", "cat");
+         dict_add(cat_msg, "cat.room", control_room);
          dict_add(cat_msg, "cat.cmd", "width");
          dict_add(cat_msg, "cat.width", width);
          dict_add(cat_msg, "cat.state.width", width);
@@ -390,6 +413,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          // !width chat command uses).
          dict *cmd_d = dict_new();
          dict_add(cmd_d, "msg.type", "rigctl");
+         dict_add(cmd_d, "rigctl.room", control_room);
          dict_add(cmd_d, "rigctl.cmd", "width");
          dict_add(cmd_d, "rigctl.width", width);
          dict_add(cmd_d, "rigctl.from", cptr->chatname);
@@ -417,6 +441,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          // tell everyone about it
          dict *cat_msg = dict_new();
          dict_add(cat_msg, "msg.type", "cat");
+         dict_add(cat_msg, "cat.room", control_room);
          dict_add(cat_msg, "cat.cmd", "mode");
          dict_add(cat_msg, "cat.mode", mode);
          // Include cat.state.* so client VFO state/UI updates immediately,
@@ -437,6 +462,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
             // the !mode chat command uses).
             dict *cmd_d = dict_new();
             dict_add(cmd_d, "msg.type", "rigctl");
+         dict_add(cmd_d, "rigctl.room", control_room);
             dict_add(cmd_d, "rigctl.cmd", "mode");
             dict_add(cmd_d, "rigctl.mode", mode);
             dict_add(cmd_d, "rigctl.from", cptr->chatname);

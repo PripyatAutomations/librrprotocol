@@ -72,6 +72,7 @@ struct rr_user {
    int sessions;
    bool is_ptt;
    char ptt_vfo;
+   char ptt_room[128];
    bool is_muted;
    bool in_store;       // <-- whether `iter` is valid
    struct rr_user *next;

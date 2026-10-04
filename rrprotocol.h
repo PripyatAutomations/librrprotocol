@@ -28,6 +28,23 @@ extern const char *server_name;
 // WebSocket room membership. The authoritative room is named from the
 // configured station and rig; media subscriptions are independent of rooms.
 extern const char *ws_authoritative_room(void);
+extern const char *ws_site_room(void);
+bool ws_room_rig_base(const char *room);
+bool ws_room_rig_namespace(const char *room);
+bool ws_room_same_rig(const char *room, const char *base);
+bool ws_room_tx_control(const char *room);
+bool ws_room_rx_tunable(const char *room);
+bool ws_room_set_rx_tuning(const char *room, bool enabled);
+bool ws_room_set_rx_tuning_mask(const char *room, uint32_t mask);
+uint32_t ws_room_rx_tuning_mask(const char *room);
+bool ws_room_control_allowed(rrconn_t *client, const char *room, bool frequency);
+bool ws_send_ptt_cmd_in_room(rrconn_t *, const char *vfo, bool ptt, const char *room);
+bool ws_send_freq_cmd_in_room(rrconn_t *, const char *vfo, long freq, const char *room);
+bool ws_send_mode_cmd_in_room(rrconn_t *, const char *vfo, const char *mode, const char *room);
+bool ws_send_width_cmd_in_room(rrconn_t *, const char *vfo, const char *width, const char *room);
+
+extern bool ws_room_name_valid(const char *room);
+extern bool ws_room_set_vfo_mask(const char *room, uint32_t mask);
 /* Client-side room identity learned from the server's authenticated room event. */
 extern void ws_set_authoritative_room(const char *room);
 extern bool ws_client_in_room(const rrconn_t *cptr, const char *room);

@@ -291,6 +291,7 @@ typedef struct {
    char name[128];
    bool has_vfos;
    uint32_t vfo_mask;
+   uint32_t rx_tuning_mask;
 } ws_room_meta_t;
 
 static ws_room_meta_t room_meta[32];
@@ -315,6 +316,86 @@ static ws_room_meta_t *room_meta_find(const char *room, bool create) {
    return NULL;
 }
 
+bool ws_room_name_valid(const char *room) {
+   if (!room || (room[0] != '#' && room[0] != '&') || !room[1] ||
+       strlen(room) >= sizeof(room_meta[0].name)) return false;
+   for (const unsigned char *p = (const unsigned char *)room; *p; p++) {
+      if (isspace(*p) || *p == ',' || *p < 32 || *p == 127) return false;
+   }
+   return true;
+}
+
+const char *ws_site_room(void) {
+   static char room[128];
+   char *configured = (char *)cfg_get_exp("station.name");
+   int length = snprintf(room, sizeof(room), "#%s", configured && *configured ? configured : "rustyrig");
+   free(configured);
+   if (length < 0 || (size_t)length >= sizeof(room)) room[0] = '\0';
+   return room;
+}
+
+// Base rig rooms are reserved even outside this site's namespace.
+bool ws_room_rig_base(const char *room) {
+   if (!ws_room_name_valid(room)) return false;
+   const char *dash = strrchr(room, '-');
+   if (!dash || strncasecmp(dash, "-rig", 4) || !isdigit((unsigned char)dash[4])) return false;
+   const char *p = dash + 4;
+   while (isdigit((unsigned char)*p)) p++;
+   return !*p;
+}
+
+bool ws_room_rig_namespace(const char *room) {
+   if (!ws_room_name_valid(room) || room[0] != '#') return false;
+   const char *site = ws_site_room();
+   size_t prefix = strlen(site);
+   if (strncasecmp(room, site, prefix) || strncasecmp(room + prefix, "-rig", 4)) return false;
+   const char *p = room + prefix + 4;
+   if (!isdigit((unsigned char)*p)) return false;
+   while (isdigit((unsigned char)*p)) p++;
+   return !*p || (*p == '.' && p[1]);
+}
+
+bool ws_room_same_rig(const char *room, const char *base) {
+   if (!room || !base || !ws_room_rig_base(base)) return false;
+   size_t n = strlen(base);
+   return !strncasecmp(room, base, n) && (!room[n] || (room[n] == '.' && room[n + 1]));
+}
+
+bool ws_room_tx_control(const char *room) {
+   return ws_room_rig_namespace(room) && ws_room_rig_base(room) && room_meta_find(room, false);
+}
+
+uint32_t ws_room_rx_tuning_mask(const char *room) {
+   if (!ws_room_rig_namespace(room)) return 0;
+   for (size_t i = 0; i < sizeof(room_meta) / sizeof(room_meta[0]); i++)
+      if (room_meta[i].rx_tuning_mask && ws_room_same_rig(room, room_meta[i].name))
+         return room_meta[i].rx_tuning_mask & ws_room_vfo_mask(room);
+   return 0;
+}
+bool ws_room_rx_tunable(const char *room) { return ws_room_rx_tuning_mask(room) != 0; }
+bool ws_room_set_rx_tuning_mask(const char *room, uint32_t mask) {
+   if (!ws_room_tx_control(room) || (mask & ~ws_room_vfo_mask(room))) return false;
+   room_meta_find(room, false)->rx_tuning_mask = mask;
+   return true;
+}
+bool ws_room_set_rx_tuning(const char *room, bool enabled) {
+   return ws_room_set_rx_tuning_mask(room, enabled ? ws_room_vfo_mask(room) : 0);
+}
+
+bool ws_room_control_allowed(rrconn_t *client, const char *room, bool frequency) {
+   return client && ws_client_in_room(client, room) &&
+      (ws_room_tx_control(room) || (frequency && ws_room_has_vfos(room) && ws_room_rx_tunable(room)));
+}
+
+bool ws_room_set_vfo_mask(const char *room, uint32_t mask) {
+   if (!ws_room_name_valid(room) || (mask && !ws_room_rig_namespace(room))) return false;
+   ws_room_meta_t *meta = room_meta_find(room, true);
+   if (!meta) return false;
+   meta->has_vfos = mask != 0;
+   meta->vfo_mask = mask;
+   return true;
+}
+
 const char *ws_authoritative_room(void) {
    static char room[128];
    if (authoritative_room_override[0]) {
@@ -337,14 +418,14 @@ const char *ws_authoritative_room(void) {
       }
    }
    if (meta) {
-      meta->has_vfos = authoritative_vfo_mask != 0;
-      meta->vfo_mask = authoritative_vfo_mask;
+      meta->has_vfos = ws_room_rig_namespace(room) && authoritative_vfo_mask != 0;
+      meta->vfo_mask = meta->has_vfos ? authoritative_vfo_mask : 0;
    }
    return room;
 }
 
 void ws_set_authoritative_room(const char *room) {
-   if (!room || room[0] != '#' || strlen(room) >= sizeof(authoritative_room_override)) {
+   if (!ws_room_name_valid(room)) {
       return;
    }
    snprintf(authoritative_room_override, sizeof(authoritative_room_override), "%s", room);
@@ -390,10 +471,11 @@ bool ws_client_in_room(const rrconn_t *cptr, const char *room) {
 }
 
 bool ws_client_join_room(rrconn_t *cptr, const char *room) {
-   if (!cptr || !room || !*room) {
+   if (!cptr || !ws_room_name_valid(room)) {
       return false;
    }
    const char *canonical = room_canonical(room);
+   if (ws_room_rig_base(canonical) && !room_meta_find(canonical, false)) return false;
    if (canonical[0] != '#' && canonical[0] != '&') {
       return false;
    }
@@ -412,7 +494,7 @@ bool ws_client_join_room(rrconn_t *cptr, const char *room) {
 
 bool ws_client_part_room(rrconn_t *cptr, const char *room) {
    if (!cptr || !room ||
-       strcasecmp(room, ws_authoritative_room()) == 0) {
+       strcasecmp(room, ws_site_room()) == 0) {
       return false;
    }
    const char *want = room_canonical(room);
@@ -425,6 +507,9 @@ bool ws_client_part_room(rrconn_t *cptr, const char *room) {
       strlcat(out, tok, sizeof(out));
    }
    snprintf(cptr->rooms, sizeof(cptr->rooms), "%s", out);
+   media_part_room(cptr, room);
+   event_emit("room.part", cptr, room);
+   media_send_available_all(cptr);
    return true;
 }
 
@@ -598,6 +683,7 @@ static bool ws_send_userinfo_room(rrconn_t *cptr, rrconn_t *acptr, const char *r
    dict_add_int(talk_msg, "talk.sessions", cptr->user->sessions);
    dict_add_bool(talk_msg, "talk.muted", cptr->user->is_muted);
    dict_add_bool(talk_msg, "talk.tx", cptr->is_ptt);
+   dict_add(talk_msg, "talk.ptt-room", cptr->ptt_room);
    if (cptr->ptt_vfo) {
       char ptt_vfo[2] = { cptr->ptt_vfo, '\0' };
       dict_add(talk_msg, "talk.ptt-vfo", ptt_vfo);
@@ -898,8 +984,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                return false;
             }
             if (strcasecmp(action, "remove") == 0) {
-               if (strcasecmp(room, ws_authoritative_room()) == 0) {
-                  ws_send_error(cptr, "The authoritative rig room cannot be deleted");
+               if (strcasecmp(room, ws_authoritative_room()) == 0 ||
+                   strcasecmp(room, ws_site_room()) == 0) {
+                  ws_send_error(cptr, "The site lobby and default rig room cannot be deleted");
                   return false;
                }
                dict *deleted = dict_new();
@@ -911,6 +998,10 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                event_emit_dict("room.delete", cptr, deleted);
                dict_free(deleted);
             } else {
+               if (ws_room_rig_base(room)) {
+                  ws_send_error(cptr, "Base rig rooms are created only by server rig initialization");
+                  return false;
+               }
                dict *added = dict_new();
                dict_add(added, "msg.type", "talk");
                dict_add(added, "talk.cmd", "room-added");
@@ -939,6 +1030,10 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             if ((strcasecmp(vfo_action, "add") != 0 && strcasecmp(vfo_action, "remove") != 0) ||
                 !has_priv(cptr->user->uid, "admin|owner")) {
                ws_send_error(cptr, "Usage: /room #room vfo add|remove [rig0.]vfo_a (admin or owner required)");
+               return false;
+            }
+            if (strcasecmp(vfo_action, "add") == 0 && !ws_room_rig_namespace(room)) {
+               ws_send_error(cptr, "Only this site's numbered rig rooms may have VFO controls");
                return false;
             }
             char normalized[128];
@@ -1004,6 +1099,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          dict_add(room_msg, "talk.target", room_canonical(requested));
          dict_add(room_msg, "talk.room", room_canonical(requested));
          dict_add_bool(room_msg, "room.has-vfos", ws_room_has_vfos(requested));
+         dict_add_bool(room_msg, "room.tx-control", ws_room_tx_control(requested));
+         dict_add_bool(room_msg, "room.rx-tunable", ws_room_rx_tunable(requested));
+         dict_add_ulong(room_msg, "room.rx-tuning-mask", ws_room_rx_tuning_mask(requested));
          dict_add_ulong(room_msg, "room.vfo-mask", ws_room_vfo_mask(requested));
          dict_add(room_msg, "talk.user", cptr->chatname);
          dict_add_ulong(room_msg, "msg.ts", now);
@@ -1019,7 +1117,10 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             ws_send_dict(cptr, cptr, room_msg, WEBSOCKET_OP_TEXT);
          }
          if (joining) ws_send_room_users(cptr, room_canonical(requested));
-         if (joining) event_emit_dict("room.join", cptr, room_msg);
+         if (joining) {
+            event_emit_dict("room.join", cptr, room_msg);
+            media_send_available_all(cptr);
+         }
          dict_free(room_msg);
          return true;
       } else if (strcasecmp(cmd, "msg") == 0) {
@@ -1118,6 +1219,20 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            break;
                         }
 
+                        if (!strcasecmp(cmd, "freq") || !strcasecmp(cmd, "mode") || !strcasecmp(cmd, "width")) {
+                           dict *control = dict_new();
+                           if (!control) return false;
+                           dict_add(control, "cat.cmd", cmd);
+                           dict_add(control, "cat.room", channel);
+                           dict_add(control, "cat.vfo", vfo_name(active_vfo));
+                           if (!strcasecmp(cmd, "freq")) dict_add_long(control, "cat.freq", parse_freq(arg));
+                           else if (!strcasecmp(cmd, "mode")) dict_add(control, "cat.mode", arg);
+                           else dict_add(control, "cat.width", arg);
+                           bool applied = ws_handle_rigctl_msg(cptr, control);
+                           dict_free(control);
+                           if (!applied) return false;
+                           continue;
+                        }
                         if (strcasecmp(cmd, "help") == 0) {
                            // XXX: These should move to help/ and get served
                            // via that mechanism.
@@ -1136,6 +1251,11 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            return true;
 
                         } else if (strcasecmp(cmd, "freq") == 0) {
+                          if (!ws_room_control_allowed(cptr, channel, true)) {
+                             ws_send_error(cptr, "Control is not allowed from room %s", channel);
+                             return false;
+                          }
+
                           if (*arg == '\0') {
                              ws_send_error(cptr, "!freq requires a frequency argument");
                              return false;
@@ -1149,6 +1269,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
                            dict *cmd_d = dict_new();
                            dict_add(cmd_d, "msg.type", "rigctl");
+                           dict_add(cmd_d, "rigctl.room", channel);
                            dict_add(cmd_d, "rigctl.cmd", "freq");
                            dict_add_int(cmd_d, "rigctl.freq", real_freq);
                            dict_add(cmd_d, "rigctl.from",
@@ -1160,6 +1281,11 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            dict_free(cmd_d);
 
                         } else if (strcasecmp(cmd, "mode") == 0) {
+                          if (!ws_room_control_allowed(cptr, channel, false)) {
+                             ws_send_error(cptr, "Control is not allowed from room %s", channel);
+                             return false;
+                          }
+
                           if (*arg == '\0') {
                              ws_send_error(cptr, "!mode requires a mode argument");
                              return false;
@@ -1179,6 +1305,11 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            }
 
                         } else if (strcasecmp(cmd, "power") == 0) {
+                          if (!ws_room_control_allowed(cptr, channel, false)) {
+                             ws_send_error(cptr, "Control is not allowed from room %s", channel);
+                             return false;
+                          }
+
                           if (*arg == '\0') {
                              ws_send_error(cptr, "!power requires a power argument (in watts)");
                              return false;
@@ -1203,6 +1334,11 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                           dict_free(cmd_d);
 
                         } else if (strcasecmp(cmd, "width") == 0) {
+                          if (!ws_room_control_allowed(cptr, channel, false)) {
+                             ws_send_error(cptr, "Control is not allowed from room %s", channel);
+                             return false;
+                          }
+
                           if (*arg == '\0') {
                              ws_send_error(cptr, "!width requires an argument");
                              return false;
@@ -1217,6 +1353,11 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            // Audit trail is logged by the rigctl event handler
 
                         } else if (strcasecmp(cmd, "vfo") == 0) {
+                          if (!ws_client_in_room(cptr, channel) || !ws_room_has_vfos(channel)) {
+                             ws_send_error(cptr, "Select a VFO from a joined rig room");
+                             return false;
+                          }
+
                           if (*arg == '\0') {
                              ws_send_error(cptr, "!vfo requires a vfo argument (A|B|C...)");
                              return false;
@@ -1233,6 +1374,10 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                              return false;
                           }
 
+                          if (!(ws_room_vfo_mask(channel) & (UINT32_C(1) << new_vfo))) {
+                             ws_send_error(cptr, "VFO %s is not mapped to room %s", vfo_name(new_vfo), channel);
+                             return false;
+                          }
                           if (cptr->ptt_vfo) {
                              ws_send_error(cptr, "Cannot switch VFO while transmitting on VFO %c",
                                 cptr->ptt_vfo);
@@ -1253,6 +1398,13 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                              // the server to poll via an event
                              event_emit("be.poll", NULL, NULL);
                           }
+                          dict *selected = dict_new();
+                          dict_add(selected, "msg.type", "cat");
+                          dict_add(selected, "cat.room", channel);
+                          dict_add(selected, "cat.state.vfo", vfo_name(new_vfo));
+                          dict_add_bool(selected, "cat.state.active", true);
+                          ws_broadcast_room_dict(NULL, selected, channel);
+                          dict_free(selected);
 
                         } else {
                            Log(LOG_WARN, "ws.chat",

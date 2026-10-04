@@ -39,6 +39,9 @@ struct rr_mediachan {
    uint8_t vfo;                      // rr_vfo_t (0 = VFO A; 0xFF = n/a)
    uint8_t rig;                      // rig index; 0 = default; 0xFF = n/a
    char name[64];                     // stable endpoint name, e.g. rig0.vfo_a.rx
+   char room[128];                   // joined room required for this channel
+   char rig_uuid[64];
+   char vfo_uuid[64];
    char codec[5];                    // negotiated codec magic, or "" when unset
    char descr[128];                  // human-readable description
    bool active;                      // is this channel actually streaming?
@@ -59,6 +62,8 @@ extern struct rr_mediachan *media_chan_find(uint8_t subsystem, uint8_t direction
 extern struct rr_mediachan *media_chan_find_uuid(const char *uuid);
 // Remove a channel by uuid. Returns false on OK. Does not notify clients -
 // pair with media_send_chan_removed_all() when the removal is user-visible.
+extern bool media_client_in_channel_room(const rrconn_t *cptr, const struct rr_mediachan *cp);
+extern void media_part_room(rrconn_t *cptr, const char *room);
 extern bool media_chan_remove(const char *uuid);
 // Send a media.chan-remove message for channel `cp` to client `cptr`
 extern bool media_send_chan_removed(rrconn_t *cptr, struct rr_mediachan *cp);

@@ -39,6 +39,11 @@
 #define	RR_BINFRAME_DIR_TX		0x01
 #define	RR_BINFRAME_DIR_NA		0xFF
 
+// Client-side event names for full-frame (header included) dispatch. Media
+// frames carry the stream id and codec in the header; consumers route by
+// those fields instead of trusting mutable channel-table state.
+#define	RR_AUDIO_FRAME_EVENT	"media.frame.audio.full"
+
 #define	RR_BINFRAME_VFO_NA		0xFF
 #define	RR_BINFRAME_RIG_NA		0xFF
 #define	RR_BINFRAME_STREAM_NONE		0x00
