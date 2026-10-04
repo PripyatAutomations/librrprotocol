@@ -57,6 +57,23 @@ static bool media_client_supports_codec(rrconn_t *cptr, const char *codec) {
       media_codec_list_has(cptr->media_codecs, codec);
 }
 
+static bool media_codec_valid(const char *codec) {
+   // NONE is client-local unsubscribe intent; ---- is only a display label.
+   return codec && strlen(codec) == 4 && strcasecmp(codec, "none") &&
+      strcmp(codec, "----");
+}
+
+static bool media_server_supports_codec(const char *codec) {
+   if (!media_codec_valid(codec)) return false;
+   const char *configured = cfg_get_exp("codecs.allowed");
+   char *allowed = codec_filter_test_mode(configured,
+      cfg_get_bool("audio.test-mode", true));
+   free((void *)configured);
+   bool supported = allowed && media_codec_list_has(allowed, codec);
+   free(allowed);
+   return supported;
+}
+
 static bool media_channel_all_clients_support(struct rr_mediachan *cp,
    const char *codec) {
    if (!cp || !codec) return false;
@@ -631,6 +648,23 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          const char *descr = dict_get(d, "media.descr", NULL);
          const char *codec = dict_get(d, "media.codec", NULL);
 
+         if (subsys > UINT8_MAX || dir > RR_BINFRAME_DIR_TX ||
+             vfo > UINT8_MAX || rig > UINT8_MAX) {
+            ws_send_error(cptr, "media.subscribe: invalid routing");
+            return false;
+         }
+
+         // Validate before inserting anything into the shared registry. An
+         // omitted codec is negotiated below, just like a UUID subscription.
+         if (codec && (!media_codec_valid(codec) ||
+             (subsys == RR_BINFRAME_SUBSYS_AUDIO &&
+              (!media_server_supports_codec(codec) ||
+               !media_client_supports_codec(cptr, codec) ||
+               (dir == RR_BINFRAME_DIR_TX && codec_is_test_variant(codec)))))) {
+            ws_send_error(cptr, "media.subscribe: unsupported codec");
+            return false;
+         }
+
          cp = media_chan_add( (uint8_t)subsys, (uint8_t)dir, (uint8_t)vfo,
             (uint8_t)rig, codec, descr);
 
@@ -736,7 +770,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          return false;
       }
 
-      if (!codec || strlen(codec) != 4) {
+      if (!media_codec_valid(codec)) {
          ws_send_error(cptr, "media.codec select: invalid codec");
          return false;
       }
@@ -753,14 +787,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          return false;
       }
 
-      const char *configured_codecs = cfg_get_exp("codecs.allowed");
-      char *server_codecs = codec_filter_test_mode(configured_codecs,
-         cfg_get_bool("audio.test-mode", true));
-      free((void *)configured_codecs);
-      bool server_supports = server_codecs &&
-         media_codec_list_has(server_codecs, codec);
-      free((void *)server_codecs);
-      if (!server_supports) {
+      if (!media_server_supports_codec(codec)) {
          ws_send_error(cptr, "Server does not support the requested codec");
          return false;
       }
