@@ -17,6 +17,7 @@ int cfg_get_int(const char *key, int def) {
 }
 
 int main(void) {
+   ws_set_authoritative_vfo_mask(3);
    assert(strcmp(ws_authoritative_room(), "#rplywv00-rig0") == 0);
    assert(!ws_room_has_vfos("&localrig"));
    assert(ws_room_vfo_mask("#rplywv00-rig0") == 3);

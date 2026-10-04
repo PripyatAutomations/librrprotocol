@@ -273,7 +273,10 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       goto cleanup;
    }
 
-   if (strcasecmp(msg_type, "alert") == 0) {
+   if (!strcmp(msg_type, "object") || !strcmp(msg_type, "property")) {
+      extern bool rr_object_server_request(rrconn_t *, dict *);
+      result = rr_object_server_request(cptr, d);
+   } else if (strcasecmp(msg_type, "alert") == 0) {
       const char *alert_from = dict_get(d, "alert.from", "*** SERVER ***");
       (void)alert_from;
       result = true;

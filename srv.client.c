@@ -116,6 +116,7 @@ void http_client_free_resources(rrconn_t *cptr) {
    if (!cptr) {
       return;
    }
+   event_emit("protocol.object.close", cptr, "");
    free(cptr->user_agent);
    cptr->user_agent = NULL;
    free(cptr->cli_version);
