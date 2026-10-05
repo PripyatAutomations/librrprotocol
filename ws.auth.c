@@ -22,13 +22,14 @@
 extern dict *cfg;
 extern time_t now;
 extern const char *server_name;
-extern char session_token[HTTP_TOKEN_LEN + 1];	// TODO: Move into the ws_conn structure
+extern char session_token[HTTP_TOKEN_LEN + 1];  // TODO: Move into the ws_conn structure
 
 bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
    bool rv = true;
 
    if (!cptr || !d) {
       Log(LOG_WARN, "http.ws", "auth_msg: got msg from cptr:<%p> msg:<%p>", cptr, d);
+
       return false;
    }
 
@@ -77,16 +78,19 @@ bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
    }
 
 cleanup:
+
    return rv;
 }
 
 bool ws_send_login(rrconn_t *cptr, const char *login_user) {
    if (!cptr || !login_user) {
       Log(LOG_DEBUG, "auth.ws", "send_login cptr:<%p> login_user:<%p> |%s|", cptr, login_user, login_user);
+
       return false;
    }
    Log(LOG_INFO, "rrproto.auth", "Sending initial LOGIN!");
    dict *auth_msg = dict_new();
+
    if (!auth_msg) {
       return false;
    }
@@ -102,8 +106,8 @@ bool ws_send_login(rrconn_t *cptr, const char *login_user) {
 // Hashes the user stored password with the server nonce and returns it
 bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const char *nonce) {
    if (!cptr || !user || !passwd || !nonce) {
-      Log(LOG_CRIT, "auth", "ws_send_passwd with invalid parameters, cptr:<%p> user:<%p> passwd:<%p> nonce:<%p>", cptr, user,
-         passwd, nonce);
+      Log(LOG_CRIT, "auth", "ws_send_passwd with invalid parameters, cptr:<%p> user:<%p> passwd:<%p> nonce:<%p>", cptr,
+         user, passwd, nonce);
 
       return false;
    }
@@ -113,20 +117,23 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
 
    if (hashed_pw) {
       temp_pw = compute_wire_password(hashed_pw, nonce);
-      explicit_bzero(hashed_pw, strlen(hashed_pw));
-      free( (void *)hashed_pw);
+      explicit_bzero( hashed_pw, strlen(hashed_pw) );
+      free( (void *)hashed_pw );
       hashed_pw = NULL;
    }
 
    if (!temp_pw) {
       Log(LOG_CRIT, "auth", "Failed to hash session password");
+
       return false;
    }
 
    dict *auth_msg = dict_new();
+
    if (!auth_msg) {
-      explicit_bzero(temp_pw, strlen(temp_pw));
+      explicit_bzero( temp_pw, strlen(temp_pw) );
       free(temp_pw);
+
       return false;
    }
    dict_add(auth_msg, "msg.type", "auth");
@@ -136,7 +143,7 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
    dict_add(auth_msg, "auth.token", session_token);
    bool sent = ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
    dict_free(auth_msg);
-   explicit_bzero(temp_pw, strlen(temp_pw));
+   explicit_bzero( temp_pw, strlen(temp_pw) );
    free(temp_pw);
 
    return sent;
@@ -145,10 +152,12 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
 bool ws_send_logout(rrconn_t *cptr, const char *user, const char *token) {
    if (!user || !token || !cptr) {
       Log(LOG_DEBUG, "auth.ws", "send_logout cptr:<%p> user:<%p> |%s|", cptr, user, user);
+
       return false;
    }
 
    dict *auth_msg = dict_new();
+
    if (!auth_msg) {
       return false;
    }
@@ -165,12 +174,14 @@ bool ws_send_logout(rrconn_t *cptr, const char *user, const char *token) {
 bool ws_send_hello(rrconn_t *cptr) {
    if (!cptr) {
       Log(LOG_DEBUG, "auth.ws", "send_hello cptr:<%p>", cptr);
+
       return false;
    }
    char msgbuf[512];
    const char *codec = "mu08,mu08";
    int rate = 16000;
    dict *hello = dict_new();
+
    if (!hello) {
       return false;
    }

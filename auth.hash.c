@@ -16,14 +16,17 @@ int auth_generate_nonce(char *buffer, size_t length) {
 
    /* length is the complete buffer size, including its terminator. */
    size_t generated = length - 1;
+
    for (size_t i = 0 ; i < generated ; i++) {
       buffer[i] = base64_chars[rand() % 64];
    }
+
    buffer[generated] = '\0';
+
    return (int)generated;
 }
 
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
 char *hash_passwd(const char *passwd) {
    if (!passwd) {
       return NULL;
@@ -33,6 +36,7 @@ char *hash_passwd(const char *passwd) {
    // for hex string
    if (!hex_output) {
       fprintf(stderr, "oom in hash_passwd?!\n");
+
       return NULL;
    }
 
@@ -53,9 +57,10 @@ char *hash_passwd(const char *passwd) {
 
    // Null terminate teh string for libc's sake
    hex_output[HTTP_HASH_LEN * 2] = '\0';
+
    return hex_output;
 }
-#endif	// USE_MONGOOSE
+#endif // USE_MONGOOSE
 
 //////////////////////////////////////////
 // Compute wire password:
@@ -74,6 +79,7 @@ char *compute_wire_password(const char *password, const char *nonce) {
 
    if (password == NULL || nonce == NULL) {
       Log(LOG_CRIT, "auth", "wtf compute_wire_password called with NULL password<%p> or nonce<%p>", password, nonce);
+
       return NULL;
    }
    char *hex_output = (char *)malloc(HTTP_HASH_LEN * 2 + 1);   // Allocate space
@@ -85,15 +91,16 @@ char *compute_wire_password(const char *password, const char *nonce) {
       return NULL;
    }
    unsigned char hash[20];   // Store the raw SHA1 hash
-   memset( hash, 0, sizeof(hash) );   // defensive: zero hash so non-mongoose builds don't leak stack garbage
+   memset( hash, 0, sizeof(hash) );   // defensive: zero hash so non-mongoose builds don't
+                                      // leak stack garbage
 
 #if     defined(USE_MONGOOSE)
-   /* Hash the complete inputs without truncating the nonce in a fixed buffer.
-    * PARITY: rustyrig-www/js/webui.auth.js authenticate(). */
+   /* Hash the complete inputs without truncating the nonce in a fixed buffer. PARITY:
+    * rustyrig-www/js/webui.auth.js authenticate(). */
    mg_sha1_init(&ctx);
-   mg_sha1_update(&ctx, (const unsigned char *)password, strlen(password));
+   mg_sha1_update( &ctx, (const unsigned char *)password, strlen(password) );
    mg_sha1_update(&ctx, (const unsigned char *)"+", 1);
-   mg_sha1_update(&ctx, (const unsigned char *)nonce, strlen(nonce));
+   mg_sha1_update( &ctx, (const unsigned char *)nonce, strlen(nonce) );
    mg_sha1_final(hash, &ctx);
 #endif // USE_MONGOOSE
 
@@ -103,5 +110,6 @@ char *compute_wire_password(const char *password, const char *nonce) {
    }
 
    hex_output[HTTP_HASH_LEN * 2] = '\0';   // Null-terminate the string
+
    return hex_output;
 }

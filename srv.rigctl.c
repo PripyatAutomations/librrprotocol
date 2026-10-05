@@ -91,7 +91,7 @@ static ws_rig_state_t *ws_rigctl_state_diff(rr_vfo_t vfo) {
       return update;
    }
    // If no changes, return NULL
-   free( (void *)update);
+   free( (void *)update );
 
    return NULL;
 }
@@ -107,11 +107,13 @@ static bool ws_rig_state_poll(rr_vfo_t vfo) {
    memcpy( old, curr, sizeof(ws_rig_state_t) );
 
 #if     0
+
    // Poll the backend
    if (rig.backend && rig.backend->api && rig.backend->api->backend_poll) {
       rig.backend->api->backend_poll();
    }
 #endif
+
    return false;
 }
 
@@ -141,9 +143,11 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
    }
    // update last sent and return success
    ws_rig_state_last_sent = now;
+
    if (!force_send) {
       free(diff);
    }
+
    return false;
 }
 
@@ -158,22 +162,24 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    const char *cmd = dict_get(d, "cat.cmd", NULL);
    // Accept both the nested client format (cat.vfo) and the state format (cat.state.vfo)
    const char *vfo = dict_get(d, "cat.vfo", NULL);
-   if (!vfo) vfo = dict_get(d, "cat.state.vfo", NULL);
+
+   if (!vfo) { vfo = dict_get(d, "cat.state.vfo", NULL); }
    const char *state = dict_get(d, "cat.state", NULL);
 
    // This can be hit before login (or by ghosted sessions); without a user
    // pointer we can't check privileges, so reject the command.
    if (!cptr->user) {
-      Log(LOG_WARN, "ws.rigctl", "Ignoring %s command from unauthenticated client %s:<%p>",
-         (cmd ? cmd : "(null)"), cptr->chatname, cptr);
+      Log(LOG_WARN, "ws.rigctl", "Ignoring %s command from unauthenticated client %s:<%p>", (cmd ? cmd : "(null)"),
+         cptr->chatname, cptr);
       ws_send_error(cptr, "Not authenticated");
+
       return false;
    }
 
    if (cptr->user->is_muted) {
       Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they are muted!", cmd, cptr->chatname);
-      /* Return the actual policy failure.  "Invalid target" made a muted
-       * user's PTT failure look like a malformed VFO or username. */
+      /* Return the actual policy failure.  "Invalid target" made a muted user's PTT
+       * failure look like a malformed VFO or username. */
       dict *d_err = dict_new();
       dict_add(d_err, "msg.type", "error");
       dict_add(d_err, "error.msg", "You are muted and cannot use rig controls");
@@ -182,6 +188,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       dict_add(d_err, "error.target", cptr->chatname);
       ws_send_dict(NULL, cptr, d_err, WEBSOCKET_OP_TEXT);
       dict_free(d_err);
+
       return false;
    }
 
@@ -189,28 +196,36 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    // present
    // XXX: Add support for per noob Elmer (link from noob to elmer(s) who have
    // approved their use)
-   if (client_has_flag(cptr, FLAG_NOOB) && !is_elmer_online() ) {
+   if ( client_has_flag(cptr, FLAG_NOOB) && !is_elmer_online() ) {
       Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they're a noob and no elmers are online", cmd,
          cptr->chatname);
+
       return false;
    }
 
-   const char *control_room = dict_get(d, "cat.room", ws_authoritative_room());
+   const char *control_room = dict_get( d, "cat.room", ws_authoritative_room() );
    bool releasing = cmd && !strcasecmp(cmd, "ptt") &&
-      !dict_get_bool(d, "cat.state.ptt", dict_get_bool(d, "cat.ptt", false));
-   if (releasing && cptr->is_ptt && cptr->ptt_room[0]) control_room = cptr->ptt_room;
-   if (cmd && !(releasing && cptr->is_ptt) &&
-       !ws_room_control_allowed(cptr, control_room, !strcasecmp(cmd, "freq"))) {
+                    !dict_get_bool( d, "cat.state.ptt", dict_get_bool(d, "cat.ptt", false) );
+
+   if (releasing && cptr->is_ptt && cptr->ptt_room[0]) { control_room = cptr->ptt_room; }
+
+   if ( cmd && !(releasing && cptr->is_ptt) &&
+        !ws_room_control_allowed( cptr, control_room, !strcasecmp(cmd, "freq") ) ) {
       ws_send_error(cptr, "Control is not allowed from room %s", control_room);
+
       return false;
    }
-   if (cmd && !strcasecmp(cmd, "freq") && !ws_room_tx_control(control_room)) {
-      rr_vfo_t index = vfo && vfo[0] ? vfo_lookup(toupper((unsigned char)vfo[0])) : VFO_NONE;
-      if (index < 0 || index >= 32 || !(ws_room_rx_tuning_mask(control_room) & (UINT32_C(1) << index))) {
+
+   if ( cmd && !strcasecmp(cmd, "freq") && !ws_room_tx_control(control_room) ) {
+      rr_vfo_t index = vfo && vfo[0] ? vfo_lookup( toupper( (unsigned char)vfo[0] ) ) : VFO_NONE;
+
+      if ( index < 0 || index >= 32 || !( ws_room_rx_tuning_mask(control_room) & (UINT32_C(1) << index) ) ) {
          ws_send_error(cptr, "This RX VFO cannot tune without moving the shared LO");
+
          return false;
       }
    }
+
    if (cmd) {
       if (strcasecmp(cmd, "ptt") == 0) {
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
@@ -219,11 +234,11 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
          if (!vfo) {
             Log(LOG_DEBUG, "ws.rigctl", "PTT set without vfo or ptt_state");
+
             return false;
          }
          // Client sends cat.ptt; server-originated echoes use cat.state.ptt
-         bool ptt_state = dict_get_bool(d, "cat.state.ptt",
-            dict_get_bool(d, "cat.ptt", false));
+         bool ptt_state = dict_get_bool( d, "cat.state.ptt", dict_get_bool(d, "cat.ptt", false) );
 
          // Enforce single-TX: nobody else may key up while someone holds PTT.
          // Exception: the talker is a noob AND the requester is an admin,
@@ -235,18 +250,19 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
             if (talker && talker != cptr) {
                int cfg_noob_cooldown = cfg_get_int("noob.cool-down", 30);
-               if (cfg_noob_cooldown < 0) cfg_noob_cooldown = 30;
 
-               bool talker_is_noob = (talker->user && has_priv(talker->user->uid, "noob") );
+               if (cfg_noob_cooldown < 0) { cfg_noob_cooldown = 30; }
+
+               bool talker_is_noob = ( talker->user && has_priv(talker->user->uid, "noob") );
                bool i_can_halt = has_priv(cptr->user->uid, "admin|owner") ||
-                  (talker_is_noob && has_priv(cptr->user->uid, "elmer"));
+                                 ( talker_is_noob && has_priv(cptr->user->uid, "elmer") );
 
                if (i_can_halt) {
-                  Log(LOG_AUDIT, "ptt", "User %s halted %s%s",
-                     cptr->chatname, talker->chatname,
+                  Log(LOG_AUDIT, "ptt", "User %s halted %s%s", cptr->chatname, talker->chatname,
                      talker_is_noob ? "; noob cooldown applied" : "");
                   talker->is_ptt = false;
                   talker->ptt_vfo = 0;
+
                   if (talker_is_noob) {
                      talker->noob_cooldown = now + cfg_noob_cooldown;
                   }
@@ -255,19 +271,20 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
                   // Push updated TX state to everyone's userlist
                   ws_send_userinfo(talker, NULL);
                } else {
-                  Log(LOG_AUDIT, "ptt", "Denying PTT for %s: %s is already transmitting",
-                     cptr->chatname, talker->chatname);
+                  Log(LOG_AUDIT, "ptt", "Denying PTT for %s: %s is already transmitting", cptr->chatname,
+                     talker->chatname);
                   ws_send_error(cptr, "%s is already transmitting", talker->chatname);
+
                   return false;
                }
             }
 
             // Noobs in cooldown may not TX
             if (client_has_flag(cptr, FLAG_NOOB) && now < cptr->noob_cooldown) {
-               Log(LOG_AUDIT, "ptt", "Denying PTT for noob %s: cooldown active (%d sec left)",
-                  cptr->chatname, (int)(cptr->noob_cooldown - now) );
-               ws_send_error(cptr, "PTT cooldown active: %d seconds remaining",
+               Log( LOG_AUDIT, "ptt", "Denying PTT for noob %s: cooldown active (%d sec left)", cptr->chatname,
                   (int)(cptr->noob_cooldown - now) );
+               ws_send_error( cptr, "PTT cooldown active: %d seconds remaining", (int)(cptr->noob_cooldown - now) );
+
                return false;
             }
          }
@@ -291,7 +308,8 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          // Update their last heard and PTT status
          cptr->last_heard = now;
          cptr->last_cat = now;         // last CAT message received from user
-         if (ptt_state) snprintf(cptr->ptt_room, sizeof(cptr->ptt_room), "%s", control_room);
+
+         if (ptt_state) { snprintf(cptr->ptt_room, sizeof(cptr->ptt_room), "%s", control_room); }
          cptr->is_ptt = ptt_state;
          // Remember which VFO they keyed, so a disconnect (or other forced
          // key-down) can name & release the right one
@@ -336,10 +354,12 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
             return false;
          }
          long new_freq = dict_get_long(d, "cat.state.freq", 0);
-         if (new_freq <= 0) new_freq = dict_get_long(d, "cat.freq", 0);
+
+         if (new_freq <= 0) { new_freq = dict_get_long(d, "cat.freq", 0); }
 
          if (!vfo || new_freq <= 0) {
             Log(LOG_DEBUG, "ws.rigctl", "FREQ set without vfo or freq");
+
             return false;
          }
 
@@ -379,7 +399,8 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_free(cmd_d);
       } else if (strcasecmp(cmd, "width") == 0) {
          const char *width = dict_get(d, "cat.state.width", NULL);
-         if (!width) width = dict_get(d, "cat.width", NULL);
+
+         if (!width) { width = dict_get(d, "cat.width", NULL); }
 
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
             return false;
@@ -387,6 +408,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
          if (!vfo || !width) {
             Log(LOG_DEBUG, "ws.rigctl", "WIDTH set without vfo:<%p> or width:<%p>", vfo, width);
+
             return false;
          }
 
@@ -422,7 +444,8 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_free(cmd_d);
       } else if (strcasecmp(cmd, "mode") == 0) {
          const char *mode = dict_get(d, "cat.state.mode", NULL);
-         if (!mode) mode = dict_get(d, "cat.mode", NULL);
+
+         if (!mode) { mode = dict_get(d, "cat.mode", NULL); }
 
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
             return false;
@@ -430,6 +453,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
          if (!vfo || !mode) {
             Log(LOG_DEBUG, "ws.rigctl", "MODE set without vfo:<%p> or mode:<%p>", vfo, mode);
+
             return false;
          }
          rr_vfo_t c_vfo;
@@ -462,7 +486,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
             // the !mode chat command uses).
             dict *cmd_d = dict_new();
             dict_add(cmd_d, "msg.type", "rigctl");
-         dict_add(cmd_d, "rigctl.room", control_room);
+            dict_add(cmd_d, "rigctl.room", control_room);
             dict_add(cmd_d, "rigctl.cmd", "mode");
             dict_add(cmd_d, "rigctl.mode", mode);
             dict_add(cmd_d, "rigctl.from", cptr->chatname);
@@ -479,5 +503,6 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          free( (void *)jp );
       }
    }
+
    return false;
 }

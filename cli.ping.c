@@ -25,6 +25,7 @@ extern bool cfg_show_pings;
 bool ws_handle_ping_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_WARN, "http.ws", "ping_msg: got d:<%p> cptr:<%p>", d, cptr);
+
       return false;
    }
    bool rv = true;
@@ -37,8 +38,10 @@ bool ws_handle_ping_msg(rrconn_t *cptr, dict *d) {
       dict *pong_msg = dict_new();
       dict_add(pong_msg, "msg.type", "pong");
       dict_add_ulong(pong_msg, "msg.ts", ping_ts);
-      // Echo the server's monotonic ping.ts (real microseconds) back so it can measure RTT
+      // Echo the server's monotonic ping.ts (real microseconds) back so it can measure
+      // RTT
       long long mono_ts = dict_get_llong(d, "ping.ts", 0);
+
       if (mono_ts) {
          dict_add_llong(pong_msg, "ping.ts", mono_ts);
       }
@@ -59,23 +62,29 @@ bool ws_handle_ping_msg(rrconn_t *cptr, dict *d) {
 bool ws_handle_pong_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_WARN, "http.ws", "pong_msg: got d:<%p> cptr:<%p>", d, cptr);
+
       return false;
    }
 
    time_t pong_ts = dict_get_time_t(d, "msg.ts", 0);
+
    if (!pong_ts) {
       Log(LOG_WARN, "ws.pong", "PONG with no timestamp from server");
+
       return false;
    }
 
    time_t now = time(NULL);
-   Log(LOG_CRAZY, "ws.pong", "* Pong! RTT: %lld secs *", (long long)(now - pong_ts));
+   Log( LOG_CRAZY, "ws.pong", "* Pong! RTT: %lld secs *", (long long)(now - pong_ts) );
 
-   // Echoed monotonic ping.ts from the server's PING: diff against our own clock for ms RTT
+   // Echoed monotonic ping.ts from the server's PING: diff against our own clock for ms
+   // RTT
    // PARITY: librrprotocol/srv.http.c ws_handle_pong()
    long long ping_mono = dict_get_llong(d, "ping.ts", 0);
+
    if (ping_mono) {
       long long rtt_ms = (mono_us() - ping_mono) / 1000;
+
       if (rtt_ms < 0) {
          rtt_ms = 0;
       }

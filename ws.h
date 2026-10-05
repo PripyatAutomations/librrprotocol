@@ -49,15 +49,21 @@ typedef struct ws_conn ws_conn_t;
 ///////////////////////////////////////////////////////////
 
 // Send helpers return true when the message was accepted for transmission.
-// Protocol handlers below return true on successful handling and false on invalid input/error.
+// Protocol handlers below return true on successful handling and false on invalid
+// input/error.
 extern bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type);
 extern void ws_broadcast_dict(rrconn_t *sender, dict *d, int data_type);
 extern void ws_broadcast_dict_with_flags(u_int32_t flags, rrconn_t *sender, dict *d, int data_type);
-extern bool ws_kick_client(rrconn_t *cptr, const char *reason);                     // disconnect a userextern void ws_remove_client(rrconn_t *cptr);
+extern bool ws_kick_client(rrconn_t *cptr, const char *reason);                     // disconnect
+                                                                                    // a userextern
+                                                                                    // void
+                                                                                    // ws_remove_client(rrconn_t
+                                                                                    // *cptr);
 extern bool ws_kick_by_name(const char *name, const char *reason);
 extern bool ws_kick_by_uid(int uid, const char *reason);
 extern bool ws_send_ping(rrconn_t *cptr);
-extern long long last_ping_rtt_ms;   // srv.ping.c: last measured ping RTT (ms), -1 until first pong
+extern long long last_ping_rtt_ms;   // srv.ping.c: last measured ping RTT (ms), -1 until
+                                     // first pong
 extern bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...);
 extern bool ws_send_error(rrconn_t *cptr, const char *fmt, ...);
 
@@ -110,7 +116,8 @@ extern bool ws_handle_auth_msg(rrconn_t *cptr, dict *d);
 // ws.rigctl.c
 extern bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d);
 
-extern void ws_blorp_userlist_cb(void *arg);                     // timer calls this to set userlists
+extern void ws_blorp_userlist_cb(void *arg);                     // timer calls this to
+                                                                 // set userlists
 // Handle incoming messages
 extern void ws_handler(rrconn_t *cptr, int ev, void *ev_data);
 

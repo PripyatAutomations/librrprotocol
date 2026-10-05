@@ -22,7 +22,7 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-#ifdef	USE_HTTP
+#ifdef  USE_HTTP
 struct http_ua_ban {
    char *useragent;      // saved user agent regex
    regex_t regex;
@@ -60,10 +60,10 @@ bool load_http_ua_bans(const char *path) {
    if (!fp) {
       return true;
    }
-   while (!feof(fp) ) {
+   while ( !feof(fp) ) {
       memset(line, 0, 1024);
 
-      if (!fgets(line, 1024, fp) ) {
+      if ( !fgets(line, 1024, fp) ) {
          char *start = line + strspn(line, " \t\r\n");
 
          if (start != line) {
@@ -73,13 +73,13 @@ bool load_http_ua_bans(const char *path) {
 
       // Skip comments and empty lines
       if (line[0] == '#' || line[0] == ';' ||
-          (strlen(line) > 1 && (line[0] == '/' && line[1] == '/') ) || line[0] == '\n') {
+          ( strlen(line) > 1 && (line[0] == '/' && line[1] == '/') ) || line[0] == '\n') {
          continue;
       }
       // Remove trailing \r or \n characters
       char *end = line + strlen(line) - 1;
       char *start = NULL;
-      while (end >= line && (*end == '\r' || *end == '\n') ) {
+      while ( end >= line && (*end == '\r' || *end == '\n') ) {
          *end = '\0';
          end--;
       }
@@ -93,12 +93,14 @@ bool load_http_ua_bans(const char *path) {
       if (line[0] == '\n' || line[0] == '\0') {
          continue;
       }
-      http_ua_ban_t *new_ban = calloc(1, sizeof(*new_ban));
+      http_ua_ban_t *new_ban = calloc( 1, sizeof(*new_ban) );
+
       if (!new_ban) { fclose(fp); return true; }
       new_ban->useragent = strdup(line);
+
       if (!new_ban->useragent) { free(new_ban); fclose(fp); return true; }
-      int regex_rc = regcomp(&new_ban->regex, new_ban->useragent,
-         REG_EXTENDED | REG_NOSUB);
+      int regex_rc = regcomp(&new_ban->regex, new_ban->useragent, REG_EXTENDED | REG_NOSUB);
+
       if (regex_rc != 0) {
          free(new_ban->useragent);
          free(new_ban);

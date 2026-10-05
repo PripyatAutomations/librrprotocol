@@ -24,7 +24,9 @@ extern struct mg_mgr mgr;  // provided by the application that uses mongoose
 #endif
 
 // Shared state
-char active_server[SERVERLEN] = { 0 };
+char active_server[SERVERLEN] = {
+   0
+};
 rr_connection_t *active_connections = NULL;
 int ws_connected = 0;
 
@@ -98,6 +100,7 @@ bool connection_remove(rr_connection_t *conn) {
 const char *get_server_property(const char *server, const char *prop) {
    if (!server || !prop) {
       Log(LOG_CRIT, "ws", "get_server_prop with null server or prop");
+
       return NULL;
    }
    char fullkey[KEYLEN];

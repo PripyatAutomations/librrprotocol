@@ -24,36 +24,43 @@ extern time_t now;
 bool ws_handle_notice_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_WARN, "http.ws", "notice_msg: got cptr:<%p> d:<%p>", cptr, d);
+
       return false;
    }
    // Notices use their own namespace.  Reading talk.msg here silently drops
    // server replies such as callsign lookup results and also misclassifies
    // them as chat events for consumers of the protocol library.
    const char *notice_msg = dict_get(d, "notice.msg", NULL);
+
    if (!notice_msg) {
       Log(LOG_DEBUG, "http.ws", "notice_msg: notice.msg is missing");
+
       return false;
    }
    event_emit_dict("notice.msg", NULL, d);
+
    return true;
 }
 
 bool ws_handle_callsign_msg(rrconn_t *cptr, dict *d) {
-   if (!cptr || !d) return false;
-   if (!dict_get(d, "callsign.status", NULL) && !dict_get(d, "callsign.fields", NULL)) {
+   if (!cptr || !d) { return false; }
+
+   if ( !dict_get(d, "callsign.status", NULL) && !dict_get(d, "callsign.fields", NULL) ) {
       /* Dotted dictionaries do not expose a parent value; accept any field. */
       const char *key = NULL;
       char *value = NULL;
       int rank = 0;
       bool found = false;
-      while ((rank = dict_enumerate(d, rank, &key, &value)) >= 0) {
+      while ( ( rank = dict_enumerate(d, rank, &key, &value) ) >= 0 ) {
          if (key && strncmp(key, "callsign.fields.", 16) == 0) {
             found = true;
             break;
          }
       }
-      if (!found) return false;
+
+      if (!found) { return false; }
    }
    event_emit_dict("callsign.line", NULL, d);
+
    return true;
 }

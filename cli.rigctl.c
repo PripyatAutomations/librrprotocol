@@ -29,17 +29,18 @@ char old_mode[16];
 bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_DEBUG, "ws.rigctl", "handle_rigctl_msg invalid args: cptr:<%p> d:<%p>", cptr, d);
+
       return false;
    }
    time_t ts = dict_get_time_t(d, "msg.ts", now);
 
-   if (dict_get(d, "cat.state.mode", NULL) ) {
+   if ( dict_get(d, "cat.state.mode", NULL) ) {
 // XXX: Implement this - state message throttling & dict_diff usage
 /*
-      if (poll_block_expire < now) {
-         return true;
-      }
-      poll_block_expire = now + poll_block_delay;
+ *     if (poll_block_expire < now) {
+ *        return true;
+ *     }
+ *     poll_block_expire = now + poll_block_delay;
  */
       const char *vfo = dict_get(d, "cat.state.vfo", NULL);
       const char *mode = dict_get(d, "cat.state.mode", NULL);
@@ -54,7 +55,7 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
          Log(LOG_DEBUG, "ws.cat", "user:<%p> = |%s|", user, user);
 
          char real_mode[32];
-         memset(real_mode, 0, sizeof(real_mode));
+         memset( real_mode, 0, sizeof(real_mode) );
          snprintf(real_mode, sizeof(real_mode), "%s", mode);
 
          if (real_mode && strlen(real_mode) > 0) {
@@ -77,10 +78,10 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
  */
             // save the old mode so we can compare next time
             memset( old_mode, 0, sizeof(old_mode) );
-            strlcpy(old_mode, real_mode, sizeof(old_mode));
+            strlcpy( old_mode, real_mode, sizeof(old_mode) );
          }
       }
-   } else if (dict_get(d, "cat.cmd", NULL) ) {
+   } else if ( dict_get(d, "cat.cmd", NULL) ) {
       // This is a command broadcast (ptt/freq/mode/width) echoed by the
       // server, possibly triggered by another user. On PTT we update the
       // sender's TX flag in the userlist (drives the red PTT button label
@@ -88,13 +89,12 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
       const char *cmd = dict_get(d, "cat.cmd", NULL);
       const char *cmd_user = dict_get(d, "cat.user", NULL);
       const char *cmd_vfo = dict_get(d, "cat.vfo", NULL);
-      Log(LOG_CRAZY, "ws.cat", "Got cat.cmd %s from %s on vfo %s",
-         (cmd ? cmd : "?"), (cmd_user ? cmd_user : "?"), (cmd_vfo ? cmd_vfo : "?"));
+      Log( LOG_CRAZY, "ws.cat", "Got cat.cmd %s from %s on vfo %s", (cmd ? cmd : "?"), (cmd_user ? cmd_user : "?"),
+         (cmd_vfo ? cmd_vfo : "?") );
 
       if (cmd && strcasecmp(cmd, "ptt") == 0 && cmd_user && *cmd_user) {
          bool cmd_ptt = dict_get_bool(d, "cat.ptt", false);
-            Log(LOG_DEBUG, "ws.cat", "%s %s transmitting", cmd_user,
-            (cmd_ptt ? "started" : "stopped") );
+         Log( LOG_DEBUG, "ws.cat", "%s %s transmitting", cmd_user, (cmd_ptt ? "started" : "stopped") );
 
          // Let any registered listeners know (rrclient UI, chat log, etc) --
          // librrprotocol itself tracks no client-side UI state.
@@ -112,6 +112,7 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
    }
 
 local_cleanup:
+
    return true;
 }
 
@@ -120,11 +121,13 @@ bool ws_send_ptt_cmd_in_room(rrconn_t *cptr, const char *vfo, bool ptt, const ch
       return false;
    }
    dict *cat_msg = dict_new();
+
    if (!cat_msg) {
       return false;
    }
    dict_add(cat_msg, "msg.type", "cat");
-   if (room && *room) dict_add(cat_msg, "cat.room", room);
+
+   if (room && *room) { dict_add(cat_msg, "cat.room", room); }
    dict_add(cat_msg, "cat.cmd", "ptt");
    dict_add(cat_msg, "cat.vfo", vfo);
    dict_add_bool(cat_msg, "cat.ptt", ptt);
@@ -140,11 +143,13 @@ bool ws_send_mode_cmd_in_room(rrconn_t *cptr, const char *vfo, const char *mode,
       return false;
    }
    dict *cat_msg = dict_new();
+
    if (!cat_msg) {
       return false;
    }
    dict_add(cat_msg, "msg.type", "cat");
-   if (room && *room) dict_add(cat_msg, "cat.room", room);
+
+   if (room && *room) { dict_add(cat_msg, "cat.room", room); }
    dict_add(cat_msg, "cat.cmd", "mode");
    dict_add(cat_msg, "cat.vfo", vfo);
    dict_add(cat_msg, "cat.mode", mode);
@@ -160,11 +165,13 @@ bool ws_send_width_cmd_in_room(rrconn_t *cptr, const char *vfo, const char *widt
       return false;
    }
    dict *cat_msg = dict_new();
+
    if (!cat_msg) {
       return false;
    }
    dict_add(cat_msg, "msg.type", "cat");
-   if (room && *room) dict_add(cat_msg, "cat.room", room);
+
+   if (room && *room) { dict_add(cat_msg, "cat.room", room); }
    dict_add(cat_msg, "cat.cmd", "width");
    dict_add(cat_msg, "cat.vfo", vfo);
    dict_add(cat_msg, "cat.width", width);
@@ -180,11 +187,13 @@ bool ws_send_freq_cmd_in_room(rrconn_t *cptr, const char *vfo, long freq, const 
       return false;
    }
    dict *cat_msg = dict_new();
+
    if (!cat_msg) {
       return false;
    }
    dict_add(cat_msg, "msg.type", "cat");
-   if (room && *room) dict_add(cat_msg, "cat.room", room);
+
+   if (room && *room) { dict_add(cat_msg, "cat.room", room); }
    dict_add(cat_msg, "cat.cmd", "freq");
    dict_add(cat_msg, "cat.vfo", vfo);
    dict_add_long(cat_msg, "cat.freq", freq);

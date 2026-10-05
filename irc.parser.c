@@ -30,10 +30,12 @@ rrlist_t *irc_connections = NULL;
 
 static void irc_command_key(const char *command, char *key, size_t key_len) {
    size_t i = 0;
-   if (!key || key_len == 0) return;
+
+   if (!key || key_len == 0) { return; }
+
    if (command) {
-      for (; command[i] && i + 1 < key_len; i++) {
-         key[i] = (char)tolower((unsigned char)command[i]);
+      for ( ; command[i] && i + 1 < key_len ; i++) {
+         key[i] = (char)tolower( (unsigned char)command[i] );
       }
    }
    key[i] = '\0';
@@ -104,7 +106,7 @@ irc_message_t *irc_parse_message(const char *msg) {
          if (space) {
             *space = '\0';
          }
-         argv = xrealloc(argv, sizeof(char*) * (argc + 1));
+         argv = xrealloc( argv, sizeof(char*) * (argc + 1) );
          argv[argc++] = xstrdup(s);
          s = space ? space + 1 : NULL;
       }
@@ -119,7 +121,7 @@ irc_message_t *irc_parse_message(const char *msg) {
          break;
       }
       // resize the array
-      argv = xrealloc(argv, sizeof(char*) * (argc + 1));
+      argv = xrealloc( argv, sizeof(char*) * (argc + 1) );
 
       if (*s == ':') {
          s++;
@@ -165,7 +167,7 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
    bool is_numeric = false;
    int parsed_numeric = 0;
 
-   if (mp->argv[0] && isdigit(mp->argv[0][0]) ) {
+   if ( mp->argv[0] && isdigit(mp->argv[0][0]) ) {
       parsed_numeric = atoi(mp->argv[0]);
 
       if (!parsed_numeric) {
@@ -177,10 +179,12 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
          is_numeric = true;
       }
    }
+
    if (!is_numeric && mp->argv[0] && irc_callback_index) {
       char key[128];
-      irc_command_key(mp->argv[0], key, sizeof(key));
+      irc_command_key( mp->argv[0], key, sizeof(key) );
       irc_callback_t *indexed = dict_get_ptr(irc_callback_index, key, NULL);
+
       if (indexed) {
          p = indexed;
       }
@@ -205,7 +209,7 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
                Log(LOG_WARN, "dispatcher", "Callback in irc_callbacks:<%p> has no target fn for %s", p, mp->argv[0]);
                dict *msg = dict_new();
                dict_add(msg, "msg.cmd", mp->argv[0]);
-               dict_add(msg, "msg.from", irc_name(cptr));
+               dict_add( msg, "msg.from", irc_name(cptr) );
                event_emit_dict("unsupported-msg", NULL, msg);
                dict_free(msg);
             }
@@ -223,7 +227,7 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
                Log(LOG_CRAZY, "dispatcher", "Callback in irc_callbacks:<%p> has no target fn for %s", p, mp->argv[0]);
                dict *msg = dict_new();
                dict_add(msg, "msg.cmd", mp->argv[0]);
-               dict_add(msg, "msg.from", irc_name(cptr));
+               dict_add( msg, "msg.from", irc_name(cptr) );
                event_emit_dict("unsupported-msg", NULL, msg);
                dict_free(msg);
             }
@@ -286,11 +290,13 @@ bool irc_remove_callback(irc_callback_t *cb) {
       if (p == cb) {
          if (irc_callback_index && p->cmd) {
             char key[128];
-            irc_command_key(p->cmd, key, sizeof(key));
+            irc_command_key( p->cmd, key, sizeof(key) );
+
             if (dict_get_ptr(irc_callback_index, key, NULL) == p) {
                dict_del(irc_callback_index, key);
             }
          }
+
          if (p->cmd) {
             free(p->cmd);
          }
@@ -330,9 +336,10 @@ bool irc_register_callback(irc_callback_t *cb) {
       if (!irc_callback_index) {
          irc_callback_index = dict_new();
       }
+
       if (irc_callback_index) {
          char key[128];
-         irc_command_key(cb->cmd, key, sizeof(key));
+         irc_command_key( cb->cmd, key, sizeof(key) );
          dict_add_ptr(irc_callback_index, key, cb);
       }
    }
@@ -418,7 +425,7 @@ bool irc_register_default_callbacks(void) {
          cb->event_key = strdup(cmd->event_key);
       }
 
-      if (irc_register_callback(cb) ) {
+      if ( irc_register_callback(cb) ) {
          Log(LOG_CRIT, "irc", "Failed to register callback for %s", cmd->name);
          free(cb->cmd);
          free(cb);
@@ -467,7 +474,7 @@ bool irc_register_default_numeric_callbacks(void) {
          cb->event_key = strdup(numeric->event_key);
       }
 
-      if (irc_register_callback(cb) ) {
+      if ( irc_register_callback(cb) ) {
          Log(LOG_CRIT, "irc", "Failed to register numeric %03d (%s)", numeric->code, numeric->name);
          free(cb->cmd);
          free(cb);

@@ -42,7 +42,8 @@ const char *media_capab_prepare(const char *codecs) {
    }
    // emit codec message
    char msgbuf[1024];
-   snprintf(msgbuf, sizeof(msgbuf), "{ \"msg\": { \"type\": \"media\" }, \"media\": { \"cmd\": \"capab\", \"codecs\": \"%s\" } }", codecs);
+   snprintf(msgbuf, sizeof(msgbuf),
+      "{ \"msg\": { \"type\": \"media\" }, \"media\": { \"cmd\": \"capab\", \"codecs\": \"%s\" } }", codecs);
 
    return strdup(msgbuf);
 }
@@ -120,6 +121,7 @@ char *codec_filter_test_mode(const char *codecs, bool test_mode) {
    }
 
    char *result = strdup("");
+
    if (!result) {
       return NULL;
    }
@@ -130,6 +132,7 @@ char *codec_filter_test_mode(const char *codecs, bool test_mode) {
       while (*p == ' ') {
          p++;
       }
+
       if (!*p) {
          break;
       }
@@ -139,17 +142,21 @@ char *codec_filter_test_mode(const char *codecs, bool test_mode) {
          p++;
       }
       size_t len = (size_t)(p - start);
-      if (!test_mode && len == 4 && codec_is_test_variant(start)) {
+
+      if ( !test_mode && len == 4 && codec_is_test_variant(start) ) {
          continue;
       }
 
       size_t extra = len + (result_len ? 1 : 0);
       char *grown = realloc(result, result_len + extra + 1);
+
       if (!grown) {
          free(result);
+
          return NULL;
       }
       result = grown;
+
       if (result_len) {
          result[result_len++] = ' ';
       }
@@ -158,62 +165,91 @@ char *codec_filter_test_mode(const char *codecs, bool test_mode) {
       result[result_len] = '\0';
    }
 
-   /* Test mode is deliberately additive for the built-in audio formats.
-    * This lets an older user config that lists the original tone variants
-    * pick up the newer pink variants without silently changing production
-    * codec lists when test mode is disabled. */
+   /* Test mode is deliberately additive for the built-in audio formats. This lets an
+    * older user config that lists the original tone variants pick up the newer pink
+    * variants without silently changing production codec lists when test mode is
+    * disabled. */
    if (test_mode) {
       static const char *const variants[][3] = {
-         { "pc16", "pc1T", "pc1P" },
-         { "g722", "g72T", "g72P" },
-         { "mu16", "mu1T", "mu1P" },
-         { "mu08", "mu0T", "mu0P" },
-         { "opus", "opuT", "opuP" },
-         { "oggv", "oggT", "oggP" },
-         { "aacv", "aacT", "aacP" },
-         { "flac", "flaT", "flaP" }
+         {
+            "pc16", "pc1T", "pc1P"
+         },
+         {
+            "g722", "g72T", "g72P"
+         },
+         {
+            "mu16", "mu1T", "mu1P"
+         },
+         {
+            "mu08", "mu0T", "mu0P"
+         },
+         {
+            "opus", "opuT", "opuP"
+         },
+         {
+            "oggv", "oggT", "oggP"
+         },
+         {
+            "aacv", "aacT", "aacP"
+         },
+         {
+            "flac", "flaT", "flaP"
+         }
       };
-      for (size_t i = 0; i < sizeof(variants) / sizeof(variants[0]); i++) {
+
+      for (size_t i = 0 ; i < sizeof(variants) / sizeof(variants[0]) ; i++) {
          bool enabled = false;
-         for (size_t j = 0; j < 3; j++) {
+
+         for (size_t j = 0 ; j < 3 ; j++) {
             const char *q = codecs;
             while (*q) {
-               while (*q == ' ') q++;
-               if (!*q) break;
+               while (*q == ' ') { q++; }
+
+               if (!*q) { break; }
                const char *start = q;
-               while (*q && *q != ' ') q++;
+               while (*q && *q != ' ') { q++; }
                size_t len = (size_t)(q - start);
+
                if (len == 4 && memcmp(start, variants[i][j], 4) == 0) {
                   enabled = true;
                   break;
                }
             }
-            if (enabled) break;
+
+            if (enabled) { break; }
          }
-         if (!enabled) continue;
-         for (size_t j = 1; j < 3; j++) {
+
+         if (!enabled) { continue; }
+
+         for (size_t j = 1 ; j < 3 ; j++) {
             bool present = false;
             const char *q = result;
             while (*q) {
-               while (*q == ' ') q++;
-               if (!*q) break;
+               while (*q == ' ') { q++; }
+
+               if (!*q) { break; }
                const char *start = q;
-               while (*q && *q != ' ') q++;
+               while (*q && *q != ' ') { q++; }
                size_t len = (size_t)(q - start);
+
                if (len == 4 && memcmp(start, variants[i][j], 4) == 0) {
                   present = true;
                   break;
                }
             }
-            if (present) continue;
+
+            if (present) { continue; }
             size_t len = strlen(variants[i][j]);
             char *grown = realloc(result, result_len + len + (result_len ? 1 : 0) + 1);
+
             if (!grown) {
                free(result);
+
                return NULL;
             }
             result = grown;
-            if (result_len) result[result_len++] = ' ';
+
+            if (result_len) { result[result_len++] = ' '; }
             memcpy(result + result_len, variants[i][j], len);
             result_len += len;
             result[result_len] = '\0';
@@ -226,5 +262,5 @@ char *codec_filter_test_mode(const char *codecs, bool test_mode) {
 
 bool codec_is_test_variant(const char codec[4]) {
    return codec && codec[0] && codec[1] && codec[2] &&
-      (codec[3] == 'T' || codec[3] == 'P');
+          (codec[3] == 'T' || codec[3] == 'P');
 }

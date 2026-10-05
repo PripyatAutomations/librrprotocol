@@ -24,7 +24,9 @@
 // This defines a hard-coded fallback path for httpd root, if not set in config
 extern bool dying;
 extern time_t now;
-char session_token[HTTP_TOKEN_LEN + 1] = { 0 };
+char session_token[HTTP_TOKEN_LEN + 1] = {
+   0
+};
 
 http_user_t http_users[HTTP_MAX_USERS];
 
@@ -43,6 +45,7 @@ int http_getuid(const char *user) {
 
       if (strcasecmp(up->name, user) == 0) {
          Log(LOG_CRAZY, "auth", "Found uid [%d] for username |%s|", i, up->name);
+
          return i;
       }
    }
@@ -67,7 +70,7 @@ static bool http_backup_authdb(void) {
       }
       prepare_msg(new_path, sizeof(new_path), "%s.bak-%s.%d", HTTP_AUTHDB_PATH, date_str, index);
       index++;
-   } while (file_exists(new_path) );
+   } while ( file_exists(new_path) );
 
    // Rename the file
    if (rename(HTTP_AUTHDB_PATH, new_path) == 0) {
@@ -75,6 +78,7 @@ static bool http_backup_authdb(void) {
    } else {
       Log( LOG_CRIT, "http.core", "* Error renaming old config (%s) to %s: %d:%s", HTTP_AUTHDB_PATH, new_path, errno,
          strerror(errno) );
+
       return true;
    }
 
@@ -86,7 +90,7 @@ bool http_save_users(const char *filename) {
       return true;
    }
 
-   if (http_backup_authdb() ) {
+   if ( http_backup_authdb() ) {
       return true;
    }
    int users_saved = 0;
@@ -95,6 +99,7 @@ bool http_save_users(const char *filename) {
 
    if (!file) {
       Log( LOG_CRIT, "auth", "Error saving user database to %s: %d:%s", filename, errno, strerror(errno) );
+
       return true;
    }
    Log(LOG_INFO, "auth", "Saving HTTP user database");
@@ -117,6 +122,7 @@ bool http_save_users(const char *filename) {
 
    fclose(file);
    Log(LOG_INFO, "auth", "Saved %d users to %s", users_saved, filename);
+
    return true;
 }
 
@@ -145,12 +151,12 @@ int http_load_users(const char *filename) {
 
       // Skip comments and empty lines
       if (line[0] == '#' || line[0] == ';' ||
-          (strlen(line) > 1 && (line[0] == '/' && line[1] == '/') ) || line[0] == '\n') {
+          ( strlen(line) > 1 && (line[0] == '/' && line[1] == '/') ) || line[0] == '\n') {
          continue;
       }
       // Remove trailing \r or \n characters
       char *end = line + strlen(line) - 1;
-      while (end >= line && (*end == '\r' || *end == '\n') ) {
+      while ( end >= line && (*end == '\r' || *end == '\n') ) {
          *end = '\0';
          end--;
       }
@@ -211,8 +217,8 @@ int http_load_users(const char *filename) {
             case 6: {
                // Privileges
                strlcpy( up->privs, token, sizeof(up->privs) );
-               Log(LOG_DEBUG, "auth", "load_users: uid=%d, user=%s, email=%s, enabled=%s, privs=%s, max_sessions=%d", uid,
-                  (up->name[0] != '\0' ? up->name : "none"), (up->email[0] != '\0' ? up->email : "none"),
+               Log(LOG_DEBUG, "auth", "load_users: uid=%d, user=%s, email=%s, enabled=%s, privs=%s, max_sessions=%d",
+                  uid, (up->name[0] != '\0' ? up->name : "none"), (up->email[0] != '\0' ? up->email : "none"),
                   (up->enabled ? "true" : "false"), (up->privs[0] != '\0' ? up->privs : "none"), up->max_sessions);
                break;
             }
@@ -224,22 +230,22 @@ int http_load_users(const char *filename) {
    }
    Log(LOG_INFO, "auth", "Loaded %d static users from %s", user_count, filename);
    fclose(file);
+
    return 0;
 }
 
 /*
  * http_reload_users: (re)load the user database into the http_users array.
  *
- * If net.http.authdb-dynamic is true, we emit an "authdb.load" event and the
- * embedding program (rrserver) is responsible for filling http_users[] from
- * its own user store (e.g. the sqlite users table) -- the protocol library
- * doesn't know about databases.
+ * If net.http.authdb-dynamic is true, we emit an "authdb.load" event and the embedding
+ * program (rrserver) is responsible for filling http_users[] from its own user store
+ * (e.g. the sqlite users table) -- the protocol library doesn't know about databases.
  *
- * Otherwise we load users from the file given by net.http.authdb (defaulting
- * to the compile-time HTTP_AUTHDB_PATH fallback).
+ * Otherwise we load users from the file given by net.http.authdb (defaulting to the
+ * compile-time HTTP_AUTHDB_PATH fallback).
  *
- * Called by http_init() at startup and whenever the config is reloaded
- * (see the reload_event_add() registrations in http_init() and the 'rehash'
+ * Called by http_init() at startup and whenever the config is reloaded (see the
+ * reload_event_add() registrations in http_init() and the 'rehash'
  * message handler in srv.http.c).
  */
 /* PARITY: rustyrig-www/js/webui.login.js */
@@ -251,11 +257,12 @@ int http_reload_users(void) {
    }
 
    // Let the program handle dynamic (sql) user storage if it wants to
-   if (cfg_get_bool("net.http.authdb-dynamic", true) ) {
+   if ( cfg_get_bool("net.http.authdb-dynamic", true) ) {
       Log(LOG_DEBUG, "auth", "authdb-dynamic: emitting authdb.load event for program");
       // NB: event_emit_dict() drops the event when data is NULL, so emit
       // directly with an empty payload; the handler doesn't read it.
       event_emit("authdb.load", NULL, "");
+
       return 0;
    }
 
@@ -264,15 +271,17 @@ int http_reload_users(void) {
    if (count < 0) {
       Log(LOG_WARN, "auth", "Error loading users from %s", authdb);
    }
+
    return count;
 }
 
 /*
- * Callback wrapper for reload_event_add() -- the reload event system wants a
- * bool cb(const char *key); we just discard the key and reload the users.
+ * Callback wrapper for reload_event_add() -- the reload event system wants a bool
+ * cb(const char *key); we just discard the key and reload the users.
  */
 bool http_reload_users_cb(const char *key) {
    (void)key;
    http_reload_users();
+
    return false;
 }

@@ -21,7 +21,9 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-rr_vfo_data_t vfos[MAX_VFOS] = { 0};
+rr_vfo_data_t vfos[MAX_VFOS] = {
+   0
+};
 rr_vfo_t active_vfo = VFO_A;
 
 // Our static strings
@@ -50,6 +52,7 @@ rr_vfo_t vfo_lookup(const char vfo) {
    if (vfo >= 'A' && vfo <= 'Z') {
       return (rr_vfo_t)(vfo - 'A');
    }
+
    if (vfo >= 'a' && vfo <= 'z') {
       return (rr_vfo_t)(vfo - 'a');
    }
@@ -66,6 +69,7 @@ const char *vfo_name(rr_vfo_t vfo) {
 
    name[0] = 'A' + vfo;
    name[1] = '\0';
+
    return name;
 }
 
@@ -153,13 +157,13 @@ const char *vfo_mode_name(rr_mode_t mode) {
 }
 
 long parse_freq(const char *str) {
-   while (isspace(*str) ) {
+   while ( isspace(*str) ) {
       str++;
    }
    char *end = NULL;
    double val = strtod(str, &end);
 
-   while (isspace(*end) ) {
+   while ( isspace(*end) ) {
       end++;
    }
 

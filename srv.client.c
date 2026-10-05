@@ -46,6 +46,7 @@ rrconn_t *http_find_client_by_token(const char *token) {
       cptr = cptr->next;
    }
    Log(LOG_CRAZY, "http.client", "find client: no matches for token |%s|!", token);
+
    return NULL;
 }
 
@@ -56,6 +57,7 @@ rrconn_t *http_find_client_by_guest_id(int gid) {
    // this filters out invalid calls
    if (gid <= 1) {
       Log(LOG_WARN, "http", "find_client_by_guestid: gid %d isn't valid", gid);
+
       return NULL;
    }
    while (cptr) {
@@ -85,15 +87,14 @@ rrconn_t *http_find_client_by_name(const char *name) {
       nm++;
    }
    char *end = nm + strlen(nm);
-   while (end > nm && (end[-1] == ' ' || end[-1] == '\t')) {
+   while ( end > nm && (end[-1] == ' ' || end[-1] == '\t') ) {
       *--end = '\0';
    }
-
    while (cptr) {
       Log(LOG_CRAZY, "http.client", "find client by name: i: %d user:<%p> chatname: %s", i, cptr->user, cptr->chatname);
 
       // incomplete entry
-      if (!cptr->user || (cptr->chatname[0] == '\0') ) {
+      if ( !cptr->user || (cptr->chatname[0] == '\0') ) {
          cptr = cptr->next;
          continue;
       }
@@ -109,6 +110,7 @@ rrconn_t *http_find_client_by_name(const char *name) {
       cptr = cptr->next;
    }
    Log(LOG_DEBUG, "http.client", "find client by name found no results for %s, index was %d", name, i);
+
    return NULL;
 }
 
@@ -137,6 +139,7 @@ bool http_client_set_user_agent(rrconn_t *cptr, const char *ua, size_t len) {
    copy[copy_len] = '\0';
    free(cptr->user_agent);
    cptr->user_agent = copy;
+
    return true;
 }
 
@@ -175,7 +178,7 @@ rrconn_t *http_add_client(struct mg_connection *c, bool is_ws) {
    cptr->conn = c;
    cptr->is_ws = is_ws;
 
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
    char ip[INET6_ADDRSTRLEN];
    int port = c->rem.port;
 
@@ -209,7 +212,8 @@ rrconn_t *http_find_client_by_c(struct mg_connection *c) {
 
    while (cptr) {
       if (cptr->conn == c) {
-//         Log( LOG_CRAZY, "http.client", "find_client_by_c <%p> returning index %i: %p |%s|",
+//         Log( LOG_CRAZY, "http.client", "find_client_by_c <%p> returning index %i: %p
+// |%s|",
 //              c, i, cptr, (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>") );
          return cptr;
       }
@@ -224,6 +228,7 @@ rrconn_t *http_find_client_by_c(struct mg_connection *c) {
 void http_remove_client(struct mg_connection *c) {
    if (!c) {
       Log(LOG_CRIT, "http", "http_remove_client passed NULL mg_conn?!");
+
       return;
    }
    rrconn_t *prev = NULL;
@@ -258,10 +263,11 @@ void http_remove_client(struct mg_connection *c) {
             }
          }
          Log( LOG_CRAZY, "http", "Removed client at cptr:<%p> with mgconn:<%p> (%d connections / %d users remain)",
-            current, c, conns - 1, (current->user && current->authenticated ? users - 1 : users));
+            current, c, conns - 1, (current->user && current->authenticated ? users - 1 : users) );
          http_client_free_resources(current);
          memset( current, 0, sizeof(rrconn_t) );
          free(current);
+
          return;
       }
       prev = current;

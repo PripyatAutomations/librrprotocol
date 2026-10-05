@@ -39,7 +39,7 @@ static void parse_server_opts(server_cfg_t *cfg, const char *opts) {
       if (len > 0) {
          char buf[256];
 
-         if ( len >= sizeof(buf) ) {
+         if (len >= sizeof(buf) ) {
             len = sizeof(buf) - 1;
          }
          memcpy(buf, p, len);
@@ -60,7 +60,7 @@ static void parse_server_opts(server_cfg_t *cfg, const char *opts) {
                } else {
                   size_t len = strlen(cfg->autojoin);
 
-                  if ( len + 1 < sizeof(cfg->autojoin) ) {
+                  if (len + 1 < sizeof(cfg->autojoin) ) {
                      // +1 for comma
                      strncat(cfg->autojoin, ",", sizeof(cfg->autojoin) - len - 1);
                      strncat(cfg->autojoin, val, sizeof(cfg->autojoin) - strlen(cfg->autojoin) - 1);
@@ -113,7 +113,7 @@ bool add_server(const char *network, const char *str) {
 
    char hostbuf[256];
 
-   if ( hostlen >= sizeof(hostbuf) ) {
+   if (hostlen >= sizeof(hostbuf) ) {
       hostlen = sizeof(hostbuf) - 1;
    }
    memcpy(hostbuf, p, hostlen);
@@ -128,10 +128,10 @@ bool add_server(const char *network, const char *str) {
 
       if (colon) {
          *colon = '\0';
-         strlcpy(new_cfg->nick, hostbuf, sizeof(new_cfg->nick));
-         strlcpy(new_cfg->pass, colon + 1, sizeof(new_cfg->pass));
+         strlcpy( new_cfg->nick, hostbuf, sizeof(new_cfg->nick) );
+         strlcpy( new_cfg->pass, colon + 1, sizeof(new_cfg->pass) );
       } else {
-         strlcpy(new_cfg->nick, hostbuf, sizeof(new_cfg->nick));
+         strlcpy( new_cfg->nick, hostbuf, sizeof(new_cfg->nick) );
       }
       memmove(hostbuf, at + 1, strlen(at + 1) + 1);
    }
@@ -174,7 +174,7 @@ static bool config_servers_save_cb(FILE *fp, const char *path) {
       return false;
    }
 
-   for (server_cfg_t *sp = server_list; sp; sp = sp->next) {
+   for (server_cfg_t *sp = server_list ; sp ; sp = sp->next) {
       fprintf(fp, "[network:%s]\n", sp->network);
 
       // Rebuild the URL: [irc[s]://][nick[:pass]@]host:port[|opts]
@@ -189,7 +189,7 @@ static bool config_servers_save_cb(FILE *fp, const char *path) {
       }
 
       // Default ports don't need to be written
-      if (sp->port && sp->port != (sp->tls ? 6697 : 6667) ) {
+      if ( sp->port && sp->port != (sp->tls ? 6697 : 6667) ) {
          fprintf(fp, ":%d", sp->port);
       }
 
@@ -213,7 +213,7 @@ bool cfg_servers_init(void) {
 }
 
 // XXX: Re-enable this and make use of it
-#if	0
+#if     0
 ///////////////
 // XXX: upgrade this to be able to be called by a timer
 // XXX: It should check for an existing connection to each network
@@ -254,7 +254,7 @@ bool check_server_autoconnects(void) {
                // Insert into temp_list sorted by priority (descending)
                rrlist_t *cur = temp_list;
                rrlist_t *prev = NULL;
-               while (cur && ( (server_cfg_t *)cur->ptr )->priority >= srvp->priority) {
+               while (cur && ( (server_cfg_t *)cur->ptr)->priority >= srvp->priority) {
                   prev = cur;
                   cur = cur->next;
                }
@@ -286,7 +286,7 @@ bool check_server_autoconnects(void) {
 #if     0
             rrconn_t *cli;
 
-            if ( ( cli = irc_cli_connect(srv) ) ) {
+            if ( (cli = irc_cli_connect(srv) ) ) {
                // Add to the connection list
                rrlist_add(&client_conns, cli, LIST_TAIL);
             }
@@ -301,6 +301,7 @@ bool check_server_autoconnects(void) {
       networks = NULL;
       dict_free(newsrv);
    }
+
    return false;
 }
 #endif

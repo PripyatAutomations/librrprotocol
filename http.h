@@ -23,29 +23,29 @@
 // backups
 #define	MAX_AUTHDB_BK_INDEX 10
 #undef HTTP_DEBUG_CRAZY
-#define	HTTP_MAX_SESSIONS 32             // max sessions total
-#define	HTTP_WS_MAX_MSG 65535            // 64kbytes should be enough per
-                                          // message, even with audio
-                                          // frames
+#define	HTTP_MAX_SESSIONS 32            // max sessions total
+#define	HTTP_WS_MAX_MSG 65535           // 64kbytes should be enough per
+                                         // message, even with audio
+                                         // frames
 #define	HTTP_SESSION_LIFETIME 12 * 60 * 60 // Require a re-login every 12
-                                            // hours, if still connected
-#define	HTTP_SESSION_REAP_TIME 30        // Every 30 seconds, kill
-                                          // expired sessions
-#define	HTTP_AUTH_TIMEOUT 20             // Allow 20 seconds from
-                                          // connection to send login
-                                          // command
-#define	HTTP_PING_TIME 60                // If we haven't heard from the
-                                          // client in this long, send a
-                                          // ping
+                                           // hours, if still connected
+#define	HTTP_SESSION_REAP_TIME 30       // Every 30 seconds, kill
+                                         // expired sessions
+#define	HTTP_AUTH_TIMEOUT 20            // Allow 20 seconds from
+                                         // connection to send login
+                                         // command
+#define	HTTP_PING_TIME 60               // If we haven't heard from the
+                                         // client in this long, send a
+                                         // ping
 #if     (HTTP_PING_TIME / 4) >= 10
-#define	HTTP_PING_TIMEOUT (HTTP_PING_TIME / 4)   // And give them this
-                                                  // long to respond
+#define	HTTP_PING_TIMEOUT (HTTP_PING_TIME / 4)  // And give them this
+                                                 // long to respond
 #else
-#define	HTTP_PING_TIMEOUT 10             // Ensure a minimum of 10
-                                          // seconds wait for a reply
+#define	HTTP_PING_TIMEOUT 10            // Ensure a minimum of 10
+                                         // seconds wait for a reply
 #endif // (HTTP_PING_TIME / 4)
-#define	HTTP_PING_TRIES 3                // We'll try this many times
-                                          // before kicking the client
+#define	HTTP_PING_TRIES 3               // We'll try this many times
+                                         // before kicking the client
 
 #if defined(USE_MONGOOSE)
 /* The public prototypes below only need incomplete Mongoose types. */
@@ -55,9 +55,9 @@ struct mg_http_message;
 #endif // defined(USE_MONGOOSE)
 
 // ws.cat protocol
-#define	HTTP_API_RIGPOLL_PAUSE 2         // time to delay polling the rig
-                                          // after a freq message on
-                                          // ws.cat
+#define	HTTP_API_RIGPOLL_PAUSE 2        // time to delay polling the rig
+                                         // after a freq message on
+                                         // ws.cat
 
 // WF (waterfall) protocol
 

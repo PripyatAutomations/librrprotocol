@@ -25,10 +25,18 @@
 // PARITY: librrprotocol/ws.mediachan.c (server side of the same messages)
 
 // Negotiation state for the connection; single-server client for now
-static char cli_common_codecs[256] = { 0 };
-static char cli_preferred_codec[5] = { 0 };
-static char cli_codec_tx[5] = { 0 };
-static char cli_codec_rx[5] = { 0 };
+static char cli_common_codecs[256] = {
+   0
+};
+static char cli_preferred_codec[5] = {
+   0
+};
+static char cli_codec_tx[5] = {
+   0
+};
+static char cli_codec_rx[5] = {
+   0
+};
 
 extern time_t now;
 
@@ -41,20 +49,22 @@ const char *media_get_preferred_codec(void) {
 }
 
 const char *media_get_codec(bool is_tx) {
-   return (is_tx ? cli_codec_tx : cli_codec_rx);
+   return(is_tx ? cli_codec_tx : cli_codec_rx);
 }
 
 // Client -> server: select a codec for one concrete media channel.
 // The UUID is authoritative; direction comes from the server-owned channel.
 bool media_send_codec_select(rrconn_t *cptr, const char *codec, const char *channel_uuid) {
    if (!cptr || !codec || strlen(codec) != 4 || !channel_uuid || !*channel_uuid) {
-      Log(LOG_WARN, "ws.media", "media.codec select: invalid args codec:<%p> uuid:<%p>",
-         codec, channel_uuid);
+      Log(LOG_WARN, "ws.media", "media.codec select: invalid args codec:<%p> uuid:<%p>", codec, channel_uuid);
+
       return false;
    }
    dict *d = dict_new();
+
    if (!d) {
       Log(LOG_CRIT, "ws.media", "Unable to allocate codec selection for channel %s", channel_uuid);
+
       return false;
    }
    dict_add(d, "msg.type", "media");
@@ -67,10 +77,12 @@ bool media_send_codec_select(rrconn_t *cptr, const char *codec, const char *chan
 
    if (!sent) {
       Log(LOG_WARN, "ws.media", "Unable to send codec %s selection for channel %s", codec, channel_uuid);
+
       return false;
    }
 
    Log(LOG_INFO, "ws.media", "Selected codec %s for media channel %s", codec, channel_uuid);
+
    return true;
 }
 
@@ -80,19 +92,21 @@ bool media_send_client_capab(rrconn_t *cptr) {
       return false;
    }
    const char *configured_codecs = cfg_get_exp("codecs.allowed");
-   char *my_codecs = codec_filter_test_mode(configured_codecs,
-      cfg_get_bool("audio.test-mode", true));
-   free((void *)configured_codecs);
+   char *my_codecs = codec_filter_test_mode( configured_codecs, cfg_get_bool("audio.test-mode", true) );
+   free( (void *)configured_codecs );
 
    if (!my_codecs || !*my_codecs) {
       free(my_codecs);
       Log(LOG_WARN, "ws.media", "codecs.allowed not set; cannot send client capab");
+
       return false;
    }
    dict *d = dict_new();
+
    if (!d) {
       free(my_codecs);
       Log(LOG_CRIT, "ws.media", "Unable to allocate client media capability message");
+
       return false;
    }
    dict_add(d, "msg.type", "media");
@@ -102,8 +116,10 @@ bool media_send_client_capab(rrconn_t *cptr) {
    bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
    free(my_codecs);
+
    if (!sent) {
       Log(LOG_WARN, "ws.media", "Unable to send client media capabilities");
+
       return false;
    }
    Log(LOG_DEBUG, "ws.media", "Sent client media.capab");
@@ -121,6 +137,7 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
 
    if (!media_cmd) {
       Log(LOG_DEBUG, "ws.media", "media message without media.cmd");
+
       return false;
    }
 
@@ -131,15 +148,16 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
 
       if (!media_codecs || !*media_codecs) {
          Log(LOG_WARN, "ws.media", "media.capab without codecs list");
+
          return false;
       }
       const char *configured_codecs = cfg_get_exp("codecs.allowed");
-      char *my_codecs = codec_filter_test_mode(configured_codecs,
-         cfg_get_bool("audio.test-mode", true));
-      free((void *)configured_codecs);
+      char *my_codecs = codec_filter_test_mode( configured_codecs, cfg_get_bool("audio.test-mode", true) );
+      free( (void *)configured_codecs );
 
       if (!my_codecs) {
          Log(LOG_CRIT, "ws.media", "codecs.allowed must be set to negotiate codecs!");
+
          return false;
       }
       char *common = codec_filter_common(my_codecs, media_codecs);
@@ -153,7 +171,7 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
          return false;
       }
       // The first common codec is our default/preferred
-      memset(cli_preferred_codec, 0, sizeof(cli_preferred_codec));
+      memset( cli_preferred_codec, 0, sizeof(cli_preferred_codec) );
       memcpy(cli_preferred_codec, common, 4);
       snprintf(cli_common_codecs, sizeof(cli_common_codecs), "%s", common);
       Log(LOG_INFO, "ws.media", "Negotiated common codecs: %s (default: %s)", common, cli_preferred_codec);
@@ -182,13 +200,14 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
          } else if (dir == RR_BINFRAME_DIR_RX) {
             dst = cli_codec_rx;
          }
+
          if (dst) {
             memcpy(dst, media_preferred, 4);
             dst[4] = '\0';
          }
       }
-      Log(LOG_INFO, "ws.media", "Server confirms codecs: %s (preferred: %s)",
-         (media_codecs ? media_codecs : "<none>"), (media_preferred ? media_preferred : "<none>"));
+      Log( LOG_INFO, "ws.media", "Server confirms codecs: %s (preferred: %s)", (media_codecs ? media_codecs : "<none>"),
+         (media_preferred ? media_preferred : "<none>") );
 
       return true;
    } else if (strcasecmp(media_cmd, "available") == 0 ||
@@ -212,8 +231,10 @@ bool media_send_list(rrconn_t *cptr) {
       return false;
    }
    dict *d = dict_new();
+
    if (!d) {
       Log(LOG_CRIT, "ws.media", "Unable to allocate media list request");
+
       return false;
    }
    dict_add(d, "msg.type", "media");
@@ -224,8 +245,10 @@ bool media_send_list(rrconn_t *cptr) {
 
    if (!sent) {
       Log(LOG_WARN, "ws.media", "Unable to send media channel list request");
+
       return false;
    }
+
    return true;
 }
 
@@ -234,11 +257,14 @@ bool media_send_list(rrconn_t *cptr) {
 bool media_send_subscribe(rrconn_t *cptr, const char *uuid) {
    if (!cptr || !uuid || uuid[0] == '\0') {
       Log(LOG_WARN, "ws.media", "media_send_subscribe: invalid args");
+
       return false;
    }
    dict *d = dict_new();
+
    if (!d) {
       Log(LOG_CRIT, "ws.media", "Unable to allocate subscribe request for channel %s", uuid);
+
       return false;
    }
    dict_add(d, "msg.type", "media");
@@ -247,8 +273,10 @@ bool media_send_subscribe(rrconn_t *cptr, const char *uuid) {
    dict_add_ulong(d, "media.ts", now);
    bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
+
    if (!sent) {
       Log(LOG_WARN, "ws.media", "Unable to subscribe to media channel %s", uuid);
+
       return false;
    }
    Log(LOG_INFO, "ws.media", "Subscribing to media channel |%s|", uuid);
@@ -262,8 +290,10 @@ bool media_send_unsubscribe(rrconn_t *cptr, const char *uuid) {
       return false;
    }
    dict *d = dict_new();
+
    if (!d) {
       Log(LOG_CRIT, "ws.media", "Unable to allocate unsubscribe request for channel %s", uuid);
+
       return false;
    }
    dict_add(d, "msg.type", "media");
@@ -275,6 +305,7 @@ bool media_send_unsubscribe(rrconn_t *cptr, const char *uuid) {
 
    if (!sent) {
       Log(LOG_WARN, "ws.media", "Unable to unsubscribe from media channel %s", uuid);
+
       return false;
    }
 
@@ -290,8 +321,10 @@ bool media_send_source(rrconn_t *cptr, const char *uuid) {
       return false;
    }
    dict *d = dict_new();
+
    if (!d) {
       Log(LOG_CRIT, "ws.media", "Unable to allocate media source request");
+
       return false;
    }
    dict_add(d, "msg.type", "media");
@@ -303,13 +336,13 @@ bool media_send_source(rrconn_t *cptr, const char *uuid) {
    }
    bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
+
    if (!sent) {
-      Log(LOG_WARN, "ws.media", "Unable to register media source (channel %s)",
-         (uuid && uuid[0] ? uuid : "<all>"));
+      Log( LOG_WARN, "ws.media", "Unable to register media source (channel %s)", (uuid && uuid[0] ? uuid : "<all>") );
+
       return false;
    }
-   Log(LOG_INFO, "ws.media", "Registering as media source (channel %s)",
-      (uuid && uuid[0] ? uuid : "<all>"));
+   Log( LOG_INFO, "ws.media", "Registering as media source (channel %s)", (uuid && uuid[0] ? uuid : "<all>") );
 
    return true;
 }

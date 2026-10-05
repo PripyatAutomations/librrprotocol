@@ -36,7 +36,7 @@
 // Deal with HTTP API requests here //
 //////////////////////////////////////
 
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
 const struct mg_http_serve_opts http_opts = {
    .extra_headers = www_headers,
    .page404 = www_404_path,
@@ -66,7 +66,7 @@ static bool http_help(struct mg_http_message *msg, rrconn_t *cptr) {
    }
 
    // Sanity check the topic doesnt contain illegal characters like .. or /
-   if (check_url(topic) ) {
+   if ( check_url(topic) ) {
       Log(LOG_AUDIT, "http.api", "Topic |%s| contains sketch characters, bailing from http_help", help_path);
 
       return false;
@@ -103,8 +103,8 @@ static bool http_api_ws(struct mg_http_message *msg, rrconn_t *cptr) {
 }
 
 static bool http_api_version(struct mg_http_message *msg, rrconn_t *cptr) {
-   mg_http_reply(cptr->conn, 200, http_content_type("json"), "{ \"version\": { \"firmware\": \"%s\", \"hardware\": \"%s\" } }",
-      VERSION, HARDWARE);
+   mg_http_reply(cptr->conn, 200, http_content_type("json"),
+      "{ \"version\": { \"firmware\": \"%s\", \"hardware\": \"%s\" } }", VERSION, HARDWARE);
 
    return true;
 }
@@ -122,18 +122,31 @@ static bool http_api_stats(struct mg_http_message *msg, rrconn_t *cptr) {
    }
 
    mg_http_printf_chunk(cptr->conn, "");   // Don't forget the last empty chunk
+
    return true;
 }
 
 static http_route_t http_routes[HTTP_MAX_ROUTES] = {
-   { "/api/ping", http_api_ping, false },
-   { "/api/stats", http_api_stats, false },
-   { "/api/time", http_api_time, false },
-   { "/api/version", http_api_version, false },
+   {
+      "/api/ping", http_api_ping, false
+   },
+   {
+      "/api/stats", http_api_stats, false
+   },
+   {
+      "/api/time", http_api_time, false
+   },
+   {
+      "/api/version", http_api_version, false
+   },
 //    { "/help",     http_help,  false }  ,     // Help API
-   { "/ws", http_api_ws, true },
+   {
+      "/ws", http_api_ws, true
+   },
 //    { "/tx",    http_api_tx_ws, true },       //
-   { NULL, NULL, false }
+   {
+      NULL, NULL, false
+   }
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -145,7 +158,7 @@ bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr) {
    if (!cptr || !msg) {
       return false;
    }
-   int items = (sizeof(http_routes) / sizeof(http_route_t) ) - 1;
+   int items = ( sizeof(http_routes) / sizeof(http_route_t) ) - 1;
 
    for (int i = 0 ; i < items ; i++) {
       int rv = 0;
@@ -154,6 +167,7 @@ bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr) {
       if (!http_routes[i].match && !http_routes[i].cb) {
          break;
       }
+
       if (!http_routes[i].match || !http_routes[i].cb || !msg->uri.buf) {
          continue;
       }
@@ -173,6 +187,7 @@ bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr) {
             msg->uri.len--;
          }
          rv = http_routes[i].cb(msg, cptr);
+
          return rv != 0;
       } else {
          Log(LOG_CRAZY, "http.req", "Failed to match %.*s: %d: %s", (int)msg->uri.len, msg->uri.buf, i,

@@ -28,7 +28,7 @@
 
 // minimum reason length for kick/ban/etc
 #define	CHAT_MIN_REASON_LEN 10
-#define CALLSIGN_LOOKUP_START_TIMEOUT_MS 60000
+#define	CALLSIGN_LOOKUP_START_TIMEOUT_MS 60000
 
 extern time_t now;
 extern rrconn_t *http_client_list;
@@ -37,7 +37,9 @@ extern const char *config_file;
 extern bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action);
 extern bool ws_chat_error_need_reason(rrconn_t *cptr, const char *command);
 
-static rr_subproc_t callsign_lookup_process = { .pid = -1, .error_fd = -1 };
+static rr_subproc_t callsign_lookup_process = {
+   .pid = -1, .error_fd = -1
+};
 static bool callsign_lookup_atexit_registered = false;
 static bool callsign_lookup_ready = false;
 static bool callsign_lookup_pending = false;
@@ -62,45 +64,51 @@ static bool callsign_lookup_readline(char *line, size_t len, int timeout_ms) {
 }
 
 static bool callsign_lookup_wait_ready(int timeout_ms) {
-   if (callsign_lookup_ready) return true;
+   if (callsign_lookup_ready) { return true; }
+
    if (callsign_lookup_process.pid <= 0 || !callsign_lookup_process.input ||
-       !callsign_lookup_process.output) return false;
+       !callsign_lookup_process.output) { return false; }
 
    char line[1024];
-   while (callsign_lookup_readline(line, sizeof(line), timeout_ms)) {
+   while ( callsign_lookup_readline(line, sizeof(line), timeout_ms) ) {
       if (strncmp(line, "+OK ", 4) == 0) {
          callsign_lookup_ready = true;
          Log(LOG_INFO, "callsign", "lookup helper ready (pid %ld)", (long)callsign_lookup_process.pid);
+
          return true;
       }
       line[strcspn(line, "\r\n")] = '\0';
-      if (*line) Log(LOG_WARN, "callsign", "lookup startup: %s", line);
+
+      if (*line) { Log(LOG_WARN, "callsign", "lookup startup: %s", line); }
    }
 
-   /* A zero-time probe is used from the WebSocket event loop.  No data yet
-    * means only that startup is still in progress; preserve the helper and
-    * let a later request probe it again. */
+   /* A zero-time probe is used from the WebSocket event loop.  No data yet means only
+    * that startup is still in progress; preserve the helper and let a later request probe
+    * it again. */
    if (timeout_ms == 0) {
       int status = 0;
       pid_t ended = waitpid(callsign_lookup_process.pid, &status, WNOHANG);
+
       if (ended == callsign_lookup_process.pid) {
-         if (WIFEXITED(status)) {
-            Log(LOG_WARN, "callsign", "lookup exited before ready (status %d)", WEXITSTATUS(status));
-         } else if (WIFSIGNALED(status)) {
-            Log(LOG_WARN, "callsign", "lookup terminated before ready by signal %d", WTERMSIG(status));
+         if ( WIFEXITED(status) ) {
+            Log( LOG_WARN, "callsign", "lookup exited before ready (status %d)", WEXITSTATUS(status) );
+         } else if ( WIFSIGNALED(status) ) {
+            Log( LOG_WARN, "callsign", "lookup terminated before ready by signal %d", WTERMSIG(status) );
          }
          callsign_lookup_stop();
       }
+
       return false;
    }
 
    int status = 0;
    pid_t ended = waitpid(callsign_lookup_process.pid, &status, WNOHANG);
+
    if (ended == callsign_lookup_process.pid) {
-      if (WIFEXITED(status)) {
-         Log(LOG_WARN, "callsign", "lookup exited before ready (status %d)", WEXITSTATUS(status));
-      } else if (WIFSIGNALED(status)) {
-         Log(LOG_WARN, "callsign", "lookup terminated before ready by signal %d", WTERMSIG(status));
+      if ( WIFEXITED(status) ) {
+         Log( LOG_WARN, "callsign", "lookup exited before ready (status %d)", WEXITSTATUS(status) );
+      } else if ( WIFSIGNALED(status) ) {
+         Log( LOG_WARN, "callsign", "lookup terminated before ready by signal %d", WTERMSIG(status) );
       }
    } else {
       char *program = cfg_get_path("callsign-lookup:path");
@@ -110,24 +118,28 @@ static bool callsign_lookup_wait_ready(int timeout_ms) {
       free(program);
    }
    callsign_lookup_stop();
+
    return false;
 }
 
 static bool callsign_lookup_send_reply(rrconn_t *cptr, const char *text) {
-   if (!cptr || !text) return false;
+   if (!cptr || !text) { return false; }
    dict *message = dict_new();
-   if (!message) return false;
+
+   if (!message) { return false; }
    dict_add(message, "msg.type", "callsign");
    dict_add_ulong(message, "msg.ts", now);
-   /* Keep the wire response machine-readable.  The dictionary serializer
-    * turns dotted keys into nested JSON objects. */
+   /* Keep the wire response machine-readable.  The dictionary serializer turns dotted
+    * keys into nested JSON objects. */
    const char *line = text;
    bool first = true;
    while (*line) {
       const char *end = strchr(line, '\n');
       size_t line_len = end ? (size_t)(end - line) : strlen(line);
+
       if (line_len > 0) {
          const char *colon = memchr(line, ':', line_len);
+
          if (first) {
             char status[256];
             size_t n = line_len < sizeof(status) - 1 ? line_len : sizeof(status) - 1;
@@ -138,105 +150,132 @@ static bool callsign_lookup_send_reply(rrconn_t *cptr, const char *text) {
          } else if (colon && colon > line) {
             char key[128];
             size_t key_len = (size_t)(colon - line);
-            if (key_len >= sizeof(key)) key_len = sizeof(key) - 1;
+
+            if ( key_len >= sizeof(key) ) { key_len = sizeof(key) - 1; }
             size_t out = 0;
-            for (size_t i = 0; i < key_len && out + 1 < sizeof(key); i++) {
+
+            for (size_t i = 0 ; i < key_len && out + 1 < sizeof(key) ; i++) {
                unsigned char ch = (unsigned char)line[i];
-               if (isalnum(ch)) key[out++] = (char)tolower(ch);
-               else if (out > 0 && key[out - 1] != '_') key[out++] = '_';
+
+               if ( isalnum(ch) ) { key[out++] = (char)tolower(ch); } else if (out > 0 && key[out - 1] != '_') {
+                  key[out++] = '_';
+               }
             }
-            while (out > 0 && key[out - 1] == '_') out--;
+
+            while (out > 0 && key[out - 1] == '_') { out--; }
             key[out] = '\0';
+
             if (out > 0) {
                char field_key[160];
                snprintf(field_key, sizeof(field_key), "callsign.fields.%s", key);
                char value[1024];
                size_t value_len = line_len - (size_t)(colon - line) - 1;
-               if (value_len >= sizeof(value)) value_len = sizeof(value) - 1;
+
+               if ( value_len >= sizeof(value) ) { value_len = sizeof(value) - 1; }
                memcpy(value, colon + 1, value_len);
                value[value_len] = '\0';
-               while (*value == ' ') memmove(value, value + 1, strlen(value));
+               while (*value == ' ') { memmove( value, value + 1, strlen(value) ); }
                dict_add(message, field_key, value);
             }
          }
       }
-      if (!end) break;
+
+      if (!end) { break; }
       line = end + 1;
    }
    dict_add_bool(message, "callsign.done", true);
    bool sent = ws_send_dict(NULL, cptr, message, WEBSOCKET_OP_TEXT);
    dict_free(message);
+
    return sent;
 }
 
 static bool callsign_lookup_start(void) {
    if (callsign_lookup_process.pid > 0 && callsign_lookup_process.input &&
-       callsign_lookup_process.output) return true;
+       callsign_lookup_process.output) { return true; }
 
    char *program = cfg_get_path("callsign-lookup:path");
+
    if (!program || !*program || !config_file || !*config_file) {
-      Log(LOG_WARN, "callsign", "Cannot start lookup: callsign-lookup:path or server config is missing (program=%s, config=%s)",
-         (program && *program) ? program : "(unset)",
-         (config_file && *config_file) ? config_file : "(unset)");
+      Log(LOG_WARN, "callsign",
+         "Cannot start lookup: callsign-lookup:path or server config is missing (program=%s, config=%s)",
+         (program && *program) ? program : "(unset)", (config_file && *config_file) ? config_file : "(unset)");
       free(program);
+
       return false;
    }
+
    if (access(program, X_OK) != 0) {
-      Log(LOG_WARN, "callsign", "Cannot start lookup: %s is not executable: %s", program, strerror(errno));
+      Log( LOG_WARN, "callsign", "Cannot start lookup: %s is not executable: %s", program, strerror(errno) );
       free(program);
+
       return false;
    }
+
    if (access(config_file, R_OK) != 0) {
-      Log(LOG_WARN, "callsign", "Cannot start lookup: config %s is not readable: %s", config_file, strerror(errno));
+      Log( LOG_WARN, "callsign", "Cannot start lookup: config %s is not readable: %s", config_file, strerror(errno) );
       free(program);
+
       return false;
    }
+
    if (!callsign_lookup_atexit_registered) {
       atexit(callsign_lookup_stop);
       callsign_lookup_atexit_registered = true;
    }
 
-   const char *argv[] = { program, "-q", "-f", config_file, NULL };
-   if (!rr_subproc_spawn(&callsign_lookup_process, program, argv, true)) {
-      Log(LOG_WARN, "callsign", "Cannot start lookup: subprocess setup failed for %s: %s", program, strerror(errno));
+   const char *argv[] = {
+      program, "-q", "-f", config_file, NULL
+   };
+
+   if ( !rr_subproc_spawn(&callsign_lookup_process, program, argv, true) ) {
+      Log( LOG_WARN, "callsign", "Cannot start lookup: subprocess setup failed for %s: %s", program, strerror(errno) );
       callsign_lookup_stop();
       free(program);
+
       return false;
    }
    free(program);
+
    return true;
 }
 
 // Start the persistent lookup helper during server initialization rather
 // than making the first /qrz or /grid request pay the startup cost.
 bool ws_callsign_lookup_init(void) {
-   if (!callsign_lookup_start()) return false;
-   /* The helper is launched before the network listener.  Give its banner a
-    * bounded startup window here so the first request cannot race readiness,
-    * while keeping the old unbounded 60-second startup hang impossible. */
-   if (!callsign_lookup_wait_ready(5000)) {
+   if ( !callsign_lookup_start() ) { return false; }
+
+   /* The helper is launched before the network listener.  Give its banner a bounded
+    * startup window here so the first request cannot race readiness, while keeping the
+    * old unbounded 60-second startup hang impossible. */
+   if ( !callsign_lookup_wait_ready(5000) ) {
       Log(LOG_WARN, "callsign", "lookup helper did not become ready during initialization");
    }
+
    return callsign_lookup_ready;
 }
 
-/* Drain helper startup output from the server's periodic tick without ever
- * blocking the WebSocket/media event loop. */
+/* Drain helper startup output from the server's periodic tick without ever blocking the
+ * WebSocket/media event loop. */
 void ws_callsign_lookup_poll(void) {
    if (callsign_lookup_process.pid > 0 && !callsign_lookup_ready) {
       (void)callsign_lookup_wait_ready(0);
    }
-   if (!callsign_lookup_pending || !callsign_lookup_ready) return;
+
+   if (!callsign_lookup_pending || !callsign_lookup_ready) { return; }
 
    char line[1024];
-   while (callsign_lookup_readline(line, sizeof(line), 0)) {
+   while ( callsign_lookup_readline(line, sizeof(line), 0) ) {
       line[strcspn(line, "\r\n")] = '\0';
+
       if (!*line || strncmp(line, "+NOTICE ", 8) == 0 ||
           strncmp(line, "+OK ", 4) == 0 || strncmp(line, "+PROTO ", 7) == 0 ||
           strncmp(line, "+GOODBYE", 8) == 0 || line[0] == '[' || line[0] == '<' ||
-          strncmp(line, "==", 2) == 0) continue;
+          strncmp(line, "==", 2) == 0) { continue; }
+
       if (strcmp(line, "+EOR") == 0) {
          callsign_lookup_reply[callsign_lookup_reply_len] = '\0';
+
          if (callsign_lookup_client) {
             callsign_lookup_send_reply(callsign_lookup_client, callsign_lookup_reply);
          }
@@ -244,10 +283,12 @@ void ws_callsign_lookup_poll(void) {
          callsign_lookup_client = NULL;
          callsign_lookup_deadline = 0;
          callsign_lookup_request_text[0] = '\0';
+
          return;
       }
       size_t line_len = strlen(line);
-      if (callsign_lookup_reply_len + line_len + 2 < sizeof(callsign_lookup_reply)) {
+
+      if ( callsign_lookup_reply_len + line_len + 2 < sizeof(callsign_lookup_reply) ) {
          memcpy(callsign_lookup_reply + callsign_lookup_reply_len, line, line_len);
          callsign_lookup_reply_len += line_len;
          callsign_lookup_reply[callsign_lookup_reply_len++] = '\n';
@@ -264,19 +305,24 @@ void ws_callsign_lookup_poll(void) {
 }
 
 static bool callsign_lookup_request(rrconn_t *cptr, const char *request) {
-   if (callsign_lookup_pending) return false;
-   if (!callsign_lookup_start()) return false;
-   /* This runs on the WebSocket/event-loop thread.  Allow only a short grace
-    * period for the startup banner to cross the pipe; the long startup wait
-    * must remain outside request handling so media cannot be stalled. */
-   if (!callsign_lookup_wait_ready(250)) {
+   if (callsign_lookup_pending) { return false; }
+
+   if ( !callsign_lookup_start() ) { return false; }
+
+   /* This runs on the WebSocket/event-loop thread.  Allow only a short grace period for
+    * the startup banner to cross the pipe; the long startup wait must remain outside
+    * request handling so media cannot be stalled. */
+   if ( !callsign_lookup_wait_ready(250) ) {
       Log(LOG_INFO, "callsign", "lookup helper is still starting; request will need to be retried");
+
       return false;
    }
-   if (!rr_subproc_write_line(&callsign_lookup_process, request)) {
-      Log(LOG_WARN, "callsign", "lookup request failed while writing to helper (pid %ld): %s",
-         (long)callsign_lookup_process.pid, strerror(errno));
+
+   if ( !rr_subproc_write_line(&callsign_lookup_process, request) ) {
+      Log( LOG_WARN, "callsign", "lookup request failed while writing to helper (pid %ld): %s",
+         (long)callsign_lookup_process.pid, strerror(errno) );
       callsign_lookup_stop();
+
       return false;
    }
    snprintf(callsign_lookup_request_text, sizeof(callsign_lookup_request_text), "%s", request);
@@ -284,6 +330,7 @@ static bool callsign_lookup_request(rrconn_t *cptr, const char *request) {
    callsign_lookup_pending = true;
    callsign_lookup_deadline = now + 30;
    callsign_lookup_reply_len = 0;
+
    return true;
 }
 
@@ -301,27 +348,34 @@ static char authoritative_room_override[128];
 
 static ws_room_meta_t *room_meta_find(const char *room, bool create) {
    const char *canonical = room_canonical(room);
-   for (size_t i = 0; i < sizeof(room_meta) / sizeof(room_meta[0]); i++) {
+
+   for (size_t i = 0 ; i < sizeof(room_meta) / sizeof(room_meta[0]) ; i++) {
       if (room_meta[i].name[0] && strcasecmp(room_meta[i].name, canonical) == 0) {
          return &room_meta[i];
       }
    }
-   if (!create) return NULL;
-   for (size_t i = 0; i < sizeof(room_meta) / sizeof(room_meta[0]); i++) {
+
+   if (!create) { return NULL; }
+
+   for (size_t i = 0 ; i < sizeof(room_meta) / sizeof(room_meta[0]) ; i++) {
       if (!room_meta[i].name[0]) {
          snprintf(room_meta[i].name, sizeof(room_meta[i].name), "%s", canonical);
+
          return &room_meta[i];
       }
    }
+
    return NULL;
 }
 
 bool ws_room_name_valid(const char *room) {
-   if (!room || (room[0] != '#' && room[0] != '&') || !room[1] ||
-       strlen(room) >= sizeof(room_meta[0].name)) return false;
-   for (const unsigned char *p = (const unsigned char *)room; *p; p++) {
-      if (isspace(*p) || *p == ',' || *p < 32 || *p == 127) return false;
+   if ( !room || (room[0] != '#' && room[0] != '&') || !room[1] ||
+        strlen(room) >= sizeof(room_meta[0].name) ) { return false; }
+
+   for (const unsigned char *p = (const unsigned char *)room ; *p ; p++) {
+      if (isspace(*p) || *p == ',' || *p < 32 || *p == 127) { return false; }
    }
+
    return true;
 }
 
@@ -330,35 +384,43 @@ const char *ws_site_room(void) {
    char *configured = (char *)cfg_get_exp("station.name");
    int length = snprintf(room, sizeof(room), "#%s", configured && *configured ? configured : "rustyrig");
    free(configured);
-   if (length < 0 || (size_t)length >= sizeof(room)) room[0] = '\0';
+
+   if ( length < 0 || (size_t)length >= sizeof(room) ) { room[0] = '\0'; }
+
    return room;
 }
 
 // Base rig rooms are reserved even outside this site's namespace.
 bool ws_room_rig_base(const char *room) {
-   if (!ws_room_name_valid(room)) return false;
+   if ( !ws_room_name_valid(room) ) { return false; }
    const char *dash = strrchr(room, '-');
-   if (!dash || strncasecmp(dash, "-rig", 4) || !isdigit((unsigned char)dash[4])) return false;
+
+   if ( !dash || strncasecmp(dash, "-rig", 4) || !isdigit( (unsigned char)dash[4] ) ) { return false; }
    const char *p = dash + 4;
-   while (isdigit((unsigned char)*p)) p++;
+   while ( isdigit( (unsigned char)*p ) ) { p++; }
+
    return !*p;
 }
 
 bool ws_room_rig_namespace(const char *room) {
-   if (!ws_room_name_valid(room) || room[0] != '#') return false;
+   if (!ws_room_name_valid(room) || room[0] != '#') { return false; }
    const char *site = ws_site_room();
    size_t prefix = strlen(site);
-   if (strncasecmp(room, site, prefix) || strncasecmp(room + prefix, "-rig", 4)) return false;
+
+   if ( strncasecmp(room, site, prefix) || strncasecmp(room + prefix, "-rig", 4) ) { return false; }
    const char *p = room + prefix + 4;
-   if (!isdigit((unsigned char)*p)) return false;
-   while (isdigit((unsigned char)*p)) p++;
+
+   if ( !isdigit( (unsigned char)*p ) ) { return false; }
+   while ( isdigit( (unsigned char)*p ) ) { p++; }
+
    return !*p || (*p == '.' && p[1]);
 }
 
 bool ws_room_same_rig(const char *room, const char *base) {
-   if (!room || !base || !ws_room_rig_base(base)) return false;
+   if ( !room || !base || !ws_room_rig_base(base) ) { return false; }
    size_t n = strlen(base);
-   return !strncasecmp(room, base, n) && (!room[n] || (room[n] == '.' && room[n + 1]));
+
+   return !strncasecmp(room, base, n) && ( !room[n] || (room[n] == '.' && room[n + 1]) );
 }
 
 bool ws_room_tx_control(const char *room) {
@@ -366,16 +428,23 @@ bool ws_room_tx_control(const char *room) {
 }
 
 uint32_t ws_room_rx_tuning_mask(const char *room) {
-   if (!ws_room_rig_namespace(room)) return 0;
-   for (size_t i = 0; i < sizeof(room_meta) / sizeof(room_meta[0]); i++)
-      if (room_meta[i].rx_tuning_mask && ws_room_same_rig(room, room_meta[i].name))
+   if ( !ws_room_rig_namespace(room) ) { return 0; }
+
+   for (size_t i = 0 ; i < sizeof(room_meta) / sizeof(room_meta[0]) ; i++) {
+      if ( room_meta[i].rx_tuning_mask && ws_room_same_rig(room, room_meta[i].name) ) {
          return room_meta[i].rx_tuning_mask & ws_room_vfo_mask(room);
+      }
+   }
+
    return 0;
 }
-bool ws_room_rx_tunable(const char *room) { return ws_room_rx_tuning_mask(room) != 0; }
+bool ws_room_rx_tunable(const char *room) {
+   return ws_room_rx_tuning_mask(room) != 0;
+}
 bool ws_room_set_rx_tuning_mask(const char *room, uint32_t mask) {
-   if (!ws_room_tx_control(room) || (mask & ~ws_room_vfo_mask(room))) return false;
+   if ( !ws_room_tx_control(room) || ( mask & ~ws_room_vfo_mask(room) ) ) { return false; }
    room_meta_find(room, false)->rx_tuning_mask = mask;
+
    return true;
 }
 bool ws_room_set_rx_tuning(const char *room, bool enabled) {
@@ -384,20 +453,23 @@ bool ws_room_set_rx_tuning(const char *room, bool enabled) {
 
 bool ws_room_control_allowed(rrconn_t *client, const char *room, bool frequency) {
    return client && ws_client_in_room(client, room) &&
-      (ws_room_tx_control(room) || (frequency && ws_room_has_vfos(room) && ws_room_rx_tunable(room)));
+          ( ws_room_tx_control(room) || ( frequency && ws_room_has_vfos(room) && ws_room_rx_tunable(room) ) );
 }
 
 bool ws_room_set_vfo_mask(const char *room, uint32_t mask) {
-   if (!ws_room_name_valid(room) || (mask && !ws_room_rig_namespace(room))) return false;
+   if ( !ws_room_name_valid(room) || ( mask && !ws_room_rig_namespace(room) ) ) { return false; }
    ws_room_meta_t *meta = room_meta_find(room, true);
-   if (!meta) return false;
+
+   if (!meta) { return false; }
    meta->has_vfos = mask != 0;
    meta->vfo_mask = mask;
+
    return true;
 }
 
 const char *ws_authoritative_room(void) {
    static char room[128];
+
    if (authoritative_room_override[0]) {
       return authoritative_room_override;
    }
@@ -406,26 +478,30 @@ const char *ws_authoritative_room(void) {
    snprintf(room, sizeof(room), "#%s-rig0", name);
    free(configured);
    ws_room_meta_t *meta = NULL;
-   for (size_t i = 0; i < sizeof(room_meta) / sizeof(room_meta[0]); i++) {
+
+   for (size_t i = 0 ; i < sizeof(room_meta) / sizeof(room_meta[0]) ; i++) {
       if (strcasecmp(room_meta[i].name, room) == 0) {
          meta = &room_meta[i];
          break;
       }
+
       if (!meta && !room_meta[i].name[0]) {
          snprintf(room_meta[i].name, sizeof(room_meta[i].name), "%s", room);
          meta = &room_meta[i];
          break;
       }
    }
+
    if (meta) {
       meta->has_vfos = ws_room_rig_namespace(room) && authoritative_vfo_mask != 0;
       meta->vfo_mask = meta->has_vfos ? authoritative_vfo_mask : 0;
    }
+
    return room;
 }
 
 void ws_set_authoritative_room(const char *room) {
-   if (!ws_room_name_valid(room)) {
+   if ( !ws_room_name_valid(room) ) {
       return;
    }
    snprintf(authoritative_room_override, sizeof(authoritative_room_override), "%s", room);
@@ -433,17 +509,20 @@ void ws_set_authoritative_room(const char *room) {
 
 bool ws_room_has_vfos(const char *room) {
    ws_room_meta_t *meta = room_meta_find(room, false);
+
    return meta ? meta->has_vfos : false;
 }
 
 uint32_t ws_room_vfo_mask(const char *room) {
    ws_room_meta_t *meta = room_meta_find(room, false);
+
    return meta ? meta->vfo_mask : 0;
 }
 
 void ws_set_authoritative_vfo_mask(uint32_t mask) {
    authoritative_vfo_mask = mask;
    ws_room_meta_t *meta = room_meta_find(ws_authoritative_room(), true);
+
    if (meta) {
       meta->has_vfos = mask != 0;
       meta->vfo_mask = mask;
@@ -462,62 +541,74 @@ bool ws_client_in_room(const rrconn_t *cptr, const char *room) {
    char copy[AUTOJOIN_LEN];
    snprintf(copy, sizeof(copy), "%s", cptr->rooms);
    char *save = NULL;
-   for (char *tok = strtok_r(copy, ",", &save); tok; tok = strtok_r(NULL, ",", &save)) {
+
+   for ( char *tok = strtok_r(copy, ",", &save) ; tok ; tok = strtok_r(NULL, ",", &save) ) {
       if (strcasecmp(tok, want) == 0) {
          return true;
       }
    }
+
    return false;
 }
 
 bool ws_client_join_room(rrconn_t *cptr, const char *room) {
-   if (!cptr || !ws_room_name_valid(room)) {
+   if ( !cptr || !ws_room_name_valid(room) ) {
       return false;
    }
    const char *canonical = room_canonical(room);
-   if (ws_room_rig_base(canonical) && !room_meta_find(canonical, false)) return false;
+
+   if ( ws_room_rig_base(canonical) && !room_meta_find(canonical, false) ) { return false; }
+
    if (canonical[0] != '#' && canonical[0] != '&') {
       return false;
    }
-   if (ws_client_in_room(cptr, canonical)) {
+
+   if ( ws_client_in_room(cptr, canonical) ) {
       return true;
    }
    size_t used = strlen(cptr->rooms);
    size_t need = strlen(canonical) + (used ? 1 : 0);
-   if (used + need + 1 >= sizeof(cptr->rooms)) {
+
+   if ( used + need + 1 >= sizeof(cptr->rooms) ) {
       return false;
    }
-   if (used) strlcat(cptr->rooms, ",", sizeof(cptr->rooms));
-   strlcat(cptr->rooms, canonical, sizeof(cptr->rooms));
+
+   if (used) { strlcat( cptr->rooms, ",", sizeof(cptr->rooms) ); }
+   strlcat( cptr->rooms, canonical, sizeof(cptr->rooms) );
+
    return true;
 }
 
 bool ws_client_part_room(rrconn_t *cptr, const char *room) {
    if (!cptr || !room ||
-       strcasecmp(room, ws_site_room()) == 0) {
+       strcasecmp( room, ws_site_room() ) == 0) {
       return false;
    }
    const char *want = room_canonical(room);
    char old[AUTOJOIN_LEN], out[AUTOJOIN_LEN] = "";
    snprintf(old, sizeof(old), "%s", cptr->rooms);
    char *save = NULL;
-   for (char *tok = strtok_r(old, ",", &save); tok; tok = strtok_r(NULL, ",", &save)) {
-      if (strcasecmp(tok, want) == 0) continue;
-      if (out[0]) strlcat(out, ",", sizeof(out));
-      strlcat(out, tok, sizeof(out));
+
+   for ( char *tok = strtok_r(old, ",", &save) ; tok ; tok = strtok_r(NULL, ",", &save) ) {
+      if (strcasecmp(tok, want) == 0) { continue; }
+
+      if (out[0]) { strlcat( out, ",", sizeof(out) ); }
+      strlcat( out, tok, sizeof(out) );
    }
+
    snprintf(cptr->rooms, sizeof(cptr->rooms), "%s", out);
    media_part_room(cptr, room);
    event_emit("room.part", cptr, room);
    media_send_available_all(cptr);
+
    return true;
 }
 
 void ws_broadcast_room_dict(rrconn_t *sender, dict *d, const char *room) {
-   if (!d) return;
+   if (!d) { return; }
    rrconn_t *cur = http_client_list;
    while (cur) {
-      if (cur->is_ws && cur->authenticated && ws_client_in_room(cur, room)) {
+      if ( cur->is_ws && cur->authenticated && ws_client_in_room(cur, room) ) {
          ws_send_dict(sender, cur, d, WEBSOCKET_OP_TEXT);
       }
       cur = cur->next;
@@ -534,6 +625,7 @@ static bool ws_chat_cmd_die(rrconn_t *cptr, const char *reason) {
 
    if (!reason || strlen(reason) < CHAT_MIN_REASON_LEN) {
       ws_chat_error_need_reason(cptr, "die");
+
       return true;
    }
 
@@ -541,7 +633,7 @@ static bool ws_chat_cmd_die(rrconn_t *cptr, const char *reason) {
       return true;
    }
 
-   if (client_has_flag(cptr, FLAG_STAFF) ) {
+   if ( client_has_flag(cptr, FLAG_STAFF) ) {
       // Send an ALERT to all connected users
       char msgbuf[HTTP_WS_MAX_MSG + 1];
       prepare_msg(msgbuf, sizeof(msgbuf), "Shutting down due to /die \"%s\" from %s (uid: %d with privs %s)",
@@ -554,6 +646,7 @@ static bool ws_chat_cmd_die(rrconn_t *cptr, const char *reason) {
       dying = 1;
    } else {
       ws_chat_err_noprivs(cptr, "DIE");
+
       return true;
    }
 
@@ -570,6 +663,7 @@ static bool ws_chat_cmd_restart(rrconn_t *cptr, const char *reason) {
 
    if (!reason || strlen(reason) < CHAT_MIN_REASON_LEN) {
       ws_chat_error_need_reason(cptr, "RESTART");
+
       return true;
    }
 
@@ -577,7 +671,7 @@ static bool ws_chat_cmd_restart(rrconn_t *cptr, const char *reason) {
       return true;
    }
 
-   if (client_has_flag(cptr, FLAG_STAFF) ) {
+   if ( client_has_flag(cptr, FLAG_STAFF) ) {
       // Send an ALERT to all connected users
       char msgbuf[HTTP_WS_MAX_MSG + 1];
       prepare_msg(msgbuf, sizeof(msgbuf), "Shutting down due to /restart from %s (uid: %d with privs %s): %s",
@@ -606,15 +700,17 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
    if (!target) {
       // XXX: send an error response 'No target given'
       ws_send_error(cptr, "No target given for KICK");
+
       return true;
    }
 
    if (!reason || strlen(reason) < CHAT_MIN_REASON_LEN) {
       ws_chat_error_need_reason(cptr, "kick");
+
       return true;
    }
 
-   if (client_has_flag(cptr, FLAG_STAFF) ) {
+   if ( client_has_flag(cptr, FLAG_STAFF) ) {
       rrconn_t *acptr;
       int kicked = 0;
 
@@ -630,11 +726,11 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
             prepare_msg( msgbuf, sizeof(msgbuf), "kicked by %s (Reason: %s)", cptr->chatname,
                (reason ? reason : "No reason given") );
             Log(LOG_AUDIT, "admin.kick", "%s %s", acptr->chatname, msgbuf);
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
             struct mg_str ms = mg_str(msgbuf);
             ws_broadcast_with_flags(FLAG_STAFF, NULL, &ms, WEBSOCKET_OP_TEXT);
             ws_kick_client(acptr, msgbuf);
-#endif	// USE_MONGOOSE
+#endif // USE_MONGOOSE
             kicked++;
          }
       }
@@ -651,6 +747,7 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
       }
    } else {
       ws_chat_err_noprivs(cptr, "KICK");
+
       return true;
    }
 
@@ -664,14 +761,17 @@ static bool ws_send_userinfo_room(rrconn_t *cptr, rrconn_t *acptr, const char *r
       return false;
    }
    const char *target_room = (room && *room) ? room : ws_authoritative_room();
+
    if (!target_room || !*target_room) {
       Log(LOG_WARN, "ws.chat", "Refusing userinfo for %s without a room",
          cptr->chatname ? cptr->chatname : "<unknown>");
+
       return false;
    }
+
    // Video sources (webcam etc announcing hello.role: video-source) are not
    // users; keep them out of the chat/user lists
-   if (client_has_flag(cptr, FLAG_VIDEO_SOURCE) ) {
+   if ( client_has_flag(cptr, FLAG_VIDEO_SOURCE) ) {
       return false;
    }
    dict *talk_msg = dict_new();
@@ -684,8 +784,11 @@ static bool ws_send_userinfo_room(rrconn_t *cptr, rrconn_t *acptr, const char *r
    dict_add_bool(talk_msg, "talk.muted", cptr->user->is_muted);
    dict_add_bool(talk_msg, "talk.tx", cptr->is_ptt);
    dict_add(talk_msg, "talk.ptt-room", cptr->ptt_room);
+
    if (cptr->ptt_vfo) {
-      char ptt_vfo[2] = { cptr->ptt_vfo, '\0' };
+      char ptt_vfo[2] = {
+         cptr->ptt_vfo, '\0'
+      };
       dict_add(talk_msg, "talk.ptt-vfo", ptt_vfo);
    }
    dict_add_long(talk_msg, "msg.ts", now);
@@ -697,58 +800,72 @@ static bool ws_send_userinfo_room(rrconn_t *cptr, rrconn_t *acptr, const char *r
    }
 
    dict_free(talk_msg);
+
    return true;
 }
 
 bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
-   if (acptr) return ws_send_userinfo_room(cptr, acptr, ws_authoritative_room());
-   if (!cptr) return false;
+   if (acptr) { return ws_send_userinfo_room( cptr, acptr, ws_authoritative_room() ); }
+
+   if (!cptr) { return false; }
    char copy[AUTOJOIN_LEN];
    snprintf(copy, sizeof(copy), "%s", cptr->rooms);
    char *save = NULL;
    bool sent = false;
-   for (char *room = strtok_r(copy, ",", &save); room;
-        room = strtok_r(NULL, ",", &save)) {
-      for (rrconn_t *recipient = http_client_list; recipient; recipient = recipient->next) {
-         if (ws_client_in_room(recipient, room)) {
+
+   for ( char *room = strtok_r(copy, ",", &save) ; room ;
+         room = strtok_r(NULL, ",", &save) ) {
+      for (rrconn_t *recipient = http_client_list ; recipient ; recipient = recipient->next) {
+         if ( ws_client_in_room(recipient, room) ) {
             ws_send_userinfo_room(cptr, recipient, room);
             sent = true;
          }
       }
    }
-   if (!sent) ws_send_userinfo_room(cptr, NULL, ws_authoritative_room());
+
+   if (!sent) { ws_send_userinfo_room( cptr, NULL, ws_authoritative_room() ); }
+
    return true;
 }
 
 bool ws_send_room_users(rrconn_t *cptr, const char *room) {
-   if (!cptr || !room) return false;
-   for (rrconn_t *current = http_client_list; current; current = current->next) {
-      if (ws_client_in_room(current, room))
+   if (!cptr || !room) { return false; }
+
+   for (rrconn_t *current = http_client_list ; current ; current = current->next) {
+      if ( ws_client_in_room(current, room) ) {
          ws_send_userinfo_room(current, cptr, room);
+      }
    }
+
    return true;
 }
 
 // Send info on all online users to the user
 bool ws_send_users(rrconn_t *cptr) {
    if (cptr) {
-      /* A roster is scoped to the rooms the recipient has joined.  Include
-       * the room on each userinfo record so clients can keep independent
-       * user lists for side chats. */
+      /* A roster is scoped to the rooms the recipient has joined.  Include the room on
+       * each userinfo record so clients can keep independent user lists for side chats.
+       */
       char copy[AUTOJOIN_LEN];
       snprintf(copy, sizeof(copy), "%s", cptr->rooms);
       char *save = NULL;
-      for (char *room = strtok_r(copy, ",", &save); room;
-           room = strtok_r(NULL, ",", &save)) {
-         for (rrconn_t *current = http_client_list; current; current = current->next) {
-            if (ws_client_in_room(current, room))
+
+      for ( char *room = strtok_r(copy, ",", &save) ; room ;
+            room = strtok_r(NULL, ",", &save) ) {
+         for (rrconn_t *current = http_client_list ; current ; current = current->next) {
+            if ( ws_client_in_room(current, room) ) {
                ws_send_userinfo_room(current, cptr, room);
+            }
          }
       }
+
       return true;
    }
-   for (rrconn_t *current = http_client_list; current; current = current->next)
+
+   for (rrconn_t *current = http_client_list ; current ; current = current->next) {
       ws_send_userinfo(current, NULL);
+   }
+
    return true;
 }
 
@@ -766,7 +883,7 @@ static bool ws_chat_cmd_mute(rrconn_t *cptr, const char *target, const char *rea
       return true;
    }
 
-   if (client_has_flag(cptr, FLAG_STAFF) ) {
+   if ( client_has_flag(cptr, FLAG_STAFF) ) {
       rrconn_t *acptr = http_find_client_by_name(target);
 
       if (!acptr) {
@@ -791,8 +908,10 @@ static bool ws_chat_cmd_mute(rrconn_t *cptr, const char *target, const char *rea
       }
    } else {
       ws_chat_err_noprivs(cptr, "MUTE");
+
       return true;
    }
+
    return false;
 }
 
@@ -806,6 +925,7 @@ static bool ws_chat_cmd_unmute(rrconn_t *cptr, const char *target) {
 
    if (!target) {
       ws_send_error(cptr, "No target given for UNMUTE");
+
       return true;
    }
 
@@ -813,7 +933,7 @@ static bool ws_chat_cmd_unmute(rrconn_t *cptr, const char *target) {
       return true;
    }
 
-   if (client_has_flag(cptr, FLAG_STAFF) ) {
+   if ( client_has_flag(cptr, FLAG_STAFF) ) {
       rrconn_t *acptr = http_find_client_by_name(target);
 
       if (!acptr) {
@@ -842,7 +962,7 @@ static bool ws_chat_cmd_syslog(rrconn_t *cptr, const char *state) {
       return true;
    }
 
-   if (client_has_flag(cptr, FLAG_STAFF) || client_has_flag(cptr, FLAG_SYSLOG) ) {
+   if ( client_has_flag(cptr, FLAG_STAFF) || client_has_flag(cptr, FLAG_SYSLOG) ) {
       bool new_state = false;
 
       new_state = parse_bool(state);
@@ -854,8 +974,10 @@ static bool ws_chat_cmd_syslog(rrconn_t *cptr, const char *state) {
       }
    } else {
       ws_chat_err_noprivs(cptr, "SYSLOG");
+
       return true;
    }
+
    return false;
 }
 
@@ -866,6 +988,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
    if (!cptr->user) {
       Log(LOG_WARN, "chat", "talk parse, cptr:<%p> ->user NULL", cptr);
+
       return false;
    }
 
@@ -891,55 +1014,68 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
       if (strcasecmp(cmd, "qrz") == 0 || strcasecmp(cmd, "grid") == 0) {
          if (!data || !*data) {
             ws_send_error(cptr, "Usage: /%s VALUE", strcasecmp(cmd, "grid") == 0 ? "grid" : "qrz");
+
             return false;
          }
          char lookup_data[256];
          snprintf(lookup_data, sizeof(lookup_data), "%s", data);
          bool no_cache = false;
+
          if (strcasecmp(cmd, "qrz") == 0) {
             char *option = strpbrk(lookup_data, " \t");
+
             if (option) {
                *option++ = '\0';
-               while (*option == ' ' || *option == '\t') option++;
+               while (*option == ' ' || *option == '\t') { option++; }
+
                if (strcasecmp(option, "nocache") != 0) {
                   ws_send_error(cptr, "Invalid /qrz option: %s", option);
+
                   return false;
                }
                no_cache = true;
             }
-            for (const unsigned char *p = (const unsigned char *)lookup_data; *p; p++) {
+
+            for (const unsigned char *p = (const unsigned char *)lookup_data ; *p ; p++) {
                if (!isalnum(*p) && *p != '-' && *p != '/' && *p != '.') {
                   ws_send_error(cptr, "Invalid callsign: %s", lookup_data);
+
                   return false;
                }
             }
          } else {
-            for (const unsigned char *p = (const unsigned char *)lookup_data; *p; p++) {
+            for (const unsigned char *p = (const unsigned char *)lookup_data ; *p ; p++) {
                if (!isalnum(*p) && *p != '-' && *p != '.' && *p != ',' &&
                    *p != '+' && *p != ' ') {
                   ws_send_error(cptr, "Invalid grid or coordinates: %s", data);
+
                   return false;
                }
             }
          }
          char *lookup_program = cfg_get_path("callsign-lookup:path");
          bool lookup_configured = lookup_program && *lookup_program &&
-            config_file && *config_file;
+                                  config_file && *config_file;
          free(lookup_program);
+
          if (!lookup_configured) {
             ws_send_error(cptr, "Callsign lookup is not configured on the server");
+
             return false;
          }
-         /* lookup_data is bounded to 255 bytes above; leave room for the
-          * command prefix and optional NOCACHE suffix. */
+         /* lookup_data is bounded to 255 bytes above; leave room for the command prefix
+          * and optional NOCACHE suffix. */
          char request[512];
-         snprintf(request, sizeof(request), "/%s %s",
-            strcasecmp(cmd, "grid") == 0 ? "GRID" : "CALL", lookup_data);
-         if (no_cache) strncat(request, " NOCACHE", sizeof(request) - strlen(request) - 1);
-         if (!callsign_lookup_request(cptr, request)) {
+         snprintf(request, sizeof(request), "/%s %s", strcasecmp(cmd, "grid") == 0 ? "GRID" : "CALL", lookup_data);
+
+         if (no_cache) { strncat(request, " NOCACHE", sizeof(request) - strlen(request) - 1); }
+
+         if ( !callsign_lookup_request(cptr, request) ) {
             ws_send_error(cptr, "Callsign lookup is still starting; please retry shortly");
+
             return false;
          }
+
          return true;
       } else if (strcasecmp(cmd, "list") == 0) {
          dict *list = dict_new();
@@ -948,6 +1084,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          dict_add_ulong(list, "msg.ts", now);
          event_emit_dict("room.list", cptr, list);
          dict_free(list);
+
          return true;
       } else if (strcasecmp(cmd, "room") == 0) {
          char argbuf[256];
@@ -956,37 +1093,49 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          char *room_or_list = strtok_r(argbuf, " \t", &save);
          char *action = strtok_r(NULL, " \t", &save);
          const char *usage = "Usage: /room list|#room add|remove|vfo (add|list|remove) [rig0.]vfo_a";
+
          if (!room_or_list) {
             ws_send_error(cptr, usage);
+
             return false;
          }
+
          if (strcasecmp(room_or_list, "list") == 0) {
             if (action) {
                ws_send_error(cptr, usage);
+
                return false;
             }
             dict *list = dict_new(); dict_add(list, "msg.type", "talk");
             dict_add(list, "talk.cmd", "room-list"); dict_add_ulong(list, "msg.ts", now);
             event_emit_dict("room.list", cptr, list); dict_free(list); return true;
          }
+
          if (room_or_list[0] != '#' && room_or_list[0] != '&') {
             ws_send_error(cptr, "Invalid room name: %s (room names must start with # or &)", room_or_list);
+
             return false;
          }
          const char *room = room_canonical(room_or_list);
+
          if (!action) {
             ws_send_error(cptr, usage);
+
             return false;
          }
+
          if (strcasecmp(action, "add") == 0 || strcasecmp(action, "remove") == 0) {
-            if (strtok_r(NULL, " \t", &save) || !has_priv(cptr->user->uid, "admin|owner")) {
+            if ( strtok_r(NULL, " \t", &save) || !has_priv(cptr->user->uid, "admin|owner") ) {
                ws_send_error(cptr, "Usage: /room #room add|remove (admin or owner required)");
+
                return false;
             }
+
             if (strcasecmp(action, "remove") == 0) {
-               if (strcasecmp(room, ws_authoritative_room()) == 0 ||
-                   strcasecmp(room, ws_site_room()) == 0) {
+               if (strcasecmp( room, ws_authoritative_room() ) == 0 ||
+                   strcasecmp( room, ws_site_room() ) == 0) {
                   ws_send_error(cptr, "The site lobby and default rig room cannot be deleted");
+
                   return false;
                }
                dict *deleted = dict_new();
@@ -998,8 +1147,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                event_emit_dict("room.delete", cptr, deleted);
                dict_free(deleted);
             } else {
-               if (ws_room_rig_base(room)) {
+               if ( ws_room_rig_base(room) ) {
                   ws_send_error(cptr, "Base rig rooms are created only by server rig initialization");
+
                   return false;
                }
                dict *added = dict_new();
@@ -1011,34 +1161,45 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                event_emit_dict("room.add", cptr, added);
                dict_free(added);
             }
+
             return true;
          }
+
          if (strcasecmp(action, "vfo") == 0) {
             char *vfo_action = strtok_r(NULL, " \t", &save);
             char *binding = strtok_r(NULL, " \t", &save);
-            if (!vfo_action || (strcasecmp(vfo_action, "list") != 0 && !binding) ||
-                strtok_r(NULL, " \t", &save)) {
+
+            if ( !vfo_action || (strcasecmp(vfo_action, "list") != 0 && !binding) ||
+                 strtok_r(NULL, " \t", &save) ) {
                ws_send_error(cptr, usage);
+
                return false;
             }
+
             if (strcasecmp(vfo_action, "list") == 0) {
                dict *list = dict_new(); dict_add(list, "msg.type", "talk");
                dict_add(list, "talk.cmd", "room-vfo-list"); dict_add(list, "talk.room", room);
                dict_add_ulong(list, "msg.ts", now);
                event_emit_dict("room.vfo-list", cptr, list); dict_free(list); return true;
             }
-            if ((strcasecmp(vfo_action, "add") != 0 && strcasecmp(vfo_action, "remove") != 0) ||
-                !has_priv(cptr->user->uid, "admin|owner")) {
+
+            if ( (strcasecmp(vfo_action, "add") != 0 && strcasecmp(vfo_action, "remove") != 0) ||
+                 !has_priv(cptr->user->uid, "admin|owner") ) {
                ws_send_error(cptr, "Usage: /room #room vfo add|remove [rig0.]vfo_a (admin or owner required)");
+
                return false;
             }
-            if (strcasecmp(vfo_action, "add") == 0 && !ws_room_rig_namespace(room)) {
+
+            if ( strcasecmp(vfo_action, "add") == 0 && !ws_room_rig_namespace(room) ) {
                ws_send_error(cptr, "Only this site's numbered rig rooms may have VFO controls");
+
                return false;
             }
             char normalized[128];
-            if (strncasecmp(binding, "rig", 3) != 0) snprintf(normalized, sizeof(normalized), "rig0.%s", binding);
-            else snprintf(normalized, sizeof(normalized), "%s", binding);
+
+            if (strncasecmp(binding, "rig", 3) != 0) {
+               snprintf(normalized, sizeof(normalized), "rig0.%s", binding);
+            } else { snprintf(normalized, sizeof(normalized), "%s", binding); }
             dict *vm = dict_new(); dict_add(vm, "msg.type", "talk");
             dict_add(vm, "talk.cmd", "room-vfo"); dict_add(vm, "talk.action", vfo_action);
             dict_add(vm, "talk.room", room); dict_add(vm, "talk.vfo", normalized);
@@ -1046,26 +1207,36 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             event_emit_dict("room.vfo", cptr, vm); dict_free(vm); return true;
          }
          ws_send_error(cptr, usage);
+
          return false;
       } else if (strcasecmp(cmd, "topic") == 0) {
          const char *requested = target ? target : channel;
-         if (!requested || (requested[0] != '#' && requested[0] != '&')) {
+
+         if ( !requested || (requested[0] != '#' && requested[0] != '&') ) {
             ws_send_error(cptr, "Invalid room name: %s (room names must start with # or &)",
                requested ? requested : "(none)");
+
             return false;
          }
          requested = room_canonical(requested);
-         if (!ws_client_in_room(cptr, requested)) {
+
+         if ( !ws_client_in_room(cptr, requested) ) {
             ws_send_error(cptr, "You are not joined to room %s", requested);
+
             return false;
          }
-         if (!data) data = "";
+
+         if (!data) { data = ""; }
+
          if (strlen(data) > 512) {
             ws_send_error(cptr, "Topic is too long (maximum 512 characters)");
+
             return false;
          }
-         if (*data && !has_priv(cptr->user->uid, "admin|owner|chat")) {
+
+         if ( *data && !has_priv(cptr->user->uid, "admin|owner|chat") ) {
             ws_send_error(cptr, "You do not have CHAT privilege.");
+
             return false;
          }
          dict *topic = dict_new();
@@ -1078,79 +1249,86 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          dict_add_ulong(topic, "msg.ts", now);
          event_emit_dict("room.topic", cptr, topic);
          dict_free(topic);
+
          return true;
       } else if (strcasecmp(cmd, "join") == 0 || strcasecmp(cmd, "part") == 0) {
          const char *requested = target ? target : data;
          bool joining = strcasecmp(cmd, "join") == 0;
+
          if (requested && *requested && requested[0] != '#' && requested[0] != '&') {
             ws_send_error(cptr, "Invalid room name: %s (room names must start with # or &)", requested);
+
             return false;
          }
          bool room_ok = joining ? ws_client_join_room(cptr, requested) :
-            ws_client_part_room(cptr, requested);
+                        ws_client_part_room(cptr, requested);
+
          if (!room_ok) {
-            ws_send_error(cptr, "%s failed for room %s", joining ? "JOIN" : "PART",
-               requested ? requested : "(none)");
+            ws_send_error(cptr, "%s failed for room %s", joining ? "JOIN" : "PART", requested ? requested : "(none)");
+
             return false;
          }
          dict *room_msg = dict_new();
          dict_add(room_msg, "msg.type", "talk");
          dict_add(room_msg, "talk.cmd", joining ? "join" : "part");
-         dict_add(room_msg, "talk.target", room_canonical(requested));
-         dict_add(room_msg, "talk.room", room_canonical(requested));
-         dict_add_bool(room_msg, "room.has-vfos", ws_room_has_vfos(requested));
-         dict_add_bool(room_msg, "room.tx-control", ws_room_tx_control(requested));
-         dict_add_bool(room_msg, "room.rx-tunable", ws_room_rx_tunable(requested));
-         dict_add_ulong(room_msg, "room.rx-tuning-mask", ws_room_rx_tuning_mask(requested));
-         dict_add_ulong(room_msg, "room.vfo-mask", ws_room_vfo_mask(requested));
+         dict_add( room_msg, "talk.target", room_canonical(requested) );
+         dict_add( room_msg, "talk.room", room_canonical(requested) );
+         dict_add_bool( room_msg, "room.has-vfos", ws_room_has_vfos(requested) );
+         dict_add_bool( room_msg, "room.tx-control", ws_room_tx_control(requested) );
+         dict_add_bool( room_msg, "room.rx-tunable", ws_room_rx_tunable(requested) );
+         dict_add_ulong( room_msg, "room.rx-tuning-mask", ws_room_rx_tuning_mask(requested) );
+         dict_add_ulong( room_msg, "room.vfo-mask", ws_room_vfo_mask(requested) );
          dict_add(room_msg, "talk.user", cptr->chatname);
          dict_add_ulong(room_msg, "msg.ts", now);
-         ws_broadcast_room_dict(cptr, room_msg, room_canonical(requested));
-         /* Removing the room from cptr->rooms above means the normal room
-          * broadcast no longer reaches the departing session.  Send the PART
-          * confirmation directly so its client can close the tab. */
+         ws_broadcast_room_dict( cptr, room_msg, room_canonical(requested) );
+
+         /* Removing the room from cptr->rooms above means the normal room broadcast no
+          * longer reaches the departing session.  Send the PART confirmation directly so
+          * its client can close the tab. */
          if (!joining) {
-            /* The session token is an authentication secret; include it only
-             * in the departing client's private confirmation, never in the
-             * room broadcast. */
+            /* The session token is an authentication secret; include it only in the
+             * departing client's private confirmation, never in the room broadcast. */
             dict_add(room_msg, "talk.session", cptr->token);
             ws_send_dict(cptr, cptr, room_msg, WEBSOCKET_OP_TEXT);
          }
-         if (joining) ws_send_room_users(cptr, room_canonical(requested));
+
+         if (joining) { ws_send_room_users( cptr, room_canonical(requested) ); }
+
          if (joining) {
             event_emit_dict("room.join", cptr, room_msg);
             media_send_available_all(cptr);
          }
          dict_free(room_msg);
+
          return true;
       } else if (strcasecmp(cmd, "msg") == 0) {
          if (!data) {
-            Log(LOG_DEBUG, "chat",
-               "got msg for cptr <%p> with no data: chatname: %s",
-               cptr, user);
+            Log(LOG_DEBUG, "chat", "got msg for cptr <%p> with no data: chatname: %s", cptr, user);
+
             return false;
          }
 
          // If the message is empty, just return success
          if (strlen(data) == 0) {
             Log(LOG_CRAZY, "chat", "talk msg has no data");
+
             return true;
          }
 
-         if (!has_priv(cptr->user->uid, "admin|owner|chat")) {
-            Log(LOG_CRAZY, "chat",
-               "user %s doesn't have chat privileges but tried to send a message",
-               user);
+         if ( !has_priv(cptr->user->uid, "admin|owner|chat") ) {
+            Log(LOG_CRAZY, "chat", "user %s doesn't have chat privileges but tried to send a message", user);
 
             // XXX: Alert the user that their message was NOT delivered
             // because they aren't allowed to send it.
             ws_send_error(cptr, "You do not have CHAT privilege.");
+
             return false;
          }
 
          // sanity check
          if (!user) {
             Log(LOG_CRAZY, "chat", "talk parse, msg has no user field");
+
             return false;
          }
 
@@ -1162,9 +1340,8 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                 strcasecmp(msg_type, "privmsg") == 0) {
 
                /*
-                * Commands are handled locally and don't become chat
-                * messages. The resulting CAT events are handled/relayed
-                * separately.
+                * Commands are handled locally and don't become chat messages. The
+                * resulting CAT events are handled/relayed separately.
                 */
                if (strcasecmp(msg_type, "pub") == 0 ||
                    strcasecmp(msg_type, "action") == 0) {
@@ -1182,10 +1359,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                      }
 
                      while (*input) {
-                        while (isspace(*input) || (*input == '!')) {
+                        while ( isspace(*input) || (*input == '!') ) {
                            input++;
                         }
-
                         // extract command
                         size_t i = 0;
 
@@ -1194,13 +1370,11 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                                i < cmd_len - 1) {
                            cmd[i++] = *input++;
                         }
-
                         cmd[i] = '\0';
 
-                        while (isspace(*input)) {
+                        while ( isspace(*input) ) {
                            input++;
                         }
-
                         // extract argument
                         i = 0;
 
@@ -1209,7 +1383,6 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                                i < arg_len - 1) {
                            arg[i++] = *input++;
                         }
-
                         arg[i] = '\0';
 
                         // Stop only when there's no command left to parse.
@@ -1219,20 +1392,25 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            break;
                         }
 
-                        if (!strcasecmp(cmd, "freq") || !strcasecmp(cmd, "mode") || !strcasecmp(cmd, "width")) {
+                        if ( !strcasecmp(cmd, "freq") || !strcasecmp(cmd, "mode") || !strcasecmp(cmd, "width") ) {
                            dict *control = dict_new();
-                           if (!control) return false;
+
+                           if (!control) { return false; }
                            dict_add(control, "cat.cmd", cmd);
                            dict_add(control, "cat.room", channel);
-                           dict_add(control, "cat.vfo", vfo_name(active_vfo));
-                           if (!strcasecmp(cmd, "freq")) dict_add_long(control, "cat.freq", parse_freq(arg));
-                           else if (!strcasecmp(cmd, "mode")) dict_add(control, "cat.mode", arg);
-                           else dict_add(control, "cat.width", arg);
+                           dict_add( control, "cat.vfo", vfo_name(active_vfo) );
+
+                           if ( !strcasecmp(cmd, "freq") ) { dict_add_long( control, "cat.freq", parse_freq(arg) );
+                           } else if ( !strcasecmp(cmd, "mode") ) { dict_add(control, "cat.mode", arg); } else {
+                              dict_add(control, "cat.width", arg);
+                           }
                            bool applied = ws_handle_rigctl_msg(cptr, control);
                            dict_free(control);
-                           if (!applied) return false;
+
+                           if (!applied) { return false; }
                            continue;
                         }
+
                         if (strcasecmp(cmd, "help") == 0) {
                            // XXX: These should move to help/ and get served
                            // via that mechanism.
@@ -1242,7 +1420,8 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            // rustyrig-www/js/webui notice rendering)
                            ws_send_notice(cptr, "***SERVER***");
                            ws_send_notice(cptr, "*** !help for VFO commands ***");
-                           ws_send_notice(cptr, "  !freq <freq> - Set frequency to <freq> - can be 7200 7.2m 7200000 etc form");
+                           ws_send_notice(cptr,
+                              "  !freq <freq> - Set frequency to <freq> - can be 7200 7.2m 7200000 etc form");
                            ws_send_notice(cptr, "  !mode <mode> - Set mode to CW|AM|LSB|USB|FM|DL|DU");
                            ws_send_notice(cptr, "  !power <power> - Set power in watts (e.g. !power 25)");
                            ws_send_notice(cptr, "  !vfo <vfo> - Switch VFOs (A|B|C)");
@@ -1251,49 +1430,47 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            return true;
 
                         } else if (strcasecmp(cmd, "freq") == 0) {
-                          if (!ws_room_control_allowed(cptr, channel, true)) {
-                             ws_send_error(cptr, "Control is not allowed from room %s", channel);
-                             return false;
-                          }
+                           if ( !ws_room_control_allowed(cptr, channel, true) ) {
+                              ws_send_error(cptr, "Control is not allowed from room %s", channel);
 
-                          if (*arg == '\0') {
-                             ws_send_error(cptr, "!freq requires a frequency argument");
-                             return false;
-                          }
+                              return false;
+                           }
 
-                          long real_freq = parse_freq(arg);
+                           if (*arg == '\0') {
+                              ws_send_error(cptr, "!freq requires a frequency argument");
 
-                           Log(LOG_DEBUG, "ws.chat",
-                              "Got !freq %lu (%s) from %s",
-                              real_freq, arg, cptr->chatname);
+                              return false;
+                           }
+
+                           long real_freq = parse_freq(arg);
+
+                           Log(LOG_DEBUG, "ws.chat", "Got !freq %lu (%s) from %s", real_freq, arg, cptr->chatname);
 
                            dict *cmd_d = dict_new();
                            dict_add(cmd_d, "msg.type", "rigctl");
                            dict_add(cmd_d, "rigctl.room", channel);
                            dict_add(cmd_d, "rigctl.cmd", "freq");
                            dict_add_int(cmd_d, "rigctl.freq", real_freq);
-                           dict_add(cmd_d, "rigctl.from",
-                              cptr->chatname);
-                           dict_add(cmd_d, "rigctl.vfo",
-                              (char *)vfo_name(active_vfo));
+                           dict_add(cmd_d, "rigctl.from", cptr->chatname);
+                           dict_add( cmd_d, "rigctl.vfo", (char *)vfo_name(active_vfo) );
 
                            event_emit_dict("rigctl", NULL, cmd_d);
                            dict_free(cmd_d);
 
                         } else if (strcasecmp(cmd, "mode") == 0) {
-                          if (!ws_room_control_allowed(cptr, channel, false)) {
-                             ws_send_error(cptr, "Control is not allowed from room %s", channel);
-                             return false;
-                          }
+                           if ( !ws_room_control_allowed(cptr, channel, false) ) {
+                              ws_send_error(cptr, "Control is not allowed from room %s", channel);
 
-                          if (*arg == '\0') {
-                             ws_send_error(cptr, "!mode requires a mode argument");
-                             return false;
-                          }
+                              return false;
+                           }
 
-                          Log(LOG_DEBUG, "ws.chat",
-                              "Got !mode %s from %s",
-                              arg, cptr->chatname);
+                           if (*arg == '\0') {
+                              ws_send_error(cptr, "!mode requires a mode argument");
+
+                              return false;
+                           }
+
+                           Log(LOG_DEBUG, "ws.chat", "Got !mode %s from %s", arg, cptr->chatname);
 
                            rr_mode_t new_mode =
                               vfo_parse_mode(arg);
@@ -1305,111 +1482,112 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            }
 
                         } else if (strcasecmp(cmd, "power") == 0) {
-                          if (!ws_room_control_allowed(cptr, channel, false)) {
-                             ws_send_error(cptr, "Control is not allowed from room %s", channel);
-                             return false;
-                          }
+                           if ( !ws_room_control_allowed(cptr, channel, false) ) {
+                              ws_send_error(cptr, "Control is not allowed from room %s", channel);
 
-                          if (*arg == '\0') {
-                             ws_send_error(cptr, "!power requires a power argument (in watts)");
-                             return false;
-                          }
+                              return false;
+                           }
 
-                          float real_power = strtof(arg, NULL);
+                           if (*arg == '\0') {
+                              ws_send_error(cptr, "!power requires a power argument (in watts)");
 
-                          Log(LOG_DEBUG, "ws.chat",
-                             "Got !power %f (%s) from %s",
-                             real_power, arg, cptr->chatname);
+                              return false;
+                           }
 
-                          dict *cmd_d = dict_new();
-                          dict_add(cmd_d, "msg.type", "rigctl");
-                          dict_add(cmd_d, "rigctl.cmd", "power");
-                          dict_add_float(cmd_d, "rigctl.power", real_power);
-                          dict_add(cmd_d, "rigctl.from",
-                             cptr->chatname);
-                          dict_add(cmd_d, "rigctl.vfo",
-                             (char *)vfo_name(active_vfo));
+                           float real_power = strtof(arg, NULL);
 
-                          event_emit_dict("rigctl", NULL, cmd_d);
-                          dict_free(cmd_d);
+                           Log(LOG_DEBUG, "ws.chat", "Got !power %f (%s) from %s", real_power, arg, cptr->chatname);
+
+                           dict *cmd_d = dict_new();
+                           dict_add(cmd_d, "msg.type", "rigctl");
+                           dict_add(cmd_d, "rigctl.cmd", "power");
+                           dict_add_float(cmd_d, "rigctl.power", real_power);
+                           dict_add(cmd_d, "rigctl.from", cptr->chatname);
+                           dict_add( cmd_d, "rigctl.vfo", (char *)vfo_name(active_vfo) );
+
+                           event_emit_dict("rigctl", NULL, cmd_d);
+                           dict_free(cmd_d);
 
                         } else if (strcasecmp(cmd, "width") == 0) {
-                          if (!ws_room_control_allowed(cptr, channel, false)) {
-                             ws_send_error(cptr, "Control is not allowed from room %s", channel);
-                             return false;
-                          }
+                           if ( !ws_room_control_allowed(cptr, channel, false) ) {
+                              ws_send_error(cptr, "Control is not allowed from room %s", channel);
 
-                          if (*arg == '\0') {
-                             ws_send_error(cptr, "!width requires an argument");
-                             return false;
-                          }
+                              return false;
+                           }
 
-                          Log(LOG_DEBUG, "ws.chat",
-                              "Got !width %s from %s",
-                              arg, cptr->chatname);
+                           if (*arg == '\0') {
+                              ws_send_error(cptr, "!width requires an argument");
+
+                              return false;
+                           }
+
+                           Log(LOG_DEBUG, "ws.chat", "Got !width %s from %s", arg, cptr->chatname);
 
                            rr_set_width(active_vfo, arg);
 
                            // Audit trail is logged by the rigctl event handler
 
                         } else if (strcasecmp(cmd, "vfo") == 0) {
-                          if (!ws_client_in_room(cptr, channel) || !ws_room_has_vfos(channel)) {
-                             ws_send_error(cptr, "Select a VFO from a joined rig room");
-                             return false;
-                          }
+                           if ( !ws_client_in_room(cptr, channel) || !ws_room_has_vfos(channel) ) {
+                              ws_send_error(cptr, "Select a VFO from a joined rig room");
 
-                          if (*arg == '\0') {
-                             ws_send_error(cptr, "!vfo requires a vfo argument (A|B|C...)");
-                             return false;
-                          }
+                              return false;
+                           }
 
-                          Log(LOG_DEBUG, "ws.chat",
-                             "Got !vfo %s from %s",
-                             arg, cptr->chatname);
+                           if (*arg == '\0') {
+                              ws_send_error(cptr, "!vfo requires a vfo argument (A|B|C...)");
 
-                          rr_vfo_t new_vfo = vfo_lookup(toupper(arg[0]) );
+                              return false;
+                           }
 
-                          if (new_vfo < 0 || new_vfo >= MAX_VFOS) {
-                             ws_send_error(cptr, "Unknown VFO: !vfo %s (try A-Z)", arg);
-                             return false;
-                          }
+                           Log(LOG_DEBUG, "ws.chat", "Got !vfo %s from %s", arg, cptr->chatname);
 
-                          if (!(ws_room_vfo_mask(channel) & (UINT32_C(1) << new_vfo))) {
-                             ws_send_error(cptr, "VFO %s is not mapped to room %s", vfo_name(new_vfo), channel);
-                             return false;
-                          }
-                          if (cptr->ptt_vfo) {
-                             ws_send_error(cptr, "Cannot switch VFO while transmitting on VFO %c",
-                                cptr->ptt_vfo);
-                             return false;
-                          }
+                           rr_vfo_t new_vfo = vfo_lookup( toupper(arg[0]) );
 
-                          if (new_vfo == active_vfo) {
-                             // no-op, but confirm to the user so it doesn't look hung
-                             ws_send_notice(cptr, "VFO %s is already active", vfo_name(new_vfo) );
-                          } else {
-                             Log(LOG_AUDIT, "ws.chat", "User %s switched active VFO %s -> %s",
-                                cptr->chatname, vfo_name(active_vfo), vfo_name(new_vfo) );
-                             active_vfo = new_vfo;
+                           if (new_vfo < 0 || new_vfo >= MAX_VFOS) {
+                              ws_send_error(cptr, "Unknown VFO: !vfo %s (try A-Z)", arg);
 
-                             // Nudge the rig poll so the new active VFO's state
-                             // gets broadcast promptly (cat.state.vfo etc)
-                             // NB: can't call rr_be_poll from the library; ask
-                             // the server to poll via an event
-                             event_emit("be.poll", NULL, NULL);
-                          }
-                          dict *selected = dict_new();
-                          dict_add(selected, "msg.type", "cat");
-                          dict_add(selected, "cat.room", channel);
-                          dict_add(selected, "cat.state.vfo", vfo_name(new_vfo));
-                          dict_add_bool(selected, "cat.state.active", true);
-                          ws_broadcast_room_dict(NULL, selected, channel);
-                          dict_free(selected);
+                              return false;
+                           }
+
+                           if ( !( ws_room_vfo_mask(channel) & (UINT32_C(1) << new_vfo) ) ) {
+                              ws_send_error(cptr, "VFO %s is not mapped to room %s", vfo_name(new_vfo), channel);
+
+                              return false;
+                           }
+
+                           if (cptr->ptt_vfo) {
+                              ws_send_error(cptr, "Cannot switch VFO while transmitting on VFO %c", cptr->ptt_vfo);
+
+                              return false;
+                           }
+
+                           if (new_vfo == active_vfo) {
+                              // no-op, but confirm to the user so it doesn't look hung
+                              ws_send_notice( cptr, "VFO %s is already active", vfo_name(new_vfo) );
+                           } else {
+                              Log( LOG_AUDIT, "ws.chat", "User %s switched active VFO %s -> %s", cptr->chatname,
+                                 vfo_name(active_vfo), vfo_name(new_vfo) );
+                              active_vfo = new_vfo;
+
+                              // Nudge the rig poll so the new active VFO's state
+                              // gets broadcast promptly (cat.state.vfo etc)
+                              // NB: can't call rr_be_poll from the library; ask
+                              // the server to poll via an event
+                              event_emit("be.poll", NULL, NULL);
+                           }
+                           dict *selected = dict_new();
+                           dict_add(selected, "msg.type", "cat");
+                           dict_add(selected, "cat.room", channel);
+                           dict_add( selected, "cat.state.vfo", vfo_name(new_vfo) );
+                           dict_add_bool(selected, "cat.state.active", true);
+                           ws_broadcast_room_dict(NULL, selected, channel);
+                           dict_free(selected);
 
                         } else {
-                           Log(LOG_WARN, "ws.chat",
-                              "Unknown command: %s", cmd);
+                           Log(LOG_WARN, "ws.chat", "Unknown command: %s", cmd);
                            ws_send_error(cptr, "Unknown command: !%s - try !help", cmd);
+
                            return false;
                         }
                      }
@@ -1423,14 +1601,16 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                /*
                 * Normal chat message, or file chunk.
                 *
-                * The protocol layer creates the semantic event. The
-                * rrserver event handler is responsible for broadcasting,
-                * logging, persistence, and other server-side actions.
+                * The protocol layer creates the semantic event. The rrserver event
+                * handler is responsible for broadcasting, logging, persistence, and other
+                * server-side actions.
                 */
                bool private_msg = strcasecmp(msg_type, "priv") == 0 ||
-                  strcasecmp(msg_type, "privmsg") == 0;
-               if (private_msg && (!channel || (channel[0] == '#' || channel[0] == '&'))) {
+                                  strcasecmp(msg_type, "privmsg") == 0;
+
+               if ( private_msg && ( !channel || (channel[0] == '#' || channel[0] == '&') ) ) {
                   ws_send_error(cptr, "Private message target must be a username");
+
                   return false;
                }
 
@@ -1471,43 +1651,35 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                   long total_chunks =
                      dict_get_long(d, "talk.total_chunks", 0);
 
-                  dict_add_double(talk_msg,
-                     "talk.chunk_index", chunk_index);
+                  dict_add_double(talk_msg, "talk.chunk_index", chunk_index);
 
-                  dict_add_double(talk_msg,
-                     "talk.total_chunks", total_chunks);
+                  dict_add_double(talk_msg, "talk.total_chunks", total_chunks);
 
-                  dict_add(talk_msg,
-                     "talk.filename", filename);
+                  dict_add(talk_msg, "talk.filename", filename);
 
-                  dict_add(talk_msg,
-                     "talk.filetype", filetype);
+                  dict_add(talk_msg, "talk.filetype", filetype);
                }
 
-               Log(LOG_CRAZY, "ws.chat",
-                  "Emitting talk.msg event: from=<%s> target=<%s> type=<%s> data=<%s>",
-                  cptr->chatname,
-                  channel,
-                  msg_type,
-                  data);
+               Log(LOG_CRAZY, "ws.chat", "Emitting talk.msg event: from=<%s> target=<%s> type=<%s> data=<%s>",
+                  cptr->chatname, channel, msg_type, data);
 
                event_emit_dict("talk.msg", cptr, talk_msg);
 
-               Log(LOG_CRAZY, "ws.chat",
-                  "Returned from talk.msg event");
+               Log(LOG_CRAZY, "ws.chat", "Returned from talk.msg event");
 
                dict_free(talk_msg);
+
                return true;
 
             } else {
-               Log(LOG_DEBUG, "ws.chat",
-                  "unknown message type: %s", msg_type);
+               Log(LOG_DEBUG, "ws.chat", "unknown message type: %s", msg_type);
             }
          }
       } else if (strcasecmp(cmd, "whois") == 0) {
          if (!target) {
             Log(LOG_DEBUG, "chat", "whois with no target");
             ws_send_error(cptr, "No target given for WHOIS");
+
             return false;
          }
 
@@ -1515,6 +1687,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
          if (!acptr || !acptr->user) {
             ws_send_error(cptr, "WHOIS: no such user: %s", target);
+
             return false;
          }
 
@@ -1546,8 +1719,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          // PARITY: rustyrig-www/js/webui.chat.js /quota (sends talk.cmd=quota)
          // Admin/owner only; the server program does the quota work via the
          // quota.cmd event (sqlite lives in rrserver, not in the library)
-         if (!has_priv(cptr->user->uid, "admin|owner") ) {
+         if ( !has_priv(cptr->user->uid, "admin|owner") ) {
             ws_chat_err_noprivs(cptr, "QUOTA");
+
             return false;
          }
 
@@ -1558,6 +1732,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
          if (!q) {
             Log(LOG_WARN, "chat", "quota cmd: failed to create dict");
+
             return false;
          }
          dict_add(q, "msg.type", "quota.cmd");
@@ -1571,15 +1746,18 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          dict_free(q);
 
       } else if (strcasecmp(cmd, "user") == 0) {
-         /* User administration is implemented by the server because the
-          * protocol library must not know how accounts are persisted. */
-         if (!has_priv(cptr->user->uid, "admin|owner")) {
+         /* User administration is implemented by the server because the protocol library
+         * must not know how accounts are persisted. */
+         if ( !has_priv(cptr->user->uid, "admin|owner") ) {
             ws_chat_err_noprivs(cptr, "USER");
+
             return false;
          }
          dict *u = dict_new();
+
          if (!u) {
             ws_send_error(cptr, "USER: out of memory");
+
             return false;
          }
          dict_add(u, "msg.type", "user.cmd");
@@ -1614,17 +1792,19 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          if (data && data[0] != '\0') {
             size_t i = 0;
 
-            while (*data && !isspace( (unsigned char)*data) && i < sizeof(sub) - 1) {
+            while (*data && !isspace( (unsigned char)*data ) && i < sizeof(sub) - 1) {
                sub[i++] = *data++;
             }
             sub[i] = '\0';
-            while (isspace( (unsigned char)*data) ) {
+            while ( isspace( (unsigned char)*data ) ) {
                data++;
             }
-            strlcpy(marg, data, sizeof(marg) );
+            strlcpy( marg, data, sizeof(marg) );
          }
-         if (strcasecmp(sub, "REMOVE") == 0 && !has_priv(cptr->user->uid, "admin|owner") ) {
+
+         if ( strcasecmp(sub, "REMOVE") == 0 && !has_priv(cptr->user->uid, "admin|owner") ) {
             ws_chat_err_noprivs(cptr, "MEDIA REMOVE");
+
             return false;
          }
          dict *m = dict_new();
@@ -1632,6 +1812,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          if (!m) {
             return false;
          }
+
          if (strcasecmp(sub, "REMOVE") == 0) {
             // Server program (rrserver) owns removal: it notifies all clients
             // via media.chan-remove and clears the registry entry.
@@ -1642,8 +1823,8 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             return true;
          }
          dict_add(m, "msg.type", "media");
-         dict_add(m, "media.cmd", strcasecmp(sub, "UNSUBSCRIBE") == 0 ? "unsubscribe" :
-                                 (strcasecmp(sub, "SUBSCRIBE") == 0 ? "subscribe" : "list"));
+         dict_add( m, "media.cmd", strcasecmp(sub, "UNSUBSCRIBE") == 0 ? "unsubscribe" :
+            (strcasecmp(sub, "SUBSCRIBE") == 0 ? "subscribe" : "list") );
          dict_add_ulong(m, "media.ts", now);
 
          if (marg[0] != '\0') {
@@ -1657,6 +1838,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
       } else {
          Log(LOG_WARN, "chat", "Unknown command: %s", cmd);
          ws_send_error(cptr, "Invalid command: %s", cmd);
+
          return false;
       }
    }

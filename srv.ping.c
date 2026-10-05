@@ -36,17 +36,19 @@ bool ws_send_ping(rrconn_t *cptr) {
 
    if (!cptr) {
       Log(LOG_DEBUG, "auth", "ws_send_ping for null cptr!");
+
       return false;
    }
 
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
+
    if (!cptr->conn) {
       Log( LOG_DEBUG, "auth", "ws_send_ping for cptr:<%p> has mg_conn:<%p> and is invalid", cptr,
          (cptr ? cptr->conn : NULL) );
 
       return false;
    }
-#endif	// USE_MONGOOSE
+#endif // USE_MONGOOSE
 
    // Make sure that timeout will happen if no response
    cptr->last_ping = now;
@@ -62,14 +64,16 @@ bool ws_send_ping(rrconn_t *cptr) {
          cptr->ping_attempts);
    }
    dict *d = dict_new();
+
    if (!d) {
       return false;
    }
    dict_add(d, "msg.type", "ping");
    dict_add_ulong(d, "msg.ts", now);
    // Monotonic microsecond timestamp for RTT measurement; echoed back in the pong
-   dict_add_llong(d, "ping.ts", mono_us());
+   dict_add_llong( d, "ping.ts", mono_us() );
    bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
+
    return sent;
 }

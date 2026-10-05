@@ -25,8 +25,8 @@
 extern time_t now;
 
 // This defines a hard-coded fallback path for httpd root, if not set in config
-#ifdef	HOST_POSIX
-#ifndef	INSTALL_PREFIX
+#ifdef  HOST_POSIX
+#ifndef INSTALL_PREFIX
 #define	WWW_ROOT_FALLBACK "./www"
 #define	WWW_404_FALLBACK "./www/404.html"
 #endif // !INSTALL_PREFIX
@@ -48,28 +48,72 @@ extern struct mg_tls_opts tls_opts;
 
 static const char s_content_type[] = "Content-Type: ";
 static struct http_res_types http_res_types[] = {
-   { "7z", "application/x-7z-compressed\r\n" },
-   { "css", "text/css\r\n" },
-   { "htm", "text/html\r\n" },
-   { "html", "text/html\r\n" },
-   { "ico", "image/x-icon\r\n" },
-   { "js", "application/javascript\r\n" },
-   { "json", "application/json\r\n" },
-   { "jpg", "image/jpeg\r\n" },
-   { "mp3", "audio/mpeg\r\n" },
-   { "ogg", "audio/ogg\r\n" },
-   { "otf", "font/otf\r\n" },
-   { "png", "image/png\r\n" },
-   { "svg", "image/svg\r\n" },
-   { "tar", "application/x-tar\r\n" },
-   { "ttf", "font/ttf\r\n" },
-   { "txt", "text/plain\r\n" },
-   { "wasm", "application/wasm\r\n" },
-   { "webp", "image/webp\r\n" },
-   { "woff", "font/woff\r\n" },
-   { "woff2", "font/woff2\r\n" },
-   { "zip", "application/zip\r\n" },
-   { NULL, NULL }
+   {
+      "7z", "application/x-7z-compressed\r\n"
+   },
+   {
+      "css", "text/css\r\n"
+   },
+   {
+      "htm", "text/html\r\n"
+   },
+   {
+      "html", "text/html\r\n"
+   },
+   {
+      "ico", "image/x-icon\r\n"
+   },
+   {
+      "js", "application/javascript\r\n"
+   },
+   {
+      "json", "application/json\r\n"
+   },
+   {
+      "jpg", "image/jpeg\r\n"
+   },
+   {
+      "mp3", "audio/mpeg\r\n"
+   },
+   {
+      "ogg", "audio/ogg\r\n"
+   },
+   {
+      "otf", "font/otf\r\n"
+   },
+   {
+      "png", "image/png\r\n"
+   },
+   {
+      "svg", "image/svg\r\n"
+   },
+   {
+      "tar", "application/x-tar\r\n"
+   },
+   {
+      "ttf", "font/ttf\r\n"
+   },
+   {
+      "txt", "text/plain\r\n"
+   },
+   {
+      "wasm", "application/wasm\r\n"
+   },
+   {
+      "webp", "image/webp\r\n"
+   },
+   {
+      "woff", "font/woff\r\n"
+   },
+   {
+      "woff2", "font/woff2\r\n"
+   },
+   {
+      "zip", "application/zip\r\n"
+   },
+   {
+      NULL, NULL
+   }
 };
 
 // Perform various checks on synthesized URLs to make sure the user isn't up to
@@ -78,9 +122,11 @@ bool check_url(const char *path) {
    if (!path) {
       return true;
    }
-   if (strstr(path, "..")) {
+
+   if ( strstr(path, "..") ) {
       return true;
    }
+
    return false;
 }
 
@@ -89,13 +135,14 @@ const char *http_content_type(const char *type) {
    if (!type) {
       return NULL;
    }
-   int items = (sizeof(http_res_types) / sizeof(struct http_res_types) );
+   int items = ( sizeof(http_res_types) / sizeof(struct http_res_types) );
 
    for (int i = 0 ; i < items ; i++) {
       // end of table marker?
       if (!http_res_types[i].shortname && !http_res_types[i].msg) {
          break;
       }
+
       if (!http_res_types[i].shortname || !http_res_types[i].msg) {
          continue;
       }
@@ -109,7 +156,7 @@ const char *http_content_type(const char *type) {
    return "text/plain\r\n";
 }
 
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
 bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
    struct mg_http_serve_opts opts = http_opts;
 
@@ -119,9 +166,12 @@ bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
    // Copy URI into null-terminated buffer
    char path[4096];
    memset( path, 0, sizeof(path) );
-   int path_len = snprintf(path, sizeof(path), "%.*s", (int)(msg->uri.len > INT_MAX ? INT_MAX : msg->uri.len), msg->uri.buf);
-   if (path_len < 0 || (size_t)path_len >= sizeof(path) || check_url(path)) {
+   int path_len = snprintf(path, sizeof(path), "%.*s", (int)(msg->uri.len > INT_MAX ? INT_MAX : msg->uri.len),
+      msg->uri.buf);
+
+   if ( path_len < 0 || (size_t)path_len >= sizeof(path) || check_url(path) ) {
       Log(LOG_WARN, "http.core", "Rejecting unsafe or oversized static path");
+
       return true;
    }
    char real_path[8192];
@@ -129,6 +179,7 @@ bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
 
    if (www_root[0] == '\0') {
       Log(LOG_CRIT, "http.core", "www_root is NULL");
+
       return true;
    }
 
@@ -137,16 +188,18 @@ bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
       snprintf(path, sizeof(path), "index.html");
    }
    int real_len = snprintf(real_path, sizeof(real_path), "%s/%s", www_root, path);
-   if (real_len < 0 || (size_t)real_len >= sizeof(real_path)) {
+
+   if ( real_len < 0 || (size_t)real_len >= sizeof(real_path) ) {
       Log(LOG_WARN, "http.core", "Rejecting oversized static path");
+
       return true;
    }
 
-   if (file_exists(real_path) ) {
+   if ( file_exists(real_path) ) {
       // Find last '.' in the path for the extension
       const char *ext = strrchr(path, '.');
 
-      if (ext && *(ext + 1) ) {
+      if ( ext && *(ext + 1) ) {
          // lookup the mime type based on extension
          const char *ctype = http_content_type(ext + 1);
          char typebuf[256];
@@ -160,7 +213,7 @@ bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
 
          return false;
       }
-   } else if (is_dir(real_path) ) {
+   } else if ( is_dir(real_path) ) {
       mg_http_serve_dir(cptr->conn, msg, &opts);
 
       return false;
@@ -185,6 +238,7 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
    int port = cptr->user_port;
 
    time_t msg_ts = dict_get_ulong(d, "msg.ts", 0);
+
    if (!msg_ts) {
       Log(LOG_WARN, "http.ws", "ws_handle_pong: PONG from user with no timestamp");
       rv = false;
@@ -194,18 +248,21 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
          (*cptr->chatname ? cptr->chatname : "<UNAUTHENTICATED>"), msg_ts);
    }
 
-   // RTT measurement: echo the monotonic ping.ts (real microseconds) back and diff it here
+   // RTT measurement: echo the monotonic ping.ts (real microseconds) back and diff it
+   // here
    long long ping_mono = dict_get_llong(d, "ping.ts", 0);
+
    if (ping_mono) {
       long long rtt_us = mono_us() - ping_mono;
+
       if (rtt_us < 0) {
          rtt_us = 0;              // shouldn't happen on a monotonic clock
       }
       long long rtt = rtt_us / 1000;
       cptr->latency_ms = (int)rtt;
       last_ping_rtt_ms = rtt;
-      Log(LOG_INFO, "ping", "RTT to user %s: %lld ms (%lld us) (global last_ping_rtt_ms=%lld)",
-          cptr->chatname, rtt, rtt_us, last_ping_rtt_ms);
+      Log(LOG_INFO, "ping", "RTT to user %s: %lld ms (%lld us) (global last_ping_rtt_ms=%lld)", cptr->chatname, rtt,
+         rtt_us, last_ping_rtt_ms);
 
       // Let higher layers (audio/etc) track latency
       dict *lat = dict_new();
@@ -216,9 +273,8 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
    }
 
    if (msg_ts > now || now - msg_ts > HTTP_PING_TIME) {
-      Log(LOG_DEBUG, "http.pong",
-         "Late ping for cptr:<%p> from %s:%d ts: %li + %li (timeout) < now %li", cptr, ip, port,
-         msg_ts, HTTP_PING_TIMEOUT, now);
+      Log(LOG_DEBUG, "http.pong", "Late ping for cptr:<%p> from %s:%d ts: %li + %li (timeout) < now %li", cptr, ip,
+         port, msg_ts, HTTP_PING_TIMEOUT, now);
       ws_kick_client(cptr, "Network Error: PING expired");
       rv = false;
       goto cleanup;
@@ -233,6 +289,7 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
    }
 
 cleanup:
+
    return rv;
 }
 
@@ -241,7 +298,7 @@ cleanup:
 //
 static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
    bool result = false;
-   bool ping_pong = false;	// ping?/pong! message?
+   bool ping_pong = false;      // ping?/pong! message?
    const char *msg_type = dict_get(d, "msg.type", NULL);
    time_t msg_ts = dict_get_ulong(d, "msg.ts", 0);
 
@@ -250,6 +307,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       Log(LOG_CRIT, "rrproto.core", "ws_txtframe_process: msg_type unset!");
       dict_dump(d, stderr);
       ws_send_error(cptr, "Invalid command: <missing msg.type>");
+
       return false;
    }
 
@@ -262,8 +320,8 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
        strcasecmp(msg_type, "auth") != 0 &&
        strcasecmp(msg_type, "pong") != 0 &&
        strcasecmp(msg_type, "hello") != 0) {
-      Log(LOG_AUDIT, "auth", "Denied %s from unauthenticated client %s on cptr:<%p> from %s:%d",
-         msg_type, (cptr->chatname[0] != '\0' ? cptr->chatname : "(unknown)"), cptr, cptr->user_ip, cptr->user_port);
+      Log(LOG_AUDIT, "auth", "Denied %s from unauthenticated client %s on cptr:<%p> from %s:%d", msg_type,
+         (cptr->chatname[0] != '\0' ? cptr->chatname : "(unknown)"), cptr, cptr->user_ip, cptr->user_port);
 
       // Don't reply to ping at all (no amplification); tell the client
       // why anything else was rejected.
@@ -273,7 +331,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       goto cleanup;
    }
 
-   if (!strcmp(msg_type, "object") || !strcmp(msg_type, "property")) {
+   if ( !strcmp(msg_type, "object") || !strcmp(msg_type, "property") ) {
       extern bool rr_object_server_request(rrconn_t *, dict *);
       result = rr_object_server_request(cptr, d);
    } else if (strcasecmp(msg_type, "serial") == 0) {
@@ -294,20 +352,21 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       // If this msg contains a cat.cmd it's a client command (freq/mode/ptt
       // etc) - route it to the rigctl handler. Messages without a cat.cmd
       // are state broadcasts from the server and don't need processing here.
-      if (dict_get(d, "cat.cmd", NULL) ) {
+      if ( dict_get(d, "cat.cmd", NULL) ) {
          result = ws_handle_rigctl_msg(cptr, d);
       }
    } else if (strcasecmp(msg_type, "hello") == 0) {
       const char *hello_hwver = dict_get(d, "hello.hwver", "generic");
       const char *hello_swver = dict_get(d, "hello.swver", NULL);
-      Log(LOG_DEBUG, "ws", "Got HELLO from client at cptr:<%p>: swver=%s, hwver=%s", cptr, hello_swver, (hello_hwver ? hello_hwver : "generic"));
+      Log( LOG_DEBUG, "ws", "Got HELLO from client at cptr:<%p>: swver=%s, hwver=%s", cptr, hello_swver,
+         (hello_hwver ? hello_hwver : "generic") );
       free(cptr->cli_version);
       cptr->cli_version = malloc(HTTP_UA_LEN);
 
       if (cptr->cli_version) {
          memset(cptr->cli_version, 0, HTTP_UA_LEN);
-         snprintf(cptr->cli_version, HTTP_UA_LEN, "%s@%s", (hello_swver ? hello_swver : "unknown"),
-            (hello_hwver ? hello_hwver : "generic"));
+         snprintf( cptr->cli_version, HTTP_UA_LEN, "%s@%s", (hello_swver ? hello_swver : "unknown"),
+            (hello_hwver ? hello_hwver : "generic") );
       }
       // hello.role marks connections which are not ordinary chat users (e.g.
       // video-source webcams); they get their own flag and are excluded from
@@ -331,6 +390,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
          Log(LOG_DEBUG, "ws.media", "media message without media.cmd from %s", cptr->chatname);
          goto cleanup;
       }
+
       // Channel subscription commands: list/subscribe/unsubscribe and the
       // media source registration. capab/codec/isupport are negotiated in
       // codecneg/ws.media paths.
@@ -348,6 +408,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       // PING request
       const char *ping = dict_get(d, "ping", NULL);
       time_t ping_ts = dict_get_time_t(d, "msg.ts", 0);
+
       if (ping_ts) {
          dict *pong = dict_new();
          dict_add(pong, "msg.type", "pong");
@@ -370,8 +431,8 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
    } else if (strcasecmp(msg_type, "rehash") == 0) {
       // Reload server config & user db. Restricted to admin/owner privs.
       // PARITY: rustyrig-www/js/webui (send msg.type:rehash on /rehash)
-      if (!cptr->authenticated || !cptr->user ||
-          !(has_priv(cptr->user->uid, "admin|owner") ) ) {
+      if ( !cptr->authenticated || !cptr->user ||
+           !( has_priv(cptr->user->uid, "admin|owner") ) ) {
          Log(LOG_AUDIT, "auth", "Denied rehash request from %s on cptr:<%p> from %s:%d",
             (cptr->chatname[0] != '\0' ? cptr->chatname : "(unauthenticated)"), cptr, cptr->user_ip, cptr->user_port);
          dict *err = dict_new();
@@ -393,10 +454,10 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       result = true;
    } else if (strcasecmp(msg_type, "talk") == 0) {
       // CHAT RELATED
-         result = ws_handle_chat_msg(cptr, d);
+      result = ws_handle_chat_msg(cptr, d);
    } else {
-      Log(LOG_WARN, "http.ws", "Invalid command |%s| from %s", msg_type,
-         (cptr->chatname[0] ? cptr->chatname : "(unknown)"));
+      Log( LOG_WARN, "http.ws", "Invalid command |%s| from %s", msg_type,
+         (cptr->chatname[0] ? cptr->chatname : "(unknown)") );
       ws_send_error(cptr, "Invalid command: %s", msg_type);
       result = false;
    }
@@ -407,6 +468,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
    }
 
 cleanup:
+
    return result;
 }
 
@@ -421,13 +483,14 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
    }
 #if     defined(HTTP_DEBUG_CRAZY) || defined(DEBUG_PROTO)
    // XXX: This should be moved to an option in config perhaps?
-   Log(LOG_CRAZY, "http", "ws_handle WS msg: %.*s",
-      (int)(msg->data.len > INT_MAX ? INT_MAX : msg->data.len), msg->data.buf);
+   Log(LOG_CRAZY, "http", "ws_handle WS msg: %.*s", (int)(msg->data.len > INT_MAX ? INT_MAX : msg->data.len),
+      msg->data.buf);
 #endif
 
    // Binary (audio, waterfall) frames
    if (msg->flags & WEBSOCKET_OP_BINARY) {
       Log(LOG_CRAZY, "ws.frame.bin", "Incoming Binary frame: %zu bytes", msg->data.len);
+
       return ws_binframe_process_mg(cptr, msg->data.buf, msg->data.len);
    } else {
       // Text (mostly json) frames
@@ -438,8 +501,9 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
       // check smashed the stack/heap and later crashed mg_iobuf_free
       // ("double free or corruption") when the connection closed.
       if (msg->data.len > HTTP_WS_MAX_MSG) {
-         Log(LOG_WARN, "http.ws", "Dropping oversized WS text frame (%zu bytes > %d) from cptr:<%p>",
-            msg->data.len, HTTP_WS_MAX_MSG, cptr);
+         Log(LOG_WARN, "http.ws", "Dropping oversized WS text frame (%zu bytes > %d) from cptr:<%p>", msg->data.len,
+            HTTP_WS_MAX_MSG, cptr);
+
          return false;
       }
 
@@ -449,23 +513,27 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
       memcpy(buf, msg_data.buf, msg_data.len);
 //      fprintf(stderr, "buf(%d): %s(%d)\n", msg_data.len, buf, strlen(buf));
       dict *d = json2dict(buf);
+
       if (!d) {
          Log(LOG_CRIT, "rrproto.cli.main", "ws_handle: d is null!");
+
          return false;
       }
 
       bool result = ws_txtframe_process(cptr, d);
       dict_free(d);
-      memset(buf, 0, sizeof(buf) );
+      memset( buf, 0, sizeof(buf) );
+
       return result;
    }
+
    return false;
 }
 
 /*
- * Release PTT before an authenticated WebSocket client disappears. Keep this
- * separate from the Mongoose callback so the disconnect safety path can be
- * exercised without a live socket in regression tests.
+ * Release PTT before an authenticated WebSocket client disappears. Keep this separate
+ * from the Mongoose callback so the disconnect safety path can be exercised without a
+ * live socket in regression tests.
  */
 void ws_release_ptt_on_disconnect(rrconn_t *cptr) {
    if (!cptr || !cptr->is_ptt) {
@@ -474,17 +542,22 @@ void ws_release_ptt_on_disconnect(rrconn_t *cptr) {
 
    cptr->is_ptt = false;
    dict *rig_msg = dict_new();
+
    if (!rig_msg) {
       Log(LOG_CRIT, "http", "Unable to allocate disconnect PTT release for %s",
          cptr->chatname[0] ? cptr->chatname : "(unknown)");
+
       return;
    }
    dict_add(rig_msg, "msg.type", "cat");
    dict_add(rig_msg, "cat.cmd", "ptt");
    dict_add_bool(rig_msg, "cat.ptt", false);
    dict_add(rig_msg, "cat.user", cptr->chatname);
+
    if (cptr->ptt_vfo) {
-      char vfo_buf[2] = { cptr->ptt_vfo, '\0' };
+      char vfo_buf[2] = {
+         cptr->ptt_vfo, '\0'
+      };
       dict_add(rig_msg, "cat.vfo", vfo_buf);
    }
    event_emit_dict("rig.ptt", NULL, rig_msg);
@@ -516,12 +589,13 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          cptr = http_add_client(c, false);
       }
 
-      if (cptr && cfg_get_bool("net.http.hex-dump", false) ) {
+      if ( cptr && cfg_get_bool("net.http.hex-dump", false) ) {
          cptr->conn->is_hexdumping = 1;
       }
    } else if (ev == MG_EV_CONNECT) {
       if (!cptr) {
          Log(LOG_CRIT, "ws.core", "ws_http_cb MG_EV_CONNECT with no client for conn:<%p>", c);
+
          return;
       }
 
@@ -532,27 +606,32 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          mg_tls_init(cptr->conn, &opts);
       }
    } else if (ev == MG_EV_ACCEPT) {
-      if (c->is_listening) {  // defensive: listeners never fire ACCEPT
+      if (c->is_listening) {
+         // defensive: listeners never fire ACCEPT
+
          return;
       }
+
       if (!cptr) {
          cptr = http_add_client(c, false);
       }
 
       if (!cptr) {
          Log(LOG_CRIT, "ws.core", "ws_http_cb failed to http_add_client(%p)", c);
+
          return;
       }
       char *ip = cptr->user_ip;
       int port = cptr->user_port;
       Log(LOG_CRAZY, "http", "Accepted connection on cptr:<%p> from %s:%d", cptr, ip, port);
 
-#ifdef	HTTP_USE_TLS
+#ifdef  HTTP_USE_TLS
+
       if (cptr && cptr->conn && cptr->conn->fn_data) {
          Log(LOG_CRAZY, "http", "Init TLS for cptr:<%p> from %s:%d", cptr, ip, port);
          mg_tls_init(cptr->conn, &tls_opts);
       }
-#endif	// HTTP_USE_TLS
+#endif // HTTP_USE_TLS
    } else if (ev == MG_EV_HTTP_MSG) {
       if (!cptr) {
          Log(LOG_CRAZY, "http.core", "ACCEPT: mg_ev_http_msg cptr doesn't exist, creating");
@@ -561,6 +640,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
 
       if (!cptr) {
          Log(LOG_CRIT, "ws.core", "ws_http_cb failed to http_add_client(%p)", c);
+
          return;
       }
 
@@ -570,31 +650,34 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
             struct mg_str *ua_hdr = mg_http_get_header(hm, "User-Agent");
 
             if (ua_hdr) {
-               if (!http_client_set_user_agent(cptr, ua_hdr->buf, ua_hdr->len)) {
+               if ( !http_client_set_user_agent(cptr, ua_hdr->buf, ua_hdr->len) ) {
                   Log(LOG_CRIT, "http.core", "Unable to save HTTP User-Agent");
                   c->is_closing = 1;
+
                   return;
                }
-               Log(LOG_DEBUG, "http.core", "New session cptr:<%p> User-Agent: %s (%zu)", cptr,
-                  cptr->user_agent, strlen(cptr->user_agent));
+               Log( LOG_DEBUG, "http.core", "New session cptr:<%p> User-Agent: %s (%zu)", cptr, cptr->user_agent,
+                  strlen(cptr->user_agent) );
             }
          }
       }
 
-      if (cptr->user_agent && is_http_banned(cptr->user_agent)) {
+      if ( cptr->user_agent && is_http_banned(cptr->user_agent) ) {
          Log(LOG_INFO, "http", "Rejecting banned User-Agent: %s", cptr->user_agent);
          mg_http_reply(c, 403, "Content-Type: text/plain\r\n", "Forbidden\n");
+
          return;
       }
 
       // Send the request to our HTTP router
-      if (hm && !http_dispatch_route(hm, cptr)) {
+      if ( hm && !http_dispatch_route(hm, cptr) ) {
          Log(LOG_CRAZY, "http.core", "fall through to http_static");
          http_static(hm, cptr);
       }
    } else if (ev == MG_EV_WS_OPEN) {
       if (!cptr) {
          Log(LOG_CRIT, "ws.core", "ws_http_cb MG_EV_WS_OPEN with no client for conn:<%p>", c);
+
          return;
       }
       char *ip = cptr->user_ip;
@@ -613,6 +696,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
    } else if (ev == MG_EV_WS_MSG) {
       if (!cptr) {
          Log(LOG_CRIT, "ws.core", "ws_http_cb MG_EV_WS_MSG with no client for conn:<%p>", c);
+
          return;
       }
       struct mg_ws_message *msg = (struct mg_ws_message *)ev_data;
@@ -659,11 +743,13 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
             dict_add_ulong(rig_msg, "msg.ts", now);
             ws_broadcast_dict(NULL, rig_msg, WEBSOCKET_OP_TEXT);
             dict_free(rig_msg);
-            Log(LOG_AUDIT, "auth", "User %s on cptr:<%p> cptr:<%p> from %s:%d disconnected (%d sessions)", cptr->chatname, cptr, cptr, ip, port, cptr->user->sessions);
+            Log(LOG_AUDIT, "auth", "User %s on cptr:<%p> cptr:<%p> from %s:%d disconnected (%d sessions)",
+               cptr->chatname, cptr, cptr, ip, port, cptr->user->sessions);
          }
       } else {
          if (!cptr) {
             Log(LOG_CRIT, "ws.core", "ws_http_cb(): cptr is null!?");
+
             return;
          }
          char *ip = cptr->user_ip;
@@ -672,6 +758,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          // This one makes a BUNCH of noise due to webui loading
          Log(LOG_CRAZY, "auth", "Unauthenticated client on cptr:<%p> from %s:%d disconnected", cptr, ip, port);
       }
+
       if (cptr->conn) {
          http_remove_client(cptr->conn);
       }

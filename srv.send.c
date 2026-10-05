@@ -21,7 +21,7 @@
 
 extern time_t now;
 
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
 // Broadcast a message to all WebSocket clients (using http_client_list)
 void ws_broadcast(rrconn_t *sender, struct mg_str *msg_data, int data_type) {
    if (!msg_data) {
@@ -46,8 +46,8 @@ void ws_broadcast_with_flags(u_int32_t flags, rrconn_t *sender, struct mg_str *m
    rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
-      if (current && (current->is_ws && current->authenticated) && (current != sender) ) {
-         if (client_has_flag(current, flags) ) {
+      if ( current && (current->is_ws && current->authenticated) && (current != sender) ) {
+         if ( client_has_flag(current, flags) ) {
             mg_ws_send(current->conn, msg_data->buf, msg_data->len, data_type);
          }
       }
@@ -95,6 +95,7 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
 
    if (!d || !dest || !dest->conn) {
       Log(LOG_WARN, "rrproto.srv", "Unable to send msg dict:<%p> to conn:<%p> - invalid destination", d, dest);
+
       return false;
    }
 
@@ -102,6 +103,7 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
 
    if (!jp) {
       Log(LOG_WARN, "rrproto.srv", "Unable to serialize msg dict:<%p> to conn:<%p>", d, dest);
+
       return false;
    }
 
@@ -109,7 +111,7 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
 
    mg_ws_send(dest->conn, jp, strlen(jp), data_type);
 
-   free((void *)jp);
+   free( (void *)jp );
 
    return true;
 }
@@ -129,7 +131,8 @@ void ws_broadcast_dict(rrconn_t *sender, dict *d, int data_type) {
    }
 }
 
-// Broadcast a message to all WebSocket clients with matching flags (using http_client_list)
+// Broadcast a message to all WebSocket clients with matching flags (using
+// http_client_list)
 void ws_broadcast_dict_with_flags(u_int32_t flags, rrconn_t *sender, dict *d, int data_type) {
    if (!d) {
       return;
@@ -137,8 +140,8 @@ void ws_broadcast_dict_with_flags(u_int32_t flags, rrconn_t *sender, dict *d, in
    rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
-      if (current && (current->is_ws && current->authenticated) && (current != sender) ) {
-         if (client_has_flag(current, flags) ) {
+      if ( current && (current->is_ws && current->authenticated) && (current != sender) ) {
+         if ( client_has_flag(current, flags) ) {
             ws_send_dict(NULL, current, d, data_type);
          }
       }
