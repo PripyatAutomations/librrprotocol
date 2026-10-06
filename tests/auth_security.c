@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
@@ -148,9 +149,40 @@ static void test_elmer_account_changes(void) {
    http_client_list = saved;
 }
 
+static void test_static_account_reload(void) {
+   char path[] = "/tmp/rr-static-users-XXXXXX";
+   int fd = mkstemp(path);
+   assert(fd >= 0);
+   FILE *file = fdopen(fd, "w");
+   assert(file);
+   fputs("-1:bad:1:hash:email:1:owner\n999999999:bad:1:hash:email:1:owner\nnot-a-uid:bad:1:hash:email:1:owner\n1:normal:1:hash:email:2:view,chat\n", file);
+   assert(!fclose(file));
+   memset(http_users, 0, sizeof(http_users));
+   snprintf(http_users[1].name, sizeof(http_users[1].name), "normal");
+   http_users[1].sessions = 2;
+   http_users[1].is_muted = true;
+   assert(http_load_users(path) == 0);
+   assert(http_users[1].uid == 1 && http_users[1].enabled);
+   assert(!strcmp(http_users[1].name, "normal"));
+   assert(http_users[1].sessions == 2 && http_users[1].is_muted);
+   assert(!http_users[0].name[0]);
+   unlink(path);
+
+   http_user_t previous[HTTP_MAX_USERS];
+   memcpy(previous, http_users, sizeof(previous));
+   snprintf(previous[1].privs, sizeof(previous[1].privs), "tx");
+   rrconn_t session = {.user = &http_users[1], .authenticated = true, .is_ptt = true};
+   rrconn_t *saved = http_client_list;
+   http_client_list = &session;
+   http_reconcile_users(previous);
+   assert(!session.is_ptt);
+   http_client_list = saved;
+}
+
 int main(void) {
    test_privileges();
    test_elmer_account_changes();
+   test_static_account_reload();
    test_wire_password();
    test_wire_password_full_inputs();
    test_media_source_authorization();

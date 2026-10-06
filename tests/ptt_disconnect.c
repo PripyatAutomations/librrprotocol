@@ -18,11 +18,13 @@ static int event_count;
 static char event_name[32];
 static char event_user[HTTP_USER_LEN + 1];
 static char event_vfo;
+static char event_room[128];
 static bool event_ptt;
 
 /* Capture the event that would be consumed by rrserver/events.c. */
 void event_emit_dict(const char *event, rrconn_t *cptr, dict *data) {
    (void)cptr;
+   snprintf(event_room, sizeof(event_room), "%s", dict_get(data, "cat.room", ""));
    event_count++;
    snprintf(event_name, sizeof(event_name), "%s", event ? event : "");
    snprintf(event_user, sizeof(event_user), "%s", dict_get(data, "cat.user", ""));
@@ -42,6 +44,7 @@ int main(void) {
    admin.user = &admin_user;
    admin.is_ptt = true;
    admin.ptt_vfo = 'A';
+   snprintf(admin.ptt_room, sizeof(admin.ptt_room), "#other-rig1");
    snprintf(admin.chatname, sizeof(admin.chatname), "%s", "admin");
 
    ws_release_ptt_on_disconnect(&admin);
@@ -50,6 +53,7 @@ int main(void) {
    assert(strcmp(event_name, "rig.ptt") == 0);
    assert(strcmp(event_user, "admin") == 0);
    assert(event_vfo == 'A');
+   assert(!strcmp(event_room, "#other-rig1"));
    assert(!event_ptt);
 
    /* A client that was receiving only must not generate a release event. */

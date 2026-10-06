@@ -137,6 +137,8 @@ int http_load_users(const char *filename) {
    if (!file) {
       return -1;
    }
+   http_user_t previous[HTTP_MAX_USERS];
+   memcpy(previous, http_users, sizeof(previous));
    memset( http_users, 0, sizeof(http_users) );
    char line[HTTP_WS_MAX_MSG + 1];
    int user_count = 0;
@@ -178,7 +180,13 @@ int http_load_users(const char *filename) {
          switch (i) {
             case 0: {
                // uid
-               uid = atoi(token);
+               char *end = NULL;
+               long parsed = strtol(token, &end, 10);
+               if (!end || *end || end == token || parsed < 0 || parsed >= HTTP_MAX_USERS) {
+                  uid = -1;
+                  break;
+               }
+               uid = (int)parsed;
                up = &http_users[uid];
                up->uid = uid;
                break;
@@ -223,11 +231,19 @@ int http_load_users(const char *filename) {
                break;
             }
          }
+         if (uid < 0) { break; }
          token = strtok(NULL, ":");
          i++;
       }
-      user_count++;
+      if (uid >= 0) { user_count++; }
    }
+   for (int i = 0; i < HTTP_MAX_USERS; i++) {
+      if (http_users[i].name[0] && !strcasecmp(previous[i].name, http_users[i].name)) {
+         http_users[i].sessions = previous[i].sessions;
+         http_users[i].is_muted = previous[i].is_muted;
+      }
+   }
+   http_reconcile_users(previous);
    Log(LOG_INFO, "auth", "Loaded %d static users from %s", user_count, filename);
    fclose(file);
 
@@ -249,6 +265,27 @@ int http_load_users(const char *filename) {
  * message handler in srv.http.c).
  */
 /* PARITY: rustyrig-www/js/webui.login.js */
+void http_reconcile_users(const http_user_t *previous) {
+   if (!previous) { return; }
+   for (rrconn_t *session = http_client_list; session; session = session->next) {
+      if (!session->authenticated || !session->user) { continue; }
+      ptrdiff_t uid = session->user - http_users;
+      if (uid < 0 || uid >= HTTP_MAX_USERS) { continue; }
+      http_user_t *account = &http_users[uid];
+      if (!account->enabled || !account->name[0] || strcasecmp(previous[uid].name, account->name) ||
+          (account->password_expires > 0 && account->password_expires <= now)) {
+         ws_release_ptt_on_disconnect(session);
+         ws_kick_client(session, "Account disabled, removed or password expired");
+      } else {
+         if (session->is_ptt && (!has_priv(account->uid, "admin|owner|tx|noob") || account->password_change_required ||
+                                 (has_priv(account->uid, "noob") && !is_elmer_online()))) {
+            ws_release_ptt_on_disconnect(session);
+         }
+         if (strcmp(previous[uid].privs, account->privs)) { ws_send_userinfo(session, NULL); }
+      }
+   }
+}
+
 int http_reload_users(void) {
    const char *authdb = cfg_get_exp("net.http.authdb");
 

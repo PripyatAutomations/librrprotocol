@@ -390,6 +390,26 @@ const char *ws_site_room(void) {
    return room;
 }
 
+/* PARITY: rustyrig-fw/rrserver/events.c:rrserver_room_join_check
+ * Reserve dashed names for present and future linked station namespaces.
+ * Also protect this server's lobby, which has no dash. */
+bool ws_room_station_scoped(const char *room) {
+   return ws_room_name_valid(room) &&
+          (strchr(room + 1, '-') || !strcasecmp(room, ws_site_room()));
+}
+
+static rr_vfo_t ws_chat_selected_vfo(const rrconn_t *client, const char *room) {
+   uint32_t mask = ws_room_vfo_mask(room);
+   if (client->chat_vfo && !strcasecmp(client->chat_vfo_room, room)) {
+      rr_vfo_t selected = vfo_lookup(client->chat_vfo);
+      if (selected >= 0 && selected < 32 && (mask & (UINT32_C(1) << selected))) { return selected; }
+   }
+   for (rr_vfo_t index = 0; index < MAX_VFOS && index < 32; index++) {
+      if (mask & (UINT32_C(1) << index)) { return index; }
+   }
+   return VFO_NONE;
+}
+
 // Base rig rooms are reserved even outside this site's namespace.
 bool ws_room_rig_base(const char *room) {
    if ( !ws_room_name_valid(room) ) { return false; }
@@ -901,11 +921,11 @@ static bool ws_chat_cmd_mute(rrconn_t *cptr, const char *target, const char *rea
       // broadcast the userinfo so cul updates
       ws_send_userinfo(acptr, NULL);
 
-      // turn off PTT if this user holds it
-      if (acptr->is_ptt) {
-         // XXX: This needs to include which rig/ptt, user, etc
-         event_emit("ptt.off", NULL, NULL);
-         acptr->is_ptt = false;
+      // Account mute affects every session, including a separately keyed session.
+      for (rrconn_t *session = http_client_list; session; session = session->next) {
+         if (session->user == acptr->user && session->is_ptt) {
+            ws_release_ptt_on_disconnect(session);
+         }
       }
    } else {
       ws_chat_err_noprivs(cptr, "MUTE");
@@ -1119,7 +1139,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             action = verb;
             if (!room_or_list) { ws_send_error(cptr, usage); return false; }
          }
-         if (room_or_list[0] != '#' && room_or_list[0] != '&') {
+         if (!ws_room_name_valid(room_or_list)) {
             ws_send_error(cptr, "Invalid room name: %s (room names must start with # or &)", room_or_list);
 
             return false;
@@ -1143,7 +1163,8 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                else { confirmation = option; }
             }
             if (invalid || (history && !force) || (!strcasecmp(action, "add") && (confirmation || force || history)) ||
-                !has_priv(cptr->user->uid, "admin|owner")) {
+                ((!strcasecmp(action, "remove") || ws_room_station_scoped(room)) &&
+                 !has_priv(cptr->user->uid, "admin|owner"))) {
                ws_send_error(cptr, "Usage: /room add #room | remove #room [-f [-h]] [token] (admin or owner required)");
                return false;
             }
@@ -1254,6 +1275,10 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             return false;
          }
 
+         if (*data && cptr->user->is_muted) {
+            ws_send_error(cptr, "You are muted and cannot change room topics");
+            return false;
+         }
          if ( *data && !has_priv(cptr->user->uid, "admin|owner|chat") ) {
             ws_send_error(cptr, "You do not have CHAT privilege.");
 
@@ -1322,6 +1347,10 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
          return true;
       } else if (strcasecmp(cmd, "msg") == 0) {
+         if (cptr->user->is_muted) {
+            ws_send_error(cptr, "You are muted and cannot send messages");
+            return false;
+         }
          if (!data) {
             Log(LOG_DEBUG, "chat", "got msg for cptr <%p> with no data: chatname: %s", cptr, user);
 
@@ -1417,17 +1446,19 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            break;
                         }
 
-                        if ( !strcasecmp(cmd, "freq") || !strcasecmp(cmd, "mode") || !strcasecmp(cmd, "width") ) {
+                        if ( !strcasecmp(cmd, "freq") || !strcasecmp(cmd, "mode") || !strcasecmp(cmd, "width") || !strcasecmp(cmd, "power") ) {
                            dict *control = dict_new();
 
                            if (!control) { return false; }
                            dict_add(control, "cat.cmd", cmd);
                            dict_add(control, "cat.room", channel);
-                           dict_add( control, "cat.vfo", vfo_name(active_vfo) );
+                           dict_add( control, "cat.vfo", vfo_name(ws_chat_selected_vfo(cptr, channel)) );
 
                            if ( !strcasecmp(cmd, "freq") ) {
                               dict_add_long( control, "cat.freq", parse_freq(arg) );
-                           } else if ( !strcasecmp(cmd, "mode") ) { dict_add(control, "cat.mode", arg); } else {
+                           } else if ( !strcasecmp(cmd, "mode") ) { dict_add(control, "cat.mode", arg); } else if (!strcasecmp(cmd, "power")) {
+                              dict_add(control, "cat.power", arg);
+                           } else {
                               dict_add(control, "cat.width", arg);
                            }
                            bool applied = ws_handle_rigctl_msg(cptr, control);
@@ -1454,104 +1485,6 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            ws_send_notice(cptr, "  !width <width> - Set passband width (narrow|normal|wide)");
 
                            return true;
-
-                        } else if (strcasecmp(cmd, "freq") == 0) {
-                           if ( !ws_room_control_allowed(cptr, channel, true) ) {
-                              ws_send_error(cptr, "Control is not allowed from room %s", channel);
-
-                              return false;
-                           }
-
-                           if (*arg == '\0') {
-                              ws_send_error(cptr, "!freq requires a frequency argument");
-
-                              return false;
-                           }
-
-                           long real_freq = parse_freq(arg);
-
-                           Log(LOG_DEBUG, "ws.chat", "Got !freq %lu (%s) from %s", real_freq, arg, cptr->chatname);
-
-                           dict *cmd_d = dict_new();
-                           dict_add(cmd_d, "msg.type", "rigctl");
-                           dict_add(cmd_d, "rigctl.room", channel);
-                           dict_add(cmd_d, "rigctl.cmd", "freq");
-                           dict_add_int(cmd_d, "rigctl.freq", real_freq);
-                           dict_add(cmd_d, "rigctl.from", cptr->chatname);
-                           dict_add( cmd_d, "rigctl.vfo", (char *)vfo_name(active_vfo) );
-
-                           event_emit_dict("rigctl", NULL, cmd_d);
-                           dict_free(cmd_d);
-
-                        } else if (strcasecmp(cmd, "mode") == 0) {
-                           if ( !ws_room_control_allowed(cptr, channel, false) ) {
-                              ws_send_error(cptr, "Control is not allowed from room %s", channel);
-
-                              return false;
-                           }
-
-                           if (*arg == '\0') {
-                              ws_send_error(cptr, "!mode requires a mode argument");
-
-                              return false;
-                           }
-
-                           Log(LOG_DEBUG, "ws.chat", "Got !mode %s from %s", arg, cptr->chatname);
-
-                           rr_mode_t new_mode =
-                              vfo_parse_mode(arg);
-
-                           if (new_mode != MODE_NONE) {
-                              rr_set_mode(active_vfo, new_mode);
-
-                              // Audit trail is logged by the rigctl event handler
-                           }
-
-                        } else if (strcasecmp(cmd, "power") == 0) {
-                           if ( !ws_room_control_allowed(cptr, channel, false) ) {
-                              ws_send_error(cptr, "Control is not allowed from room %s", channel);
-
-                              return false;
-                           }
-
-                           if (*arg == '\0') {
-                              ws_send_error(cptr, "!power requires a power argument (in watts)");
-
-                              return false;
-                           }
-
-                           float real_power = strtof(arg, NULL);
-
-                           Log(LOG_DEBUG, "ws.chat", "Got !power %f (%s) from %s", real_power, arg, cptr->chatname);
-
-                           dict *cmd_d = dict_new();
-                           dict_add(cmd_d, "msg.type", "rigctl");
-                           dict_add(cmd_d, "rigctl.cmd", "power");
-                           dict_add_float(cmd_d, "rigctl.power", real_power);
-                           dict_add(cmd_d, "rigctl.from", cptr->chatname);
-                           dict_add( cmd_d, "rigctl.vfo", (char *)vfo_name(active_vfo) );
-
-                           event_emit_dict("rigctl", NULL, cmd_d);
-                           dict_free(cmd_d);
-
-                        } else if (strcasecmp(cmd, "width") == 0) {
-                           if ( !ws_room_control_allowed(cptr, channel, false) ) {
-                              ws_send_error(cptr, "Control is not allowed from room %s", channel);
-
-                              return false;
-                           }
-
-                           if (*arg == '\0') {
-                              ws_send_error(cptr, "!width requires an argument");
-
-                              return false;
-                           }
-
-                           Log(LOG_DEBUG, "ws.chat", "Got !width %s from %s", arg, cptr->chatname);
-
-                           rr_set_width(active_vfo, arg);
-
-                           // Audit trail is logged by the rigctl event handler
 
                         } else if (strcasecmp(cmd, "vfo") == 0) {
                            if ( !ws_client_in_room(cptr, channel) || !ws_room_has_vfos(channel) ) {
@@ -1582,32 +1515,21 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                               return false;
                            }
 
-                           if (cptr->ptt_vfo) {
+                           if (cptr->is_ptt) {
                               ws_send_error(cptr, "Cannot switch VFO while transmitting on VFO %c", cptr->ptt_vfo);
 
                               return false;
                            }
 
-                           if (new_vfo == active_vfo) {
-                              // no-op, but confirm to the user so it doesn't look hung
-                              ws_send_notice( cptr, "VFO %s is already active", vfo_name(new_vfo) );
-                           } else {
-                              Log( LOG_AUDIT, "ws.chat", "User %s switched active VFO %s -> %s", cptr->chatname,
-                                 vfo_name(active_vfo), vfo_name(new_vfo) );
-                              active_vfo = new_vfo;
-
-                              // Nudge the rig poll so the new active VFO's state
-                              // gets broadcast promptly (cat.state.vfo etc)
-                              // NB: can't call rr_be_poll from the library; ask
-                              // the server to poll via an event
-                              event_emit("be.poll", NULL, NULL);
-                           }
+                           cptr->chat_vfo = (char)('A' + new_vfo);
+                           strlcpy(cptr->chat_vfo_room, channel, sizeof(cptr->chat_vfo_room));
+                           ws_send_notice(cptr, "Selected VFO %s in room %s", vfo_name(new_vfo), channel);
                            dict *selected = dict_new();
                            dict_add(selected, "msg.type", "cat");
                            dict_add(selected, "cat.room", channel);
                            dict_add( selected, "cat.state.vfo", vfo_name(new_vfo) );
                            dict_add_bool(selected, "cat.state.active", true);
-                           ws_broadcast_room_dict(NULL, selected, channel);
+                           ws_send_dict(NULL, cptr, selected, WEBSOCKET_OP_TEXT);
                            dict_free(selected);
 
                         } else {
@@ -1716,6 +1638,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             return false;
          }
 
+         // Public metadata allowlist: never copy account credentials, tokens or nonces.
          // Flat whois reply, keyed off talk.<field> - shared by webui and
          // rrclient (chat.whois.c). Sessions is just the count (also in userinfo).
          dict *wi = dict_new();
@@ -1773,7 +1696,8 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
       } else if (strcasecmp(cmd, "user") == 0) {
          /* User administration is implemented by the server because the protocol library
           * must not know how accounts are persisted. */
-         if ( !has_priv(cptr->user->uid, "admin|owner") ) {
+         if ( !has_priv(cptr->user->uid, "admin|owner") &&
+              (!data || strncasecmp(data, "pass ", 5)) ) {
             ws_chat_err_noprivs(cptr, "USER");
 
             return false;

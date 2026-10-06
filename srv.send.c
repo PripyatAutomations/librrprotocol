@@ -108,7 +108,7 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
       return false;
    }
 
-   Log(LOG_CRAZY, "ws.proto", "Sending dict <%p> to conn <%p>: %s", (void *)d, (void *)dest, jp);
+   Log(LOG_CRAZY, "ws.proto", "Sending dict <%p> to conn <%p> (%zu bytes)", (void *)d, (void *)dest, strlen(jp));
 
    mg_ws_send(dest->conn, jp, strlen(jp), data_type);
 

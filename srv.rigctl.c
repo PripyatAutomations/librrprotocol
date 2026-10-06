@@ -16,6 +16,8 @@
 #include <string.h>
 #include <time.h>
 #include <ctype.h>
+#include <math.h>
+#include <errno.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 #include <rrserver/backend.h>
@@ -349,6 +351,25 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_add(cmd_d, "rigctl.vfo", vfo);
          event_emit_dict("rigctl", NULL, cmd_d);
          dict_free(cmd_d);
+      } else if (!strcasecmp(cmd, "power")) {
+         if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || !vfo || !*vfo) { return false; }
+         const char *argument = dict_get(d, "cat.power", NULL);
+         char *end = NULL;
+         errno = 0;
+         float power = argument ? strtof(argument, &end) : 0;
+         if (!argument || end == argument || *end || errno || !isfinite(power) || power <= 0) {
+            ws_send_error(cptr, "Power must be a finite positive value in watts");
+            return false;
+         }
+         dict *command = dict_new();
+         dict_add(command, "msg.type", "rigctl");
+         dict_add(command, "rigctl.cmd", "power");
+         dict_add(command, "rigctl.room", control_room);
+         dict_add(command, "rigctl.from", cptr->chatname);
+         dict_add(command, "rigctl.vfo", vfo);
+         dict_add_float(command, "rigctl.power", power);
+         event_emit_dict("rigctl", cptr, command);
+         dict_free(command);
       } else if (strcasecmp(cmd, "freq") == 0) {
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
             return false;

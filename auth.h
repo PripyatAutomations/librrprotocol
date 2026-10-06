@@ -43,4 +43,7 @@ extern bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd,
 extern bool ws_send_logout(rrconn_t *cptr, const char *user, const char *token);
 extern bool ws_send_hello(rrconn_t *cptr);
 
+/* Reconcile live sessions after account records are reloaded in place. */
+extern void http_reconcile_users(const http_user_t *previous);
+
 #endif // !defined(__rr_auth_h)

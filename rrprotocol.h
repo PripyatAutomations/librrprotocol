@@ -44,6 +44,7 @@ bool ws_send_mode_cmd_in_room(rrconn_t *, const char *vfo, const char *mode, con
 bool ws_send_width_cmd_in_room(rrconn_t *, const char *vfo, const char *width, const char *room);
 
 extern bool ws_room_name_valid(const char *room);
+extern bool ws_room_station_scoped(const char *room);
 extern bool ws_room_set_vfo_mask(const char *room, uint32_t mask);
 /* Client-side room identity learned from the server's authenticated room event. */
 extern void ws_set_authoritative_room(const char *room);

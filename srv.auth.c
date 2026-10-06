@@ -96,9 +96,6 @@ static rrconn_t *http_find_client_by_nonce(const char *nonce) {
 }
 
 bool match_priv(const char *user_privs, const char *priv) {
-   Log(LOG_CRAZY, "auth.priv", "match_priv(): comparing |%s| to |%s|", user_privs ? user_privs : "(null)",
-      priv ? priv : "(null)");
-
    if (user_privs == NULL || priv == NULL) {
       return false;
    }
@@ -118,8 +115,6 @@ bool match_priv(const char *user_privs, const char *priv) {
       token[len] = '\0';
 
       if (strcmp(token, priv) == 0) {
-         Log(LOG_CRAZY, "auth.priv", " ! exact match |%s|", token);
-
          return true;
       }
 
@@ -127,8 +122,6 @@ bool match_priv(const char *user_privs, const char *priv) {
          token[len - 2] = '\0';   // strip .*
 
          if (strncmp( priv, token, strlen(token) ) == 0 && priv[strlen(token)] == '.') {
-            Log(LOG_CRAZY, "auth.priv", " ! wildcard match |%s|", token);
-
             return true;
          }
       }
@@ -166,6 +159,24 @@ bool has_priv(int uid, const char *priv) {
    return false;
 }
 
+/* Bounded, process-local peer budget; reconnecting does not reset attempts.
+ * Count both challenge requests and replies, including invalid account names. */
+static bool auth_peer_allowed(const char *ip) {
+   static struct { char ip[64]; time_t started; unsigned attempts; } peers[128];
+   size_t slot = 0;
+   for (size_t i = 0; i < sizeof(peers) / sizeof(peers[0]); i++) {
+      if (!strcmp(peers[i].ip, ip ? ip : "unknown")) { slot = i; break; }
+      if (peers[i].started < peers[slot].started) { slot = i; }
+   }
+   if (strcmp(peers[slot].ip, ip ? ip : "unknown") || now < peers[slot].started ||
+       now - peers[slot].started >= 60) {
+      strlcpy(peers[slot].ip, ip ? ip : "unknown", sizeof(peers[slot].ip));
+      peers[slot].started = now;
+      peers[slot].attempts = 0;
+   }
+   return ++peers[slot].attempts <= 20;
+}
+
 ///////////////////////////////////////
 bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
    bool rv = true;
@@ -191,6 +202,11 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       return false;
    }
 
+   if ((!strcasecmp(cmd, "login") || !strcasecmp(cmd, "pass")) && !auth_peer_allowed(cptr->user_ip)) {
+      ws_kick_client(cptr, "Too many authentication attempts; try again in a minute");
+      return false;
+   }
+
    if (strcasecmp(cmd, "login") == 0) {
       if (!user || !*user) {
          Log(LOG_WARN, "auth", "Login request did not include a username");
@@ -203,6 +219,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
 
       Log(LOG_AUDIT, "auth", "Login request from user %s on cptr:<%p> from %s:%d", user, cptr, ip, port);
 
+      cptr->user = NULL;
       // search for user
       for (int i = 0 ; i < HTTP_MAX_USERS ; i++) {
          if (strcasecmp(http_users[i].name, user) == 0) {
@@ -223,6 +240,17 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          Log(LOG_AUDIT, "auth.users", "User account %s is disabled", user);
          ws_kick_client(cptr, "Account disabled");
 
+         return false;
+      }
+
+      if (strlen(cptr->user->pass) != HTTP_HASH_LEN ||
+          strspn(cptr->user->pass, "0123456789abcdefABCDEF") != HTTP_HASH_LEN) {
+         ws_kick_client(cptr, "Account password unavailable; ask an administrator to reset it");
+         return false;
+      }
+
+      if (cptr->user->password_expires > 0 && cptr->user->password_expires <= now) {
+         ws_kick_client(cptr, "Password expired; ask an administrator to reset it");
          return false;
       }
 
@@ -248,6 +276,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       } else {
          Log(LOG_CRIT, "auth.users", "login request has no cptr->user for cptr:<%p>?!", cptr);
       }
+      auth_generate_nonce(cptr->nonce, sizeof(cptr->nonce));
       dict *auth_msg = dict_new();
       dict_add(auth_msg, "msg.type", "auth");
       dict_add(auth_msg, "auth.cmd", "challenge");
@@ -298,6 +327,12 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          return false;
       }
 
+      if (!up->enabled || (up->password_expires > 0 && up->password_expires <= now) ||
+          strcmp(token, cptr->token) || (user && strcasecmp(user, up->name))) {
+         ws_kick_client(cptr, "Invalid or expired login challenge");
+         return false;
+      }
+
       // Deal with double-hashed (reply-protected) responses
       char *nonce = cptr->nonce;
 
@@ -307,7 +342,12 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          return false;
       }
 
+      if (!cptr->nonce[0]) {
+         ws_kick_client(cptr, "Request a login challenge first");
+         return false;
+      }
       temp_pw = compute_wire_password(up->pass, nonce);
+      cptr->nonce[0] = '\0';
 
       if (temp_pw == NULL) {
          Log(LOG_WARN, "auth", "Got NULL return from compute_wire_password for cptr:<%p>, kicking!", cptr);
@@ -315,7 +355,13 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          return false;
       }
 
-      if (strcmp(temp_pw, pass) == 0) {
+      unsigned difference = 0;
+      size_t expected_length = strlen(temp_pw);
+      bool correct_length = strlen(pass) == expected_length;
+      if (correct_length) {
+         for (size_t i = 0; i < expected_length; i++) { difference |= (unsigned char)temp_pw[i] ^ (unsigned char)pass[i]; }
+      }
+      if (correct_length && difference == 0) {
          // special handling for guests; we generate a random suffix
          // force rewriting if they use any nick starting with Guest.
          if (strncasecmp(up->name, "guest", 5) == 0) {
@@ -459,7 +505,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          event_emit_dict("send-chat-replay", cptr, talk_msg);
          dict_free(talk_msg);
       } else {
-         Log(LOG_AUDIT, "auth", "User %s on cptr <%p> from IP %s:%d gave wrong password. Kicking!", cptr->user, cptr,
+         Log(LOG_AUDIT, "auth", "User %s on cptr <%p> from IP %s:%d gave wrong password. Kicking!", cptr->user->name, cptr,
             ip, port);
          ws_kick_client(cptr, "Invalid login/password");
          rv = false;

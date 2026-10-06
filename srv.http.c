@@ -310,6 +310,31 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       return false;
    }
 
+   if (cptr->authenticated && cptr->user && cptr->user->password_expires > 0 &&
+       cptr->user->password_expires <= now) {
+      ws_kick_client(cptr, "Password expired; ask an administrator to reset it");
+      return false;
+   }
+   if (cptr->authenticated && cptr->user && cptr->user->password_change_required) {
+      const char *command = dict_get(d, "talk.cmd", "");
+      const char *tail = dict_get(d, "talk.data", "");
+      bool password_change = !strcasecmp(msg_type, "talk") && !strcasecmp(command, "user") &&
+                             !strncasecmp(tail, "pass ", 5);
+      if (!password_change && strcasecmp(msg_type, "auth") && strcasecmp(msg_type, "pong") &&
+          strcasecmp(msg_type, "hello")) {
+         ws_send_error(cptr, "Password change required: /user pass %s <new-password>", cptr->user->name);
+         return false;
+      }
+      if (password_change) {
+         // Even staff with a temporary password may only change their own password.
+         char target[128];
+         if (sscanf(tail + 5, "%127s", target) != 1 || strcasecmp(target, cptr->user->name)) {
+            ws_send_error(cptr, "Change your own password before using other commands");
+            return false;
+         }
+      }
+   }
+
    // Unauthenticated clients may only send auth commands (login/pass), pong
    // (in reply to the server's own keep-alive pings) and hello (client
    // version negotiation on connect). Everything else - including client
@@ -475,6 +500,7 @@ cleanup:
 // Handle a websocket request
 //
 bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
+   if (cptr && cptr->conn && (cptr->conn->is_closing || cptr->conn->is_draining)) { return false; }
    if (!cptr || !msg || !msg->data.buf) {
       Log( LOG_DEBUG, "http.ws", "ws_handle got msg:<%p> c:<%p> data:<%p>", msg, cptr, (msg ? msg->data.buf : NULL) );
 
@@ -550,6 +576,7 @@ void ws_release_ptt_on_disconnect(rrconn_t *cptr) {
    dict_add(rig_msg, "cat.cmd", "ptt");
    dict_add_bool(rig_msg, "cat.ptt", false);
    dict_add(rig_msg, "cat.user", cptr->chatname);
+   if (cptr->ptt_room[0]) { dict_add(rig_msg, "cat.room", cptr->ptt_room); }
 
    if (cptr->ptt_vfo) {
       char vfo_buf[2] = {

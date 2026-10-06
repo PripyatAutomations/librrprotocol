@@ -173,9 +173,7 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
    }
    // XXX: make this a compile time enable for higher debug levels
    // Dump the dict for debugging purposes
-   const char *jp = dict2json(d);
-   Log(LOG_CRAZY, "http.ws", "%s: No matches for message: %s", __FUNCTION__, jp);
-   free( (void *)jp );
+   Log(LOG_CRAZY, "http.ws", "%s: No handler for message type %s", __FUNCTION__, msg_type ? msg_type : "(none)");
 
    return false;
 }
@@ -584,7 +582,7 @@ bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
    // Rewrite this to use ws_send_dict();
    mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
    mg_ws_send(c, NULL, 0, WEBSOCKET_OP_CLOSE);
-   c->is_closing = 1;
+   c->is_draining = 1;
    event_emit_dict("disconnected", NULL, d);
    dict_free(d);
    free( (void *)jp );
@@ -601,6 +599,8 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
 
       return false;
    }
+   if (!cptr->authenticated || !cptr->user || cptr->user->password_change_required ||
+       (cptr->user->password_expires > 0 && cptr->user->password_expires <= now)) { return false; }
    struct rr_binframe f;
    int rv = rr_binframe_parse( (const uint8_t *)buf, len, &f );
 
@@ -715,15 +715,9 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
       return true;
    }
 
-   // RX-direction frames arriving at the server are not valid client traffic.
-   if (f.hdr.direction != RR_BINFRAME_DIR_RX) {
-      return false;
-   }
-
-   // RX-direction frames arriving at the server are not valid client
-   // traffic; keep dispatching to the event bus for the program (legacy
-   // fwdsp pipe path) until that's fully retired.
-   return rr_binframe_dispatch(&f, cptr);
+   // RX is server-originated. Authorized sources were handled above; clients
+   // cannot inject receive traffic into legacy event consumers.
+   return false;
 }
 
 ///////////////////////////////////////////////////////////////

@@ -18,7 +18,7 @@ int auth_generate_nonce(char *buffer, size_t length) {
    size_t generated = length - 1;
 
    for (size_t i = 0 ; i < generated ; i++) {
-      buffer[i] = base64_chars[rand() % 64];
+      buffer[i] = base64_chars[arc4random_uniform(64)];
    }
 
    buffer[generated] = '\0';

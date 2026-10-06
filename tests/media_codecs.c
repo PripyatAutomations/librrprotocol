@@ -100,6 +100,13 @@ int main(void) {
    snprintf(account->privs, sizeof(account->privs), "noob");
    assert(!ws_binframe_process_mg(&client, (const char *)packet, length));
    snprintf(account->privs, sizeof(account->privs), "rx,tx");
+   account->password_change_required = true;
+   assert(!ws_binframe_process_mg(&client, (const char *)packet, length));
+   account->password_change_required = false;
+   free(packet);
+   length = rr_binframe_frame(&packet, RR_BINFRAME_SUBSYS_AUDIO, "pc16", RR_BINFRAME_DIR_RX, 0, 0, 1, 1, 0, pcm, sizeof(pcm));
+   assert(length > 0);
+   assert(!ws_binframe_process_mg(&client, (const char *)packet, length));
    free(packet);
    struct rr_mediachan *gps = media_chan_add(RR_BINFRAME_SUBSYS_MODEM,
       RR_BINFRAME_DIR_RX, RR_BINFRAME_VFO_NA, 0, "gpsp", "position");
