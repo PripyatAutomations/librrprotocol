@@ -79,7 +79,9 @@ ${librrprotocol}: ${BUILD_DIR}/librrprotocol/.stamp ${real_librrprotocol_objs} $
 	@${CC} ${LDFLAGS} ${LIB_LDFLAGS} -Wl,-soname,librrprotocol.so.0 -lm -o $@ ${real_librrprotocol_objs} -lrustyaxe || exit 2
 	@ln -sf librrprotocol.so librrprotocol.so.0
 
-${BUILD_DIR}/librrprotocol/%.o:librrprotocol/%.c GNUmakefile ${librrprotocol_headers} ${librustyaxe} ${librustyaxe_headers}
+# Objects include build_config.h via the protocol/rustyaxe headers; wait for
+# pack-eeprom before compiling them.
+${BUILD_DIR}/librrprotocol/%.o:librrprotocol/%.c GNUmakefile ${librrprotocol_headers} ${librustyaxe} ${librustyaxe_headers} ${OBJECT_ORDER_ONLY}
 	@echo "[compile] $< => $@"
 	@${RM} $@
 	@${CC} ${librrprotocol_cflags} -o $@ -c $< || exit 2

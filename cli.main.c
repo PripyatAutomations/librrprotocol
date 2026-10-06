@@ -204,13 +204,18 @@ static bool ws_binframe_process_client(rrconn_t *client, const char *data, size_
       return true;
    }
 
-   // GPS is a fixed-format, read-only MODEM channel, separate from raw serial.
+   // GPS position records are fixed-size, read-only MODEM media frames.
    if ( f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_GPS_FRAME_CODEC, 4) ) {
       if (f.hdr.direction != RR_BINFRAME_DIR_RX || f.hdr.vfo != RR_BINFRAME_VFO_NA ||
-          !f.hdr.stream || !f.len || f.len > 511 ||
+          !f.hdr.stream || f.len != RR_GPS_POSITION_PAYLOAD_LEN ||
           len != RR_BINFRAME_HDR_LEN + f.len) { return false; }
+      int64_t lat = (int32_t)((uint32_t)f.data[0] << 24 | (uint32_t)f.data[1] << 16 |
+         (uint32_t)f.data[2] << 8 | f.data[3]);
+      int64_t lon = (int32_t)((uint32_t)f.data[4] << 24 | (uint32_t)f.data[5] << 16 |
+         (uint32_t)f.data[6] << 8 | f.data[7]);
+      if (lat < -900000 || lat > 900000 || lon < -1800000 || lon > 1800000 ||
+          (f.data[8] & ~(RR_GPS_POSITION_VALID | RR_GPS_POSITION_MANUAL))) return false;
       event_emit_binary(RR_GPS_FRAME_EVENT, client, data, len);
-
       return true;
    }
 
