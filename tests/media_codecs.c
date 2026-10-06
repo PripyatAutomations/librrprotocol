@@ -50,6 +50,20 @@ int main(void) {
       assert(!ws_handle_mediachan_msg(&client, request));
       assert(!memcmp(snapshot, media_channels, sizeof(snapshot)));
    }
+   struct rr_mediachan *gps = media_chan_add(RR_BINFRAME_SUBSYS_MODEM,
+      RR_BINFRAME_DIR_RX, RR_BINFRAME_VFO_NA, 0, "gpsp", "position");
+   struct rr_mediachan *nmea = media_chan_add(RR_BINFRAME_SUBSYS_MODEM,
+      RR_BINFRAME_DIR_RX, RR_BINFRAME_VFO_NA, 0, "nmea", "receiver");
+   assert(gps && nmea && gps != nmea && strcmp(gps->uuid,nmea->uuid));
+   assert(media_chan_add(RR_BINFRAME_SUBSYS_MODEM,RR_BINFRAME_DIR_RX,
+      RR_BINFRAME_VFO_NA,0,"nmea",NULL) == nmea);
+   dict_add(request,"media.chan-uuid",gps->uuid);
+   dict_add(request,"media.codec","pc16");
+   assert(!ws_handle_mediachan_msg(&client,request));
+   assert(!strcmp(gps->codec,"gpsp"));
+   dict_add(request,"media.chan-uuid",nmea->uuid);
+   assert(!ws_handle_mediachan_msg(&client,request));
+   assert(!strcmp(nmea->codec,"nmea"));
    dict_free(request);
    dict_free(cfg);
    cfg = NULL;
