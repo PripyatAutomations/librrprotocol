@@ -634,7 +634,7 @@ static bool ws_chat_cmd_die(rrconn_t *cptr, const char *reason) {
       return true;
    }
 
-   if ( client_has_flag(cptr, FLAG_STAFF) ) {
+   if ( has_priv(cptr->user->uid, "admin|owner") ) {
       // Send an ALERT to all connected users
       char msgbuf[HTTP_WS_MAX_MSG + 1];
       prepare_msg(msgbuf, sizeof(msgbuf), "Shutting down due to /die \"%s\" from %s (uid: %d with privs %s)",
@@ -672,7 +672,7 @@ static bool ws_chat_cmd_restart(rrconn_t *cptr, const char *reason) {
       return true;
    }
 
-   if ( client_has_flag(cptr, FLAG_STAFF) ) {
+   if ( has_priv(cptr->user->uid, "admin|owner") ) {
       // Send an ALERT to all connected users
       char msgbuf[HTTP_WS_MAX_MSG + 1];
       prepare_msg(msgbuf, sizeof(msgbuf), "Shutting down due to /restart from %s (uid: %d with privs %s): %s",
@@ -711,7 +711,7 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
       return true;
    }
 
-   if ( client_has_flag(cptr, FLAG_STAFF) ) {
+   if ( has_priv(cptr->user->uid, "admin|owner") ) {
       rrconn_t *acptr;
       int kicked = 0;
 
@@ -738,7 +738,7 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
 
       if (!kicked) {
          char msgbuf[HTTP_WS_MAX_MSG + 1];
-         prepare_msg(msgbuf, sizeof(msgbuf), "KICK '%s' command matched no connected users", now, target);
+         prepare_msg(msgbuf, sizeof(msgbuf), "KICK '%s' command matched no connected users", target);
          dict *err_msg = dict_new();
          dict_add(err_msg, "error.msg", msgbuf);
          dict_add_ulong(err_msg, "error.ts", now);
@@ -830,7 +830,7 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
 }
 
 bool ws_send_room_users(rrconn_t *cptr, const char *room) {
-   if (!cptr || !room) { return false; }
+   if (!cptr || !room || !ws_client_in_room(cptr, room)) { return false; }
 
    for (rrconn_t *current = http_client_list ; current ; current = current->next) {
       if ( ws_client_in_room(current, room) ) {
@@ -884,7 +884,7 @@ static bool ws_chat_cmd_mute(rrconn_t *cptr, const char *target, const char *rea
       return true;
    }
 
-   if ( client_has_flag(cptr, FLAG_STAFF) ) {
+   if ( has_priv(cptr->user->uid, "admin|owner") ) {
       rrconn_t *acptr = http_find_client_by_name(target);
 
       if (!acptr) {
@@ -934,7 +934,7 @@ static bool ws_chat_cmd_unmute(rrconn_t *cptr, const char *target) {
       return true;
    }
 
-   if ( client_has_flag(cptr, FLAG_STAFF) ) {
+   if ( has_priv(cptr->user->uid, "admin|owner") ) {
       rrconn_t *acptr = http_find_client_by_name(target);
 
       if (!acptr) {
@@ -963,7 +963,7 @@ static bool ws_chat_cmd_syslog(rrconn_t *cptr, const char *state) {
       return true;
    }
 
-   if ( client_has_flag(cptr, FLAG_STAFF) || client_has_flag(cptr, FLAG_SYSLOG) ) {
+   if ( cptr->user && has_priv(cptr->user->uid, "admin|owner") ) {
       bool new_state = false;
 
       new_state = parse_bool(state);
@@ -1342,6 +1342,11 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             // because they aren't allowed to send it.
             ws_send_error(cptr, "You do not have CHAT privilege.");
 
+            return false;
+         }
+
+         if (channel && (channel[0] == '#' || channel[0] == '&') && !ws_client_in_room(cptr, channel)) {
+            ws_send_error(cptr, "You are not joined to room %s", channel);
             return false;
          }
 

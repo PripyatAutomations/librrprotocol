@@ -305,7 +305,6 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
    if (!msg_type) {
       // Old protocol
       Log(LOG_CRIT, "rrproto.core", "ws_txtframe_process: msg_type unset!");
-      dict_dump(d, stderr);
       ws_send_error(cptr, "Invalid command: <missing msg.type>");
 
       return false;
@@ -483,8 +482,7 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
    }
 #if     defined(HTTP_DEBUG_CRAZY) || defined(DEBUG_PROTO)
    // XXX: This should be moved to an option in config perhaps?
-   Log(LOG_CRAZY, "http", "ws_handle WS msg: %.*s", (int)(msg->data.len > INT_MAX ? INT_MAX : msg->data.len),
-      msg->data.buf);
+   Log(LOG_CRAZY, "http", "ws_handle WS message: %zu bytes", msg->data.len);
 #endif
 
    // Binary (audio, waterfall) frames
@@ -494,8 +492,7 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
       return ws_binframe_process_mg(cptr, msg->data.buf, msg->data.len);
    } else {
       // Text (mostly json) frames
-      Log(LOG_CRAZY, "ws.frame.txt", "Incoming Text frame: %zu bytes: %.*s", msg->data.len,
-         (int)(msg->data.len > INT_MAX ? INT_MAX : msg->data.len), msg->data.buf);
+      Log(LOG_CRAZY, "ws.frame.txt", "Incoming Text frame: %zu bytes", msg->data.len);
 
       // Drop oversized frames: copying into our fixed buffer without this
       // check smashed the stack/heap and later crashed mg_iobuf_free

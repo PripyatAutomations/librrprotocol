@@ -47,7 +47,8 @@ void ws_broadcast_with_flags(u_int32_t flags, rrconn_t *sender, struct mg_str *m
    while (current) {
       // NULL sender means it came from the server itself
       if ( current && (current->is_ws && current->authenticated) && (current != sender) ) {
-         if ( client_has_flag(current, flags) ) {
+         if (( (flags & FLAG_STAFF) && current->user && has_priv(current->user->uid, "admin|owner") ) ||
+              client_has_flag(current, flags & ~FLAG_STAFF)) {
             mg_ws_send(current->conn, msg_data->buf, msg_data->len, data_type);
          }
       }
@@ -141,7 +142,8 @@ void ws_broadcast_dict_with_flags(u_int32_t flags, rrconn_t *sender, dict *d, in
    while (current) {
       // NULL sender means it came from the server itself
       if ( current && (current->is_ws && current->authenticated) && (current != sender) ) {
-         if ( client_has_flag(current, flags) ) {
+         if (( (flags & FLAG_STAFF) && current->user && has_priv(current->user->uid, "admin|owner") ) ||
+              client_has_flag(current, flags & ~FLAG_STAFF)) {
             ws_send_dict(NULL, current, d, data_type);
          }
       }

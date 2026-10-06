@@ -577,7 +577,7 @@ bool media_source_authorized(rrconn_t *cptr) {
       return false;
    }
 
-   if ( client_has_flag(cptr, FLAG_MEDIA_SOURCE) ) {
+   if (has_priv(cptr->user->uid, "media.source")) {
       return true;
    }
 
@@ -709,6 +709,10 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       // routing quadruple), we generate the uuid per the existing logic in
       // media_chan_add(). Defaults: RX audio on the first rig.
       if (!cp) {
+         if (!cptr->user || !has_priv(cptr->user->uid, "admin|owner|media.source")) {
+            ws_send_error(cptr, "Media channel creation requires admin, owner or media.source");
+            return false;
+         }
          uint32_t subsys = dict_get_ulong(d, "media.subsys", RR_BINFRAME_SUBSYS_AUDIO);
          uint32_t dir = dict_get_ulong(d, "media.dir", RR_BINFRAME_DIR_RX);
          uint32_t vfo = dict_get_ulong(d, "media.vfo", 0);
@@ -845,6 +849,12 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       if ( cp && !media_client_in_channel_room(cptr, cp) ) {
          ws_send_error(cptr, "Join room %s before selecting its codec", cp->room);
 
+         return false;
+      }
+
+      if (cp && (!cptr->authenticated || !cptr->user ||
+          !has_priv(cptr->user->uid, cp->direction == RR_BINFRAME_DIR_TX ? "tx" : "rx"))) {
+         ws_send_error(cptr, "Codec selection requires %s privilege for this VFO", cp->direction == RR_BINFRAME_DIR_TX ? "TX" : "RX");
          return false;
       }
 

@@ -88,7 +88,12 @@ static void test_media_source_authorization(void) {
    assert(!media_source_authorized(&source));
 
    client_set_flag(&source, FLAG_MEDIA_SOURCE);
+   assert(!media_source_authorized(&source));
+   snprintf(user->privs, sizeof(user->privs), "%s", "media.source");
    assert(media_source_authorized(&source));
+   snprintf(user->privs, sizeof(user->privs), "%s", "rx");
+   assert(!media_source_authorized(&source));
+   snprintf(user->privs, sizeof(user->privs), "%s", "media.source");
    source.authenticated = false;
    assert(!media_source_authorized(&source));
 }
@@ -127,8 +132,25 @@ static void test_nonce_generation(void) {
    assert(auth_generate_nonce(tiny, 1) == -1);
 }
 
+static void test_elmer_account_changes(void) {
+   http_user_t *account = &http_users[5];
+   account->uid = 5;
+   rrconn_t unauthenticated = {0};
+   rrconn_t elmer = {.is_ws = true, .authenticated = true, .user = account};
+   rrconn_t *saved = http_client_list;
+   unauthenticated.next = &elmer;
+   http_client_list = &unauthenticated;
+   snprintf(account->privs, sizeof(account->privs), "elmer");
+   assert(is_elmer_online());
+   client_set_flag(&elmer, FLAG_ELMER);
+   snprintf(account->privs, sizeof(account->privs), "view");
+   assert(!is_elmer_online());
+   http_client_list = saved;
+}
+
 int main(void) {
    test_privileges();
+   test_elmer_account_changes();
    test_wire_password();
    test_wire_password_full_inputs();
    test_media_source_authorization();

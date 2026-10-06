@@ -644,7 +644,9 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    // media.source priv and the media.cmd:source handshake) push frames
    // for the channels they registered. The frame's (subsystem, direction,
    // vfo, rig) must match a channel that connection is subscribed to.
-   if ( is_tx_frame && client_has_flag(cptr, FLAG_MEDIA_SOURCE) ) {
+   if (is_tx_frame && cptr->user &&
+       (has_priv(cptr->user->uid, "media.source") ||
+        (f.hdr.subsystem == RR_BINFRAME_SUBSYS_VIDEO && media_source_authorized(cptr)))) {
       struct rr_mediachan *cp = media_chan_find(f.hdr.subsystem, f.hdr.direction, f.hdr.vfo, f.hdr.rig);
 
       if (!cp) {
@@ -682,6 +684,8 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    // also receives the payload on a program event so rrserver can decode it
    // into the rig TX PCM sink.
    if (is_tx_frame) {
+      if (!cptr->user || cptr->user->is_muted || !has_priv(cptr->user->uid, "admin|owner|tx|noob") ||
+          (has_priv(cptr->user->uid, "noob") && !is_elmer_online())) { return false; }
       if ( f.hdr.subsystem != RR_BINFRAME_SUBSYS_AUDIO || !cptr->is_ptt ||
            cptr->ptt_vfo != (char)('A' + f.hdr.vfo) ) {
          return false;

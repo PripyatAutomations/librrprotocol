@@ -186,6 +186,11 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       return false;
    }
 
+   if (cptr->authenticated && (!strcasecmp(cmd, "login") || !strcasecmp(cmd, "pass"))) {
+      ws_send_error(cptr, "Already authenticated; reconnect to change accounts");
+      return false;
+   }
+
    if (strcasecmp(cmd, "login") == 0) {
       if (!user || !*user) {
          Log(LOG_WARN, "auth", "Login request did not include a username");
@@ -337,7 +342,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          ////////////////////
          // Set user flags //
          ////////////////////
-         if ( has_priv(cptr->user->uid, "owner|syslog") ) {
+         if ( has_priv(cptr->user->uid, "admin|owner") ) {
             client_set_flag(cptr, FLAG_SYSLOG);
          }
 

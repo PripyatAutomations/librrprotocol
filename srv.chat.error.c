@@ -38,7 +38,7 @@ bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action) {
    Log(LOG_CRAZY, "core", "Unprivileged user %s (uid: %d with privs %s) requested to do %s and was denied",
       cptr->chatname, cptr->user->uid, cptr->user->privs, action);
    char msgbuf[HTTP_WS_MAX_MSG + 1];
-   prepare_msg(msgbuf, sizeof(msgbuf), "You do not have enough privileges to use '%s' command", now, action);
+   prepare_msg(msgbuf, sizeof(msgbuf), "You do not have enough privileges to use '%s' command", action);
    dict *err_msg = dict_new();
    dict_add(err_msg, "error.msg", msgbuf);
    dict_add_ulong(err_msg, "error.ts", now);
@@ -54,7 +54,7 @@ bool ws_chat_error_need_reason(rrconn_t *cptr, const char *command) {
       return false;
    }
    char msgbuf[HTTP_WS_MAX_MSG + 1];
-   prepare_msg(msgbuf, sizeof(msgbuf), "You MUST provide a reason for using'%s' command", now, command);
+   prepare_msg(msgbuf, sizeof(msgbuf), "You MUST provide a reason for using'%s' command", command);
 
    dict *err_msg = dict_new();
    dict_add(err_msg, "error.msg", msgbuf);

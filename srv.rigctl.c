@@ -196,7 +196,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    // present
    // XXX: Add support for per noob Elmer (link from noob to elmer(s) who have
    // approved their use)
-   if ( client_has_flag(cptr, FLAG_NOOB) && !is_elmer_online() ) {
+   if ( has_priv(cptr->user->uid, "noob") && !is_elmer_online() ) {
       Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they're a noob and no elmers are online", cmd,
          cptr->chatname);
 
@@ -280,7 +280,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
             }
 
             // Noobs in cooldown may not TX
-            if (client_has_flag(cptr, FLAG_NOOB) && now < cptr->noob_cooldown) {
+            if (has_priv(cptr->user->uid, "noob") && now < cptr->noob_cooldown) {
                Log( LOG_AUDIT, "ptt", "Denying PTT for noob %s: cooldown active (%d sec left)", cptr->chatname,
                   (int)(cptr->noob_cooldown - now) );
                ws_send_error( cptr, "PTT cooldown active: %d seconds remaining", (int)(cptr->noob_cooldown - now) );
