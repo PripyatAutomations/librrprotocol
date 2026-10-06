@@ -17,10 +17,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define	MAX_VFOS 26                     // maximum VFOs (A-Z); most rigs
-                                         // will use 2-3, backends pick the
-                                         // subset the rig supports
-#define	DEFAULT_TOT_TIME 300            // TOT time, if not set
+#define	MAX_VFOS 26                   // maximum VFOs (A-Z); most rigs
+                                       // will use 2-3, backends pick the
+                                       // subset the rig supports
+#define	DEFAULT_TOT_TIME 300          // TOT time, if not set
 
 typedef enum rr_vfo_type {
    VFO_INVALID = 0,     // Not present

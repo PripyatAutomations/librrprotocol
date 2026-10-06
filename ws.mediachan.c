@@ -107,7 +107,8 @@ static const char *media_client_channel_room(const rrconn_t *client, const struc
 
    if ( channel->direction != RR_BINFRAME_DIR_RX || ( channel->subsystem != RR_BINFRAME_SUBSYS_AUDIO &&
                                                       !( channel->subsystem == RR_BINFRAME_SUBSYS_MODEM &&
-                                                         (!strcmp(channel->codec, "nmea") || !strcmp(channel->codec, "gpsp")) ) ) ) {
+                                                         (!strcmp(channel->codec, "nmea") || !strcmp(channel->codec,
+                                                            "gpsp") ) ) ) ) {
       return ws_client_in_room(client, channel->room) ? channel->room : NULL;
    }
    char joined[AUTOJOIN_LEN]; snprintf(joined, sizeof(joined), "%s", client->rooms);
@@ -119,7 +120,7 @@ static const char *media_client_channel_room(const rrconn_t *client, const struc
            ( ws_room_same_rig(room, channel->room) && channel->vfo < 32 &&
              ( ws_room_vfo_mask(room) & (UINT32_C(1) << channel->vfo) ) ) ||
            ( ws_room_same_rig(room, channel->room) && channel->subsystem == RR_BINFRAME_SUBSYS_MODEM &&
-             (!strcmp(channel->codec, "nmea") || !strcmp(channel->codec, "gpsp")) ) ) {
+             (!strcmp(channel->codec, "nmea") || !strcmp(channel->codec, "gpsp") ) ) ) {
          snprintf(selected, sizeof(selected), "%s", room);
       }
    }
@@ -221,13 +222,16 @@ struct rr_mediachan *media_chan_add(uint8_t subsystem, uint8_t direction, uint8_
    // Audio codecs remain interchangeable on one routing quadruple. Fixed
    // MODEM formats are independent services (gpsp summaries and raw nmea).
    struct rr_mediachan *cp = media_chan_find(subsystem, direction, vfo, rig);
+
    if (subsystem == RR_BINFRAME_SUBSYS_MODEM && codec) {
       cp = NULL;
-      for (int i = 0; i < MAX_MEDIA_CHANNELS; i++) {
+
+      for (int i = 0 ; i < MAX_MEDIA_CHANNELS ; i++) {
          struct rr_mediachan *candidate = &media_channels[i];
+
          if (candidate->uuid[0] && candidate->subsystem == subsystem &&
              candidate->direction == direction && candidate->vfo == vfo &&
-             candidate->rig == rig && !strcmp(candidate->codec, codec)) {
+             candidate->rig == rig && !strcmp(candidate->codec, codec) ) {
             cp = candidate;
             break;
          }
@@ -856,7 +860,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          return false;
       }
 
-      if ( cp->subsystem == RR_BINFRAME_SUBSYS_MODEM && (!strcmp(cp->codec, "nmea") || !strcmp(cp->codec, "gpsp")) ) {
+      if ( cp->subsystem == RR_BINFRAME_SUBSYS_MODEM && (!strcmp(cp->codec, "nmea") || !strcmp(cp->codec, "gpsp") ) ) {
          ws_send_error(cptr, "GPS channels have a fixed format"); return false;
       }
 

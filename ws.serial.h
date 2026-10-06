@@ -23,8 +23,7 @@
 // degrees followed by flags (valid/manual). Opt-in MODEM/nmea carries one
 // checksum-valid sentence without CRLF (1-509 bytes). Raw serial uses MODEM/seri.
 // Synthesize a checksum-correct GPRMC sentence (without CRLF) into caller buffer.
-size_t rr_gps_nmea_rmc(int32_t latitude, int32_t longitude, uint8_t flags, time_t utc,
-                       char *out, size_t capacity);
+size_t rr_gps_nmea_rmc(int32_t latitude, int32_t longitude, uint8_t flags, time_t utc, char *out, size_t capacity);
 bool rr_serial_frame_valid(const struct rr_binframe *frame);
 bool ws_handle_serial_cli_msg(rrconn_t *client, dict *message);
 #endif

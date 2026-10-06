@@ -12,8 +12,7 @@
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/ws.serial.h>
 // Compatibility entry point; generic NMEA formatting belongs to librustyaxe.
-size_t rr_gps_nmea_rmc(int32_t latitude, int32_t longitude, uint8_t flags, time_t utc,
-                       char *out, size_t capacity) {
+size_t rr_gps_nmea_rmc(int32_t latitude, int32_t longitude, uint8_t flags, time_t utc, char *out, size_t capacity) {
    return rr_nmea_rmc(latitude, longitude, flags, utc, out, capacity);
 }
 bool rr_serial_frame_valid(const struct rr_binframe *f) {

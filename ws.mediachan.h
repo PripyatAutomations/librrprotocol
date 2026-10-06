@@ -28,7 +28,7 @@
 #include <librustyaxe/core.h>
 
 #ifndef MAX_MEDIA_CHANNELS
-#define	MAX_MEDIA_CHANNELS 64           // max channels in the registry
+#define	MAX_MEDIA_CHANNELS 64         // max channels in the registry
 #endif
 
 // media channel: one streamable direction of a binframe subsystem

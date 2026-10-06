@@ -205,10 +205,11 @@ static bool ws_binframe_process_client(rrconn_t *client, const char *data, size_
    }
 
    // Complete receiver NMEA is an opt-in, read-only media stream.
-   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_NMEA_FRAME_CODEC, 4)) {
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_NMEA_FRAME_CODEC, 4) ) {
       if (f.hdr.direction != RR_BINFRAME_DIR_RX || f.hdr.vfo != RR_BINFRAME_VFO_NA ||
-          !f.hdr.stream || !f.len || f.len > 509 || len != RR_BINFRAME_HDR_LEN + f.len) return false;
+          !f.hdr.stream || !f.len || f.len > 509 || len != RR_BINFRAME_HDR_LEN + f.len) { return false; }
       event_emit_binary(RR_NMEA_FRAME_EVENT, client, data, len);
+
       return true;
    }
 
@@ -217,13 +218,15 @@ static bool ws_binframe_process_client(rrconn_t *client, const char *data, size_
       if (f.hdr.direction != RR_BINFRAME_DIR_RX || f.hdr.vfo != RR_BINFRAME_VFO_NA ||
           !f.hdr.stream || f.len != RR_GPS_POSITION_PAYLOAD_LEN ||
           len != RR_BINFRAME_HDR_LEN + f.len) { return false; }
-      int64_t lat = (int32_t)((uint32_t)f.data[0] << 24 | (uint32_t)f.data[1] << 16 |
-         (uint32_t)f.data[2] << 8 | f.data[3]);
-      int64_t lon = (int32_t)((uint32_t)f.data[4] << 24 | (uint32_t)f.data[5] << 16 |
-         (uint32_t)f.data[6] << 8 | f.data[7]);
+      int64_t lat = (int32_t)( (uint32_t)f.data[0] << 24 | (uint32_t)f.data[1] << 16 |
+                               (uint32_t)f.data[2] << 8 | f.data[3]);
+      int64_t lon = (int32_t)( (uint32_t)f.data[4] << 24 | (uint32_t)f.data[5] << 16 |
+                               (uint32_t)f.data[6] << 8 | f.data[7]);
+
       if (lat < -900000000 || lat > 900000000 || lon < -1800000000 || lon > 1800000000 ||
-          (f.data[8] & ~(RR_GPS_POSITION_VALID | RR_GPS_POSITION_MANUAL))) return false;
+          (f.data[8] & ~(RR_GPS_POSITION_VALID | RR_GPS_POSITION_MANUAL) ) ) { return false; }
       event_emit_binary(RR_GPS_FRAME_EVENT, client, data, len);
+
       return true;
    }
 
@@ -626,7 +629,8 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    }
 
    // GPS position is produced only by configured server adapters/configuration.
-   if ( f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && (!memcmp(f.hdr.codec, RR_GPS_FRAME_CODEC, 4) || !memcmp(f.hdr.codec, RR_NMEA_FRAME_CODEC, 4)) ) { return false; }
+   if ( f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && (!memcmp(f.hdr.codec, RR_GPS_FRAME_CODEC,
+      4) || !memcmp(f.hdr.codec, RR_NMEA_FRAME_CODEC, 4) ) ) { return false; }
    bool is_tx_frame = (f.hdr.direction == RR_BINFRAME_DIR_TX);
    const char *negotiated = is_tx_frame ? cptr->codec_tx : cptr->codec_rx;
 

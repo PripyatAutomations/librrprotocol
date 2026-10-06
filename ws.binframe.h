@@ -105,7 +105,7 @@ struct rr_logframe {
    char subsys[16];                      // NUL padded log subsystem
    // payload: the log message, NUL terminated (no trailing newline)
 };
-#define	RR_LOGFRAME_HDR_LEN 17           // 1 + 16
+#define	RR_LOGFRAME_HDR_LEN 17         // 1 + 16
 
 // Pack a log line into a SUBSYS_LOG binframe (malloc'd, returned via
 // *out; total frame length returned, or -1). seq/ts are filled by the

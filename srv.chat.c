@@ -398,7 +398,6 @@ bool ws_room_rig_base(const char *room) {
    if ( !dash || strncasecmp(dash, "-rig", 4) || !isdigit( (unsigned char)dash[4] ) ) { return false; }
    const char *p = dash + 4;
    while ( isdigit( (unsigned char)*p ) ) { p++; }
-
    return !*p;
 }
 
@@ -412,7 +411,6 @@ bool ws_room_rig_namespace(const char *room) {
 
    if ( !isdigit( (unsigned char)*p ) ) { return false; }
    while ( isdigit( (unsigned char)*p ) ) { p++; }
-
    return !*p || (*p == '.' && p[1]);
 }
 
@@ -1400,7 +1398,8 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            dict_add(control, "cat.room", channel);
                            dict_add( control, "cat.vfo", vfo_name(active_vfo) );
 
-                           if ( !strcasecmp(cmd, "freq") ) { dict_add_long( control, "cat.freq", parse_freq(arg) );
+                           if ( !strcasecmp(cmd, "freq") ) {
+                              dict_add_long( control, "cat.freq", parse_freq(arg) );
                            } else if ( !strcasecmp(cmd, "mode") ) { dict_add(control, "cat.mode", arg); } else {
                               dict_add(control, "cat.width", arg);
                            }
@@ -1591,7 +1590,6 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            return false;
                         }
                      }
-
                      // These events shouldn't get relayed because the CAT
                      // events generated above will be relayed separately.
                      return true;
@@ -1747,7 +1745,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
       } else if (strcasecmp(cmd, "user") == 0) {
          /* User administration is implemented by the server because the protocol library
-         * must not know how accounts are persisted. */
+          * must not know how accounts are persisted. */
          if ( !has_priv(cptr->user->uid, "admin|owner") ) {
             ws_chat_err_noprivs(cptr, "USER");
 
