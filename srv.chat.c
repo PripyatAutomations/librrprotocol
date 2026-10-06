@@ -564,6 +564,9 @@ bool ws_client_join_room(rrconn_t *cptr, const char *room) {
    if ( ws_client_in_room(cptr, canonical) ) {
       return true;
    }
+   rr_room_join_check_t check = {.room = canonical, .allowed = true};
+   event_emit_binary(RR_ROOM_JOIN_CHECK_EVENT, cptr, &check, sizeof(check));
+   if (!check.allowed) { return false; }
    size_t used = strlen(cptr->rooms);
    size_t need = strlen(canonical) + (used ? 1 : 0);
 
@@ -1090,7 +1093,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          char *save = NULL;
          char *room_or_list = strtok_r(argbuf, " \t", &save);
          char *action = strtok_r(NULL, " \t", &save);
-         const char *usage = "Usage: /room list|#room add|remove|vfo (add|list|remove) [rig0.]vfo_a";
+         const char *usage = "Usage: /room list | add #room | remove #room [-f [-h]] [token] | #room vfo (add|list|remove) [rig0.]vfo_a";
 
          if (!room_or_list) {
             ws_send_error(cptr, usage);
@@ -1109,6 +1112,13 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             event_emit_dict("room.list", cptr, list); dict_free(list); return true;
          }
 
+         // PARITY: native/browser clients forward room management to this parser.
+         if (!strcasecmp(room_or_list, "remove") || !strcasecmp(room_or_list, "add")) {
+            char *verb = room_or_list;
+            room_or_list = action;
+            action = verb;
+            if (!room_or_list) { ws_send_error(cptr, usage); return false; }
+         }
          if (room_or_list[0] != '#' && room_or_list[0] != '&') {
             ws_send_error(cptr, "Invalid room name: %s (room names must start with # or &)", room_or_list);
 
@@ -1123,9 +1133,18 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          }
 
          if (strcasecmp(action, "add") == 0 || strcasecmp(action, "remove") == 0) {
-            if ( strtok_r(NULL, " \t", &save) || !has_priv(cptr->user->uid, "admin|owner") ) {
-               ws_send_error(cptr, "Usage: /room #room add|remove (admin or owner required)");
-
+            char *confirmation = NULL;
+            bool force = false, history = false, invalid = false;
+            char *option;
+            while ((option = strtok_r(NULL, " \t", &save))) {
+               if (!strcmp(option, "--force") || !strcmp(option, "-f")) { force = true; }
+               else if (!strcmp(option, "--history") || !strcmp(option, "-h")) { history = true; }
+               else if (*option == '-' || confirmation) { invalid = true; }
+               else { confirmation = option; }
+            }
+            if (invalid || (history && !force) || (!strcasecmp(action, "add") && (confirmation || force || history)) ||
+                !has_priv(cptr->user->uid, "admin|owner")) {
+               ws_send_error(cptr, "Usage: /room add #room | remove #room [-f [-h]] [token] (admin or owner required)");
                return false;
             }
 
@@ -1141,6 +1160,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                dict_add(deleted, "talk.cmd", "room-removed");
                dict_add(deleted, "talk.room", room);
                dict_add(deleted, "talk.user", cptr->chatname);
+               if (confirmation) { dict_add(deleted, "talk.confirmation", confirmation); }
+               dict_add_bool(deleted, "talk.force", force);
+               dict_add_bool(deleted, "talk.history", history);
                dict_add_ulong(deleted, "msg.ts", now);
                event_emit_dict("room.delete", cptr, deleted);
                dict_free(deleted);
