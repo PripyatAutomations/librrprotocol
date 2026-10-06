@@ -495,14 +495,16 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
             dict_free(cmd_d);
          } else {
             Log(LOG_WARN, "ws.rigctl", "Couldn't parse mode %s", mode);
+            return false;
          }
       } else {
          const char *jp = dict2json(d);
          Log(LOG_DEBUG, "ws.rigctl", "Got unknown rig msg: |%s|", d);
          ws_send_error(cptr, "Unknown message: |%s|", jp);
          free( (void *)jp );
+         return false;
       }
    }
 
-   return false;
+   return cmd ? rv : false;
 }
