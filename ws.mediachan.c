@@ -650,7 +650,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          Log(LOG_AUDIT, "auth",
             "Denied media.source from %s on cptr:<%p> (missing media.source/video-src privilege or unauthenticated)",
             (cptr->chatname[0] != '\0' ? cptr->chatname : "(unknown)"), cptr);
-         ws_send_error(cptr, "Not authorized as a media source");
+         ws_send_error(cptr, "media.source denied: account requires media.source, and video-src for a video source");
 
          return false;
       }
@@ -663,7 +663,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          struct rr_mediachan *cp = media_chan_find_uuid(uuid);
 
          if (!cp) {
-            ws_send_error(cptr, "No such media channel");
+            ws_send_error(cptr, "media.%s: no channel with UUID %s; use /media list", media_cmd, uuid ? uuid : "(missing)");
 
             return false;
          }
@@ -674,7 +674,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
                       chan_add_to_array(cptr->rx_channels, MAX_RX_CHANNELS, chan_id) );
 
          if (oom) {
-            ws_send_error(cptr, "Too many media subscriptions");
+            ws_send_error(cptr, "media.%s: subscription limit reached for channel %s; unsubscribe another channel first", media_cmd, uuid ? uuid : "(requested routing)");
 
             return false;
          }
@@ -724,7 +724,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
 
          if (subsys > UINT8_MAX || dir > RR_BINFRAME_DIR_TX ||
              vfo > UINT8_MAX || rig > UINT8_MAX) {
-            ws_send_error(cptr, "media.subscribe: invalid routing");
+            ws_send_error(cptr, "media.subscribe: invalid routing (subsystem %u, direction %u, VFO %u, rig %u)", subsys, dir, vfo, rig);
 
             return false;
          }
@@ -736,7 +736,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
                            ( !media_server_supports_codec(codec) ||
                              !media_client_supports_codec(cptr, codec) ||
                              ( dir == RR_BINFRAME_DIR_TX && codec_is_test_variant(codec) ) ) ) ) ) {
-            ws_send_error(cptr, "media.subscribe: unsupported codec");
+            ws_send_error(cptr, "media.subscribe: unsupported codec %s", codec ? codec : "(missing)");
 
             return false;
          }
@@ -745,7 +745,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
 
          if (!cp) {
             Log(LOG_WARN, "ws.media", "Subscribe-create failed for %s (table full?)", cptr->chatname);
-            ws_send_error(cptr, "No such media channel");
+            ws_send_error(cptr, "media.%s: no channel with UUID %s; use /media list", media_cmd, uuid ? uuid : "(missing)");
 
             return false;
          }
@@ -762,7 +762,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       // Channel id is 1 + table index; 0 means "no channel" in the
       // rx_channels/tx_channels arrays
       if ( !cp->codec[0] && !media_init_channel_codec(cptr, cp) ) {
-         ws_send_error(cptr, "No negotiated codec is available for this media channel");
+         ws_send_error(cptr, "No negotiated codec is available for media channel %s (%s) in room %s", cp->name, cp->uuid, cp->room);
 
          return false;
       }
@@ -772,7 +772,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
 
       if ( cp->subsystem == RR_BINFRAME_SUBSYS_AUDIO && cp->codec[0] &&
            !media_client_supports_codec(cptr, cp->codec) ) {
-         ws_send_error(cptr, "This client does not support the channel codec");
+         ws_send_error(cptr, "This client does not support codec %s required by media channel %s (%s)", cp->codec, cp->name, cp->uuid);
 
          return false;
       }
@@ -785,7 +785,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
 
       if (oom) {
          Log(LOG_WARN, "ws.media", "No free channel slots for %s subscribing to %s", cptr->chatname, cp->uuid);
-         ws_send_error(cptr, "Too many media subscriptions");
+         ws_send_error(cptr, "media.%s: subscription limit reached for channel %s; unsubscribe another channel first", media_cmd, uuid ? uuid : "(requested routing)");
 
          return false;
       }
@@ -818,7 +818,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       struct rr_mediachan *cp = media_chan_find_uuid(uuid);
 
       if (!cp) {
-         ws_send_error(cptr, "No such media channel");
+         ws_send_error(cptr, "media.%s: no channel with UUID %s; use /media list", media_cmd, uuid ? uuid : "(missing)");
 
          return false;
       }
@@ -856,41 +856,41 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
 
       if (cp && (!cptr->authenticated || !cptr->user ||
           !has_priv(cptr->user->uid, cp->direction == RR_BINFRAME_DIR_TX ? "tx" : "rx"))) {
-         ws_send_error(cptr, "Codec selection requires %s privilege for this VFO", cp->direction == RR_BINFRAME_DIR_TX ? "TX" : "RX");
+         ws_send_error(cptr, "Codec selection for media channel %s (%s) in room %s requires %s account privilege", cp->name, cp->uuid, cp->room, cp->direction == RR_BINFRAME_DIR_TX ? "TX" : "RX");
          return false;
       }
 
       if ( !media_codec_valid(codec) ) {
-         ws_send_error(cptr, "media.codec select: invalid codec");
+         ws_send_error(cptr, "media.codec select: invalid codec %s for channel %s", codec ? codec : "(missing)", uuid ? uuid : "(missing)");
 
          return false;
       }
 
       if (!cp) {
-         ws_send_error(cptr, "media.codec select: unknown or missing channel uuid");
+         ws_send_error(cptr, "media.codec select: unknown or missing channel UUID %s; use /media list", uuid ? uuid : "(missing)");
 
          return false;
       }
 
       if ( cp->subsystem == RR_BINFRAME_SUBSYS_MODEM && (!strcmp(cp->codec, "nmea") || !strcmp(cp->codec, "gpsp") ) ) {
-         ws_send_error(cptr, "GPS channels have a fixed format"); return false;
+         ws_send_error(cptr, "GPS media channel %s (%s) has fixed codec %s; cannot select %s", cp->name, cp->uuid, cp->codec, codec); return false;
       }
 
       if ( cp->direction == RR_BINFRAME_DIR_TX && codec_is_test_variant(codec) ) {
-         ws_send_error(cptr, "Test codecs are only available on RX channels");
+         ws_send_error(cptr, "Cannot select test codec %s on TX media channel %s (%s); test codecs require an RX channel", codec, cp->name, cp->uuid);
 
          return false;
       }
 
       if ( !media_server_supports_codec(codec) ) {
-         ws_send_error(cptr, "Server does not support the requested codec");
+         ws_send_error(cptr, "Server does not support codec %s for media channel %s (%s)", codec, cp->name, cp->uuid);
 
          return false;
       }
 
       if ( !media_client_supports_codec(cptr, codec) ||
            !media_channel_all_clients_support(cp, codec) ) {
-         ws_send_error(cptr, "Codec is not supported by every subscriber on this channel");
+         ws_send_error(cptr, "Cannot select codec %s for media channel %s (%s): at least one subscriber does not support it", codec, cp->name, cp->uuid);
 
          return false;
       }

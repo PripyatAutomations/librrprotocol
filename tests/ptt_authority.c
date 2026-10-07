@@ -7,8 +7,13 @@
 time_t now;
 bool dying, restarting;
 static unsigned requests;
+static char error[1024];
 static rrconn_t *subject;
-bool ws_send_dict(rrconn_t *from, rrconn_t *to, dict *d, int type) { return true; }
+bool ws_send_dict(rrconn_t *from, rrconn_t *to, dict *d, int type) {
+   const char *message = dict_get(d, "error.msg", NULL);
+   if (message) snprintf(error, sizeof(error), "%s", message);
+   return true;
+}
 void event_emit_dict(const char *event, rrconn_t *client, dict *d) {
    if (!strcmp(event, "rigctl")) {
       requests++; subject = client;
@@ -58,6 +63,14 @@ int main(void) {
       assert(!ws_handle_rigctl_msg(&actor, d));
       assert(holder.is_ptt && !actor.is_ptt && !requests);
    }
+   holder.is_ptt = false; actor.is_ptt = false;
+   strcpy(actor.user->privs, "tx");
+   dict_add_bool(d, "cat.ptt", false);
+   assert(!ws_handle_rigctl_msg(&actor, d));
+   assert(strstr(error, "You do not hold PTT on VFO A in room #authority-rig0"));
+   dict_add(d, "cat.cmd", "mode"); dict_add(d, "cat.mode", "BADMODE");
+   assert(!ws_handle_rigctl_msg(&actor, d));
+   assert(strstr(error, "BADMODE") && strstr(error, "VFO A") && strstr(error, "#authority-rig0"));
    dict_free(d); dict_free(cfg); cfg = NULL; http_client_list = NULL;
    puts("PASS: strict PTT stop hierarchy, TX/elmer supervision, actual holder targeting and no key-down takeover");
 }

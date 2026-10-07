@@ -1516,7 +1516,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            }
 
                            if (cptr->is_ptt) {
-                              ws_send_error(cptr, "Cannot switch VFO while transmitting on VFO %c", cptr->ptt_vfo);
+                              ws_send_error(cptr, "Cannot select VFO %s in room %s while transmitting on VFO %c in room %s; release PTT first", vfo_name(new_vfo), channel, cptr->ptt_vfo, cptr->ptt_room);
 
                               return false;
                            }
