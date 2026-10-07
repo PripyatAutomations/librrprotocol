@@ -110,6 +110,10 @@ static bool http_api_version(struct mg_http_message *msg, rrconn_t *cptr) {
 }
 
 static bool http_api_stats(struct mg_http_message *msg, rrconn_t *cptr) {
+   if (!cptr->authenticated || !cptr->user || !has_priv(cptr->user->uid, "admin|owner")) {
+      mg_http_reply(cptr->conn, 403, "Content-Type: text/plain\r\n", "Forbidden\n");
+      return true;
+   }
    struct mg_connection *t;
    // Print some statistics about currently established connections
    mg_printf(cptr->conn, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
@@ -158,6 +162,10 @@ bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr) {
    if (!cptr || !msg) {
       return false;
    }
+   if (mg_strcmp(msg->method, mg_str("GET")) && mg_strcmp(msg->method, mg_str("HEAD"))) {
+      mg_http_reply(cptr->conn, 405, "Allow: GET, HEAD\r\n", "Method not allowed\n");
+      return true;
+   }
    int items = ( sizeof(http_routes) / sizeof(http_route_t) ) - 1;
 
    for (int i = 0 ; i < items ; i++) {
@@ -178,7 +186,9 @@ bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr) {
  *        continue;
  *     }
  */
-      if (strncmp(msg->uri.buf, http_routes[i].match, match_len) == 0) {
+      if ((msg->uri.len == match_len ||
+           (msg->uri.len == match_len + 1 && msg->uri.buf[match_len] == '/')) &&
+          !memcmp(msg->uri.buf, http_routes[i].match, match_len)) {
          Log(LOG_CRAZY, "http.req", "Matched %s with request URI %.*s [length: %d]", http_routes[i].match,
             (int)msg->uri.len, msg->uri.buf, match_len);
 

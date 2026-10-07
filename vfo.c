@@ -18,6 +18,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
+#include <math.h>
+#include <errno.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
@@ -157,34 +160,24 @@ const char *vfo_mode_name(rr_mode_t mode) {
 }
 
 long parse_freq(const char *str) {
-   while ( isspace(*str) ) {
-      str++;
-   }
+   if (!str) { return -1; }
+   while (isspace((unsigned char)*str)) { str++; }
    char *end = NULL;
+   errno = 0;
    double val = strtod(str, &end);
-
-   while ( isspace(*end) ) {
-      end++;
-   }
-
-   // If no suffix provided, guess unit
-   if (*end == '\0') {
-      // Count digits before any decimal point
+   if (errno || end == str || !isfinite(val) || val <= 0) { return -1; }
+   while (isspace((unsigned char)*end)) { end++; }
+   if (!*end) {
       const char *dot = strchr(str, '.');
-      int digits = dot ? (dot - str) : strlen(str);
-
-      if (digits >= 3 && digits <= 5) {
-         return (long)(val * 1e3);  // assume kHz
-      } else {
-         return (long)val;          // assume Hz
-      }
-   } else if (*end == 'k' || *end == 'K') {
-      return (long)(val * 1e3);
-   } else if (*end == 'm' || *end == 'M') {
-      return (long)(val * 1e6);
-   }
-
-   return -1;  // invalid format
+      size_t digits = dot ? (size_t)(dot - str) : strlen(str);
+      if (digits >= 3 && digits <= 5) { val *= 1e3; }
+   } else if (!strcasecmp(end, "k") || !strcasecmp(end, "kHz")) {
+      val *= 1e3;
+   } else if (!strcasecmp(end, "m") || !strcasecmp(end, "MHz")) {
+      val *= 1e6;
+   } else if (strcasecmp(end, "Hz")) { return -1; }
+   if (!isfinite(val) || val >= -(double)LONG_MIN || val < 1) { return -1; }
+   return (long)val;
 }
 
 const char *format_freq(long hz, char *buf, size_t len) {

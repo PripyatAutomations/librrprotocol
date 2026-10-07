@@ -117,6 +117,8 @@ static const char *media_client_channel_room(const rrconn_t *client, const struc
 
    for ( char *room = strtok_r(joined, ",", &save) ; room ; room = strtok_r(NULL, ",", &save) ) {
       if ( !strcasecmp(room, channel->room) ||
+           ( ws_room_same_rig(room, channel->room) && channel->subsystem == RR_BINFRAME_SUBSYS_AUDIO &&
+             channel->vfo == RR_BINFRAME_VFO_NA && ws_room_vfo_mask(room) ) ||
            ( ws_room_same_rig(room, channel->room) && channel->vfo < 32 &&
              ( ws_room_vfo_mask(room) & (UINT32_C(1) << channel->vfo) ) ) ||
            ( ws_room_same_rig(room, channel->room) && channel->subsystem == RR_BINFRAME_SUBSYS_MODEM &&

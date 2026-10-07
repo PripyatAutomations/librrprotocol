@@ -21,6 +21,12 @@ static void test_privileges(void) {
    assert(match_priv("admin,radio,media.*", "media.source"));
    assert(!match_priv("admin,radio,media.*", "mediasource"));
    assert(!match_priv("admin,radio,media.*", "media"));
+   assert(match_priv("serial.ttyGPS*", "serial.ttyGPS0"));
+   assert(match_priv("serial.ttyGPS*", "serial.ttyGPSraw"));
+   assert(!match_priv("serial.ttyGPS*", "serial.ttyHOST0"));
+   assert(!match_priv("serial.ttyGPS0", "serial.ttyGPS01"));
+   assert(!match_priv("serial.ttyGPS*", "serial"));
+   assert(!match_priv("admin*", "administrator"));
    assert(!match_priv(NULL, "admin"));
    assert(!match_priv("admin", NULL));
 

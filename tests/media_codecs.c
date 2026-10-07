@@ -13,6 +13,7 @@ extern bool ws_binframe_process_mg(rrconn_t *, const char *, size_t);
 
 int main(void) {
    cfg = dict_new();
+   dict_add(cfg, "station.name", "shared");
    dict_add(cfg, "codecs.allowed", "pc16 mu08 opuT ---- none");
    dict_add(cfg, "audio.test-mode", "true");
    http_user_t *account = &http_users[1];
@@ -87,6 +88,27 @@ int main(void) {
    int length = rr_binframe_frame(&packet, RR_BINFRAME_SUBSYS_AUDIO, "pc16", RR_BINFRAME_DIR_TX, 0, 0, 1, 1, 0, pcm, sizeof(pcm));
    assert(length > 0);
    assert(ws_binframe_process_mg(&client, (const char *)packet, length));
+   // Shared rig audio can transmit while controlling B, but only through
+   // the held rig room and an explicitly subscribed channel.
+   struct rr_mediachan *shared = media_chan_add(RR_BINFRAME_SUBSYS_AUDIO, RR_BINFRAME_DIR_TX,
+      RR_BINFRAME_VFO_NA, 2, "pc16", "shared TX");
+   assert(shared);
+   snprintf(shared->room, sizeof(shared->room), "#shared-rig2");
+   assert(ws_room_set_vfo_mask(shared->room, 3));
+   assert(ws_client_join_room(&client, shared->room));
+   snprintf(client.ptt_room, sizeof(client.ptt_room), "%s", shared->room);
+   client.ptt_vfo = 'B';
+   client.tx_channels[1] = (uint32_t)(shared - media_channels) + 1;
+   uint8_t *shared_packet = NULL;
+   int shared_length = rr_binframe_frame(&shared_packet, RR_BINFRAME_SUBSYS_AUDIO, "pc16", RR_BINFRAME_DIR_TX,
+      RR_BINFRAME_VFO_NA, 2, 1, 1, 0, pcm, sizeof(pcm));
+   assert(shared_length > 0);
+   assert(ws_binframe_process_mg(&client, (const char *)shared_packet, shared_length));
+   client.ptt_room[0] = 0; client.is_ptt = false;
+   assert(!ws_binframe_process_mg(&client, (const char *)shared_packet, shared_length));
+   client.is_ptt = true; snprintf(client.ptt_room, sizeof(client.ptt_room), "#wrong");
+   assert(!ws_binframe_process_mg(&client, (const char *)shared_packet, shared_length));
+   free(shared_packet); client.ptt_room[0] = 0; client.ptt_vfo = 'A';
    snprintf(account->privs, sizeof(account->privs), "view,chat");
    client_set_flag(&client, FLAG_MEDIA_SOURCE);
    assert(!ws_binframe_process_mg(&client, (const char *)packet, length));

@@ -269,17 +269,8 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       }
 #endif // HTTP_DEBUG_CRAZY
    } else if (ev == MG_EV_CONNECT) {
-      // send the connected event
-      dict *d = dict_new();
-      dict_add(d, "connected.server", (char *)server_name);
-      event_emit_dict("connected", NULL, d);
-      dict_free(d);
-   } else if (ev == MG_EV_WRITE) {
-      // Handle writing audio frames one by one
-   } else if (ev == MG_EV_WS_OPEN) {
-      const char *this_server = server_name;
-      const char *url = get_server_property(this_server, "server.url");
-
+      // TLS must start before the WebSocket HTTP upgrade, not after it.
+      const char *url = get_server_property(server_name, "server.url");
       if (c->is_tls) {
          struct mg_tls_opts opts = {
             .name = mg_url_host(url)
@@ -292,6 +283,15 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          }
          mg_tls_init(c, &opts);
       }
+      // send the connected event
+      dict *d = dict_new();
+      dict_add(d, "connected.server", (char *)server_name);
+      event_emit_dict("connected", NULL, d);
+      dict_free(d);
+   } else if (ev == MG_EV_WRITE) {
+      // Handle writing audio frames one by one
+   } else if (ev == MG_EV_WS_OPEN) {
+      const char *this_server = server_name;
       ws_connected = true;
 
       const char *login_user = get_server_property(this_server, "server.user");
@@ -319,16 +319,16 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          return;
       }
 
-      if (wm->flags & WEBSOCKET_OP_BINARY) {
+      if ((wm->flags & 0x0F) == WEBSOCKET_OP_BINARY) {
          // Binary (audio, waterfall, etc) frames
          ws_binframe_process_client(cptr, wm->data.buf, wm->data.len);
-      } else {
+      } else if ((wm->flags & 0x0F) == WEBSOCKET_OP_TEXT) {
          // Text (mostly json) frames
          struct mg_str msg_data = wm->data;
 
          // Drop oversized frames: copying into our fixed buffer without this
          // check corrupts memory (seen as a crash in mg_iobuf_free on close)
-         if (msg_data.len > HTTP_WS_MAX_MSG) {
+         if (!msg_data.buf || msg_data.len > HTTP_WS_MAX_MSG || memchr(msg_data.buf, '\0', msg_data.len)) {
             Log(LOG_WARN, "rrprotocol.ws", "Dropping oversized WS text frame (%zu bytes)", msg_data.len);
 
             return;
@@ -339,11 +339,13 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          memset( buf, 0, sizeof(buf) );
          memcpy(buf, msg_data.buf, msg_data.len);
 
-         dict *d = json2dict(buf);
+         const char *root = buf;
+         while (*root == ' ' || *root == '\t' || *root == '\r' || *root == '\n') { root++; }
+         dict *d = *root == '{' ? json2dict(buf) : NULL;
 
          if (!d) {
-            Log(LOG_WARN, "http", "ws_handle_cli: invalid text frame len=%zu flags=0x%02x payload=%.*s", msg_data.len,
-               wm->flags, (int)msg_data.len, buf);
+            Log(LOG_WARN, "http", "ws_handle_cli: invalid text frame len=%zu flags=0x%02x", msg_data.len,
+               wm->flags);
          }
          ws_txtframe_dispatch(cptr, d);
          memset( buf, 0, sizeof(buf) );
@@ -475,7 +477,7 @@ void ws_send_to_cptr(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_data, 
 
 // Send to all logged in instances of the user
 void ws_send_to_name(rrconn_t *sender, const char *username, struct mg_str *msg_data, int data_type) {
-   if (!sender || !username || !msg_data) {
+   if (!username || !msg_data) {
       Log(LOG_CRIT, "ws", "ws_send_to_name passed incomplete data; sender:<%p>, username:<%p>, msg_data:<%p>", sender,
          username, msg_data);
 
@@ -485,7 +487,7 @@ void ws_send_to_name(rrconn_t *sender, const char *username, struct mg_str *msg_
    rrconn_t *current = http_client_list;
    while (current) {
       // Messages from the server will have NULL sender
-      if (!sender || current->is_ws) {
+      if (current->is_ws && current->authenticated && !strcasecmp(username, current->chatname)) {
          ws_send_to_cptr(sender, current, msg_data, data_type);
       }
       current = current->next;
@@ -687,7 +689,8 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
       if (!cptr->user || cptr->user->is_muted || !has_priv(cptr->user->uid, "admin|owner|tx|noob") ||
           (has_priv(cptr->user->uid, "noob") && !is_elmer_online())) { return false; }
       if ( f.hdr.subsystem != RR_BINFRAME_SUBSYS_AUDIO || !cptr->is_ptt ||
-           cptr->ptt_vfo != (char)('A' + f.hdr.vfo) ) {
+           cptr->ptt_vfo < 'A' || cptr->ptt_vfo > 'Z' ||
+           (f.hdr.vfo != RR_BINFRAME_VFO_NA && cptr->ptt_vfo != (char)('A' + f.hdr.vfo)) ) {
          return false;
       }
       struct rr_mediachan *tx = media_chan_find(f.hdr.subsystem, RR_BINFRAME_DIR_TX, f.hdr.vfo, f.hdr.rig);

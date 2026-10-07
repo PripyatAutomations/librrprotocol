@@ -10,7 +10,7 @@
 //
 // Implements the binframe v2 wire format specified in doc/media-frames.md
 //
-// PARITY: rustyrig-www/js/webui.audio.framing.js
+// PARITY: rustyrig-www/js/webui.binframe.js:binframe_parse
 //
 #include <arpa/inet.h>
 #include <string.h>
@@ -84,7 +84,7 @@ int rr_binframe_parse(const uint8_t *buf, size_t len, struct rr_binframe *f) {
    seq = ntohl(seq);
    payload_len = ntohl(payload_len);
 
-   if (payload_len > RR_BINFRAME_MAX_PAYLOAD || RR_BINFRAME_HDR_LEN + (size_t)payload_len > len) {
+   if (payload_len > RR_BINFRAME_MAX_PAYLOAD || RR_BINFRAME_HDR_LEN + (size_t)payload_len != len) {
       Log(LOG_DEBUG, "binframe", "Dropping frame: payload_len %u invalid for %zu byte frame", payload_len, len);
 
       return -1;

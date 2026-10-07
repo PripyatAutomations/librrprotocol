@@ -106,7 +106,7 @@ bool match_priv(const char *user_privs, const char *priv) {
       const char *end = strchr(start, ',');
       size_t len = end ? (size_t)(end - start) : strlen(start);
 
-      char token[64];
+      char token[128];
 
       if ( len >= sizeof(token) ) {
          len = sizeof(token) - 1;
@@ -115,6 +115,13 @@ bool match_priv(const char *user_privs, const char *priv) {
       token[len] = '\0';
 
       if (strcmp(token, priv) == 0) {
+         return true;
+      }
+
+      // Serial account flags may restrict exports by a trailing name prefix.
+      // Keep this extension scoped to serial rather than broadening other roles.
+      if (len > 7 && !strncmp(token, "serial.", 7) && token[len - 1] == '*' &&
+          !strncmp(priv, token, len - 1)) {
          return true;
       }
 
@@ -139,7 +146,7 @@ bool has_priv(int uid, const char *priv) {
       const char *sep = strchr(p, '|');
       size_t len = sep ? (size_t)(sep - p) : strlen(p);
 
-      char tmp[64];   // adjust size as needed
+      char tmp[128];
 
       if ( len >= sizeof(tmp) ) {
          len = sizeof(tmp) - 1;

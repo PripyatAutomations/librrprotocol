@@ -18,8 +18,10 @@
 #include <ctype.h>
 #include <math.h>
 #include <errno.h>
+#include <limits.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librrprotocol/objects.h>
 #include <rrserver/backend.h>
 
 bool rr_set_width(rr_vfo_t vfo, const char *width) {
@@ -153,6 +155,18 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
    return false;
 }
 
+// Account flags determine authority; connection/channel hints are not privileges.
+static bool ws_ptt_can_override(rrconn_t *requester, rrconn_t *holder) {
+   if (!requester || !requester->authenticated || !requester->user || !holder || !holder->user) { return false; }
+   int actor = requester->user->uid, target = holder->user->uid;
+   // Only strictly higher authority may STOP a different session's TX.
+   if (has_priv(target, "owner")) { return false; }
+   if (has_priv(actor, "owner")) { return true; }
+   if (has_priv(target, "admin")) { return false; }
+   if (has_priv(actor, "admin")) { return true; }
+   return has_priv(target, "noob") && !has_priv(actor, "noob") && has_priv(actor, "tx|elmer");
+}
+
 bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    bool rv = true;
 
@@ -170,7 +184,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
    // This can be hit before login (or by ghosted sessions); without a user
    // pointer we can't check privileges, so reject the command.
-   if (!cptr->user) {
+   if (!cptr->authenticated || !cptr->user) {
       Log(LOG_WARN, "ws.rigctl", "Ignoring %s command from unauthenticated client %s:<%p>", (cmd ? cmd : "(null)"),
          cptr->chatname, cptr);
       ws_send_error(cptr, "Not authenticated");
@@ -178,7 +192,42 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       return false;
    }
 
-   if (cptr->user->is_muted) {
+   if (cmd && !strcasecmp(cmd, "ptt")) {
+      const char *key = dict_get_type(d, "cat.state.ptt") != VAL_END ? "cat.state.ptt" : "cat.ptt";
+      dict_value_t value;
+      if (!rr_object_value_get(d, key, VAL_BOOL, &value)) {
+         ws_send_error(cptr, "PTT requires a boolean state");
+         return false;
+      }
+   }
+   const char *control_room = dict_get(d, "cat.room", ws_authoritative_room());
+   bool releasing = cmd && !strcasecmp(cmd, "ptt") &&
+                    !dict_get_bool(d, "cat.state.ptt", dict_get_bool(d, "cat.ptt", false));
+   bool own_release = releasing && cptr->is_ptt;
+   rrconn_t *release_holder = releasing ? whos_talking() : NULL;
+   bool override_release = releasing && !own_release && release_holder &&
+                           ws_ptt_can_override(cptr, release_holder);
+   char override_vfo[2] = {0};
+   if (override_release) {
+      control_room = release_holder->ptt_room;
+      override_vfo[0] = release_holder->ptt_vfo;
+      vfo = override_vfo;
+   }
+   if (!cmd || !*cmd) { return false; }
+   if (own_release && cptr->ptt_room[0]) { control_room = cptr->ptt_room; }
+   rr_vfo_t index = vfo && vfo[0] && !vfo[1] ? vfo_lookup(toupper((unsigned char)vfo[0])) : VFO_NONE;
+   if (index < 0 || index >= 32 || !(ws_room_vfo_mask(control_room) & (UINT32_C(1) << index))) {
+      ws_send_error(cptr, "Invalid VFO for room %s", control_room);
+      return false;
+   }
+   char canonical_vfo[2] = { (char)('A' + index), 0 };
+   vfo = canonical_vfo;
+   if (releasing && !override_release && (!own_release || cptr->ptt_vfo != vfo[0])) {
+      ws_send_error(cptr, "You do not hold PTT on this VFO");
+      return false;
+   }
+
+   if (!own_release && cptr->user->is_muted) {
       Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they are muted!", cmd, cptr->chatname);
       /* Return the actual policy failure.  "Invalid target" made a muted user's PTT
        * failure look like a malformed VFO or username. */
@@ -198,23 +247,15 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    // present
    // XXX: Add support for per noob Elmer (link from noob to elmer(s) who have
    // approved their use)
-   if ( has_priv(cptr->user->uid, "noob") && !is_elmer_online() ) {
+   if ( !own_release && !override_release && has_priv(cptr->user->uid, "noob") && !is_elmer_online() ) {
       Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they're a noob and no elmers are online", cmd,
          cptr->chatname);
 
       return false;
    }
 
-   const char *control_room = dict_get( d, "cat.room", ws_authoritative_room() );
-   bool releasing = cmd && !strcasecmp(cmd, "ptt") &&
-                    !dict_get_bool( d, "cat.state.ptt", dict_get_bool(d, "cat.ptt", false) );
-
-   if (releasing && cptr->is_ptt && cptr->ptt_room[0]) { control_room = cptr->ptt_room; }
-
-   if ( cmd && !(releasing && cptr->is_ptt) &&
-        !ws_room_control_allowed( cptr, control_room, !strcasecmp(cmd, "freq") ) ) {
+   if (!own_release && !override_release && !ws_room_control_allowed(cptr, control_room, !strcasecmp(cmd, "freq"))) {
       ws_send_error(cptr, "Control is not allowed from room %s", control_room);
-
       return false;
    }
 
@@ -230,7 +271,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
    if (cmd) {
       if (strcasecmp(cmd, "ptt") == 0) {
-         if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
+         if (!own_release && !override_release && (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted)) {
             return false;
          }
 
@@ -242,43 +283,19 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          // Client sends cat.ptt; server-originated echoes use cat.state.ptt
          bool ptt_state = dict_get_bool( d, "cat.state.ptt", dict_get_bool(d, "cat.ptt", false) );
 
-         // Enforce single-TX: nobody else may key up while someone holds PTT.
-         // Exception: the talker is a noob AND the requester is an admin,
-         // owner or elmer - in that case we halt the noob's TX and start
-         // their noob.cool-down (default 30 seconds) during which noob
-         // flagged users cannot TX.
+         bool already_keyed = ptt_state && cptr->is_ptt;
+         if (already_keyed && (cptr->ptt_vfo != vfo[0] || strcasecmp(cptr->ptt_room, control_room))) {
+            ws_send_error(cptr, "Release PTT before changing the transmitting rig or VFO");
+            return false;
+         }
+
+         // Key-down never transfers ownership, even for staff. A higher
+         // privilege stop request must release the current holder first.
          if (ptt_state) {
             rrconn_t *talker = whos_talking();
-
             if (talker && talker != cptr) {
-               int cfg_noob_cooldown = cfg_get_int("noob.cool-down", 30);
-
-               if (cfg_noob_cooldown < 0) { cfg_noob_cooldown = 30; }
-
-               bool talker_is_noob = ( talker->user && has_priv(talker->user->uid, "noob") );
-               bool i_can_halt = has_priv(cptr->user->uid, "admin|owner") ||
-                                 ( talker_is_noob && has_priv(cptr->user->uid, "elmer") );
-
-               if (i_can_halt) {
-                  Log(LOG_AUDIT, "ptt", "User %s halted %s%s", cptr->chatname, talker->chatname,
-                     talker_is_noob ? "; noob cooldown applied" : "");
-                  talker->is_ptt = false;
-                  talker->ptt_vfo = 0;
-
-                  if (talker_is_noob) {
-                     talker->noob_cooldown = now + cfg_noob_cooldown;
-                  }
-                  // Same path as MUTE uses to force TX off
-                  event_emit("ptt.off", NULL, NULL);
-                  // Push updated TX state to everyone's userlist
-                  ws_send_userinfo(talker, NULL);
-               } else {
-                  Log(LOG_AUDIT, "ptt", "Denying PTT for %s: %s is already transmitting", cptr->chatname,
-                     talker->chatname);
-                  ws_send_error(cptr, "%s is already transmitting", talker->chatname);
-
-                  return false;
-               }
+               ws_send_error(cptr, "%s is already transmitting", talker->chatname);
+               return false;
             }
 
             // Noobs in cooldown may not TX
@@ -307,20 +324,30 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
          int channel = -1;
 
+         rrconn_t *subject = override_release ? release_holder : cptr;
+         if (override_release) {
+            Log(LOG_AUDIT, "ptt", "User %s overrode PTT held by %s in %s VFO %s", cptr->chatname,
+               subject->chatname, control_room, vfo);
+            if (has_priv(subject->user->uid, "noob")) {
+               int cooldown = cfg_get_int("noob.cool-down", 30);
+               subject->noob_cooldown = now + (cooldown < 0 ? 30 : cooldown);
+            }
+         }
+
          // Update their last heard and PTT status
          cptr->last_heard = now;
          cptr->last_cat = now;         // last CAT message received from user
 
-         if (ptt_state) { snprintf(cptr->ptt_room, sizeof(cptr->ptt_room), "%s", control_room); }
-         cptr->is_ptt = ptt_state;
+         if (ptt_state) { snprintf(subject->ptt_room, sizeof(subject->ptt_room), "%s", control_room); }
+         subject->is_ptt = ptt_state;
          // Remember which VFO they keyed, so a disconnect (or other forced
          // key-down) can name & release the right one
-         cptr->ptt_vfo = (ptt_state ? vfo[0] : 0);
+         subject->ptt_vfo = (ptt_state ? vfo[0] : 0);
 
          // Push the new TX state to everyone's userlist. Without this the
          // clients' userlist keeps stale PTT state until something else
          // triggers a userinfo broadcast
-         ws_send_userinfo(cptr, NULL);
+         ws_send_userinfo(subject, NULL);
 
          // Audit trail is logged by the rigctl event handler (rrserver/events.c)
          dict *cat_msg = dict_new();
@@ -329,7 +356,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_add(cat_msg, "cat.cmd", "ptt");
          dict_add(cat_msg, "cat.mode", mode_name);
          dict_add_bool(cat_msg, "cat.ptt", ptt_state);
-         dict_add(cat_msg, "cat.user", cptr->chatname);
+         dict_add(cat_msg, "cat.user", subject->chatname);
          dict_add(cat_msg, "cat.vfo", vfo);
          dict_add_float(cat_msg, "cat.power", dp->power);
          dict_add_long(cat_msg, "cat.freq", dp->freq);
@@ -337,6 +364,10 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_add_ulong(cat_msg, "msg.ts", now);
          ws_broadcast_dict(NULL, cat_msg, WEBSOCKET_OP_TEXT);
          dict_free(cat_msg);
+
+         // Duplicate key-down acknowledgements must not reset the TX timeout
+         // or create another recording/quota session.
+         if (already_keyed) { return true; }
 
          // NB: We can't call the backend directly from the library; send a
          // rigctl event for the server program to apply (same path as the
@@ -349,8 +380,12 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_add_bool(cmd_d, "rigctl.ptt", ptt_state);
          dict_add(cmd_d, "rigctl.from", cptr->chatname);
          dict_add(cmd_d, "rigctl.vfo", vfo);
-         event_emit_dict("rigctl", NULL, cmd_d);
+         event_emit_dict("rigctl", subject, cmd_d);
          dict_free(cmd_d);
+         if (override_release && subject->is_ptt) {
+            ws_send_error(cptr, "PTT stop failed; the original holder still owns TX");
+            return false;
+         }
       } else if (!strcasecmp(cmd, "power")) {
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || !vfo || !*vfo) { return false; }
          const char *argument = dict_get(d, "cat.power", NULL);
@@ -374,15 +409,13 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
             return false;
          }
-         long new_freq = dict_get_long(d, "cat.state.freq", 0);
-
-         if (new_freq <= 0) { new_freq = dict_get_long(d, "cat.freq", 0); }
-
-         if (!vfo || new_freq <= 0) {
-            Log(LOG_DEBUG, "ws.rigctl", "FREQ set without vfo or freq");
-
+         const char *key = dict_get_type(d, "cat.state.freq") != VAL_END ? "cat.state.freq" : "cat.freq";
+         dict_value_t frequency;
+         if (!rr_object_value_get(d, key, VAL_INT, &frequency) || frequency.i <= 0) {
+            ws_send_error(cptr, "Frequency must be a positive integer within the CAT range");
             return false;
          }
+         long new_freq = frequency.i;
 
          rr_vfo_t c_vfo;
          c_vfo = vfo_lookup(vfo[0]);
@@ -433,6 +466,21 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
             return false;
          }
 
+         bool named = !strcasecmp(width, "nar") || !strcasecmp(width, "narr") ||
+                      !strcasecmp(width, "narrow") || !strcasecmp(width, "norm") ||
+                      !strcasecmp(width, "normal") || !strcasecmp(width, "wide");
+         if (!named) {
+            char *end = NULL;
+            errno = 0;
+            long hz = strtol(width, &end, 10);
+            if (end) { while (*end == ' ' || *end == '\t') { end++; } }
+            if (errno || end == width || hz <= 0 || hz > INT_MAX ||
+                (*end && strcasecmp(end, "Hz"))) {
+               ws_send_error(cptr, "Invalid passband width");
+               return false;
+            }
+         }
+
          cptr->last_cat = now;         // last CAT message received from user
          cptr->last_heard = now;
 
@@ -475,6 +523,10 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          if (!vfo || !mode) {
             Log(LOG_DEBUG, "ws.rigctl", "MODE set without vfo:<%p> or mode:<%p>", vfo, mode);
 
+            return false;
+         }
+         if (vfo_parse_mode(mode) == MODE_NONE) {
+            ws_send_error(cptr, "Unknown mode: %s", mode);
             return false;
          }
          rr_vfo_t c_vfo;
@@ -520,7 +572,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          }
       } else {
          const char *jp = dict2json(d);
-         Log(LOG_DEBUG, "ws.rigctl", "Got unknown rig msg: |%s|", d);
+         Log(LOG_DEBUG, "ws.rigctl", "Got unknown rig command: %s", cmd);
          ws_send_error(cptr, "Unknown message: |%s|", jp);
          free( (void *)jp );
          return false;

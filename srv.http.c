@@ -119,14 +119,11 @@ static struct http_res_types http_res_types[] = {
 // Perform various checks on synthesized URLs to make sure the user isn't up to
 // anything shady...
 bool check_url(const char *path) {
-   if (!path) {
-      return true;
+   if (!path) { return true; }
+   for (const unsigned char *p = (const unsigned char *)path; *p; p++) {
+      if (*p < 32 || *p == 127 || *p == '\\' ||
+          (*p == '.' && (p == (const unsigned char *)path || p[-1] == '/'))) { return true; }
    }
-
-   if ( strstr(path, "..") ) {
-      return true;
-   }
-
    return false;
 }
 
@@ -157,72 +154,60 @@ const char *http_content_type(const char *type) {
 }
 
 #ifdef  USE_MONGOOSE
+// Filesystem bindings are local configuration; clients cannot escape their root
+// through encoded traversal, hidden metadata, or a symlink to another directory.
+static bool http_static_contained(const char *path) {
+#ifdef HOST_POSIX
+   char root[PATH_MAX], resolved[PATH_MAX];
+   if (!realpath(www_root, root) || !realpath(path, resolved)) { return false; }
+   size_t n = strlen(root);
+   return !strcmp(root, "/") || (!strncmp(root, resolved, n) && (!resolved[n] || resolved[n] == '/'));
+#else
+   return true;
+#endif
+}
+
 bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
    struct mg_http_serve_opts opts = http_opts;
-
-   if (!msg || !cptr || !cptr->conn || !msg->uri.buf) {
+   if (!msg || !cptr || !cptr->conn || !msg->uri.buf) { return true; }
+   char path[4096], real_path[8192];
+   int path_len = msg->uri.len < sizeof(path) ?
+      mg_url_decode(msg->uri.buf, msg->uri.len, path, sizeof(path), 0) : -1;
+   if (path_len <= 0 || (size_t)path_len >= sizeof(path) ||
+       memchr(path, '\0', (size_t)path_len) || path[0] != '/' || check_url(path)) {
+      mg_http_reply(cptr->conn, 400, "Content-Type: text/plain\r\n", "Invalid path\n");
       return true;
    }
-   // Copy URI into null-terminated buffer
-   char path[4096];
-   memset( path, 0, sizeof(path) );
-   int path_len = snprintf(path, sizeof(path), "%.*s", (int)(msg->uri.len > INT_MAX ? INT_MAX : msg->uri.len),
-      msg->uri.buf);
-
-   if ( path_len < 0 || (size_t)path_len >= sizeof(path) || check_url(path) ) {
-      Log(LOG_WARN, "http.core", "Rejecting unsafe or oversized static path");
-
+   if (!www_root[0]) {
+      mg_http_reply(cptr->conn, 503, "", "Static content unavailable\n");
       return true;
    }
-   char real_path[8192];
-   memset( real_path, 0, sizeof(real_path) );
-
-   if (www_root[0] == '\0') {
-      Log(LOG_CRIT, "http.core", "www_root is NULL");
-
+   int n = snprintf(real_path, sizeof(real_path), "%s%s", www_root, path);
+   if (n < 0 || (size_t)n >= sizeof(real_path)) {
+      mg_http_reply(cptr->conn, 400, "", "Invalid path\n");
       return true;
    }
-
-   if (strlen(path) == 1 && path[0] == '/') {
-      memset( path, 0, sizeof(path) );
-      snprintf(path, sizeof(path), "index.html");
-   }
-   int real_len = snprintf(real_path, sizeof(real_path), "%s/%s", www_root, path);
-
-   if ( real_len < 0 || (size_t)real_len >= sizeof(real_path) ) {
-      Log(LOG_WARN, "http.core", "Rejecting oversized static path");
-
-      return true;
-   }
-
-   if ( file_exists(real_path) ) {
-      // Find last '.' in the path for the extension
-      const char *ext = strrchr(path, '.');
-
-      if ( ext && *(ext + 1) ) {
-         // lookup the mime type based on extension
-         const char *ctype = http_content_type(ext + 1);
-         char typebuf[256];
-         // save it in a form mongoose likes
-         memset( typebuf, 0, sizeof(typebuf) );
-         snprintf(typebuf, sizeof(typebuf), "%s=%s", ext + 1, ctype);
-         // tell mongoose about it
-         opts.mime_types = ctype;
-         // and serve the file
-         mg_http_serve_dir(cptr->conn, msg, &opts);
-
-         return false;
+   if (file_exists(real_path) || is_dir(real_path)) {
+      if (!http_static_contained(real_path)) {
+         mg_http_reply(cptr->conn, 403, "", "Forbidden\n");
+         return true;
       }
-   } else if ( is_dir(real_path) ) {
-      mg_http_serve_dir(cptr->conn, msg, &opts);
-
-      return false;
-   } else {
-      // file not found
-      Log(LOG_DEBUG, "http.core", "Static dispatch for %s returning 404", path);
-      mg_http_serve_file(cptr->conn, msg, www_404_path, &opts);
    }
-
+   // Mongoose may select these index/gzip alternatives when serving a
+   // directory or compressed resource. Check those symlinks as well.
+   const char *suffixes[] = { ".gz", "/index.html", "/index.shtml", "/index.html.gz" };
+   for (size_t i = 0; i < sizeof(suffixes) / sizeof(suffixes[0]); i++) {
+      char candidate[8192];
+      int length = snprintf(candidate, sizeof(candidate), "%s%s", real_path, suffixes[i]);
+      if (length < 0 || (size_t)length >= sizeof(candidate)) { continue; }
+      if (file_exists(candidate) && !http_static_contained(candidate)) {
+         mg_http_reply(cptr->conn, 403, "", "Forbidden\n");
+         return true;
+      }
+   }
+   // Use Mongoose's MIME mapping and 404 handling. No uploads, deletion,
+   // directory listing or SSI processing is enabled by our serve options.
+   mg_http_serve_dir(cptr->conn, msg, &opts);
    return true;
 }
 
@@ -252,14 +237,15 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
    // here
    long long ping_mono = dict_get_llong(d, "ping.ts", 0);
 
-   if (ping_mono) {
-      long long rtt_us = mono_us() - ping_mono;
+   long long current_mono = mono_us();
+   if (ping_mono > 0 && ping_mono <= current_mono) {
+      long long rtt_us = current_mono - ping_mono;
 
       if (rtt_us < 0) {
          rtt_us = 0;              // shouldn't happen on a monotonic clock
       }
       long long rtt = rtt_us / 1000;
-      cptr->latency_ms = (int)rtt;
+      cptr->latency_ms = rtt > INT_MAX ? INT_MAX : (int)rtt;
       last_ping_rtt_ms = rtt;
       Log(LOG_INFO, "ping", "RTT to user %s: %lld ms (%lld us) (global last_ping_rtt_ms=%lld)", cptr->chatname, rtt,
          rtt_us, last_ping_rtt_ms);
@@ -272,7 +258,7 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
       dict_free(lat);
    }
 
-   if (msg_ts > now || now - msg_ts > HTTP_PING_TIME) {
+   if (msg_ts <= 0 || msg_ts > now || now - msg_ts > HTTP_PING_TIME) {
       Log(LOG_DEBUG, "http.pong", "Late ping for cptr:<%p> from %s:%d ts: %li + %li (timeout) < now %li", cptr, ip,
          port, msg_ts, HTTP_PING_TIMEOUT, now);
       ws_kick_client(cptr, "Network Error: PING expired");
@@ -512,19 +498,19 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
 #endif
 
    // Binary (audio, waterfall) frames
-   if (msg->flags & WEBSOCKET_OP_BINARY) {
+   if ((msg->flags & 0x0F) == WEBSOCKET_OP_BINARY) {
       Log(LOG_CRAZY, "ws.frame.bin", "Incoming Binary frame: %zu bytes", msg->data.len);
 
       return ws_binframe_process_mg(cptr, msg->data.buf, msg->data.len);
-   } else {
+   } else if ((msg->flags & 0x0F) == WEBSOCKET_OP_TEXT) {
       // Text (mostly json) frames
       Log(LOG_CRAZY, "ws.frame.txt", "Incoming Text frame: %zu bytes", msg->data.len);
 
       // Drop oversized frames: copying into our fixed buffer without this
       // check smashed the stack/heap and later crashed mg_iobuf_free
       // ("double free or corruption") when the connection closed.
-      if (msg->data.len > HTTP_WS_MAX_MSG) {
-         Log(LOG_WARN, "http.ws", "Dropping oversized WS text frame (%zu bytes > %d) from cptr:<%p>", msg->data.len,
+      if (msg->data.len > HTTP_WS_MAX_MSG || memchr(msg->data.buf, '\0', msg->data.len)) {
+         Log(LOG_WARN, "http.ws", "Dropping oversized or NUL-containing WS text frame (%zu bytes, limit %d) from cptr:<%p>", msg->data.len,
             HTTP_WS_MAX_MSG, cptr);
 
          return false;
@@ -535,10 +521,12 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
       memset( buf, 0, sizeof(buf) );
       memcpy(buf, msg_data.buf, msg_data.len);
 //      fprintf(stderr, "buf(%d): %s(%d)\n", msg_data.len, buf, strlen(buf));
-      dict *d = json2dict(buf);
+      const char *root = buf;
+      while (*root == ' ' || *root == '\t' || *root == '\r' || *root == '\n') { root++; }
+      dict *d = *root == '{' ? json2dict(buf) : NULL;
 
       if (!d) {
-         Log(LOG_CRIT, "rrproto.cli.main", "ws_handle: d is null!");
+         Log(LOG_WARN, "http.ws", "Rejected invalid JSON object");
 
          return false;
       }
@@ -584,7 +572,7 @@ void ws_release_ptt_on_disconnect(rrconn_t *cptr) {
       };
       dict_add(rig_msg, "cat.vfo", vfo_buf);
    }
-   event_emit_dict("rig.ptt", NULL, rig_msg);
+   event_emit_dict("rig.ptt", cptr, rig_msg);
    dict_free(rig_msg);
 }
 
@@ -625,7 +613,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
 
       if (cptr->conn->is_tls) {
          Log(LOG_DEBUG, "http", "Initializing TLS");
-         struct mg_tls_opts opts;
+         struct mg_tls_opts opts = {0};
          opts.ca = mg_str("*");
          mg_tls_init(cptr->conn, &opts);
       }
