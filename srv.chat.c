@@ -1528,7 +1528,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            dict_add(selected, "msg.type", "cat");
                            dict_add(selected, "cat.room", channel);
                            dict_add( selected, "cat.state.vfo", vfo_name(new_vfo) );
-                           dict_add_bool(selected, "cat.state.active", true);
+                           // Session selection is distinct from the physical radio active VFO.
+                           dict_add_bool(selected, "cat.state.selected", true);
+                           dict_add_bool(selected, "cat.state.active", true); // older clients
                            ws_send_dict(NULL, cptr, selected, WEBSOCKET_OP_TEXT);
                            dict_free(selected);
 

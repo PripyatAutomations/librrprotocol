@@ -734,13 +734,11 @@ bool ws_send_error(rrconn_t *cptr, const char *fmt, ...) {
    va_list ap;
    va_start(ap, fmt);
    vsnprintf(fullmsg, sizeof(fullmsg), fmt, ap);
-   char *escaped_msg = escape_html(fullmsg);
    dict *err_msg = dict_new();
    dict_add(err_msg, "msg.type", "error");
-   dict_add(err_msg, "error.msg", escaped_msg);
+   dict_add(err_msg, "error.msg", fullmsg);
    dict_add_ulong(err_msg, "msg.ts", now);
    bool sent = ws_send_dict(NULL, cptr, err_msg, WEBSOCKET_OP_TEXT);
-   free(escaped_msg);
    dict_free(err_msg);
 
    va_end(ap);
