@@ -43,7 +43,9 @@ bool ws_handle_notice_msg(rrconn_t *cptr, dict *d) {
 }
 
 bool ws_handle_callsign_msg(rrconn_t *cptr, dict *d) {
-   if (!cptr || !d) { return false; }
+   if (!cptr || !d) {
+      return false;
+   }
 
    if ( !dict_get(d, "callsign.status", NULL) && !dict_get(d, "callsign.fields", NULL) ) {
       /* Dotted dictionaries do not expose a parent value; accept any field. */
@@ -58,7 +60,9 @@ bool ws_handle_callsign_msg(rrconn_t *cptr, dict *d) {
          }
       }
 
-      if (!found) { return false; }
+      if (!found) {
+         return false;
+      }
    }
    event_emit_dict("callsign.line", NULL, d);
 

@@ -95,10 +95,17 @@ bool load_http_ua_bans(const char *path) {
       }
       http_ua_ban_t *new_ban = calloc( 1, sizeof(*new_ban) );
 
-      if (!new_ban) { fclose(fp); return true; }
+      if (!new_ban) {
+         fclose(fp);
+         return true;
+      }
       new_ban->useragent = strdup(line);
 
-      if (!new_ban->useragent) { free(new_ban); fclose(fp); return true; }
+      if (!new_ban->useragent) {
+         free(new_ban);
+         fclose(fp);
+         return true;
+      }
       int regex_rc = regcomp(&new_ban->regex, new_ban->useragent, REG_EXTENDED | REG_NOSUB);
 
       if (regex_rc != 0) {

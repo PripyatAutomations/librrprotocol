@@ -64,10 +64,14 @@ static bool callsign_lookup_readline(char *line, size_t len, int timeout_ms) {
 }
 
 static bool callsign_lookup_wait_ready(int timeout_ms) {
-   if (callsign_lookup_ready) { return true; }
+   if (callsign_lookup_ready) {
+      return true;
+   }
 
    if (callsign_lookup_process.pid <= 0 || !callsign_lookup_process.input ||
-       !callsign_lookup_process.output) { return false; }
+       !callsign_lookup_process.output) {
+      return false;
+   }
 
    char line[1024];
    while ( callsign_lookup_readline(line, sizeof(line), timeout_ms) ) {
@@ -79,7 +83,9 @@ static bool callsign_lookup_wait_ready(int timeout_ms) {
       }
       line[strcspn(line, "\r\n")] = '\0';
 
-      if (*line) { Log(LOG_WARN, "callsign", "lookup startup: %s", line); }
+      if (*line) {
+         Log(LOG_WARN, "callsign", "lookup startup: %s", line);
+      }
    }
 
    /* A zero-time probe is used from the WebSocket event loop.  No data yet means only
@@ -123,10 +129,14 @@ static bool callsign_lookup_wait_ready(int timeout_ms) {
 }
 
 static bool callsign_lookup_send_reply(rrconn_t *cptr, const char *text) {
-   if (!cptr || !text) { return false; }
+   if (!cptr || !text) {
+      return false;
+   }
    dict *message = dict_new();
 
-   if (!message) { return false; }
+   if (!message) {
+      return false;
+   }
    dict_add(message, "msg.type", "callsign");
    dict_add_ulong(message, "msg.ts", now);
    /* Keep the wire response machine-readable.  The dictionary serializer turns dotted
@@ -151,18 +161,24 @@ static bool callsign_lookup_send_reply(rrconn_t *cptr, const char *text) {
             char key[128];
             size_t key_len = (size_t)(colon - line);
 
-            if ( key_len >= sizeof(key) ) { key_len = sizeof(key) - 1; }
+            if ( key_len >= sizeof(key) ) {
+               key_len = sizeof(key) - 1;
+            }
             size_t out = 0;
 
             for (size_t i = 0 ; i < key_len && out + 1 < sizeof(key) ; i++) {
                unsigned char ch = (unsigned char)line[i];
 
-               if ( isalnum(ch) ) { key[out++] = (char)tolower(ch); } else if (out > 0 && key[out - 1] != '_') {
+               if ( isalnum(ch) ) {
+                  key[out++] = (char)tolower(ch);
+               } else if (out > 0 && key[out - 1] != '_') {
                   key[out++] = '_';
                }
             }
 
-            while (out > 0 && key[out - 1] == '_') { out--; }
+            while (out > 0 && key[out - 1] == '_') {
+               out--;
+            }
             key[out] = '\0';
 
             if (out > 0) {
@@ -171,16 +187,22 @@ static bool callsign_lookup_send_reply(rrconn_t *cptr, const char *text) {
                char value[1024];
                size_t value_len = line_len - (size_t)(colon - line) - 1;
 
-               if ( value_len >= sizeof(value) ) { value_len = sizeof(value) - 1; }
+               if ( value_len >= sizeof(value) ) {
+                  value_len = sizeof(value) - 1;
+               }
                memcpy(value, colon + 1, value_len);
                value[value_len] = '\0';
-               while (*value == ' ') { memmove( value, value + 1, strlen(value) ); }
+               while (*value == ' ') {
+                  memmove( value, value + 1, strlen(value) );
+               }
                dict_add(message, field_key, value);
             }
          }
       }
 
-      if (!end) { break; }
+      if (!end) {
+         break;
+      }
       line = end + 1;
    }
    dict_add_bool(message, "callsign.done", true);
@@ -192,7 +214,9 @@ static bool callsign_lookup_send_reply(rrconn_t *cptr, const char *text) {
 
 static bool callsign_lookup_start(void) {
    if (callsign_lookup_process.pid > 0 && callsign_lookup_process.input &&
-       callsign_lookup_process.output) { return true; }
+       callsign_lookup_process.output) {
+      return true;
+   }
 
    char *program = cfg_get_path("callsign-lookup:path");
 
@@ -243,7 +267,9 @@ static bool callsign_lookup_start(void) {
 // Start the persistent lookup helper during server initialization rather
 // than making the first /qrz or /grid request pay the startup cost.
 bool ws_callsign_lookup_init(void) {
-   if ( !callsign_lookup_start() ) { return false; }
+   if ( !callsign_lookup_start() ) {
+      return false;
+   }
 
    /* The helper is launched before the network listener.  Give its banner a bounded
     * startup window here so the first request cannot race readiness, while keeping the
@@ -262,7 +288,9 @@ void ws_callsign_lookup_poll(void) {
       (void)callsign_lookup_wait_ready(0);
    }
 
-   if (!callsign_lookup_pending || !callsign_lookup_ready) { return; }
+   if (!callsign_lookup_pending || !callsign_lookup_ready) {
+      return;
+   }
 
    char line[1024];
    while ( callsign_lookup_readline(line, sizeof(line), 0) ) {
@@ -271,7 +299,9 @@ void ws_callsign_lookup_poll(void) {
       if (!*line || strncmp(line, "+NOTICE ", 8) == 0 ||
           strncmp(line, "+OK ", 4) == 0 || strncmp(line, "+PROTO ", 7) == 0 ||
           strncmp(line, "+GOODBYE", 8) == 0 || line[0] == '[' || line[0] == '<' ||
-          strncmp(line, "==", 2) == 0) { continue; }
+          strncmp(line, "==", 2) == 0) {
+         continue;
+      }
 
       if (strcmp(line, "+EOR") == 0) {
          callsign_lookup_reply[callsign_lookup_reply_len] = '\0';
@@ -305,9 +335,13 @@ void ws_callsign_lookup_poll(void) {
 }
 
 static bool callsign_lookup_request(rrconn_t *cptr, const char *request) {
-   if (callsign_lookup_pending) { return false; }
+   if (callsign_lookup_pending) {
+      return false;
+   }
 
-   if ( !callsign_lookup_start() ) { return false; }
+   if ( !callsign_lookup_start() ) {
+      return false;
+   }
 
    /* This runs on the WebSocket/event-loop thread.  Allow only a short grace period for
     * the startup banner to cross the pipe; the long startup wait must remain outside
@@ -355,7 +389,9 @@ static ws_room_meta_t *room_meta_find(const char *room, bool create) {
       }
    }
 
-   if (!create) { return NULL; }
+   if (!create) {
+      return NULL;
+   }
 
    for (size_t i = 0 ; i < sizeof(room_meta) / sizeof(room_meta[0]) ; i++) {
       if (!room_meta[i].name[0]) {
@@ -370,10 +406,14 @@ static ws_room_meta_t *room_meta_find(const char *room, bool create) {
 
 bool ws_room_name_valid(const char *room) {
    if ( !room || (room[0] != '#' && room[0] != '&') || !room[1] ||
-        strlen(room) >= sizeof(room_meta[0].name) ) { return false; }
+        strlen(room) >= sizeof(room_meta[0].name) ) {
+      return false;
+   }
 
    for (const unsigned char *p = (const unsigned char *)room ; *p ; p++) {
-      if (isspace(*p) || *p == ',' || *p < 32 || *p == 127) { return false; }
+      if (isspace(*p) || *p == ',' || *p < 32 || *p == 127) {
+         return false;
+      }
    }
 
    return true;
@@ -385,7 +425,9 @@ const char *ws_site_room(void) {
    int length = snprintf(room, sizeof(room), "#%s", configured && *configured ? configured : "rustyrig");
    free(configured);
 
-   if ( length < 0 || (size_t)length >= sizeof(room) ) { room[0] = '\0'; }
+   if ( length < 0 || (size_t)length >= sizeof(room) ) {
+      room[0] = '\0';
+   }
 
    return room;
 }
@@ -402,40 +444,60 @@ static rr_vfo_t ws_chat_selected_vfo(const rrconn_t *client, const char *room) {
    uint32_t mask = ws_room_vfo_mask(room);
    if (client->chat_vfo && !strcasecmp(client->chat_vfo_room, room)) {
       rr_vfo_t selected = vfo_lookup(client->chat_vfo);
-      if (selected >= 0 && selected < 32 && (mask & (UINT32_C(1) << selected))) { return selected; }
+      if (selected >= 0 && selected < 32 && (mask & (UINT32_C(1) << selected))) {
+         return selected;
+      }
    }
    for (rr_vfo_t index = 0; index < MAX_VFOS && index < 32; index++) {
-      if (mask & (UINT32_C(1) << index)) { return index; }
+      if (mask & (UINT32_C(1) << index)) {
+         return index;
+      }
    }
    return VFO_NONE;
 }
 
 // Base rig rooms are reserved even outside this site's namespace.
 bool ws_room_rig_base(const char *room) {
-   if ( !ws_room_name_valid(room) ) { return false; }
+   if ( !ws_room_name_valid(room) ) {
+      return false;
+   }
    const char *dash = strrchr(room, '-');
 
-   if ( !dash || strncasecmp(dash, "-rig", 4) || !isdigit( (unsigned char)dash[4] ) ) { return false; }
+   if ( !dash || strncasecmp(dash, "-rig", 4) || !isdigit( (unsigned char)dash[4] ) ) {
+      return false;
+   }
    const char *p = dash + 4;
-   while ( isdigit( (unsigned char)*p ) ) { p++; }
+   while ( isdigit( (unsigned char)*p ) ) {
+      p++;
+   }
    return !*p;
 }
 
 bool ws_room_rig_namespace(const char *room) {
-   if (!ws_room_name_valid(room) || room[0] != '#') { return false; }
+   if (!ws_room_name_valid(room) || room[0] != '#') {
+      return false;
+   }
    const char *site = ws_site_room();
    size_t prefix = strlen(site);
 
-   if ( strncasecmp(room, site, prefix) || strncasecmp(room + prefix, "-rig", 4) ) { return false; }
+   if ( strncasecmp(room, site, prefix) || strncasecmp(room + prefix, "-rig", 4) ) {
+      return false;
+   }
    const char *p = room + prefix + 4;
 
-   if ( !isdigit( (unsigned char)*p ) ) { return false; }
-   while ( isdigit( (unsigned char)*p ) ) { p++; }
+   if ( !isdigit( (unsigned char)*p ) ) {
+      return false;
+   }
+   while ( isdigit( (unsigned char)*p ) ) {
+      p++;
+   }
    return !*p || (*p == '.' && p[1]);
 }
 
 bool ws_room_same_rig(const char *room, const char *base) {
-   if ( !room || !base || !ws_room_rig_base(base) ) { return false; }
+   if ( !room || !base || !ws_room_rig_base(base) ) {
+      return false;
+   }
    size_t n = strlen(base);
 
    return !strncasecmp(room, base, n) && ( !room[n] || (room[n] == '.' && room[n + 1]) );
@@ -446,7 +508,9 @@ bool ws_room_tx_control(const char *room) {
 }
 
 uint32_t ws_room_rx_tuning_mask(const char *room) {
-   if ( !ws_room_rig_namespace(room) ) { return 0; }
+   if ( !ws_room_rig_namespace(room) ) {
+      return 0;
+   }
 
    for (size_t i = 0 ; i < sizeof(room_meta) / sizeof(room_meta[0]) ; i++) {
       if ( room_meta[i].rx_tuning_mask && ws_room_same_rig(room, room_meta[i].name) ) {
@@ -460,7 +524,9 @@ bool ws_room_rx_tunable(const char *room) {
    return ws_room_rx_tuning_mask(room) != 0;
 }
 bool ws_room_set_rx_tuning_mask(const char *room, uint32_t mask) {
-   if ( !ws_room_tx_control(room) || ( mask & ~ws_room_vfo_mask(room) ) ) { return false; }
+   if ( !ws_room_tx_control(room) || ( mask & ~ws_room_vfo_mask(room) ) ) {
+      return false;
+   }
    room_meta_find(room, false)->rx_tuning_mask = mask;
 
    return true;
@@ -475,10 +541,14 @@ bool ws_room_control_allowed(rrconn_t *client, const char *room, bool frequency)
 }
 
 bool ws_room_set_vfo_mask(const char *room, uint32_t mask) {
-   if ( !ws_room_name_valid(room) || ( mask && !ws_room_rig_namespace(room) ) ) { return false; }
+   if ( !ws_room_name_valid(room) || ( mask && !ws_room_rig_namespace(room) ) ) {
+      return false;
+   }
    ws_room_meta_t *meta = room_meta_find(room, true);
 
-   if (!meta) { return false; }
+   if (!meta) {
+      return false;
+   }
    meta->has_vfos = mask != 0;
    meta->vfo_mask = mask;
 
@@ -575,7 +645,9 @@ bool ws_client_join_room(rrconn_t *cptr, const char *room) {
    }
    const char *canonical = room_canonical(room);
 
-   if ( ws_room_rig_base(canonical) && !room_meta_find(canonical, false) ) { return false; }
+   if ( ws_room_rig_base(canonical) && !room_meta_find(canonical, false) ) {
+      return false;
+   }
 
    if (canonical[0] != '#' && canonical[0] != '&') {
       return false;
@@ -586,7 +658,9 @@ bool ws_client_join_room(rrconn_t *cptr, const char *room) {
    }
    rr_room_join_check_t check = {.room = canonical, .allowed = true};
    event_emit_binary(RR_ROOM_JOIN_CHECK_EVENT, cptr, &check, sizeof(check));
-   if (!check.allowed) { return false; }
+   if (!check.allowed) {
+      return false;
+   }
    size_t used = strlen(cptr->rooms);
    size_t need = strlen(canonical) + (used ? 1 : 0);
 
@@ -594,7 +668,9 @@ bool ws_client_join_room(rrconn_t *cptr, const char *room) {
       return false;
    }
 
-   if (used) { strlcat( cptr->rooms, ",", sizeof(cptr->rooms) ); }
+   if (used) {
+      strlcat( cptr->rooms, ",", sizeof(cptr->rooms) );
+   }
    strlcat( cptr->rooms, canonical, sizeof(cptr->rooms) );
 
    return true;
@@ -611,9 +687,13 @@ bool ws_client_part_room(rrconn_t *cptr, const char *room) {
    char *save = NULL;
 
    for ( char *tok = strtok_r(old, ",", &save) ; tok ; tok = strtok_r(NULL, ",", &save) ) {
-      if (strcasecmp(tok, want) == 0) { continue; }
+      if (strcasecmp(tok, want) == 0) {
+         continue;
+      }
 
-      if (out[0]) { strlcat( out, ",", sizeof(out) ); }
+      if (out[0]) {
+         strlcat( out, ",", sizeof(out) );
+      }
       strlcat( out, tok, sizeof(out) );
    }
 
@@ -626,7 +706,9 @@ bool ws_client_part_room(rrconn_t *cptr, const char *room) {
 }
 
 void ws_broadcast_room_dict(rrconn_t *sender, dict *d, const char *room) {
-   if (!d) { return; }
+   if (!d) {
+      return;
+   }
    rrconn_t *cur = http_client_list;
    while (cur) {
       if ( cur->is_ws && cur->authenticated && ws_client_in_room(cur, room) ) {
@@ -826,16 +908,19 @@ static bool ws_send_userinfo_room(rrconn_t *cptr, rrconn_t *acptr, const char *r
 }
 
 bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
-   if (acptr) { return ws_send_userinfo_room( cptr, acptr, ws_authoritative_room() ); }
+   if (acptr) {
+      return ws_send_userinfo_room( cptr, acptr, ws_authoritative_room() );
+   }
 
-   if (!cptr) { return false; }
+   if (!cptr) {
+      return false;
+   }
    char copy[AUTOJOIN_LEN];
    snprintf(copy, sizeof(copy), "%s", cptr->rooms);
    char *save = NULL;
    bool sent = false;
 
-   for ( char *room = strtok_r(copy, ",", &save) ; room ;
-         room = strtok_r(NULL, ",", &save) ) {
+   for ( char *room = strtok_r(copy, ",", &save) ; room ; room = strtok_r(NULL, ",", &save) ) {
       for (rrconn_t *recipient = http_client_list ; recipient ; recipient = recipient->next) {
          if ( ws_client_in_room(recipient, room) ) {
             ws_send_userinfo_room(cptr, recipient, room);
@@ -844,13 +929,17 @@ bool ws_send_userinfo(rrconn_t *cptr, rrconn_t *acptr) {
       }
    }
 
-   if (!sent) { ws_send_userinfo_room( cptr, NULL, ws_authoritative_room() ); }
+   if (!sent) {
+      ws_send_userinfo_room( cptr, NULL, ws_authoritative_room() );
+   }
 
    return true;
 }
 
 bool ws_send_room_users(rrconn_t *cptr, const char *room) {
-   if (!cptr || !room || !ws_client_in_room(cptr, room)) { return false; }
+   if (!cptr || !room || !ws_client_in_room(cptr, room)) {
+      return false;
+   }
 
    for (rrconn_t *current = http_client_list ; current ; current = current->next) {
       if ( ws_client_in_room(current, room) ) {
@@ -871,8 +960,7 @@ bool ws_send_users(rrconn_t *cptr) {
       snprintf(copy, sizeof(copy), "%s", cptr->rooms);
       char *save = NULL;
 
-      for ( char *room = strtok_r(copy, ",", &save) ; room ;
-            room = strtok_r(NULL, ",", &save) ) {
+      for ( char *room = strtok_r(copy, ",", &save) ; room ; room = strtok_r(NULL, ",", &save) ) {
          for (rrconn_t *current = http_client_list ; current ; current = current->next) {
             if ( ws_client_in_room(current, room) ) {
                ws_send_userinfo_room(current, cptr, room);
@@ -1047,7 +1135,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
             if (option) {
                *option++ = '\0';
-               while (*option == ' ' || *option == '\t') { option++; }
+               while (*option == ' ' || *option == '\t') {
+                  option++;
+               }
 
                if (strcasecmp(option, "nocache") != 0) {
                   ws_send_error(cptr, "Invalid /qrz option: %s", option);
@@ -1089,7 +1179,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          char request[512];
          snprintf(request, sizeof(request), "/%s %s", strcasecmp(cmd, "grid") == 0 ? "GRID" : "CALL", lookup_data);
 
-         if (no_cache) { strncat(request, " NOCACHE", sizeof(request) - strlen(request) - 1); }
+         if (no_cache) {
+            strncat(request, " NOCACHE", sizeof(request) - strlen(request) - 1);
+         }
 
          if ( !callsign_lookup_request(cptr, request) ) {
             ws_send_error(cptr, "Callsign lookup is still starting; please retry shortly");
@@ -1127,9 +1219,13 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
                return false;
             }
-            dict *list = dict_new(); dict_add(list, "msg.type", "talk");
-            dict_add(list, "talk.cmd", "room-list"); dict_add_ulong(list, "msg.ts", now);
-            event_emit_dict("room.list", cptr, list); dict_free(list); return true;
+            dict *list = dict_new();
+            dict_add(list, "msg.type", "talk");
+            dict_add(list, "talk.cmd", "room-list");
+            dict_add_ulong(list, "msg.ts", now);
+            event_emit_dict("room.list", cptr, list);
+            dict_free(list);
+            return true;
          }
 
          // PARITY: native/browser clients forward room management to this parser.
@@ -1137,7 +1233,10 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             char *verb = room_or_list;
             room_or_list = action;
             action = verb;
-            if (!room_or_list) { ws_send_error(cptr, usage); return false; }
+            if (!room_or_list) {
+               ws_send_error(cptr, usage);
+               return false;
+            }
          }
          if (!ws_room_name_valid(room_or_list)) {
             ws_send_error(cptr, "Invalid room name: %s (room names must start with # or &)", room_or_list);
@@ -1157,10 +1256,15 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             bool force = false, history = false, invalid = false;
             char *option;
             while ((option = strtok_r(NULL, " \t", &save))) {
-               if (!strcmp(option, "--force") || !strcmp(option, "-f")) { force = true; }
-               else if (!strcmp(option, "--history") || !strcmp(option, "-h")) { history = true; }
-               else if (*option == '-' || confirmation) { invalid = true; }
-               else { confirmation = option; }
+               if (!strcmp(option, "--force") || !strcmp(option, "-f")) {
+                  force = true;
+               } else if (!strcmp(option, "--history") || !strcmp(option, "-h")) {
+                  history = true;
+               } else if (*option == '-' || confirmation) {
+                  invalid = true;
+               } else {
+                  confirmation = option;
+               }
             }
             if (invalid || (history && !force) || (!strcasecmp(action, "add") && (confirmation || force || history)) ||
                 ((!strcasecmp(action, "remove") || ws_room_station_scoped(room)) &&
@@ -1181,7 +1285,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                dict_add(deleted, "talk.cmd", "room-removed");
                dict_add(deleted, "talk.room", room);
                dict_add(deleted, "talk.user", cptr->chatname);
-               if (confirmation) { dict_add(deleted, "talk.confirmation", confirmation); }
+               if (confirmation) {
+                  dict_add(deleted, "talk.confirmation", confirmation);
+               }
                dict_add_bool(deleted, "talk.force", force);
                dict_add_bool(deleted, "talk.history", history);
                dict_add_ulong(deleted, "msg.ts", now);
@@ -1218,10 +1324,14 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             }
 
             if (strcasecmp(vfo_action, "list") == 0) {
-               dict *list = dict_new(); dict_add(list, "msg.type", "talk");
-               dict_add(list, "talk.cmd", "room-vfo-list"); dict_add(list, "talk.room", room);
+               dict *list = dict_new();
+               dict_add(list, "msg.type", "talk");
+               dict_add(list, "talk.cmd", "room-vfo-list");
+               dict_add(list, "talk.room", room);
                dict_add_ulong(list, "msg.ts", now);
-               event_emit_dict("room.vfo-list", cptr, list); dict_free(list); return true;
+               event_emit_dict("room.vfo-list", cptr, list);
+               dict_free(list);
+               return true;
             }
 
             if ( (strcasecmp(vfo_action, "add") != 0 && strcasecmp(vfo_action, "remove") != 0) ||
@@ -1240,12 +1350,20 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
             if (strncasecmp(binding, "rig", 3) != 0) {
                snprintf(normalized, sizeof(normalized), "rig0.%s", binding);
-            } else { snprintf(normalized, sizeof(normalized), "%s", binding); }
-            dict *vm = dict_new(); dict_add(vm, "msg.type", "talk");
-            dict_add(vm, "talk.cmd", "room-vfo"); dict_add(vm, "talk.action", vfo_action);
-            dict_add(vm, "talk.room", room); dict_add(vm, "talk.vfo", normalized);
-            dict_add(vm, "talk.user", cptr->chatname); dict_add_ulong(vm, "msg.ts", now);
-            event_emit_dict("room.vfo", cptr, vm); dict_free(vm); return true;
+            } else {
+               snprintf(normalized, sizeof(normalized), "%s", binding);
+            }
+            dict *vm = dict_new();
+            dict_add(vm, "msg.type", "talk");
+            dict_add(vm, "talk.cmd", "room-vfo");
+            dict_add(vm, "talk.action", vfo_action);
+            dict_add(vm, "talk.room", room);
+            dict_add(vm, "talk.vfo", normalized);
+            dict_add(vm, "talk.user", cptr->chatname);
+            dict_add_ulong(vm, "msg.ts", now);
+            event_emit_dict("room.vfo", cptr, vm);
+            dict_free(vm);
+            return true;
          }
          ws_send_error(cptr, usage);
 
@@ -1267,7 +1385,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             return false;
          }
 
-         if (!data) { data = ""; }
+         if (!data) {
+            data = "";
+         }
 
          if (strlen(data) > 512) {
             ws_send_error(cptr, "Topic is too long (maximum 512 characters)");
@@ -1337,7 +1457,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             ws_send_dict(cptr, cptr, room_msg, WEBSOCKET_OP_TEXT);
          }
 
-         if (joining) { ws_send_room_users( cptr, room_canonical(requested) ); }
+         if (joining) {
+            ws_send_room_users( cptr, room_canonical(requested) );
+         }
 
          if (joining) {
             event_emit_dict("room.join", cptr, room_msg);
@@ -1449,14 +1571,18 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                         if ( !strcasecmp(cmd, "freq") || !strcasecmp(cmd, "mode") || !strcasecmp(cmd, "width") || !strcasecmp(cmd, "power") ) {
                            dict *control = dict_new();
 
-                           if (!control) { return false; }
+                           if (!control) {
+                              return false;
+                           }
                            dict_add(control, "cat.cmd", cmd);
                            dict_add(control, "cat.room", channel);
                            dict_add( control, "cat.vfo", vfo_name(ws_chat_selected_vfo(cptr, channel)) );
 
                            if ( !strcasecmp(cmd, "freq") ) {
                               dict_add_long( control, "cat.freq", parse_freq(arg) );
-                           } else if ( !strcasecmp(cmd, "mode") ) { dict_add(control, "cat.mode", arg); } else if (!strcasecmp(cmd, "power")) {
+                           } else if ( !strcasecmp(cmd, "mode") ) {
+                              dict_add(control, "cat.mode", arg);
+                           } else if (!strcasecmp(cmd, "power")) {
                               dict_add(control, "cat.power", arg);
                            } else {
                               dict_add(control, "cat.width", arg);
@@ -1464,7 +1590,9 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            bool applied = ws_handle_rigctl_msg(cptr, control);
                            dict_free(control);
 
-                           if (!applied) { return false; }
+                           if (!applied) {
+                              return false;
+                           }
                            continue;
                         }
 

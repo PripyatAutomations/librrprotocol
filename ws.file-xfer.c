@@ -135,7 +135,8 @@ static struct xfer *xf_get(uint64_t id, bool create) {
       }
 
       if (create && g_tbl[j].id == 0) {
-         g_tbl[j].id = id; return &g_tbl[j].xf;
+         g_tbl[j].id = id;
+         return &g_tbl[j].xf;
       }
    }
 
@@ -230,8 +231,11 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
          return;
       }
       const uint8_t *p = (const uint8_t *) m->data.buf;
-      uint64_t id; memcpy(&id, p + 0, 8);
-      uint32_t idx, n; memcpy(&idx, p + 8, 4); memcpy(&n, p + 12, 4);
+      uint64_t id;
+      memcpy(&id, p + 0, 8);
+      uint32_t idx, n;
+      memcpy(&idx, p + 8, 4);
+      memcpy(&n, p + 12, 4);
 
       struct xfer *xf = xf_get(id, false);
 

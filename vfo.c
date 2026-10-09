@@ -160,23 +160,41 @@ const char *vfo_mode_name(rr_mode_t mode) {
 }
 
 long parse_freq(const char *str) {
-   if (!str) { return -1; }
-   while (isspace((unsigned char)*str)) { str++; }
+   if (!str) {
+      return -1;
+   }
+
+   while (isspace((unsigned char)*str)) {
+      str++;
+   }
    char *end = NULL;
    errno = 0;
    double val = strtod(str, &end);
-   if (errno || end == str || !isfinite(val) || val <= 0) { return -1; }
-   while (isspace((unsigned char)*end)) { end++; }
+
+   if (errno || end == str || !isfinite(val) || val <= 0) {
+      return -1;
+   }
+
+   while (isspace((unsigned char)*end)) {
+      end++;
+   }
    if (!*end) {
       const char *dot = strchr(str, '.');
       size_t digits = dot ? (size_t)(dot - str) : strlen(str);
-      if (digits >= 3 && digits <= 5) { val *= 1e3; }
+      if (digits >= 3 && digits <= 5) {
+         val *= 1e3;
+      }
    } else if (!strcasecmp(end, "k") || !strcasecmp(end, "kHz")) {
       val *= 1e3;
    } else if (!strcasecmp(end, "m") || !strcasecmp(end, "MHz")) {
       val *= 1e6;
-   } else if (strcasecmp(end, "Hz")) { return -1; }
-   if (!isfinite(val) || val >= -(double)LONG_MIN || val < 1) { return -1; }
+   } else if (strcasecmp(end, "Hz")) {
+      return -1;
+   }
+
+   if (!isfinite(val) || val >= -(double)LONG_MIN || val < 1) {
+      return -1;
+   }
    return (long)val;
 }
 

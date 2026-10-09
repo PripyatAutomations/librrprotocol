@@ -231,11 +231,16 @@ int http_load_users(const char *filename) {
                break;
             }
          }
-         if (uid < 0) { break; }
+
+         if (uid < 0) {
+            break;
+         }
          token = strtok(NULL, ":");
          i++;
       }
-      if (uid >= 0) { user_count++; }
+      if (uid >= 0) {
+         user_count++;
+      }
    }
    for (int i = 0; i < HTTP_MAX_USERS; i++) {
       if (http_users[i].name[0] && !strcasecmp(previous[i].name, http_users[i].name)) {
@@ -266,11 +271,17 @@ int http_load_users(const char *filename) {
  */
 /* PARITY: rustyrig-www/js/webui.login.js */
 void http_reconcile_users(const http_user_t *previous) {
-   if (!previous) { return; }
+   if (!previous) {
+      return;
+   }
    for (rrconn_t *session = http_client_list; session; session = session->next) {
-      if (!session->authenticated || !session->user) { continue; }
+      if (!session->authenticated || !session->user) {
+         continue;
+      }
       ptrdiff_t uid = session->user - http_users;
-      if (uid < 0 || uid >= HTTP_MAX_USERS) { continue; }
+      if (uid < 0 || uid >= HTTP_MAX_USERS) {
+         continue;
+      }
       http_user_t *account = &http_users[uid];
       if (!account->enabled || !account->name[0] || strcasecmp(previous[uid].name, account->name) ||
           (account->password_expires > 0 && account->password_expires <= now)) {
@@ -281,7 +292,9 @@ void http_reconcile_users(const http_user_t *previous) {
                                  (has_priv(account->uid, "noob") && !is_elmer_online()))) {
             ws_release_ptt_on_disconnect(session);
          }
-         if (strcmp(previous[uid].privs, account->privs)) { ws_send_userinfo(session, NULL); }
+         if (strcmp(previous[uid].privs, account->privs)) {
+            ws_send_userinfo(session, NULL);
+         }
       }
    }
 }

@@ -39,11 +39,17 @@ static bool media_codec_list_has(const char *list, const char *codec) {
    }
    const char *p = list;
    while (*p) {
-      while (*p == ' ') { p++; }
+      while (*p == ' ') {
+          p++;
+      }
 
-      if (!*p) { break; }
+      if (!*p) {
+         break;
+      }
       const char *start = p;
-      while (*p && *p != ' ') { p++; }
+      while (*p && *p != ' ') {
+         p++;
+      }
 
       if ( (size_t)(p - start) == 4 && memcmp(start, codec, 4) == 0 ) {
          return true;
@@ -66,7 +72,9 @@ static bool media_codec_valid(const char *codec) {
 }
 
 static bool media_server_supports_codec(const char *codec) {
-   if ( !media_codec_valid(codec) ) { return false; }
+   if ( !media_codec_valid(codec) ) {
+      return false;
+   }
    const char *configured = cfg_get_exp("codecs.allowed");
    char *allowed = codec_filter_test_mode( configured, cfg_get_bool("audio.test-mode", true) );
    free( (void *)configured );
@@ -77,7 +85,9 @@ static bool media_server_supports_codec(const char *codec) {
 }
 
 static bool media_channel_all_clients_support(struct rr_mediachan *cp, const char *codec) {
-   if (!cp || !codec) { return false; }
+   if (!cp || !codec) {
+      return false;
+   }
    u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
    rrconn_t *cur = http_client_list;
    while (cur) {
@@ -101,9 +111,13 @@ static bool media_channel_all_clients_support(struct rr_mediachan *cp, const cha
 static const char *media_client_channel_room(const rrconn_t *client, const struct rr_mediachan *channel) {
    static char selected[128];
 
-   if (!client || !channel) { return NULL; }
+   if (!client || !channel) {
+      return NULL;
+   }
 
-   if (!channel->room[0]) { return channel->room; }
+   if (!channel->room[0]) {
+      return channel->room;
+   }
 
    if ( channel->direction != RR_BINFRAME_DIR_RX || ( channel->subsystem != RR_BINFRAME_SUBSYS_AUDIO &&
                                                       !( channel->subsystem == RR_BINFRAME_SUBSYS_MODEM &&
@@ -111,7 +125,8 @@ static const char *media_client_channel_room(const rrconn_t *client, const struc
                                                             "gpsp") ) ) ) ) {
       return ws_client_in_room(client, channel->room) ? channel->room : NULL;
    }
-   char joined[AUTOJOIN_LEN]; snprintf(joined, sizeof(joined), "%s", client->rooms);
+   char joined[AUTOJOIN_LEN];
+   snprintf(joined, sizeof(joined), "%s", client->rooms);
    selected[0] = '\0';
    char *save = NULL;
 
@@ -171,8 +186,12 @@ static bool media_init_channel_codec(rrconn_t *cptr, struct rr_mediachan *cp) {
        * fed by the client microphone instead. */
       while (*selected) {
          if ( codec_is_test_variant(selected) ) {
-            while (*selected && *selected != ' ') { selected++; }
-            while (*selected == ' ') { selected++; }
+            while (*selected && *selected != ' ') {
+               selected++;
+            }
+            while (*selected == ' ') {
+               selected++;
+            }
             continue;
          }
          break;
@@ -383,9 +402,13 @@ bool media_send_available(rrconn_t *cptr, struct rr_mediachan *cp) {
       dict_add_bool( d, "media.joined", media_client_in_channel_room(cptr, cp) );
    }
 
-   if (cp->rig_uuid[0]) { dict_add(d, "media.rig-uuid", cp->rig_uuid); }
+   if (cp->rig_uuid[0]) {
+      dict_add(d, "media.rig-uuid", cp->rig_uuid);
+   }
 
-   if (cp->vfo_uuid[0]) { dict_add(d, "media.vfo-uuid", cp->vfo_uuid); }
+   if (cp->vfo_uuid[0]) {
+      dict_add(d, "media.vfo-uuid", cp->vfo_uuid);
+   }
    dict_add_ulong(d, "media.ts", now);
 
    if (cp->name[0] != '\0') {
@@ -475,22 +498,30 @@ static void chan_del_from_array(u_int32_t *arr, int max, u_int32_t chan_id) {
 
 // PART revokes every subscription in that room, including manual selections.
 void media_part_room(rrconn_t *cptr, const char *room) {
-   if (!cptr || !room) { return; }
+   if (!cptr || !room) {
+      return;
+   }
 
    for (int i = 0 ; i < MAX_MEDIA_CHANNELS ; i++) {
       struct rr_mediachan *cp = &media_channels[i];
 
-      if (!cp->uuid[0] || !cp->room[0]) { continue; }
+      if (!cp->uuid[0] || !cp->room[0]) {
+         continue;
+      }
       bool same = !strcasecmp(cp->room, room) ||
                   ( cp->direction == RR_BINFRAME_DIR_RX && ws_room_same_rig(room, cp->room) );
 
-      if (!same) { continue; }
+      if (!same) {
+         continue;
+      }
       u_int32_t id = i + 1;
       bool tx = cp->direction == RR_BINFRAME_DIR_TX;
       u_int32_t *channels = tx ? cptr->tx_channels : cptr->rx_channels;
       int max = tx ? MAX_TX_CHANNELS : MAX_RX_CHANNELS;
 
-      if ( !chan_in_array(channels, max, id) ) { continue; }
+      if ( !chan_in_array(channels, max, id) ) {
+         continue;
+      }
       chan_del_from_array(channels, max, id);
       dict *reply = dict_new();
       dict_add(reply, "msg.type", "media");
@@ -508,7 +539,9 @@ static uint32_t media_seq = 0;
 // Fan out one media payload to every connection subscribed to channel `cp`.
 // The server owns the wire header values (see doc/media-frames.md).
 bool ws_media_channel_has_subscribers(const struct rr_mediachan *cp) {
-   if (!cp || cp->uuid[0] == '\0') { return false; }
+   if (!cp || cp->uuid[0] == '\0') {
+      return false;
+   }
    u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
    rrconn_t *cur = http_client_list;
    while (cur) {
@@ -516,8 +549,9 @@ bool ws_media_channel_has_subscribers(const struct rr_mediachan *cp) {
                         chan_id_in_array(cur->tx_channels, MAX_TX_CHANNELS, chan_id) :
                         chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id);
 
-      if ( cur->is_ws && cur->authenticated && subscribed &&
-           media_client_in_channel_room(cur, cp) ) { return true; }
+      if ( cur->is_ws && cur->authenticated && subscribed && media_client_in_channel_room(cur, cp) ) {
+         return true;
+      }
       cur = cur->next;
    }
    return false;
@@ -546,7 +580,9 @@ static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *targ
    int flen = rr_binframe_frame(&frame, cp->subsystem, codecbuf, cp->direction, cp->vfo, cp->rig,
       (uint8_t)(chan_id & 0xFF), ++media_seq, mono_us(), payload, len);
 
-   if (flen < 0) { return true; }
+   if (flen < 0) {
+      return true;
+   }
    rrconn_t *cur = http_client_list;
    while (cur) {
       if ( (!target || cur == target) && cur != exclude && cur->is_ws &&
@@ -805,7 +841,9 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       }
       ws_send_dict(NULL, cptr, sub, WEBSOCKET_OP_TEXT);
 
-      if (!already_subscribed) { event_emit_dict("media.subscribed", cptr, sub); }
+      if (!already_subscribed) {
+         event_emit_dict("media.subscribed", cptr, sub);
+      }
       dict_free(sub);
       Log(LOG_DEBUG, "ws.media", "Subscribed %s to channel %s (stream %u)", cptr->chatname, cp->uuid, chan_id);
       // A new subscriber may change the set of codecs that can safely be

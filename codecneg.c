@@ -203,11 +203,17 @@ char *codec_filter_test_mode(const char *codecs, bool test_mode) {
          for (size_t j = 0 ; j < 3 ; j++) {
             const char *q = codecs;
             while (*q) {
-               while (*q == ' ') { q++; }
+               while (*q == ' ') {
+                  q++;
+               }
 
-               if (!*q) { break; }
+               if (!*q) {
+                  break;
+               }
                const char *start = q;
-               while (*q && *q != ' ') { q++; }
+               while (*q && *q != ' ') {
+                  q++;
+               }
                size_t len = (size_t)(q - start);
 
                if (len == 4 && memcmp(start, variants[i][j], 4) == 0) {
@@ -216,20 +222,30 @@ char *codec_filter_test_mode(const char *codecs, bool test_mode) {
                }
             }
 
-            if (enabled) { break; }
+            if (enabled) {
+               break;
+            }
          }
 
-         if (!enabled) { continue; }
+         if (!enabled) {
+            continue;
+         }
 
          for (size_t j = 1 ; j < 3 ; j++) {
             bool present = false;
             const char *q = result;
             while (*q) {
-               while (*q == ' ') { q++; }
+               while (*q == ' ') {
+                  q++;
+               }
 
-               if (!*q) { break; }
+               if (!*q) {
+                  break;
+               }
                const char *start = q;
-               while (*q && *q != ' ') { q++; }
+               while (*q && *q != ' ') {
+                  q++;
+               }
                size_t len = (size_t)(q - start);
 
                if (len == 4 && memcmp(start, variants[i][j], 4) == 0) {
@@ -238,7 +254,9 @@ char *codec_filter_test_mode(const char *codecs, bool test_mode) {
                }
             }
 
-            if (present) { continue; }
+            if (present) {
+               continue;
+            }
             size_t len = strlen(variants[i][j]);
             char *grown = realloc(result, result_len + len + (result_len ? 1 : 0) + 1);
 
@@ -249,7 +267,9 @@ char *codec_filter_test_mode(const char *codecs, bool test_mode) {
             }
             result = grown;
 
-            if (result_len) { result[result_len++] = ' '; }
+            if (result_len) {
+               result[result_len++] = ' ';
+            }
             memcpy(result + result_len, variants[i][j], len);
             result_len += len;
             result[result_len] = '\0';

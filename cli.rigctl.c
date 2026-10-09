@@ -127,7 +127,9 @@ bool ws_send_ptt_cmd_in_room(rrconn_t *cptr, const char *vfo, bool ptt, const ch
    }
    dict_add(cat_msg, "msg.type", "cat");
 
-   if (room && *room) { dict_add(cat_msg, "cat.room", room); }
+   if (room && *room) {
+      dict_add(cat_msg, "cat.room", room);
+   }
    dict_add(cat_msg, "cat.cmd", "ptt");
    dict_add(cat_msg, "cat.vfo", vfo);
    dict_add_bool(cat_msg, "cat.ptt", ptt);
@@ -149,7 +151,9 @@ bool ws_send_mode_cmd_in_room(rrconn_t *cptr, const char *vfo, const char *mode,
    }
    dict_add(cat_msg, "msg.type", "cat");
 
-   if (room && *room) { dict_add(cat_msg, "cat.room", room); }
+   if (room && *room) {
+      dict_add(cat_msg, "cat.room", room);
+   }
    dict_add(cat_msg, "cat.cmd", "mode");
    dict_add(cat_msg, "cat.vfo", vfo);
    dict_add(cat_msg, "cat.mode", mode);
@@ -171,7 +175,9 @@ bool ws_send_width_cmd_in_room(rrconn_t *cptr, const char *vfo, const char *widt
    }
    dict_add(cat_msg, "msg.type", "cat");
 
-   if (room && *room) { dict_add(cat_msg, "cat.room", room); }
+   if (room && *room) {
+      dict_add(cat_msg, "cat.room", room);
+   }
    dict_add(cat_msg, "cat.cmd", "width");
    dict_add(cat_msg, "cat.vfo", vfo);
    dict_add(cat_msg, "cat.width", width);
@@ -193,7 +199,9 @@ bool ws_send_freq_cmd_in_room(rrconn_t *cptr, const char *vfo, long freq, const 
    }
    dict_add(cat_msg, "msg.type", "cat");
 
-   if (room && *room) { dict_add(cat_msg, "cat.room", room); }
+   if (room && *room) {
+      dict_add(cat_msg, "cat.room", room);
+   }
    dict_add(cat_msg, "cat.cmd", "freq");
    dict_add(cat_msg, "cat.vfo", vfo);
    dict_add_long(cat_msg, "cat.freq", freq);

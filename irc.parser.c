@@ -31,7 +31,9 @@ rrlist_t *irc_connections = NULL;
 static void irc_command_key(const char *command, char *key, size_t key_len) {
    size_t i = 0;
 
-   if (!key || key_len == 0) { return; }
+   if (!key || key_len == 0) {
+      return;
+   }
 
    if (command) {
       for ( ; command[i] && i + 1 < key_len ; i++) {

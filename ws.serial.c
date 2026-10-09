@@ -11,10 +11,12 @@
 #include <librustyaxe/io.serial.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/ws.serial.h>
+
 // Compatibility entry point; generic NMEA formatting belongs to librustyaxe.
 size_t rr_gps_nmea_rmc(int32_t latitude, int32_t longitude, uint8_t flags, time_t utc, char *out, size_t capacity) {
    return rr_nmea_rmc(latitude, longitude, flags, utc, out, capacity);
 }
+
 bool rr_serial_frame_valid(const struct rr_binframe *f) {
    return f && f->hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM &&
           !memcmp(f->hdr.codec, RR_SERIAL_FRAME_CODEC, 4) &&
@@ -22,9 +24,8 @@ bool rr_serial_frame_valid(const struct rr_binframe *f) {
           f->hdr.stream && f->len && f->len <= RR_SERIAL_BLOCK_MAX &&
           (f->hdr.direction == RR_BINFRAME_DIR_TX || f->hdr.direction == RR_BINFRAME_DIR_RX);
 }
-bool ws_handle_serial_cli_msg(rrconn_t *client, dict *message) {
-   (void)client; (void)message;
 
+bool ws_handle_serial_cli_msg(rrconn_t *client, dict *message) {
    // cli.main already emitted ws.msg.serial; application owns endpoints/UI.
    return false;
 }

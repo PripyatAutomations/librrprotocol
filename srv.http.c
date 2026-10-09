@@ -119,10 +119,13 @@ static struct http_res_types http_res_types[] = {
 // Perform various checks on synthesized URLs to make sure the user isn't up to
 // anything shady...
 bool check_url(const char *path) {
-   if (!path) { return true; }
+   if (!path) {
+      return true;
+   }
    for (const unsigned char *p = (const unsigned char *)path; *p; p++) {
-      if (*p < 32 || *p == 127 || *p == '\\' ||
-          (*p == '.' && (p == (const unsigned char *)path || p[-1] == '/'))) { return true; }
+      if (*p < 32 || *p == 127 || *p == '\\' || (*p == '.' && (p == (const unsigned char *)path || p[-1] == '/'))) {
+         return true;
+      }
    }
    return false;
 }
@@ -159,7 +162,9 @@ const char *http_content_type(const char *type) {
 static bool http_static_contained(const char *path) {
 #ifdef HOST_POSIX
    char root[PATH_MAX], resolved[PATH_MAX];
-   if (!realpath(www_root, root) || !realpath(path, resolved)) { return false; }
+   if (!realpath(www_root, root) || !realpath(path, resolved)) {
+      return false;
+   }
    size_t n = strlen(root);
    return !strcmp(root, "/") || (!strncmp(root, resolved, n) && (!resolved[n] || resolved[n] == '/'));
 #else
@@ -169,7 +174,9 @@ static bool http_static_contained(const char *path) {
 
 bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
    struct mg_http_serve_opts opts = http_opts;
-   if (!msg || !cptr || !cptr->conn || !msg->uri.buf) { return true; }
+   if (!msg || !cptr || !cptr->conn || !msg->uri.buf) {
+      return true;
+   }
    char path[4096], real_path[8192];
    int path_len = msg->uri.len < sizeof(path) ?
       mg_url_decode(msg->uri.buf, msg->uri.len, path, sizeof(path), 0) : -1;
@@ -199,7 +206,9 @@ bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
    for (size_t i = 0; i < sizeof(suffixes) / sizeof(suffixes[0]); i++) {
       char candidate[8192];
       int length = snprintf(candidate, sizeof(candidate), "%s%s", real_path, suffixes[i]);
-      if (length < 0 || (size_t)length >= sizeof(candidate)) { continue; }
+      if (length < 0 || (size_t)length >= sizeof(candidate)) {
+         continue;
+      }
       if (file_exists(candidate) && !http_static_contained(candidate)) {
          mg_http_reply(cptr->conn, 403, "", "Forbidden\n");
          return true;
@@ -301,6 +310,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       ws_kick_client(cptr, "Password expired; ask an administrator to reset it");
       return false;
    }
+
    if (cptr->authenticated && cptr->user && cptr->user->password_change_required) {
       const char *command = dict_get(d, "talk.cmd", "");
       const char *tail = dict_get(d, "talk.data", "");
@@ -486,7 +496,10 @@ cleanup:
 // Handle a websocket request
 //
 bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
-   if (cptr && cptr->conn && (cptr->conn->is_closing || cptr->conn->is_draining)) { return false; }
+   if (cptr && cptr->conn && (cptr->conn->is_closing || cptr->conn->is_draining)) {
+      return false;
+   }
+
    if (!cptr || !msg || !msg->data.buf) {
       Log( LOG_DEBUG, "http.ws", "ws_handle got msg:<%p> c:<%p> data:<%p>", msg, cptr, (msg ? msg->data.buf : NULL) );
 
@@ -522,7 +535,9 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
       memcpy(buf, msg_data.buf, msg_data.len);
 //      fprintf(stderr, "buf(%d): %s(%d)\n", msg_data.len, buf, strlen(buf));
       const char *root = buf;
-      while (*root == ' ' || *root == '\t' || *root == '\r' || *root == '\n') { root++; }
+      while (*root == ' ' || *root == '\t' || *root == '\r' || *root == '\n') {
+         root++;
+      }
       dict *d = *root == '{' ? json2dict(buf) : NULL;
 
       if (!d) {
@@ -564,7 +579,9 @@ void ws_release_ptt_on_disconnect(rrconn_t *cptr) {
    dict_add(rig_msg, "cat.cmd", "ptt");
    dict_add_bool(rig_msg, "cat.ptt", false);
    dict_add(rig_msg, "cat.user", cptr->chatname);
-   if (cptr->ptt_room[0]) { dict_add(rig_msg, "cat.room", cptr->ptt_room); }
+   if (cptr->ptt_room[0]) {
+      dict_add(rig_msg, "cat.room", cptr->ptt_room);
+   }
 
    if (cptr->ptt_vfo) {
       char vfo_buf[2] = {

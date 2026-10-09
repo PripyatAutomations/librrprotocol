@@ -172,8 +172,14 @@ static bool auth_peer_allowed(const char *ip) {
    static struct { char ip[64]; time_t started; unsigned attempts; } peers[128];
    size_t slot = 0;
    for (size_t i = 0; i < sizeof(peers) / sizeof(peers[0]); i++) {
-      if (!strcmp(peers[i].ip, ip ? ip : "unknown")) { slot = i; break; }
-      if (peers[i].started < peers[slot].started) { slot = i; }
+      if (!strcmp(peers[i].ip, ip ? ip : "unknown")) {
+         slot = i;
+         break;
+      }
+
+      if (peers[i].started < peers[slot].started) {
+         slot = i;
+      }
    }
    if (strcmp(peers[slot].ip, ip ? ip : "unknown") || now < peers[slot].started ||
        now - peers[slot].started >= 60) {
@@ -366,7 +372,9 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       size_t expected_length = strlen(temp_pw);
       bool correct_length = strlen(pass) == expected_length;
       if (correct_length) {
-         for (size_t i = 0; i < expected_length; i++) { difference |= (unsigned char)temp_pw[i] ^ (unsigned char)pass[i]; }
+         for (size_t i = 0; i < expected_length; i++) {
+            difference |= (unsigned char)temp_pw[i] ^ (unsigned char)pass[i];
+         }
       }
       if (correct_length && difference == 0) {
          // special handling for guests; we generate a random suffix

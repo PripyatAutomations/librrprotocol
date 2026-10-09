@@ -157,13 +157,27 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
 
 // Account flags determine authority; connection/channel hints are not privileges.
 static bool ws_ptt_can_override(rrconn_t *requester, rrconn_t *holder) {
-   if (!requester || !requester->authenticated || !requester->user || !holder || !holder->user) { return false; }
+   if (!requester || !requester->authenticated || !requester->user || !holder || !holder->user) {
+      return false;
+   }
    int actor = requester->user->uid, target = holder->user->uid;
    // Only strictly higher authority may STOP a different session's TX.
-   if (has_priv(target, "owner")) { return false; }
-   if (has_priv(actor, "owner")) { return true; }
-   if (has_priv(target, "admin")) { return false; }
-   if (has_priv(actor, "admin")) { return true; }
+   if (has_priv(target, "owner")) {
+      return false;
+   }
+
+   if (has_priv(actor, "owner")) {
+      return true;
+   }
+
+   if (has_priv(target, "admin")) {
+      return false;
+   }
+
+   if (has_priv(actor, "admin")) {
+      return true;
+   }
+
    return has_priv(target, "noob") && !has_priv(actor, "noob") && has_priv(actor, "tx|elmer");
 }
 
@@ -179,7 +193,9 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    // Accept both the nested client format (cat.vfo) and the state format (cat.state.vfo)
    const char *vfo = dict_get(d, "cat.vfo", NULL);
 
-   if (!vfo) { vfo = dict_get(d, "cat.state.vfo", NULL); }
+   if (!vfo) {
+      vfo = dict_get(d, "cat.state.vfo", NULL);
+   }
    const char *state = dict_get(d, "cat.state", NULL);
 
    // This can be hit before login (or by ghosted sessions); without a user
@@ -213,17 +229,23 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       override_vfo[0] = release_holder->ptt_vfo;
       vfo = override_vfo;
    }
+
    if (!cmd || !*cmd) {
       ws_send_error(cptr, "Missing rig command; specify freq, mode, width, power or ptt");
       return false;
    }
-   if (own_release && cptr->ptt_room[0]) { control_room = cptr->ptt_room; }
+
+   if (own_release && cptr->ptt_room[0]) {
+      control_room = cptr->ptt_room;
+   }
+
    rr_vfo_t index = vfo && vfo[0] && !vfo[1] ? vfo_lookup(toupper((unsigned char)vfo[0])) : VFO_NONE;
+
    if (index < 0 || index >= 32 || !(ws_room_vfo_mask(control_room) & (UINT32_C(1) << index))) {
       ws_send_error(cptr, "VFO %s is invalid or not mapped to room %s", vfo ? vfo : "(missing)", control_room);
       return false;
    }
-   char canonical_vfo[2] = { (char)('A' + index), 0 };
+   char canonical_vfo[2] = {(char)('A' + index), 0 };
    vfo = canonical_vfo;
    if (releasing && !override_release && (!own_release || cptr->ptt_vfo != vfo[0])) {
       ws_send_error(cptr, "You do not hold PTT on VFO %s in room %s", vfo, control_room);
@@ -345,7 +367,9 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          cptr->last_heard = now;
          cptr->last_cat = now;         // last CAT message received from user
 
-         if (ptt_state) { snprintf(subject->ptt_room, sizeof(subject->ptt_room), "%s", control_room); }
+         if (ptt_state) {
+            snprintf(subject->ptt_room, sizeof(subject->ptt_room), "%s", control_room);
+         }
          subject->is_ptt = ptt_state;
          // Remember which VFO they keyed, so a disconnect (or other forced
          // key-down) can name & release the right one
@@ -374,7 +398,9 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
          // Duplicate key-down acknowledgements must not reset the TX timeout
          // or create another recording/quota session.
-         if (already_keyed) { return true; }
+         if (already_keyed) {
+            return true;
+         }
 
          // NB: We can't call the backend directly from the library; send a
          // rigctl event for the server program to apply (same path as the
@@ -465,7 +491,9 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       } else if (strcasecmp(cmd, "width") == 0) {
          const char *width = dict_get(d, "cat.state.width", NULL);
 
-         if (!width) { width = dict_get(d, "cat.width", NULL); }
+         if (!width) {
+            width = dict_get(d, "cat.width", NULL);
+         }
 
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
             ws_send_error(cptr, "Cannot apply %s to VFO %s in room %s: TX account privilege is required", cmd, vfo, control_room);
@@ -485,7 +513,11 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
             char *end = NULL;
             errno = 0;
             long hz = strtol(width, &end, 10);
-            if (end) { while (*end == ' ' || *end == '\t') { end++; } }
+            if (end) {
+               while (*end == ' ' || *end == '\t') {
+                  end++;
+               }
+            }
             if (errno || end == width || hz <= 0 || hz > INT_MAX ||
                 (*end && strcasecmp(end, "Hz"))) {
                ws_send_error(cptr, "Invalid passband width %s for VFO %s in room %s; use narrow, normal, wide or a positive width in Hz", width, vfo, control_room);
@@ -526,7 +558,9 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       } else if (strcasecmp(cmd, "mode") == 0) {
          const char *mode = dict_get(d, "cat.state.mode", NULL);
 
-         if (!mode) { mode = dict_get(d, "cat.mode", NULL); }
+         if (!mode) {
+            mode = dict_get(d, "cat.mode", NULL);
+         }
 
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
             ws_send_error(cptr, "Cannot apply %s to VFO %s in room %s: TX account privilege is required", cmd, vfo, control_room);
