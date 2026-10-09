@@ -1202,14 +1202,14 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          const char *usage = "Usage: /room list | add #room | remove #room [-f [-h]] [token] | #room vfo (add|list|remove) [rig0.]vfo_a";
 
          if (!room_or_list) {
-            ws_send_error(cptr, usage);
+            ws_send_error(cptr, "%s", usage);
 
             return false;
          }
 
          if (strcasecmp(room_or_list, "list") == 0) {
             if (action) {
-               ws_send_error(cptr, usage);
+               ws_send_error(cptr, "%s", usage);
 
                return false;
             }
@@ -1230,7 +1230,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             action = verb;
 
             if (!room_or_list) {
-               ws_send_error(cptr, usage);
+               ws_send_error(cptr, "%s", usage);
 
                return false;
             }
@@ -1244,7 +1244,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          const char *room = room_canonical(room_or_list);
 
          if (!action) {
-            ws_send_error(cptr, usage);
+            ws_send_error(cptr, "%s", usage);
 
             return false;
          }
@@ -1319,7 +1319,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
             if (!vfo_action || (strcasecmp(vfo_action, "list") != 0 && !binding) ||
                strtok_r(NULL, " \t", &save) ) {
-               ws_send_error(cptr, usage);
+               ws_send_error(cptr, "%s", usage);
 
                return false;
             }
@@ -1368,7 +1368,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
             return true;
          }
-         ws_send_error(cptr, usage);
+         ws_send_error(cptr, "%s", usage);
 
          return false;
       } else if (strcasecmp(cmd, "topic") == 0) {

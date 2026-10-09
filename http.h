@@ -134,7 +134,7 @@ extern void http_dump_clients(void);
 // Save active users to config file (NYI)
 extern bool http_save_users(const char *filename);
 extern char *escape_html(const char *input);
-extern bool prepare_msg(char *buf, size_t len, const char *fmt, ...);
+extern bool prepare_msg(char *buf, size_t len, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
 extern const char *http_content_type(const char *type);
 extern bool check_url(const char *path);
 extern rrconn_t *http_client_list;

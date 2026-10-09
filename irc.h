@@ -31,7 +31,7 @@
 #include <librrprotocol/irc.channel.h>
 
 extern bool irc_init(void);
-extern bool irc_send(rrconn_t *cptr, const char *fmt, ...);
+extern bool irc_send(rrconn_t *cptr, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 
 static inline char *irc_name(rrconn_t *cptr) {
    if (cptr && cptr->server && cptr->server->network[0]) {

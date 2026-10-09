@@ -64,8 +64,8 @@ extern bool ws_kick_by_uid(int uid, const char *reason);
 extern bool ws_send_ping(rrconn_t *cptr);
 extern long long last_ping_rtt_ms;   // srv.ping.c: last measured ping RTT (ms), -1 until
                                      // first pong
-extern bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...);
-extern bool ws_send_error(rrconn_t *cptr, const char *fmt, ...);
+extern bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+extern bool ws_send_error(rrconn_t *cptr, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 
 // ws.chat.c
 extern bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action);
@@ -79,7 +79,7 @@ extern bool ws_send_ptt_cmd(rrconn_t *cptr, const char *vfo, bool ptt);
 extern bool ws_send_mode_cmd(rrconn_t *cptr, const char *vfo, const char *mode);
 extern bool ws_send_freq_cmd(rrconn_t *cptr, const char *vfo, long freq);
 extern bool ws_send_width_cmd(rrconn_t *cptr, const char *vfo, const char *width);
-extern bool ws_send_notice(rrconn_t *cptr, const char *fmt, ...);
+extern bool ws_send_notice(rrconn_t *cptr, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 
 //extern void ws_init(void);
 extern void ws_add_client(rrconn_t *cptr);
@@ -126,8 +126,8 @@ extern bool ws_audio_init(void);
 extern bool ws_select_codec(rrconn_t *cptr, const char *codec, bool is_tx);
 extern bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len);
 
-extern bool ws_send_error(rrconn_t *cptr, const char *fmt, ...);
-extern bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...);
+extern bool ws_send_error(rrconn_t *cptr, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+extern bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 extern bool ws_binframe_process(const char *data, size_t len);
 extern bool send_global_alert(const char *sender, const char *data);
 
