@@ -30,6 +30,7 @@ rrconn_t *irc_cli_connect(server_cfg_t *srv) {
    if (!cptr) {
       return NULL;
    }
+   cptr->fd = -1;
    cptr->server = srv;
    snprintf(cptr->nick, sizeof(cptr->nick), "%s", srv->nick[0] ? srv->nick : "nonick");
    cptr->sent_login = false;
@@ -56,7 +57,13 @@ rrconn_t *irc_cli_connect(server_cfg_t *srv) {
       if (fd < 0) {
          continue;
       }
-      fcntl(fd, F_SETFL, O_NONBLOCK);
+      int flags = fcntl(fd, F_GETFL);
+      if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+         Log(LOG_WARN, "irc.net", "Unable to make socket nonblocking: %s", strerror(errno));
+         close(fd);
+         fd = -1;
+         continue;
+      }
 
       int rc = connect(fd, rp->ai_addr, rp->ai_addrlen);
       Log(LOG_DEBUG, "irc.net", "connect(fd=%d) rc=%d errno=%d", fd, rc, errno);
