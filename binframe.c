@@ -26,8 +26,8 @@ const uint8_t rr_binframe_magic[2] = {
    'R', 'R'
 };
 
-int rr_binframe_pack_hdr(uint8_t *out, size_t outlen, uint8_t subsystem, const char codec[4], uint8_t direction,
-                         uint8_t vfo, uint8_t rig, uint8_t stream, uint32_t seq, uint32_t payload_len, uint64_t ts) {
+int rr_binframe_pack_hdr(uint8_t *out, size_t outlen, uint8_t subsystem, const char codec[4], uint8_t direction, uint8_t vfo, uint8_t rig, uint8_t stream,
+   uint32_t seq, uint32_t payload_len, uint64_t ts) {
    if (!out || outlen < RR_BINFRAME_HDR_LEN || !codec) {
       return -1;
    }
@@ -51,11 +51,11 @@ int rr_binframe_pack_hdr(uint8_t *out, size_t outlen, uint8_t subsystem, const c
 
    uint32_t nseq = htonl(seq);
    uint32_t nlen = htonl(payload_len);
-   memcpy( out + 12, &nseq, sizeof(nseq) );
-   memcpy( out + 16, &nlen, sizeof(nlen) );
+   memcpy(out + 12, &nseq, sizeof(nseq) );
+   memcpy(out + 16, &nlen, sizeof(nlen) );
 
    uint64_t nts = htobe64(ts);
-   memcpy( out + 20, &nts, sizeof(nts) );
+   memcpy(out + 20, &nts, sizeof(nts) );
 
    return RR_BINFRAME_HDR_LEN;
 }
@@ -64,7 +64,7 @@ int rr_binframe_parse(const uint8_t *buf, size_t len, struct rr_binframe *f) {
    if (!buf || !f || len < RR_BINFRAME_HDR_LEN) {
       return -1;
    }
-   memset( f, 0, sizeof(*f) );
+   memset(f, 0, sizeof(*f) );
 
    if (buf[0] != rr_binframe_magic[0] || buf[1] != rr_binframe_magic[1]) {
       Log(LOG_DEBUG, "binframe", "Dropping frame with bad magic %02X%02X", buf[0], buf[1]);
@@ -79,8 +79,8 @@ int rr_binframe_parse(const uint8_t *buf, size_t len, struct rr_binframe *f) {
    }
 
    uint32_t seq, payload_len;
-   memcpy( &seq, buf + 12, sizeof(seq) );
-   memcpy( &payload_len, buf + 16, sizeof(payload_len) );
+   memcpy(&seq, buf + 12, sizeof(seq) );
+   memcpy(&payload_len, buf + 16, sizeof(payload_len) );
    seq = ntohl(seq);
    payload_len = ntohl(payload_len);
 
@@ -91,11 +91,11 @@ int rr_binframe_parse(const uint8_t *buf, size_t len, struct rr_binframe *f) {
    }
 
    uint64_t ts;
-   memcpy( &ts, buf + 20, sizeof(ts) );
+   memcpy(&ts, buf + 20, sizeof(ts) );
    ts = be64toh(ts);
 
-   memset( &f->hdr, 0, sizeof(f->hdr) );
-   memcpy( f->hdr.magic, buf, sizeof(f->hdr.magic) );
+   memset(&f->hdr, 0, sizeof(f->hdr) );
+   memcpy(f->hdr.magic, buf, sizeof(f->hdr.magic) );
    f->hdr.version = buf[2];
    f->hdr.subsystem = buf[3];
    memcpy(f->hdr.codec, buf + 4, 4);
@@ -111,14 +111,14 @@ int rr_binframe_parse(const uint8_t *buf, size_t len, struct rr_binframe *f) {
 
    Log(LOG_CRAZY, "ws.binframe",
       "Binary frame: %zu bytes, magic: %02X%02X version: %u subsystem: %02X codec: %.*s direction: %u vfo: %u rig: %u stream: %u seq: %u payload_len: %u ts: %"
-      PRIu64, len, f->hdr.magic[0], f->hdr.magic[1], f->hdr.version, f->hdr.subsystem, (int) sizeof(f->hdr.codec),
-      f->hdr.codec, f->hdr.direction, f->hdr.vfo, f->hdr.rig, f->hdr.stream, f->hdr.seq, f->hdr.payload_len, f->hdr.ts);
+      PRIu64, len, f->hdr.magic[0], f->hdr.magic[1], f->hdr.version, f->hdr.subsystem, (int) sizeof(f->hdr.codec), f->hdr.codec, f->hdr.direction, f->hdr.vfo, f
+      ->hdr.rig, f->hdr.stream, f->hdr.seq, f->hdr.payload_len, f->hdr.ts);
 
    return 0;
 }
 
-int rr_binframe_frame(uint8_t **out, uint8_t subsystem, const char codec[4], uint8_t direction, uint8_t vfo,
-                      uint8_t rig, uint8_t stream, uint32_t seq, uint64_t ts, const void *payload, size_t payload_len) {
+int rr_binframe_frame(uint8_t **out, uint8_t subsystem, const char codec[4], uint8_t direction, uint8_t vfo, uint8_t rig, uint8_t stream, uint32_t seq, uint64_t
+   ts, const void *payload, size_t payload_len) {
    if (!out || !payload || payload_len > RR_BINFRAME_MAX_PAYLOAD) {
       return -1;
    }
@@ -129,8 +129,7 @@ int rr_binframe_frame(uint8_t **out, uint8_t subsystem, const char codec[4], uin
 
       return -1;
    }
-   int hlen = rr_binframe_pack_hdr(buf, RR_BINFRAME_HDR_LEN, subsystem, codec, direction, vfo, rig, stream, seq,
-      (uint32_t)payload_len, ts);
+   int hlen = rr_binframe_pack_hdr(buf, RR_BINFRAME_HDR_LEN, subsystem, codec, direction, vfo, rig, stream, seq, (uint32_t)payload_len, ts);
 
    if (hlen < 0) {
       free(buf);
@@ -203,8 +202,7 @@ bool rr_binframe_dispatch(struct rr_binframe *f, void *ctx) {
 // followed by the NUL-terminated log message, unmangled. Called from
 // the server's log callback (rrserver/hostlog.c); consumers parse it
 // back in the client (PARITY: rrclient/gtk.syslog.c host_log_frame_handler).
-int rr_logframe_frame(uint8_t **out, logpriority_t priority, const char *subsys, const char *msg, size_t msg_len,
-                      uint32_t seq, uint64_t ts) {
+int rr_logframe_frame(uint8_t **out, logpriority_t priority, const char *subsys, const char *msg, size_t msg_len, uint32_t seq, uint64_t ts) {
    if (!out || !subsys || !msg) {
       return -1;
    }
@@ -225,12 +223,12 @@ int rr_logframe_frame(uint8_t **out, logpriority_t priority, const char *subsys,
    }
    memset(payload, 0, plen);
    payload[0] = (uint8_t)priority;
-   snprintf( (char *)payload + 1, sizeof(struct rr_logframe) - 1, "%s", subsys );
+   snprintf( (char *)payload + 1, sizeof(struct rr_logframe) - 1, "%s", subsys);
    memcpy(payload + RR_LOGFRAME_HDR_LEN, msg, msg_len);
    // payload[RR_LOGFRAME_HDR_LEN + msg_len] is already NUL
 
-   int flen = rr_binframe_frame(out, RR_BINFRAME_SUBSYS_LOG, "text", RR_BINFRAME_DIR_RX, RR_BINFRAME_VFO_NA,
-      RR_BINFRAME_RIG_NA, RR_BINFRAME_STREAM_NONE, seq, ts, payload, plen);
+   int flen = rr_binframe_frame(out, RR_BINFRAME_SUBSYS_LOG, "text", RR_BINFRAME_DIR_RX, RR_BINFRAME_VFO_NA, RR_BINFRAME_RIG_NA, RR_BINFRAME_STREAM_NONE, seq,
+      ts, payload, plen);
    free(payload);
 
    return flen;

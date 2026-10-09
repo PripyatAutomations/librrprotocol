@@ -63,7 +63,7 @@ bool connection_create(const char *server) {
       return true;
    }
    // Create a basic connection object and add it to the list
-   rr_connection_t *new_conn = calloc( 1, sizeof(rr_connection_t) );
+   rr_connection_t *new_conn = calloc(1, sizeof(rr_connection_t) );
 
    if (!new_conn) {
       return true;
@@ -104,7 +104,7 @@ const char *get_server_property(const char *server, const char *prop) {
       return NULL;
    }
    char fullkey[KEYLEN];
-   memset( fullkey, 0, sizeof(fullkey) );
+   memset(fullkey, 0, sizeof(fullkey) );
    snprintf(fullkey, sizeof(fullkey), "server:%s.%s", server, prop);
 
    // Use the configuration accessor so user values and built-in defaults are

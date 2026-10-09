@@ -26,15 +26,15 @@ bool rr_cat_parse_ws(rr_cat_req_type reqtype, struct mg_ws_message *msg) {
       char cmd[16] = {
          0
       };
-      strlcpy( cmd, cmd_str, sizeof(cmd) );
+      strlcpy(cmd, cmd_str, sizeof(cmd) );
 
       // Convert val to an integer
       int val = atoi(val_str);
       Log(LOG_DEBUG, "cat.ws", "got cmd: %s", cmd);
    }
 cleanup:
-   free( (void *)cmd_str );
-   free( (void *)val_str );
+   free( (void *)cmd_str);
+   free( (void *)val_str);
 
    return false;
 }

@@ -20,7 +20,7 @@
 #include <rrserver/backend.h>
 
 // minimum reason length for kick/ban/etc
-#define	CHAT_MIN_REASON_LEN 10
+#define CHAT_MIN_REASON_LEN 10
 
 extern time_t now;
 extern bool dying, restarting;
@@ -35,8 +35,8 @@ bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action) {
    if (!cptr->user) {
       return false;
    }
-   Log(LOG_CRAZY, "core", "Unprivileged user %s (uid: %d with privs %s) requested to do %s and was denied",
-      cptr->chatname, cptr->user->uid, cptr->user->privs, action);
+   Log(LOG_CRAZY, "core", "Unprivileged user %s (uid: %d with privs %s) requested to do %s and was denied", cptr->chatname, cptr->user->uid, cptr->user->privs,
+      action);
    char msgbuf[HTTP_WS_MAX_MSG + 1];
    prepare_msg(msgbuf, sizeof(msgbuf), "You do not have enough privileges to use '%s' command", action);
    dict *err_msg = dict_new();

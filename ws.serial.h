@@ -5,19 +5,19 @@
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #ifndef RR_PROTOCOL_WS_SERIAL_H
-#define	RR_PROTOCOL_WS_SERIAL_H
+#define RR_PROTOCOL_WS_SERIAL_H
 #include <librrprotocol/ws.binframe.h>
 #include <time.h>
-#define	RR_SERIAL_FRAME_CODEC "seri"
-#define	RR_SERIAL_FRAME_EVENT "serial.frame"
-#define	RR_SERIAL_BLOCK_MAX 1024
-#define	RR_NMEA_FRAME_CODEC "nmea"
-#define	RR_NMEA_FRAME_EVENT "gps.nmea.frame"
-#define	RR_GPS_FRAME_CODEC "gpsp"
-#define	RR_GPS_FRAME_EVENT "gps.position.frame"
-#define	RR_GPS_POSITION_PAYLOAD_LEN 9
-#define	RR_GPS_POSITION_VALID 0x01
-#define	RR_GPS_POSITION_MANUAL 0x02
+#define RR_SERIAL_FRAME_CODEC "seri"
+#define RR_SERIAL_FRAME_EVENT "serial.frame"
+#define RR_SERIAL_BLOCK_MAX 1024
+#define RR_NMEA_FRAME_CODEC "nmea"
+#define RR_NMEA_FRAME_EVENT "gps.nmea.frame"
+#define RR_GPS_FRAME_CODEC "gpsp"
+#define RR_GPS_FRAME_EVENT "gps.position.frame"
+#define RR_GPS_POSITION_PAYLOAD_LEN 9
+#define RR_GPS_POSITION_VALID 0x01
+#define RR_GPS_POSITION_MANUAL 0x02
 // GPS position records use MODEM/gpsp, RX, NA VFO, and a media subscription
 // stream. Payload is signed big-endian int32 latitude/longitude in 1e-7
 // degrees followed by flags (valid/manual). Opt-in MODEM/nmea carries one

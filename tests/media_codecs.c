@@ -19,19 +19,25 @@ int main(void) {
    http_user_t *account = &http_users[1];
    account->uid = 1;
    snprintf(account->privs, sizeof(account->privs), "admin,rx,tx");
-   rrconn_t client = { .authenticated = true, .user = account };
+   rrconn_t client = {
+      .authenticated = true, .user = account
+   };
    snprintf(client.media_codecs, sizeof(client.media_codecs), "pc16 opuT ---- none");
    dict *request = dict_new();
    dict_add(request, "media.cmd", "subscribe");
-   const char *invalid[] = { "----", "none", "NONE", "", "pcm16", "xxxx", "mu08" };
+   const char *invalid[] = {
+      "----", "none", "NONE", "", "pcm16", "xxxx", "mu08"
+   };
    struct rr_mediachan snapshot[MAX_MEDIA_CHANNELS];
    memcpy(snapshot, media_channels, sizeof(snapshot));
-   for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
+
+   for (size_t i = 0 ; i < sizeof(invalid) / sizeof(invalid[0]) ; i++) {
       dict_add(request, "media.codec", invalid[i]);
       assert(!ws_handle_mediachan_msg(&client, request));
       assert(!memcmp(snapshot, media_channels, sizeof(snapshot)));
       assert(!client.rx_channels[0]);
    }
+
    dict_add(request, "media.codec", "opuT");
    dict_add_int(request, "media.dir", RR_BINFRAME_DIR_TX);
    assert(!ws_handle_mediachan_msg(&client, request));
@@ -45,17 +51,18 @@ int main(void) {
    assert(!memcmp(snapshot, media_channels, sizeof(snapshot)));
    dict_add(request, "media.codec", "pc16");
    assert(ws_handle_mediachan_msg(&client, request));
-   struct rr_mediachan *channel = media_chan_find(RR_BINFRAME_SUBSYS_AUDIO,
-      RR_BINFRAME_DIR_RX, 0, 0);
+   struct rr_mediachan *channel = media_chan_find(RR_BINFRAME_SUBSYS_AUDIO, RR_BINFRAME_DIR_RX, 0, 0);
    assert(channel && !strcmp(channel->codec, "pc16") && client.rx_channels[0]);
    memcpy(snapshot, media_channels, sizeof(snapshot));
    dict_add(request, "media.cmd", "codec");
    dict_add(request, "media.chan-uuid", channel->uuid);
-   for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
+
+   for (size_t i = 0 ; i < sizeof(invalid) / sizeof(invalid[0]) ; i++) {
       dict_add(request, "media.codec", invalid[i]);
       assert(!ws_handle_mediachan_msg(&client, request));
       assert(!memcmp(snapshot, media_channels, sizeof(snapshot)));
    }
+
    // Direction-specific account privileges apply even to no-op codec selections.
    dict_add(request, "media.codec", "pc16");
    snprintf(account->privs, sizeof(account->privs), "tx");
@@ -81,17 +88,19 @@ int main(void) {
    snprintf(account->privs, sizeof(account->privs), "rx,tx");
    // Already keyed sessions must lose audio authority when their account changes.
    snprintf(client.codec_tx, sizeof(client.codec_tx), "pc16");
-   client.is_ptt = true; client.ptt_vfo = 'A';
+   client.is_ptt = true;
+   client.ptt_vfo = 'A';
    client.tx_channels[0] = (uint32_t)(tx - media_channels) + 1;
    uint8_t *packet = NULL;
-   const uint8_t pcm[2] = {0, 0};
+   const uint8_t pcm[2] = {
+      0, 0
+   };
    int length = rr_binframe_frame(&packet, RR_BINFRAME_SUBSYS_AUDIO, "pc16", RR_BINFRAME_DIR_TX, 0, 0, 1, 1, 0, pcm, sizeof(pcm));
    assert(length > 0);
    assert(ws_binframe_process_mg(&client, (const char *)packet, length));
    // Shared rig audio can transmit while controlling B, but only through
    // the held rig room and an explicitly subscribed channel.
-   struct rr_mediachan *shared = media_chan_add(RR_BINFRAME_SUBSYS_AUDIO, RR_BINFRAME_DIR_TX,
-      RR_BINFRAME_VFO_NA, 2, "pc16", "shared TX");
+   struct rr_mediachan *shared = media_chan_add(RR_BINFRAME_SUBSYS_AUDIO, RR_BINFRAME_DIR_TX, RR_BINFRAME_VFO_NA, 2, "pc16", "shared TX");
    assert(shared);
    snprintf(shared->room, sizeof(shared->room), "#shared-rig2");
    assert(ws_room_set_vfo_mask(shared->room, 3));
@@ -100,15 +109,19 @@ int main(void) {
    client.ptt_vfo = 'B';
    client.tx_channels[1] = (uint32_t)(shared - media_channels) + 1;
    uint8_t *shared_packet = NULL;
-   int shared_length = rr_binframe_frame(&shared_packet, RR_BINFRAME_SUBSYS_AUDIO, "pc16", RR_BINFRAME_DIR_TX,
-      RR_BINFRAME_VFO_NA, 2, 1, 1, 0, pcm, sizeof(pcm));
+   int shared_length = rr_binframe_frame(&shared_packet, RR_BINFRAME_SUBSYS_AUDIO, "pc16", RR_BINFRAME_DIR_TX, RR_BINFRAME_VFO_NA, 2, 1, 1, 0, pcm, sizeof(pcm))
+   ;
    assert(shared_length > 0);
    assert(ws_binframe_process_mg(&client, (const char *)shared_packet, shared_length));
-   client.ptt_room[0] = 0; client.is_ptt = false;
+   client.ptt_room[0] = 0;
+   client.is_ptt = false;
    assert(!ws_binframe_process_mg(&client, (const char *)shared_packet, shared_length));
-   client.is_ptt = true; snprintf(client.ptt_room, sizeof(client.ptt_room), "#wrong");
+   client.is_ptt = true;
+   snprintf(client.ptt_room, sizeof(client.ptt_room), "#wrong");
    assert(!ws_binframe_process_mg(&client, (const char *)shared_packet, shared_length));
-   free(shared_packet); client.ptt_room[0] = 0; client.ptt_vfo = 'A';
+   free(shared_packet);
+   client.ptt_room[0] = 0;
+   client.ptt_vfo = 'A';
    snprintf(account->privs, sizeof(account->privs), "view,chat");
    client_set_flag(&client, FLAG_MEDIA_SOURCE);
    assert(!ws_binframe_process_mg(&client, (const char *)packet, length));
@@ -130,23 +143,21 @@ int main(void) {
    assert(length > 0);
    assert(!ws_binframe_process_mg(&client, (const char *)packet, length));
    free(packet);
-   struct rr_mediachan *gps = media_chan_add(RR_BINFRAME_SUBSYS_MODEM,
-      RR_BINFRAME_DIR_RX, RR_BINFRAME_VFO_NA, 0, "gpsp", "position");
-   struct rr_mediachan *nmea = media_chan_add(RR_BINFRAME_SUBSYS_MODEM,
-      RR_BINFRAME_DIR_RX, RR_BINFRAME_VFO_NA, 0, "nmea", "receiver");
-   assert(gps && nmea && gps != nmea && strcmp(gps->uuid,nmea->uuid));
-   assert(media_chan_add(RR_BINFRAME_SUBSYS_MODEM,RR_BINFRAME_DIR_RX,
-      RR_BINFRAME_VFO_NA,0,"nmea",NULL) == nmea);
-   dict_add(request,"media.chan-uuid",gps->uuid);
-   dict_add(request,"media.codec","pc16");
-   assert(!ws_handle_mediachan_msg(&client,request));
-   assert(!strcmp(gps->codec,"gpsp"));
-   dict_add(request,"media.chan-uuid",nmea->uuid);
-   assert(!ws_handle_mediachan_msg(&client,request));
-   assert(!strcmp(nmea->codec,"nmea"));
+   struct rr_mediachan *gps = media_chan_add(RR_BINFRAME_SUBSYS_MODEM, RR_BINFRAME_DIR_RX, RR_BINFRAME_VFO_NA, 0, "gpsp", "position");
+   struct rr_mediachan *nmea = media_chan_add(RR_BINFRAME_SUBSYS_MODEM, RR_BINFRAME_DIR_RX, RR_BINFRAME_VFO_NA, 0, "nmea", "receiver");
+   assert(gps && nmea && gps != nmea && strcmp(gps->uuid, nmea->uuid));
+   assert(media_chan_add(RR_BINFRAME_SUBSYS_MODEM, RR_BINFRAME_DIR_RX, RR_BINFRAME_VFO_NA, 0, "nmea", NULL) == nmea);
+   dict_add(request, "media.chan-uuid", gps->uuid);
+   dict_add(request, "media.codec", "pc16");
+   assert(!ws_handle_mediachan_msg(&client, request));
+   assert(!strcmp(gps->codec, "gpsp"));
+   dict_add(request, "media.chan-uuid", nmea->uuid);
+   assert(!ws_handle_mediachan_msg(&client, request));
+   assert(!strcmp(nmea->codec, "nmea"));
    dict_free(request);
    dict_free(cfg);
    cfg = NULL;
    puts("PASS: subscribe-create and codec-select reject invalid/unnegotiated codecs without mutation");
+
    return 0;
 }

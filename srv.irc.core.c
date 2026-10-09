@@ -39,7 +39,7 @@ void irc_build_message(const irc_message_t *mp, char *msg, size_t msglen) {
       const char *arg = mp->argv[i] ? mp->argv[i] : "";
 
       // Last argument → prefix with ':'
-      if ( i == mp->argc - 1 && (strchr(arg, ' ') || arg[0] == ':') ) {
+      if (i == mp->argc - 1 && (strchr(arg, ' ') || arg[0] == ':') ) {
          pos += snprintf(msg + pos, msglen - pos, " :%s", arg);
       } else {
          pos += snprintf(msg + pos, msglen - pos, "%s%s", (i > 0 ? " " : ""), arg);
@@ -70,7 +70,7 @@ bool irc_sendto_all(rrlist_t *conn_list, rrconn_t *cptr, irc_message_t *mp) {
    // Compose the message
    char msg[IRC_MSGLEN + 1];
    memset(msg, 0, IRC_MSGLEN + 1);
-   irc_build_message( mp, msg, sizeof(msg) );
+   irc_build_message(mp, msg, sizeof(msg) );
    Log(LOG_DEBUG, "irc", "Rebuilt message: %s", msg);
 
    // Walk the list

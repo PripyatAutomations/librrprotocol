@@ -106,8 +106,7 @@ bool ws_send_login(rrconn_t *cptr, const char *login_user) {
 // Hashes the user stored password with the server nonce and returns it
 bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const char *nonce) {
    if (!cptr || !user || !passwd || !nonce) {
-      Log(LOG_CRIT, "auth", "ws_send_passwd with invalid parameters, cptr:<%p> user:<%p> passwd:<%p> nonce:<%p>", cptr,
-         user, passwd, nonce);
+      Log(LOG_CRIT, "auth", "ws_send_passwd with invalid parameters, cptr:<%p> user:<%p> passwd:<%p> nonce:<%p>", cptr, user, passwd, nonce);
 
       return false;
    }
@@ -117,8 +116,8 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
 
    if (hashed_pw) {
       temp_pw = compute_wire_password(hashed_pw, nonce);
-      explicit_bzero( hashed_pw, strlen(hashed_pw) );
-      free( (void *)hashed_pw );
+      explicit_bzero(hashed_pw, strlen(hashed_pw) );
+      free( (void *)hashed_pw);
       hashed_pw = NULL;
    }
 
@@ -131,7 +130,7 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
    dict *auth_msg = dict_new();
 
    if (!auth_msg) {
-      explicit_bzero( temp_pw, strlen(temp_pw) );
+      explicit_bzero(temp_pw, strlen(temp_pw) );
       free(temp_pw);
 
       return false;
@@ -143,7 +142,7 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
    dict_add(auth_msg, "auth.token", session_token);
    bool sent = ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
    dict_free(auth_msg);
-   explicit_bzero( temp_pw, strlen(temp_pw) );
+   explicit_bzero(temp_pw, strlen(temp_pw) );
    free(temp_pw);
 
    return sent;

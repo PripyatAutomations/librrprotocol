@@ -43,8 +43,7 @@ bool ws_send_ping(rrconn_t *cptr) {
 #ifdef  USE_MONGOOSE
 
    if (!cptr->conn) {
-      Log( LOG_DEBUG, "auth", "ws_send_ping for cptr:<%p> has mg_conn:<%p> and is invalid", cptr,
-         (cptr ? cptr->conn : NULL) );
+      Log(LOG_DEBUG, "auth", "ws_send_ping for cptr:<%p> has mg_conn:<%p> and is invalid", cptr, (cptr ? cptr->conn : NULL) );
 
       return false;
    }
@@ -57,11 +56,9 @@ bool ws_send_ping(rrconn_t *cptr) {
    // only bother making noise if the first attempt failed, send the first ping
    // to crazy level log
    if (cptr->ping_attempts > 1) {
-      Log(LOG_DEBUG, "ping", "sending ping to user %s on cptr:<%p> with ts:[%li] attempt %d", cptr->chatname, cptr, now,
-         cptr->ping_attempts);
+      Log(LOG_DEBUG, "ping", "sending ping to user %s on cptr:<%p> with ts:[%li] attempt %d", cptr->chatname, cptr, now, cptr->ping_attempts);
    } else {
-      Log(LOG_CRAZY, "ping", "sending ping to user %s on cptr:<%p> with ts:[%li] attempt %d", cptr->chatname, cptr, now,
-         cptr->ping_attempts);
+      Log(LOG_CRAZY, "ping", "sending ping to user %s on cptr:<%p> with ts:[%li] attempt %d", cptr->chatname, cptr, now, cptr->ping_attempts);
    }
    dict *d = dict_new();
 
@@ -71,7 +68,7 @@ bool ws_send_ping(rrconn_t *cptr) {
    dict_add(d, "msg.type", "ping");
    dict_add_ulong(d, "msg.ts", now);
    // Monotonic microsecond timestamp for RTT measurement; echoed back in the pong
-   dict_add_llong( d, "ping.ts", mono_us() );
+   dict_add_llong(d, "ping.ts", mono_us() );
    bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
 

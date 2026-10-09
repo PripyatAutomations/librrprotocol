@@ -129,7 +129,7 @@ bool ws_handle_hello_msg(rrconn_t *cptr, dict *d) {
    } else {
       const char *jp = dict2json(d);
       Log(LOG_INFO, "auth.ws", "*** server sent unparsable hello: %s", jp);
-      free( (void *)jp );
+      free( (void *)jp);
    }
 
    return true;
@@ -148,8 +148,8 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
    // Send an event; messages with no msg.type (e.g. legacy media capab) emit
    // a generic "ws.msg.unknown" event instead of "ws.msg.(null)"
    char evname[64];
-   memset( evname, 0, sizeof(evname) );
-   snprintf( evname, sizeof(evname), "ws.msg.%s", (msg_type ? msg_type : "unknown") );
+   memset(evname, 0, sizeof(evname) );
+   snprintf(evname, sizeof(evname), "ws.msg.%s", (msg_type ? msg_type : "unknown") );
    event_emit_dict(evname, msg_type && !strcmp(msg_type, "serial") ? cptr : NULL, d);
 
    // Walk the table of handlers
@@ -162,10 +162,8 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
       }
 
       if (msg_type && strcasecmp(rp[i].type, msg_type) == 0) {
-         /* Emit a generic event for this raw websocket message type so other parts of the
-          * system can listen to socket-level messages without depending on the current
-          * in-process handlers. The existing handler is still called afterwards for
-          * backward compatibility. */
+         /* Emit a generic event for this raw websocket message type so other parts of the system can listen to socket-level messages without depending on the
+          * current in-process handlers. The existing handler is still called afterwards for backward compatibility. */
          // Call the stored handler
          return rp[i].cb(cptr, d);
       }
@@ -188,14 +186,14 @@ static bool ws_binframe_process_client(rrconn_t *client, const char *data, size_
       return false;
    }
    struct rr_binframe f;
-   int rv = rr_binframe_parse( (const uint8_t *)data, len, &f );
+   int rv = rr_binframe_parse( (const uint8_t *)data, len, &f);
 
    if (rv < 0) {
       // invalid/unrecognized frame; parse already logged the reason
       return false;
    }
 
-   if ( f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_SERIAL_FRAME_CODEC, 4) ) {
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_SERIAL_FRAME_CODEC, 4) ) {
       if (!rr_serial_frame_valid(&f) || len != RR_BINFRAME_HDR_LEN + f.len) {
          return false;
       }
@@ -207,7 +205,7 @@ static bool ws_binframe_process_client(rrconn_t *client, const char *data, size_
    // Complete receiver NMEA is an opt-in, read-only media stream.
    if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_NMEA_FRAME_CODEC, 4) ) {
       if (f.hdr.direction != RR_BINFRAME_DIR_RX || f.hdr.vfo != RR_BINFRAME_VFO_NA ||
-          !f.hdr.stream || !f.len || f.len > 509 || len != RR_BINFRAME_HDR_LEN + f.len) {
+         !f.hdr.stream || !f.len || f.len > 509 || len != RR_BINFRAME_HDR_LEN + f.len) {
          return false;
       }
       event_emit_binary(RR_NMEA_FRAME_EVENT, client, data, len);
@@ -216,19 +214,19 @@ static bool ws_binframe_process_client(rrconn_t *client, const char *data, size_
    }
 
    // GPS position records are fixed-size, read-only MODEM media frames.
-   if ( f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_GPS_FRAME_CODEC, 4) ) {
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_GPS_FRAME_CODEC, 4) ) {
       if (f.hdr.direction != RR_BINFRAME_DIR_RX || f.hdr.vfo != RR_BINFRAME_VFO_NA ||
-          !f.hdr.stream || f.len != RR_GPS_POSITION_PAYLOAD_LEN ||
-          len != RR_BINFRAME_HDR_LEN + f.len) {
+         !f.hdr.stream || f.len != RR_GPS_POSITION_PAYLOAD_LEN ||
+         len != RR_BINFRAME_HDR_LEN + f.len) {
          return false;
       }
       int64_t lat = (int32_t)( (uint32_t)f.data[0] << 24 | (uint32_t)f.data[1] << 16 |
-                               (uint32_t)f.data[2] << 8 | f.data[3]);
+               (uint32_t)f.data[2] << 8 | f.data[3]);
       int64_t lon = (int32_t)( (uint32_t)f.data[4] << 24 | (uint32_t)f.data[5] << 16 |
-                               (uint32_t)f.data[6] << 8 | f.data[7]);
+               (uint32_t)f.data[6] << 8 | f.data[7]);
 
       if (lat < -900000000 || lat > 900000000 || lon < -1800000000 || lon > 1800000000 ||
-          (f.data[8] & ~(RR_GPS_POSITION_VALID | RR_GPS_POSITION_MANUAL) ) ) {
+         (f.data[8] & ~(RR_GPS_POSITION_VALID | RR_GPS_POSITION_MANUAL) ) ) {
          return false;
       }
       event_emit_binary(RR_GPS_FRAME_EVENT, client, data, len);
@@ -279,6 +277,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
    } else if (ev == MG_EV_CONNECT) {
       // TLS must start before the WebSocket HTTP upgrade, not after it.
       const char *url = get_server_property(server_name, "server.url");
+
       if (c->is_tls) {
          struct mg_tls_opts opts = {
             .name = mg_url_host(url)
@@ -344,7 +343,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 
          // Copy to a null terminated buffer
          char buf[HTTP_WS_MAX_MSG + 1];
-         memset( buf, 0, sizeof(buf) );
+         memset(buf, 0, sizeof(buf) );
          memcpy(buf, msg_data.buf, msg_data.len);
 
          const char *root = buf;
@@ -354,11 +353,10 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          dict *d = *root == '{' ? json2dict(buf) : NULL;
 
          if (!d) {
-            Log(LOG_WARN, "http", "ws_handle_cli: invalid text frame len=%zu flags=0x%02x", msg_data.len,
-               wm->flags);
+            Log(LOG_WARN, "http", "ws_handle_cli: invalid text frame len=%zu flags=0x%02x", msg_data.len, wm->flags);
          }
          ws_txtframe_dispatch(cptr, d);
-         memset( buf, 0, sizeof(buf) );
+         memset(buf, 0, sizeof(buf) );
          dict_free(d);
       }
 
@@ -410,8 +408,8 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 void ws_client_init(void) {
    const char *log_http = cfg_get_exp("log.http");
 
-   if ( log_http && (strcasecmp(log_http, "true") == 0 ||
-                     strcasecmp(log_http, "yes") == 0) ) {
+   if (log_http && (strcasecmp(log_http, "true") == 0 ||
+      strcasecmp(log_http, "yes") == 0) ) {
 #ifdef  USE_MONGOOSE
       mg_log_set(MG_LL_DEBUG);   // or MG_LL_VERBOSE for even more
 #endif // USE_MONGOOSE
@@ -420,14 +418,14 @@ void ws_client_init(void) {
       mg_log_set(MG_LL_ERROR);
 #endif // USE_MONGOOSE
    }
-   free( (void *)log_http );
+   free( (void *)log_http);
    const char *log_http_crazy = cfg_get_exp("log.http.crazy");
 
-   if ( log_http_crazy && (strcasecmp(log_http_crazy, "true") == 0 ||
-                           strcasecmp(log_http_crazy, "yes") == 0) ) {
+   if (log_http_crazy && (strcasecmp(log_http_crazy, "true") == 0 ||
+      strcasecmp(log_http_crazy, "yes") == 0) ) {
       cfg_http_debug = true;
    }
-   free( (void *)log_http_crazy );
+   free( (void *)log_http_crazy);
 
 #ifdef  USE_MONGOOSE
    mg_mgr_init(&mgr);
@@ -444,8 +442,7 @@ void ws_client_init(void) {
 #ifdef  USE_MONGOOSE
       // turn it into a mongoose string
       tls_ca_path_str = mg_str(tls_ca_path);
-      Log(LOG_DEBUG, "ws", "Setting TLS CA path to <%p> %s with target mg_str at <%p>", tls_ca_path, tls_ca_path,
-         tls_ca_path_str);
+      Log(LOG_DEBUG, "ws", "Setting TLS CA path to <%p> %s with target mg_str at <%p>", tls_ca_path, tls_ca_path, tls_ca_path_str);
 #endif // USE_MONGOOSE
    } else {
       Log(LOG_CRIT, "ws", "unable to find TLS CA file");
@@ -486,8 +483,7 @@ void ws_send_to_cptr(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_data, 
 // Send to all logged in instances of the user
 void ws_send_to_name(rrconn_t *sender, const char *username, struct mg_str *msg_data, int data_type) {
    if (!username || !msg_data) {
-      Log(LOG_CRIT, "ws", "ws_send_to_name passed incomplete data; sender:<%p>, username:<%p>, msg_data:<%p>", sender,
-         username, msg_data);
+      Log(LOG_CRIT, "ws", "ws_send_to_name passed incomplete data; sender:<%p>, username:<%p>, msg_data:<%p>", sender, username, msg_data);
 
       return;
    }
@@ -532,7 +528,7 @@ bool ws_kick_by_uid(int uid, const char *reason) {
 bool ws_kick_client(rrconn_t *cptr, const char *reason) {
    // skip freeing resources if no client structure
    if (!cptr) {
-      Log( LOG_DEBUG, "auth", "ws_kick_client with NULL cptr and reason: %s", (reason ? reason : "(none)") );
+      Log(LOG_DEBUG, "auth", "ws_kick_client with NULL cptr and reason: %s", (reason ? reason : "(none)") );
 
       return false;
    }
@@ -561,8 +557,7 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
 
    // XXX: Delete the user
    if (!cptr->conn) {
-      Log( LOG_DEBUG, "auth", "ws_kick_client for cptr <%p> has mg_conn <%p> and is invalid", cptr,
-         (cptr ? cptr->conn : NULL) );
+      Log(LOG_DEBUG, "auth", "ws_kick_client for cptr <%p> has mg_conn <%p> and is invalid", cptr, (cptr ? cptr->conn : NULL) );
 
       return false;
    }
@@ -584,7 +579,7 @@ bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
    }
 
    // Tell their client they've been disconnected
-   prepare_msg( resp_buf, sizeof(resp_buf), "Client kicked: %s", (reason ? reason : "no reason given") );
+   prepare_msg(resp_buf, sizeof(resp_buf), "Client kicked: %s", (reason ? reason : "no reason given") );
    dict *d = dict_new();
    dict_add(d, "msg.type", "auth");
    dict_add(d, "auth.error", resp_buf);
@@ -595,7 +590,7 @@ bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
    c->is_draining = 1;
    event_emit_dict("disconnected", NULL, d);
    dict_free(d);
-   free( (void *)jp );
+   free( (void *)jp);
 
    return true;
 }
@@ -609,12 +604,13 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
 
       return false;
    }
+
    if (!cptr->authenticated || !cptr->user || cptr->user->password_change_required ||
-       (cptr->user->password_expires > 0 && cptr->user->password_expires <= now)) {
+      (cptr->user->password_expires > 0 && cptr->user->password_expires <= now)) {
       return false;
    }
    struct rr_binframe f;
-   int rv = rr_binframe_parse( (const uint8_t *)buf, len, &f );
+   int rv = rr_binframe_parse( (const uint8_t *)buf, len, &f);
 
    if (rv < 0) {
       Log(LOG_DEBUG, "ws.binframe", "Dropping unparseable frame");
@@ -625,16 +621,16 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    // The server may only accept media from authenticated users, and
    // only for directions the connection has negotiated a codec for.
    if (!cptr->authenticated) {
-      Log(LOG_AUDIT, "auth", "Dropping %zu byte binary frame from unauthenticated client %s on cptr:<%p>", len,
-         (cptr->chatname[0] != '\0' ? cptr->chatname : "(unknown)"), cptr);
+      Log(LOG_AUDIT, "auth", "Dropping %zu byte binary frame from unauthenticated client %s on cptr:<%p>", len, (cptr->chatname[0] != '\0' ? cptr->chatname :
+         "(unknown)"), cptr);
 
       return false;
    }
 
    // Serial ownership/privileges are checked by rrserver, independently of PTT/audio.
-   if ( f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_SERIAL_FRAME_CODEC, 4) ) {
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_SERIAL_FRAME_CODEC, 4) ) {
       if (!rr_serial_frame_valid(&f) || f.hdr.direction != RR_BINFRAME_DIR_TX ||
-          len != RR_BINFRAME_HDR_LEN + f.len) {
+         len != RR_BINFRAME_HDR_LEN + f.len) {
          return false;
       }
       event_emit_binary(RR_SERIAL_FRAME_EVENT, cptr, buf, len);
@@ -643,15 +639,14 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    }
 
    // GPS position is produced only by configured server adapters/configuration.
-   if ( f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && (!memcmp(f.hdr.codec, RR_GPS_FRAME_CODEC,
-      4) || !memcmp(f.hdr.codec, RR_NMEA_FRAME_CODEC, 4) ) ) {
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && (!memcmp(f.hdr.codec, RR_GPS_FRAME_CODEC, 4) || !memcmp(f.hdr.codec, RR_NMEA_FRAME_CODEC, 4) ) ) {
       return false;
    }
    bool is_tx_frame = (f.hdr.direction == RR_BINFRAME_DIR_TX);
    const char *negotiated = is_tx_frame ? cptr->codec_tx : cptr->codec_rx;
 
    if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_AUDIO && negotiated[0] == '\0') {
-      Log( LOG_DEBUG, "ws.binframe", "Dropping audio frame: no codec negotiated for %s", (is_tx_frame ? "tx" : "rx") );
+      Log(LOG_DEBUG, "ws.binframe", "Dropping audio frame: no codec negotiated for %s", (is_tx_frame ? "tx" : "rx") );
 
       return false;
    }
@@ -661,21 +656,20 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    // for the channels they registered. The frame's (subsystem, direction,
    // vfo, rig) must match a channel that connection is subscribed to.
    if (is_tx_frame && cptr->user &&
-       (has_priv(cptr->user->uid, "media.source") ||
-        (f.hdr.subsystem == RR_BINFRAME_SUBSYS_VIDEO && media_source_authorized(cptr)))) {
+      (has_priv(cptr->user->uid, "media.source") ||
+      (f.hdr.subsystem == RR_BINFRAME_SUBSYS_VIDEO && media_source_authorized(cptr)))) {
       struct rr_mediachan *cp = media_chan_find(f.hdr.subsystem, f.hdr.direction, f.hdr.vfo, f.hdr.rig);
 
       if (!cp) {
-         Log(LOG_DEBUG, "ws.media", "Dropping source frame: no channel for subsys 0x%02X dir 0x%02X vfo %u rig %u",
-            f.hdr.subsystem, f.hdr.direction, f.hdr.vfo, f.hdr.rig);
+         Log(LOG_DEBUG, "ws.media", "Dropping source frame: no channel for subsys 0x%02X dir 0x%02X vfo %u rig %u", f.hdr.subsystem, f.hdr.direction, f.hdr.vfo,
+            f.hdr.rig);
 
          return false;
       }
       u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
 
-      if ( !chan_id_in_array(cptr->tx_channels, MAX_TX_CHANNELS, chan_id) ) {
-         Log(LOG_AUDIT, "ws.media", "Dropping source frame from %s for unsubscribed channel %s", cptr->chatname,
-            cp->uuid);
+      if (!chan_id_in_array(cptr->tx_channels, MAX_TX_CHANNELS, chan_id) ) {
+         Log(LOG_AUDIT, "ws.media", "Dropping source frame from %s for unsubscribed channel %s", cptr->chatname, cp->uuid);
 
          return false;
       }
@@ -701,26 +695,27 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    // into the rig TX PCM sink.
    if (is_tx_frame) {
       if (!cptr->user || cptr->user->is_muted || !has_priv(cptr->user->uid, "admin|owner|tx|noob") ||
-          (has_priv(cptr->user->uid, "noob") && !is_elmer_online())) {
+         (has_priv(cptr->user->uid, "noob") && !is_elmer_online())) {
          return false;
       }
-      if ( f.hdr.subsystem != RR_BINFRAME_SUBSYS_AUDIO || !cptr->is_ptt ||
-           cptr->ptt_vfo < 'A' || cptr->ptt_vfo > 'Z' ||
-           (f.hdr.vfo != RR_BINFRAME_VFO_NA && cptr->ptt_vfo != (char)('A' + f.hdr.vfo)) ) {
+
+      if (f.hdr.subsystem != RR_BINFRAME_SUBSYS_AUDIO || !cptr->is_ptt ||
+         cptr->ptt_vfo < 'A' || cptr->ptt_vfo > 'Z' ||
+         (f.hdr.vfo != RR_BINFRAME_VFO_NA && cptr->ptt_vfo != (char)('A' + f.hdr.vfo)) ) {
          return false;
       }
       struct rr_mediachan *tx = media_chan_find(f.hdr.subsystem, RR_BINFRAME_DIR_TX, f.hdr.vfo, f.hdr.rig);
 
-      if (!tx || ( cptr->ptt_room[0] && strcasecmp(cptr->ptt_room, tx->room) ) || !media_client_in_channel_room(cptr,
-         tx) || !tx->codec[0] || strncmp(tx->codec, (const char *)f.hdr.codec, 4) != 0 ||
-          strncmp(cptr->codec_tx, tx->codec, 4) != 0) {
+      if (!tx || (cptr->ptt_room[0] && strcasecmp(cptr->ptt_room, tx->room) ) || !media_client_in_channel_room(cptr, tx) || !tx->codec[0] || strncmp(tx->codec,
+         (const char *)f.hdr.codec, 4) != 0 ||
+         strncmp(cptr->codec_tx, tx->codec, 4) != 0) {
          Log(LOG_AUDIT, "ws.media", "Dropping TX frame from %s: channel codec/PTT mismatch", cptr->chatname);
 
          return false;
       }
       u_int32_t chan_id = (u_int32_t)(tx - media_channels) + 1;
 
-      if ( !chan_id_in_array(cptr->tx_channels, MAX_TX_CHANNELS, chan_id) ) {
+      if (!chan_id_in_array(cptr->tx_channels, MAX_TX_CHANNELS, chan_id) ) {
          Log(LOG_AUDIT, "ws.media", "Dropping TX frame from %s for unsubscribed channel %s", cptr->chatname, tx->uuid);
 
          return false;
@@ -746,7 +741,7 @@ bool ws_send_error(rrconn_t *cptr, const char *fmt, ...) {
       return false;
    }
    char fullmsg[HTTP_WS_MAX_MSG - 55];
-   memset( fullmsg, 0, sizeof(fullmsg) );
+   memset(fullmsg, 0, sizeof(fullmsg) );
    va_list ap;
    va_start(ap, fmt);
    vsnprintf(fullmsg, sizeof(fullmsg), fmt, ap);
@@ -768,7 +763,7 @@ bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...) {
       return false;
    }
    char fullmsg[HTTP_WS_MAX_MSG - 55];
-   memset( fullmsg, 0, sizeof(fullmsg) );
+   memset(fullmsg, 0, sizeof(fullmsg) );
 
    va_list ap;
    va_start(ap, fmt);
@@ -793,7 +788,7 @@ bool ws_send_notice(rrconn_t *cptr, const char *fmt, ...) {
       return false;
    }
    char fullmsg[HTTP_WS_MAX_MSG - 55];
-   memset( fullmsg, 0, sizeof(fullmsg) );
+   memset(fullmsg, 0, sizeof(fullmsg) );
 
    va_list ap;
    va_start(ap, fmt);

@@ -83,7 +83,7 @@ bool add_server(const char *network, const char *str) {
    if (!str || !network) {
       return false;
    }
-   server_cfg_t *new_cfg = calloc( 1, sizeof(*new_cfg) );
+   server_cfg_t *new_cfg = calloc(1, sizeof(*new_cfg) );
 
    if (!new_cfg) {
       fprintf(stderr, "OOM in add_server\n");
@@ -128,10 +128,10 @@ bool add_server(const char *network, const char *str) {
 
       if (colon) {
          *colon = '\0';
-         strlcpy( new_cfg->nick, hostbuf, sizeof(new_cfg->nick) );
-         strlcpy( new_cfg->pass, colon + 1, sizeof(new_cfg->pass) );
+         strlcpy(new_cfg->nick, hostbuf, sizeof(new_cfg->nick) );
+         strlcpy(new_cfg->pass, colon + 1, sizeof(new_cfg->pass) );
       } else {
-         strlcpy( new_cfg->nick, hostbuf, sizeof(new_cfg->nick) );
+         strlcpy(new_cfg->nick, hostbuf, sizeof(new_cfg->nick) );
       }
       memmove(hostbuf, at + 1, strlen(at + 1) + 1);
    }
@@ -189,7 +189,7 @@ static bool config_servers_save_cb(FILE *fp, const char *path) {
       }
 
       // Default ports don't need to be written
-      if ( sp->port && sp->port != (sp->tls ? 6697 : 6667) ) {
+      if (sp->port && sp->port != (sp->tls ? 6697 : 6667) ) {
          fprintf(fp, ":%d", sp->port);
       }
 
@@ -232,7 +232,7 @@ bool check_server_autoconnects(void) {
 
       while (sp) {
          char this_network[256];
-         memset( this_network, 0, sizeof(this_network) );
+         memset(this_network, 0, sizeof(this_network) );
          snprintf(this_network, sizeof(this_network), "%s", sp);
          dict_add(newsrv, "autoconnect.network", this_network);
          rrlist_t *temp_list = NULL;   // head of temporary list
@@ -241,7 +241,7 @@ bool check_server_autoconnects(void) {
          while (srvp) {
             if (strcasecmp(srvp->network, this_network) == 0) {
                // Wrap server pointer in a list node
-               rrlist_t *node = malloc( sizeof(rrlist_t) );
+               rrlist_t *node = malloc(sizeof(rrlist_t) );
 
                if (!node) {
                   // OOM
@@ -297,7 +297,7 @@ bool check_server_autoconnects(void) {
          sp = strtok(NULL, " ,");
       }
       free(tv);
-      free( (void *)networks );
+      free( (void *)networks);
       networks = NULL;
       dict_free(newsrv);
    }

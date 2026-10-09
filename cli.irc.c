@@ -25,7 +25,7 @@ rrconn_t *irc_cli_connect(server_cfg_t *srv) {
    if (!srv) {
       return NULL;
    }
-   rrconn_t *cptr = calloc( 1, sizeof(*cptr) );
+   rrconn_t *cptr = calloc(1, sizeof(*cptr) );
 
    if (!cptr) {
       return NULL;
@@ -35,7 +35,7 @@ rrconn_t *irc_cli_connect(server_cfg_t *srv) {
    cptr->sent_login = false;
 
    struct addrinfo hints, *res, *rp;
-   memset( &hints, 0, sizeof(hints) );
+   memset(&hints, 0, sizeof(hints) );
    hints.ai_family = AF_UNSPEC;
    hints.ai_socktype = SOCK_STREAM;
    hints.ai_protocol = IPPROTO_TCP;

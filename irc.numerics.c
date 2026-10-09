@@ -58,7 +58,7 @@ bool irc_builtin_num001(rrconn_t *cptr, irc_message_t *mp) {
       char *aj = strdup(cptr->server->autojoin);   // safe copy to modify
       char *tok, *saveptr = NULL;
 
-      for ( tok = strtok_r(aj, ",", &saveptr) ; tok ; tok = strtok_r(NULL, ",", &saveptr) ) {
+      for (tok = strtok_r(aj, ",", &saveptr) ; tok ; tok = strtok_r(NULL, ",", &saveptr) ) {
          char *chan = tok;
          char *key = strchr(tok, ':');
 
@@ -83,7 +83,7 @@ bool irc_builtin_num001(rrconn_t *cptr, irc_message_t *mp) {
       char *aj = strdup(net_aj);   // safe copy to modify
       char *tok, *saveptr = NULL;
 
-      for ( tok = strtok_r(aj, ",", &saveptr) ; tok ; tok = strtok_r(NULL, ",", &saveptr) ) {
+      for (tok = strtok_r(aj, ",", &saveptr) ; tok ; tok = strtok_r(NULL, ",", &saveptr) ) {
          char *chan = tok;
          char *key = strchr(tok, ':');
 
@@ -100,7 +100,7 @@ bool irc_builtin_num001(rrconn_t *cptr, irc_message_t *mp) {
 //      ui_print(tui_active_window(), "net_aj: key %s returned %s", key,
 // net_aj);
    }
-   free( (char *)net_aj );
+   free( (char *)net_aj);
 
    // Blorp a WHOIS for ourself
    irc_send(cptr, "WHOIS %s", cptr->nick);
@@ -233,7 +233,7 @@ bool irc_builtin_num313(rrconn_t *cptr, irc_message_t *mp) {
       pos += n;
    }
 
-   Log( LOG_DEBUG, "irc", "[%s] whois: {green}%s{reset}", buf, irc_name(cptr) );
+   Log(LOG_DEBUG, "irc", "[%s] whois: {green}%s{reset}", buf, irc_name(cptr) );
 //   ui_print( tui_active_window(), "%s [{green}%s{reset}] *** 313 %s ***",
 // get_chat_ts(0), buf,
 //      irc_name(cptr) );
@@ -252,8 +252,8 @@ bool irc_builtin_num317(rrconn_t *cptr, irc_message_t *mp) {
    time_t signon_t = strtoul(signon, NULL, 10);
    char *idle_ts = time_t2dhms(idle_t);
    char signon_date[56];
-   memset( signon_date, 0, sizeof(signon_date) );
-   format_timestamp( signon_t, signon_date, sizeof(signon_date) );
+   memset(signon_date, 0, sizeof(signon_date) );
+   format_timestamp(signon_t, signon_date, sizeof(signon_date) );
 
    Log(LOG_DEBUG, "irc", "[%s] whois: %s connected at %s (idle %s)", irc_name(cptr), nick, signon_date, idle_ts);
 //   ui_print(tui_active_window(),
@@ -382,7 +382,7 @@ bool irc_builtin_num366(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num371(rrconn_t *cptr, irc_message_t *mp) {
-   Log( LOG_DEBUG, "irc", "[%s] Start of MOTD", irc_name(cptr) );
+   Log(LOG_DEBUG, "irc", "[%s] Start of MOTD", irc_name(cptr) );
 //   ui_print( "status", "%s [{green}%s{reset}] *** Start of MOTD ***",
 //      get_chat_ts(0), irc_name(cptr) );
 
@@ -401,7 +401,7 @@ bool irc_builtin_num372(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num376(rrconn_t *cptr, irc_message_t *mp) {
-   Log( LOG_DEBUG, "irc", "[%s] End of MOTD", irc_name(cptr) );
+   Log(LOG_DEBUG, "irc", "[%s] End of MOTD", irc_name(cptr) );
 //   ui_print( "status", "%s [{green}%s{reset}] *** End of MOTD ***",
 //      get_chat_ts(0), irc_name(cptr) );
 

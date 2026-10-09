@@ -43,7 +43,7 @@ char *hash_passwd(const char *passwd) {
    // Compute SHA1 of the combined string
    mg_sha1_ctx ctx;
    mg_sha1_init(&ctx);
-   size_t len = strlen( (char *)passwd );   // Cast to (char *) for strlen
+   size_t len = strlen( (char *)passwd);    // Cast to (char *) for strlen
    mg_sha1_update(&ctx, (unsigned char *)passwd, len);
 
    // store the raw sha1 hash
@@ -91,16 +91,16 @@ char *compute_wire_password(const char *password, const char *nonce) {
       return NULL;
    }
    unsigned char hash[20];   // Store the raw SHA1 hash
-   memset( hash, 0, sizeof(hash) );   // defensive: zero hash so non-mongoose builds don't
+   memset(hash, 0, sizeof(hash) );    // defensive: zero hash so non-mongoose builds don't
                                       // leak stack garbage
 
 #if     defined(USE_MONGOOSE)
    /* Hash the complete inputs without truncating the nonce in a fixed buffer. PARITY:
     * rustyrig-www/js/webui.auth.js authenticate(). */
    mg_sha1_init(&ctx);
-   mg_sha1_update( &ctx, (const unsigned char *)password, strlen(password) );
+   mg_sha1_update(&ctx, (const unsigned char *)password, strlen(password) );
    mg_sha1_update(&ctx, (const unsigned char *)"+", 1);
-   mg_sha1_update( &ctx, (const unsigned char *)nonce, strlen(nonce) );
+   mg_sha1_update(&ctx, (const unsigned char *)nonce, strlen(nonce) );
    mg_sha1_final(hash, &ctx);
 #endif // USE_MONGOOSE
 

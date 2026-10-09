@@ -37,9 +37,8 @@ void http_expire_sessions(void) {
          if (cptr->session_expiry > 0 && cptr->session_expiry <= now) {
             expired++;
             time_t last_heard = now - cptr->last_heard;
-            Log(LOG_AUDIT, "http.auth",
-               "Kicking expired session on cptr:<%p> (%lu sec old, last heard %lu sec ago) for user %s", cptr,
-               HTTP_SESSION_LIFETIME, last_heard, cptr->chatname);
+            Log(LOG_AUDIT, "http.auth", "Kicking expired session on cptr:<%p> (%lu sec old, last heard %lu sec ago) for user %s", cptr, HTTP_SESSION_LIFETIME,
+               last_heard, cptr->chatname);
             ws_kick_client(cptr, "Login session expired!");
             continue;
          }
@@ -47,8 +46,7 @@ void http_expire_sessions(void) {
          // Check for ping timeout & retry
          if (cptr->last_ping != 0 && (now - cptr->last_ping) > HTTP_PING_TIMEOUT) {
             if (cptr->ping_attempts >= HTTP_PING_TRIES) {
-               Log(LOG_AUDIT, "http.auth", "Client conn at cptr:<%p> for user %s ping timed out, disconnecting", cptr,
-                  cptr->chatname);
+               Log(LOG_AUDIT, "http.auth", "Client conn at cptr:<%p> for user %s ping timed out, disconnecting", cptr, cptr->chatname);
                ws_kick_client(cptr, "Ping timeout");
             } else {
                // try again

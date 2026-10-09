@@ -25,11 +25,11 @@ bool config_fwdsp_init(void) {
       return true;
    }
 
-   if ( !cfg_add_callback(NULL, "fwdsp", config_fwdsp_section_cb) ) {
+   if (!cfg_add_callback(NULL, "fwdsp", config_fwdsp_section_cb) ) {
       return false;
    }
 
-   if ( !cfg_add_callback(NULL, "pipelines", config_pipeline_section_cb) ) {
+   if (!cfg_add_callback(NULL, "pipelines", config_pipeline_section_cb) ) {
       return false;
    }
 
@@ -66,13 +66,13 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
    // trim trailing whitespace
    char *end = val + strlen(val) - 1;
 
-   while ( end >= val && (*end == ' ' || *end == '\t') ) {
+   while (end >= val && (*end == ' ' || *end == '\t') ) {
       *end-- = '\0';
    }
    // trim trailing whitespace on key too
    char *kend = tmpbuf + strlen(tmpbuf) - 1;
 
-   while ( kend >= tmpbuf && (*kend == ' ' || *kend == '\t') ) {
+   while (kend >= tmpbuf && (*kend == ' ' || *kend == '\t') ) {
       *kend-- = '\0';
    }
    char fullkey[128];
@@ -121,13 +121,13 @@ bool config_pipeline_section_cb(const char *path, int line, const char *section,
    // trim trailing whitespace
    char *end = val + strlen(val) - 1;
 
-   while ( end >= val && (*end == ' ' || *end == '\t') ) {
+   while (end >= val && (*end == ' ' || *end == '\t') ) {
       *end-- = '\0';
    }
    // trim key whitespace
    char *kend = tmpbuf + strlen(tmpbuf) - 1;
 
-   while ( kend >= tmpbuf && (*kend == ' ' || *kend == '\t') ) {
+   while (kend >= tmpbuf && (*kend == ' ' || *kend == '\t') ) {
       *kend-- = '\0';
    }
    // Accept both "pc16.rx" and "pipeline:pc16.rx" spellings

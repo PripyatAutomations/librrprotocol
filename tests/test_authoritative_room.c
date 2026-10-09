@@ -7,12 +7,16 @@
 static const char *configured_station_name = "rplywv00";
 
 const char *cfg_get_exp(const char *key) {
-   if (strcmp(key, "station.name") != 0) return NULL;
+   if (strcmp(key, "station.name") != 0) {
+      return NULL;
+   }
+
    return strdup(configured_station_name);
 }
 
 int cfg_get_int(const char *key, int def) {
    (void)key;
+
    return def;
 }
 
@@ -50,5 +54,6 @@ int main(void) {
    ws_set_authoritative_room("#custom-rig0");
    assert(strcmp(ws_authoritative_room(), "#custom-rig0") == 0);
    puts("PASS: station.name selects the authoritative rig0 room");
+
    return 0;
 }

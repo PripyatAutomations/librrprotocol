@@ -15,42 +15,42 @@
 // PARITY: rustyrig-www/js/webui.js (handle_binary_frame)
 
 #if     !defined(_ws_binframe_h)
-#define	_ws_binframe_h
+#define _ws_binframe_h
 #include <librustyaxe/config.h>
 #include <librustyaxe/logger.h>
 #include <stdint.h>
 #include <stddef.h>
 
-#define	RR_BINFRAME_VERSION 0x01
+#define RR_BINFRAME_VERSION 0x01
 
 // Subsystem byte (hdr.subsystem)
-#define	RR_BINFRAME_SUBSYS_NONE 0x00
-#define	RR_BINFRAME_SUBSYS_AUDIO 0x01
-#define	RR_BINFRAME_SUBSYS_VIDEO 0x02
-#define	RR_BINFRAME_SUBSYS_WATERFALL 0x03
-#define	RR_BINFRAME_SUBSYS_MODEM 0x04
-#define	RR_BINFRAME_SUBSYS_FILE 0x05
-#define	RR_BINFRAME_SUBSYS_CONTROL 0x06
-#define	RR_BINFRAME_SUBSYS_LOG 0x07
-#define	RR_BINFRAME_SUBSYS_KEEPALIVE 0xFF
+#define RR_BINFRAME_SUBSYS_NONE 0x00
+#define RR_BINFRAME_SUBSYS_AUDIO 0x01
+#define RR_BINFRAME_SUBSYS_VIDEO 0x02
+#define RR_BINFRAME_SUBSYS_WATERFALL 0x03
+#define RR_BINFRAME_SUBSYS_MODEM 0x04
+#define RR_BINFRAME_SUBSYS_FILE 0x05
+#define RR_BINFRAME_SUBSYS_CONTROL 0x06
+#define RR_BINFRAME_SUBSYS_LOG 0x07
+#define RR_BINFRAME_SUBSYS_KEEPALIVE 0xFF
 
 // Direction byte (hdr.direction), sender's perspective
-#define	RR_BINFRAME_DIR_RX 0x00
-#define	RR_BINFRAME_DIR_TX 0x01
-#define	RR_BINFRAME_DIR_NA 0xFF
+#define RR_BINFRAME_DIR_RX 0x00
+#define RR_BINFRAME_DIR_TX 0x01
+#define RR_BINFRAME_DIR_NA 0xFF
 
 // Client-side event names for full-frame (header included) dispatch. Media
 // frames carry the stream id and codec in the header; consumers route by
 // those fields instead of trusting mutable channel-table state.
-#define	RR_AUDIO_FRAME_EVENT "media.frame.audio.full"
+#define RR_AUDIO_FRAME_EVENT "media.frame.audio.full"
 
-#define	RR_BINFRAME_VFO_NA 0xFF
-#define	RR_BINFRAME_RIG_NA 0xFF
-#define	RR_BINFRAME_STREAM_NONE 0x00
+#define RR_BINFRAME_VFO_NA 0xFF
+#define RR_BINFRAME_RIG_NA 0xFF
+#define RR_BINFRAME_STREAM_NONE 0x00
 
-#define	RR_BINFRAME_HDR_LEN 28
+#define RR_BINFRAME_HDR_LEN 28
 // Frames must fit within the websocket max message limit
-#define	RR_BINFRAME_MAX_PAYLOAD (HTTP_WS_MAX_MSG - RR_BINFRAME_HDR_LEN)
+#define RR_BINFRAME_MAX_PAYLOAD (HTTP_WS_MAX_MSG - RR_BINFRAME_HDR_LEN)
 
 struct rr_binframe_hdr {
    uint8_t magic[2];                     // 'R','R'
@@ -77,9 +77,8 @@ struct rr_binframe {
 // converts all fields to wire order in out (out is
 // RR_BINFRAME_HDR_LEN bytes). Returns the header length or -1 on
 // invalid args.
-extern int rr_binframe_pack_hdr(uint8_t *out, size_t outlen, uint8_t subsystem, const char codec[4], uint8_t direction,
-                                uint8_t vfo, uint8_t rig, uint8_t stream, uint32_t seq, uint32_t payload_len,
-                                uint64_t ts);
+extern int rr_binframe_pack_hdr(uint8_t *out, size_t outlen, uint8_t subsystem, const char codec[4], uint8_t direction, uint8_t vfo, uint8_t rig, uint8_t stream
+   , uint32_t seq, uint32_t payload_len, uint64_t ts);
 
 // Parse and validate a frame from buf. Returns 0 and fills f on
 // success (f->data points into buf), -1 on invalid/unparseable data.
@@ -87,9 +86,8 @@ extern int rr_binframe_parse(const uint8_t *buf, size_t len, struct rr_binframe 
 
 // Convenience: pack a complete frame (header + payload) into a
 // malloc'd buffer returned via *out. Returns total length or -1.
-extern int rr_binframe_frame(uint8_t **out, uint8_t subsystem, const char codec[4], uint8_t direction, uint8_t vfo,
-                             uint8_t rig, uint8_t stream, uint32_t seq, uint64_t ts, const void *payload,
-                             size_t payload_len);
+extern int rr_binframe_frame(uint8_t **out, uint8_t subsystem, const char codec[4], uint8_t direction, uint8_t vfo, uint8_t rig, uint8_t stream, uint32_t seq,
+   uint64_t ts, const void *payload, size_t payload_len);
 
 // Hand a validated frame to the appropriate subsystem handler.
 // Emits event_emit_binary("media.frame.<subsystem>", cptr, data, len).
@@ -105,12 +103,11 @@ struct rr_logframe {
    char subsys[16];                      // NUL padded log subsystem
    // payload: the log message, NUL terminated (no trailing newline)
 };
-#define	RR_LOGFRAME_HDR_LEN 17         // 1 + 16
+#define RR_LOGFRAME_HDR_LEN 17     // 1 + 16
 
 // Pack a log line into a SUBSYS_LOG binframe (malloc'd, returned via
 // *out; total frame length returned, or -1). seq/ts are filled by the
 // caller (or 0/0 to let the transport decide).
-extern int rr_logframe_frame(uint8_t **out, logpriority_t priority, const char *subsys, const char *msg, size_t msg_len,
-                             uint32_t seq, uint64_t ts);
+extern int rr_logframe_frame(uint8_t **out, logpriority_t priority, const char *subsys, const char *msg, size_t msg_len, uint32_t seq, uint64_t ts);
 
 #endif // !defined(_ws_binframe_h)

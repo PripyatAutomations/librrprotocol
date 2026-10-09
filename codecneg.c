@@ -42,8 +42,7 @@ const char *media_capab_prepare(const char *codecs) {
    }
    // emit codec message
    char msgbuf[1024];
-   snprintf(msgbuf, sizeof(msgbuf),
-      "{ \"msg\": { \"type\": \"media\" }, \"media\": { \"cmd\": \"capab\", \"codecs\": \"%s\" } }", codecs);
+   snprintf(msgbuf, sizeof(msgbuf), "{ \"msg\": { \"type\": \"media\" }, \"media\": { \"cmd\": \"capab\", \"codecs\": \"%s\" } }", codecs);
 
    return strdup(msgbuf);
 }
@@ -53,8 +52,7 @@ char *codec_filter_common(const char *preferred, const char *available) {
    size_t res_sz = 0;
 
    if (!preferred || !available) {
-      Log(LOG_WARN, "codecneg", "codec_filter_common: empty list -- preferred:<%p> available:<%p>", preferred,
-         available);
+      Log(LOG_WARN, "codecneg", "codec_filter_common: empty list -- preferred:<%p> available:<%p>", preferred, available);
 
       return NULL;
    }
@@ -143,7 +141,7 @@ char *codec_filter_test_mode(const char *codecs, bool test_mode) {
       }
       size_t len = (size_t)(p - start);
 
-      if ( !test_mode && len == 4 && codec_is_test_variant(start) ) {
+      if (!test_mode && len == 4 && codec_is_test_variant(start) ) {
          continue;
       }
 
@@ -165,10 +163,8 @@ char *codec_filter_test_mode(const char *codecs, bool test_mode) {
       result[result_len] = '\0';
    }
 
-   /* Test mode is deliberately additive for the built-in audio formats. This lets an
-    * older user config that lists the original tone variants pick up the newer pink
-    * variants without silently changing production codec lists when test mode is
-    * disabled. */
+   /* Test mode is deliberately additive for the built-in audio formats. This lets an older user config that lists the original tone variants pick up the newer
+    * pink variants without silently changing production codec lists when test mode is disabled. */
    if (test_mode) {
       static const char *const variants[][3] = {
          {

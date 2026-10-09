@@ -178,9 +178,11 @@ long parse_freq(const char *str) {
    while (isspace((unsigned char)*end)) {
       end++;
    }
+
    if (!*end) {
       const char *dot = strchr(str, '.');
       size_t digits = dot ? (size_t)(dot - str) : strlen(str);
+
       if (digits >= 3 && digits <= 5) {
          val *= 1e3;
       }
@@ -195,6 +197,7 @@ long parse_freq(const char *str) {
    if (!isfinite(val) || val >= -(double)LONG_MIN || val < 1) {
       return -1;
    }
+
    return (long)val;
 }
 

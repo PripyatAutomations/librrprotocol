@@ -13,7 +13,7 @@
 #include <librrprotocol/rrprotocol.h>
 
 bool irc_builtin_error_cb(rrconn_t *cptr, irc_message_t *mp) {
-   Log( LOG_CRIT, "irc", "[%s] Got ERROR from server: |%s|", irc_name(cptr), (mp->argv[1] ? mp->argv[1] : "(null)") );
+   Log(LOG_CRIT, "irc", "[%s] Got ERROR from server: |%s|", irc_name(cptr), (mp->argv[1] ? mp->argv[1] : "(null)") );
    event_emit("irc.error", cptr, mp);
 //   ui_print(NULL, "{red}>>> {bright-red}ERROR:{bright-cyan} %s
 // {red}<<<{reset}",
@@ -117,7 +117,7 @@ bool irc_builtin_part_cb(rrconn_t *cptr, irc_message_t *mp) {
    if (nick_end) {
       size_t nicklen = nick_end - mp->prefix;
 
-      if ( nicklen > 0 && nicklen < sizeof(tmp_nick) ) {
+      if (nicklen > 0 && nicklen < sizeof(tmp_nick) ) {
          snprintf(tmp_nick, sizeof(tmp_nick), "%.*s", (int)nicklen, mp->prefix);
       }
    }
@@ -160,7 +160,7 @@ bool irc_builtin_ping_cb(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_pong_cb(rrconn_t *cptr, irc_message_t *mp) {
-   Log( LOG_CRAZY, "irc", "[%s] Got PONG from server: |%s|", irc_name(cptr), (mp->argv[1] ? mp->argv[1] : "(null)") );
+   Log(LOG_CRAZY, "irc", "[%s] Got PONG from server: |%s|", irc_name(cptr), (mp->argv[1] ? mp->argv[1] : "(null)") );
    event_emit("irc.pong", cptr, mp);
 
    return false;
@@ -275,8 +275,7 @@ bool irc_builtin_quit_cb(rrconn_t *cptr, irc_message_t *mp) {
    snprintf(tmp_nick, NICKLEN + 1, "%.*s", nicklen, nick);
 
    char *network = cptr->server->network;
-   Log( LOG_INFO, "irc", "[%s] * %s has QUIT: \"%s\"", network, tmp_nick,
-      (mp->argv[1] ? mp->argv[1] : "No reason given.") );
+   Log(LOG_INFO, "irc", "[%s] * %s has QUIT: \"%s\"", network, tmp_nick, (mp->argv[1] ? mp->argv[1] : "No reason given.") );
    event_emit("irc.quit", cptr, mp);
 
    // XXX: This needs to show a notice in all common channels instead of just

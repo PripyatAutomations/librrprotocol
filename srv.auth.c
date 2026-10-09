@@ -25,12 +25,12 @@
 // This defines a hard-coded fallback path for httpd root, if not set in config
 #ifdef  HOST_POSIX
 #ifndef INSTALL_PREFIX
-#define	WWW_ROOT_FALLBACK "./www"
-#define	WWW_404_FALLBACK "./www/404.html"
+#define WWW_ROOT_FALLBACK "./www"
+#define WWW_404_FALLBACK "./www/404.html"
 #endif // !INSTALL_PREFIX
 #else // HOST_POSIX
-#define	WWW_ROOT_FALLBACK "fs:www/"
-#define	WWW_404_FALLBACK "fs:www/404.html"
+#define WWW_ROOT_FALLBACK "fs:www/"
+#define WWW_404_FALLBACK "fs:www/404.html"
 #endif // HOST_POSIX.else
 
 extern bool dying;
@@ -48,7 +48,7 @@ try_again:
 
    for (int i = 0 ; i < digits ; i++) {
       int digit;
-      do{
+      do {
          digit = rand() % 10;
       } while (digit == prev_digit);   // Ensure no consecutive repeats
 
@@ -108,7 +108,7 @@ bool match_priv(const char *user_privs, const char *priv) {
 
       char token[128];
 
-      if ( len >= sizeof(token) ) {
+      if (len >= sizeof(token) ) {
          len = sizeof(token) - 1;
       }
       memcpy(token, start, len);
@@ -121,14 +121,14 @@ bool match_priv(const char *user_privs, const char *priv) {
       // Serial account flags may restrict exports by a trailing name prefix.
       // Keep this extension scoped to serial rather than broadening other roles.
       if (len > 7 && !strncmp(token, "serial.", 7) && token[len - 1] == '*' &&
-          !strncmp(priv, token, len - 1)) {
+         !strncmp(priv, token, len - 1)) {
          return true;
       }
 
       if (len >= 2 && token[len - 2] == '.' && token[len - 1] == '*') {
          token[len - 2] = '\0';   // strip .*
 
-         if (strncmp( priv, token, strlen(token) ) == 0 && priv[strlen(token)] == '.') {
+         if (strncmp(priv, token, strlen(token) ) == 0 && priv[strlen(token)] == '.') {
             return true;
          }
       }
@@ -138,7 +138,7 @@ bool match_priv(const char *user_privs, const char *priv) {
 }
 
 bool has_priv(int uid, const char *priv) {
-   if ( priv == NULL || uid < 0 || (uid > HTTP_MAX_USERS - 1) ) {
+   if (priv == NULL || uid < 0 || (uid > HTTP_MAX_USERS - 1) ) {
       return false;
    }
    const char *p = priv;
@@ -148,7 +148,7 @@ bool has_priv(int uid, const char *priv) {
 
       char tmp[128];
 
-      if ( len >= sizeof(tmp) ) {
+      if (len >= sizeof(tmp) ) {
          len = sizeof(tmp) - 1;
       }
       memcpy(tmp, p, len);
@@ -158,7 +158,7 @@ bool has_priv(int uid, const char *priv) {
          return false;
       }
 
-      if ( match_priv(http_users[uid].privs, tmp) ) {
+      if (match_priv(http_users[uid].privs, tmp) ) {
          return true;
       }
       p = sep ? sep + 1 : NULL;
@@ -166,12 +166,16 @@ bool has_priv(int uid, const char *priv) {
    return false;
 }
 
-/* Bounded, process-local peer budget; reconnecting does not reset attempts.
- * Count both challenge requests and replies, including invalid account names. */
+/* Bounded, process-local peer budget; reconnecting does not reset attempts. Count both challenge requests and replies, including invalid account names. */
 static bool auth_peer_allowed(const char *ip) {
-   static struct { char ip[64]; time_t started; unsigned attempts; } peers[128];
+   static struct {
+      char ip[64];
+      time_t started;
+      unsigned attempts;
+   } peers[128];
    size_t slot = 0;
-   for (size_t i = 0; i < sizeof(peers) / sizeof(peers[0]); i++) {
+
+   for (size_t i = 0 ; i < sizeof(peers) / sizeof(peers[0]) ; i++) {
       if (!strcmp(peers[i].ip, ip ? ip : "unknown")) {
          slot = i;
          break;
@@ -181,12 +185,14 @@ static bool auth_peer_allowed(const char *ip) {
          slot = i;
       }
    }
+
    if (strcmp(peers[slot].ip, ip ? ip : "unknown") || now < peers[slot].started ||
-       now - peers[slot].started >= 60) {
+      now - peers[slot].started >= 60) {
       strlcpy(peers[slot].ip, ip ? ip : "unknown", sizeof(peers[slot].ip));
       peers[slot].started = now;
       peers[slot].attempts = 0;
    }
+
    return ++peers[slot].attempts <= 20;
 }
 
@@ -206,17 +212,19 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
    char *temp_pw = NULL;
 
    // Must always send a command and username during auth
-   if ( !cmd || (!user && !token) ) {
+   if (!cmd || (!user && !token) ) {
       return false;
    }
 
    if (cptr->authenticated && (!strcasecmp(cmd, "login") || !strcasecmp(cmd, "pass"))) {
       ws_send_error(cptr, "Already authenticated; reconnect to change accounts");
+
       return false;
    }
 
    if ((!strcasecmp(cmd, "login") || !strcasecmp(cmd, "pass")) && !auth_peer_allowed(cptr->user_ip)) {
       ws_kick_client(cptr, "Too many authentication attempts; try again in a minute");
+
       return false;
    }
 
@@ -233,6 +241,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_AUDIT, "auth", "Login request from user %s on cptr:<%p> from %s:%d", user, cptr, ip, port);
 
       cptr->user = NULL;
+
       // search for user
       for (int i = 0 ; i < HTTP_MAX_USERS ; i++) {
          if (strcasecmp(http_users[i].name, user) == 0) {
@@ -257,13 +266,15 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       }
 
       if (strlen(cptr->user->pass) != HTTP_HASH_LEN ||
-          strspn(cptr->user->pass, "0123456789abcdefABCDEF") != HTTP_HASH_LEN) {
+         strspn(cptr->user->pass, "0123456789abcdefABCDEF") != HTTP_HASH_LEN) {
          ws_kick_client(cptr, "Account password unavailable; ask an administrator to reset it");
+
          return false;
       }
 
       if (cptr->user->password_expires > 0 && cptr->user->password_expires <= now) {
          ws_kick_client(cptr, "Password expired; ask an administrator to reset it");
+
          return false;
       }
 
@@ -279,8 +290,8 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
 
       if (cptr->user) {
          if (cptr->user->sessions + 1 > cptr->user->max_sessions) {
-            Log(LOG_AUDIT, "auth.users", "User session limit reached for %s: %d sessions exceeds max %d",
-               cptr->user->name, cptr->user->sessions, cptr->user->max_sessions);
+            Log(LOG_AUDIT, "auth.users", "User session limit reached for %s: %d sessions exceeds max %d", cptr->user->name, cptr->user->sessions, cptr->user->
+               max_sessions);
             // Kick the client
             ws_kick_client(cptr, "Too many sessions");
 
@@ -300,8 +311,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
       dict_free(auth_msg);
    } else if (strcasecmp(cmd, "logout") == 0 || strcasecmp(cmd, "quit") == 0) {
-      Log(LOG_DEBUG, "auth", "Logout request from %s cptr:<%p>",
-         (cptr && cptr->chatname[0] != '\0' ? cptr->chatname : ""), cptr);
+      Log(LOG_DEBUG, "auth", "Logout request from %s cptr:<%p>", (cptr && cptr->chatname[0] != '\0' ? cptr->chatname : ""), cptr);
       ws_kick_client(cptr, "Logged out. 73!");
    } else if (strcasecmp(cmd, "pass") == 0) {
       bool guest = false;
@@ -341,8 +351,9 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       }
 
       if (!up->enabled || (up->password_expires > 0 && up->password_expires <= now) ||
-          strcmp(token, cptr->token) || (user && strcasecmp(user, up->name))) {
+         strcmp(token, cptr->token) || (user && strcasecmp(user, up->name))) {
          ws_kick_client(cptr, "Invalid or expired login challenge");
+
          return false;
       }
 
@@ -357,6 +368,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
 
       if (!cptr->nonce[0]) {
          ws_kick_client(cptr, "Request a login challenge first");
+
          return false;
       }
       temp_pw = compute_wire_password(up->pass, nonce);
@@ -371,17 +383,19 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       unsigned difference = 0;
       size_t expected_length = strlen(temp_pw);
       bool correct_length = strlen(pass) == expected_length;
+
       if (correct_length) {
-         for (size_t i = 0; i < expected_length; i++) {
+         for (size_t i = 0 ; i < expected_length ; i++) {
             difference |= (unsigned char)temp_pw[i] ^ (unsigned char)pass[i];
          }
       }
+
       if (correct_length && difference == 0) {
          // special handling for guests; we generate a random suffix
          // force rewriting if they use any nick starting with Guest.
          if (strncasecmp(up->name, "guest", 5) == 0) {
             cptr->guest_id = generate_random_guest_id(4);
-            memset( cptr->chatname, 0, sizeof(cptr->chatname) );
+            memset(cptr->chatname, 0, sizeof(cptr->chatname) );
             snprintf(cptr->chatname, sizeof(cptr->chatname), "GUEST%04d", cptr->guest_id);
             guest = true;
          } else {
@@ -403,31 +417,31 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          ////////////////////
          // Set user flags //
          ////////////////////
-         if ( has_priv(cptr->user->uid, "admin|owner") ) {
+         if (has_priv(cptr->user->uid, "admin|owner") ) {
             client_set_flag(cptr, FLAG_SYSLOG);
          }
 
-         if ( has_priv(cptr->user->uid, "admin|owner") ) {
+         if (has_priv(cptr->user->uid, "admin|owner") ) {
             client_set_flag(cptr, FLAG_STAFF);
          }
 
-         if ( has_priv(cptr->user->uid, "tx") ) {
+         if (has_priv(cptr->user->uid, "tx") ) {
             client_set_flag(cptr, FLAG_CAN_TX);
          }
 
          // Media source connections (rrmedia, fwdsp feeds, remote relays)
          // may push binframes for the channels they subscribe to
-         if ( has_priv(cptr->user->uid, "media.source") ) {
+         if (has_priv(cptr->user->uid, "media.source") ) {
             client_set_flag(cptr, FLAG_MEDIA_SOURCE);
          }
 
          // client cannot transmit unless a user with elmer flag is logged in
-         if ( has_priv(cptr->user->uid, "noob") ) {
+         if (has_priv(cptr->user->uid, "noob") ) {
             client_set_flag(cptr, FLAG_NOOB);
          }
 
          // client is an elmer and can allow noobs to control rig
-         if ( has_priv(cptr->user->uid, "elmer") ) {
+         if (has_priv(cptr->user->uid, "elmer") ) {
             client_set_flag(cptr, FLAG_ELMER);
          }
          // Send a ping to the user and expect them to reply within
@@ -463,27 +477,25 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          // (http_expire_sessions) sends the first ping HTTP_PING_TIME seconds
          // after last_heard, i.e. once the connection has settled.
 
-         Log( LOG_AUDIT, "auth",
-            "User %s on cptr <%p> logged in from IP %s:%d (session #%d/%d) with privs: %s (client: %s, ua: %s)",
-            cptr->chatname, cptr, cptr->user_ip, cptr->user_port, cptr->user->sessions, cptr->user->max_sessions,
-            cptr->user->privs, (cptr->cli_version ? cptr->cli_version : "unknown"),
+         Log(LOG_AUDIT, "auth", "User %s on cptr <%p> logged in from IP %s:%d (session #%d/%d) with privs: %s (client: %s, ua: %s)", cptr->chatname, cptr, cptr
+            ->user_ip, cptr->user_port, cptr->user->sessions, cptr->user->max_sessions, cptr->user->privs, (cptr->cli_version ? cptr->cli_version : "unknown"),
             (cptr->user_agent ? cptr->user_agent : "unknown") );
 
          // Send our capabilities
          const char *configured_codecs = cfg_get_exp("codecs.allowed");
-         char *my_codecs = codec_filter_test_mode( configured_codecs, cfg_get_bool("audio.test-mode", true) );
+         char *my_codecs = codec_filter_test_mode(configured_codecs, cfg_get_bool("audio.test-mode", true) );
          const char *capab_msg = media_capab_prepare(my_codecs);
-         free( (void *)configured_codecs );
-         free( (void *)my_codecs );
+         free( (void *)configured_codecs);
+         free( (void *)my_codecs);
 
          if (capab_msg) {
             mg_ws_send(cptr->conn, capab_msg, strlen(capab_msg), WEBSOCKET_OP_TEXT);
-            free( (char *)capab_msg );
+            free( (char *)capab_msg);
          } else {
             Log(LOG_CRIT, "ws.media", ">> No codecs negotiated");
          }
          // Every authenticated session joins the site lobby; rig rooms are opt-in.
-         ws_client_join_room( cptr, ws_site_room() );
+         ws_client_join_room(cptr, ws_site_room() );
          // Tell the client which media channels (RX/TX audio per VFO, etc)
          // exist so it can subscribe; the event is handled by the program's
          // media module which owns the channel registry.
@@ -495,39 +507,38 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          dict_add_ulong(talk_msg, "msg.ts", now);
          dict_add(talk_msg, "talk.cmd", "join");
          dict_add(talk_msg, "talk.ip", ip);
-         dict_add( talk_msg, "talk.muted", (cptr->user->is_muted ? "true" : "false") );
+         dict_add(talk_msg, "talk.muted", (cptr->user->is_muted ? "true" : "false") );
          dict_add(talk_msg, "talk.privs", cptr->user->privs);
-         dict_add( talk_msg, "talk.target", ws_site_room() );
-         dict_add( talk_msg, "talk.room", ws_site_room() );
+         dict_add(talk_msg, "talk.target", ws_site_room() );
+         dict_add(talk_msg, "talk.room", ws_site_room() );
          dict_add_bool(talk_msg, "room.site", true);
-         dict_add_bool( talk_msg, "room.has-vfos", ws_room_has_vfos( ws_site_room() ) );
-         dict_add_ulong( talk_msg, "room.vfo-mask", ws_room_vfo_mask( ws_site_room() ) );
+         dict_add_bool(talk_msg, "room.has-vfos", ws_room_has_vfos(ws_site_room() ) );
+         dict_add_ulong(talk_msg, "room.vfo-mask", ws_room_vfo_mask(ws_site_room() ) );
          dict_add(talk_msg, "talk.user", cptr->chatname);
          dict_add_int(talk_msg, "talk.sessions", cptr->user->sessions);
-         ws_broadcast_room_dict( NULL, talk_msg, ws_site_room() );
+         ws_broadcast_room_dict(NULL, talk_msg, ws_site_room() );
          event_emit_dict("room.join", cptr, talk_msg);
          ws_send_users(NULL);
          dict_free(talk_msg);
          talk_msg = dict_new();
          dict_add(talk_msg, "msg.type", "talk");
          dict_add_ulong(talk_msg, "msg.ts", now);
-         dict_add( talk_msg, "talk.target", ws_site_room() );
-         dict_add( talk_msg, "talk.room", ws_site_room() );
+         dict_add(talk_msg, "talk.target", ws_site_room() );
+         dict_add(talk_msg, "talk.room", ws_site_room() );
          dict_add_bool(talk_msg, "room.site", true);
-         dict_add_bool( talk_msg, "room.has-vfos", ws_room_has_vfos( ws_site_room() ) );
-         dict_add_ulong( talk_msg, "room.vfo-mask", ws_room_vfo_mask( ws_site_room() ) );
+         dict_add_bool(talk_msg, "room.has-vfos", ws_room_has_vfos(ws_site_room() ) );
+         dict_add_ulong(talk_msg, "room.vfo-mask", ws_room_vfo_mask(ws_site_room() ) );
          dict_add(talk_msg, "talk.user", cptr->chatname);
          event_emit_dict("send-chat-replay", cptr, talk_msg);
          dict_free(talk_msg);
       } else {
-         Log(LOG_AUDIT, "auth", "User %s on cptr <%p> from IP %s:%d gave wrong password. Kicking!", cptr->user->name, cptr,
-            ip, port);
+         Log(LOG_AUDIT, "auth", "User %s on cptr <%p> from IP %s:%d gave wrong password. Kicking!", cptr->user->name, cptr, ip, port);
          ws_kick_client(cptr, "Invalid login/password");
          rv = false;
       }
 
       // AUDIT: Sanitize buffers containing sensitive data before freeing
-      explicit_bzero( temp_pw, strlen(temp_pw) );
+      explicit_bzero(temp_pw, strlen(temp_pw) );
       free(temp_pw);
    }
 cleanup:

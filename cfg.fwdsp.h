@@ -8,7 +8,7 @@
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 //
 #if !defined(__cfg_fwdsp_h)
-#define	__cfg_fwdsp_h
+#define __cfg_fwdsp_h
 
 #include <stdbool.h>
 

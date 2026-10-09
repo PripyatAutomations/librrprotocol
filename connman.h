@@ -8,7 +8,7 @@
 // Shared connection manager types and API for librrprotocol
 
 #ifndef __librrprotocol_connman_h
-#define	__librrprotocol_connman_h
+#define __librrprotocol_connman_h
 
 #include <stddef.h>
 #include <stdarg.h>
@@ -21,8 +21,8 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-#define	SERVERLEN 512
-#define	KEYLEN 256
+#define SERVERLEN 512
+#define KEYLEN 256
 
 enum rr_conn_type {
    RR_CONN_NONE = 0,

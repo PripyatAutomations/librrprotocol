@@ -34,12 +34,16 @@ void event_emit_dict(const char *event, rrconn_t *cptr, dict *data) {
 }
 
 int main(void) {
-   http_user_t admin_user = {0};
+   http_user_t admin_user = {
+      0
+   };
    snprintf(admin_user.name, sizeof(admin_user.name), "%s", "admin");
    snprintf(admin_user.privs, sizeof(admin_user.privs), "%s", "admin,radio,tx");
    admin_user.enabled = true;
 
-   rrconn_t admin = {0};
+   rrconn_t admin = {
+      0
+   };
    admin.authenticated = true;
    admin.user = &admin_user;
    admin.is_ptt = true;
@@ -62,5 +66,6 @@ int main(void) {
    assert(event_count == 1);
 
    puts("PASS: disconnecting admin with PTT on releases the keyed VFO");
+
    return 0;
 }

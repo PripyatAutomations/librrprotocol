@@ -75,7 +75,7 @@ bool ws_handle_pong_msg(rrconn_t *cptr, dict *d) {
    }
 
    time_t now = time(NULL);
-   Log( LOG_CRAZY, "ws.pong", "* Pong! RTT: %lld secs *", (long long)(now - pong_ts) );
+   Log(LOG_CRAZY, "ws.pong", "* Pong! RTT: %lld secs *", (long long)(now - pong_ts) );
 
    // Echoed monotonic ping.ts from the server's PING: diff against our own clock for ms
    // RTT

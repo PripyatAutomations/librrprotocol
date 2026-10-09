@@ -47,13 +47,13 @@ bool ws_handle_callsign_msg(rrconn_t *cptr, dict *d) {
       return false;
    }
 
-   if ( !dict_get(d, "callsign.status", NULL) && !dict_get(d, "callsign.fields", NULL) ) {
+   if (!dict_get(d, "callsign.status", NULL) && !dict_get(d, "callsign.fields", NULL) ) {
       /* Dotted dictionaries do not expose a parent value; accept any field. */
       const char *key = NULL;
       char *value = NULL;
       int rank = 0;
       bool found = false;
-      while ( ( rank = dict_enumerate(d, rank, &key, &value) ) >= 0 ) {
+      while ( (rank = dict_enumerate(d, rank, &key, &value) ) >= 0) {
          if (key && strncmp(key, "callsign.fields.", 16) == 0) {
             found = true;
             break;

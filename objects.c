@@ -23,7 +23,7 @@ bool rr_object_uuid_valid(const char *uuid) {
          if (uuid[i] != '-') {
             return false;
          }
-      } else if ( !isdigit( (unsigned char)uuid[i] ) && !(uuid[i] >= 'a' && uuid[i] <= 'f') ) {
+      } else if (!isdigit( (unsigned char)uuid[i]) && !(uuid[i] >= 'a' && uuid[i] <= 'f') ) {
          return false;
       }
    }
@@ -78,7 +78,7 @@ bool rr_object_seq_get(dict *d, const char *key, uint64_t *seq) {
    }
    const char *s = dict_get(d, key, "");
 
-   if ( !*s || (s[0] == '0' && s[1]) ) {
+   if (!*s || (s[0] == '0' && s[1]) ) {
       return false;
    }
 
@@ -122,31 +122,38 @@ bool rr_object_value_put(dict *d, const char *key, val_type_t type, const dict_v
          return isfinite(v->d) && !dict_add_double(d, key, v->d);
       }
       case VAL_INT: {
-         n = v->i; break;
+         n = v->i;
+         break;
       }
       case VAL_UINT: {
-         n = v->ui; break;
+         n = v->ui;
+         break;
       }
       case VAL_LONG: {
-         n = v->l; break;
+         n = v->l;
+         break;
       }
       case VAL_LLONG: {
-         n = v->ll; break;
+         n = v->ll;
+         break;
       }
       case VAL_CHAR: {
-         n = v->c; break;
+         n = v->c;
+         break;
       }
       case VAL_ULONG: {
          if (v->ul > 9007199254740991ULL) {
             return false;
          }
-         n = v->ul; break;
+         n = v->ul;
+         break;
       }
       case VAL_ULLONG: {
          if (v->ull > 9007199254740991ULL) {
             return false;
          }
-         n = v->ull; break;
+         n = v->ull;
+         break;
       }
       default: {
          return false;
@@ -159,7 +166,7 @@ bool rr_object_value_put(dict *d, const char *key, val_type_t type, const dict_v
 
 bool rr_object_value_get(dict *d, const char *key, val_type_t type, dict_value_t *v) {
    val_type_t actual = dict_get_type(d, key);
-   memset( v, 0, sizeof(*v) );
+   memset(v, 0, sizeof(*v) );
 
    if (type == VAL_STR) {
       v->s = actual == VAL_STR ? dict_get(d, key, NULL) : NULL;
@@ -173,25 +180,27 @@ bool rr_object_value_get(dict *d, const char *key, val_type_t type, dict_value_t
       return actual == VAL_BOOL;
    }
    bool integer = actual == VAL_INT || actual == VAL_UINT ||
-                  actual == VAL_LONG || actual == VAL_ULONG || actual == VAL_LLONG ||
-                  actual == VAL_ULLONG;
+      actual == VAL_LONG || actual == VAL_ULONG || actual == VAL_LLONG ||
+      actual == VAL_ULLONG;
 
    if (!integer && actual != VAL_DOUBLE && actual != VAL_FLOAT) {
       return false;
    }
    double number = dict_get_double(d, key, NAN);
 
-   if ( !isfinite(number) ) {
+   if (!isfinite(number) ) {
       return false;
    }
 
    if (type == VAL_DOUBLE) {
       v->d = number;
+
       return true;
    }
 
    if (type == VAL_FLOAT) {
       v->f = number;
+
       return isfinite(v->f);
    }
 
@@ -205,40 +214,47 @@ bool rr_object_value_get(dict *d, const char *key, val_type_t type, dict_value_t
          if (n < INT_MIN || n > INT_MAX) {
             return false;
          }
-         v->i = n; break;
+         v->i = n;
+         break;
       }
       case VAL_UINT: {
          if (n < 0 || n > UINT_MAX) {
             return false;
          }
-         v->ui = n; break;
+         v->ui = n;
+         break;
       }
       case VAL_LONG: {
          if (n < LONG_MIN || n > LONG_MAX) {
             return false;
          }
-         v->l = n; break;
+         v->l = n;
+         break;
       }
       case VAL_ULONG: {
          if (n < 0 || (unsigned long long)n > ULONG_MAX) {
             return false;
          }
-         v->ul = n; break;
+         v->ul = n;
+         break;
       }
       case VAL_LLONG: {
-         v->ll = n; break;
+         v->ll = n;
+         break;
       }
       case VAL_ULLONG: {
          if (n < 0) {
             return false;
          }
-         v->ull = n; break;
+         v->ull = n;
+         break;
       }
       case VAL_CHAR: {
          if (n < CHAR_MIN || n > CHAR_MAX) {
             return false;
          }
-         v->c = n; break;
+         v->c = n;
+         break;
       }
       default: {
          return false;

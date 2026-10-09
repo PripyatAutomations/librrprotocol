@@ -24,12 +24,12 @@
 // This defines a hard-coded fallback path for httpd root, if not set in config
 #if     defined(HOST_POSIX)
 #if     !defined(INSTALL_PREFIX)
-#define	WWW_ROOT_FALLBACK "./www"
-#define	WWW_404_FALLBACK "./www/404.html"
+#define WWW_ROOT_FALLBACK "./www"
+#define WWW_404_FALLBACK "./www/404.html"
 #endif // !defined(INSTALL_PREFIX)
 #else
-#define	WWW_ROOT_FALLBACK "fs:www/"
-#define	WWW_404_FALLBACK "fs:www/404.html"
+#define WWW_ROOT_FALLBACK "fs:www/"
+#define WWW_404_FALLBACK "fs:www/404.html"
 #endif // defined(HOST_POSIX).else
 
 //////////////////////////////////////
@@ -66,7 +66,7 @@ static bool http_help(struct mg_http_message *msg, rrconn_t *cptr) {
    }
 
    // Sanity check the topic doesnt contain illegal characters like .. or /
-   if ( check_url(topic) ) {
+   if (check_url(topic) ) {
       Log(LOG_AUDIT, "http.api", "Topic |%s| contains sketch characters, bailing from http_help", help_path);
 
       return false;
@@ -89,7 +89,7 @@ static bool http_api_ping(struct mg_http_message *msg, rrconn_t *cptr) {
 }
 
 static bool http_api_time(struct mg_http_message *msg, rrconn_t *cptr) {
-   mg_http_reply( cptr->conn, 200, http_content_type("json"), "{%m:%lu}\n", MG_ESC("time"), time(NULL) );
+   mg_http_reply(cptr->conn, 200, http_content_type("json"), "{%m:%lu}\n", MG_ESC("time"), time(NULL) );
 
    return true;
 }
@@ -103,8 +103,7 @@ static bool http_api_ws(struct mg_http_message *msg, rrconn_t *cptr) {
 }
 
 static bool http_api_version(struct mg_http_message *msg, rrconn_t *cptr) {
-   mg_http_reply(cptr->conn, 200, http_content_type("json"),
-      "{ \"version\": { \"firmware\": \"%s\", \"hardware\": \"%s\" } }", VERSION, HARDWARE);
+   mg_http_reply(cptr->conn, 200, http_content_type("json"), "{ \"version\": { \"firmware\": \"%s\", \"hardware\": \"%s\" } }", VERSION, HARDWARE);
 
    return true;
 }
@@ -112,6 +111,7 @@ static bool http_api_version(struct mg_http_message *msg, rrconn_t *cptr) {
 static bool http_api_stats(struct mg_http_message *msg, rrconn_t *cptr) {
    if (!cptr->authenticated || !cptr->user || !has_priv(cptr->user->uid, "admin|owner")) {
       mg_http_reply(cptr->conn, 403, "Content-Type: text/plain\r\n", "Forbidden\n");
+
       return true;
    }
    struct mg_connection *t;
@@ -120,9 +120,8 @@ static bool http_api_stats(struct mg_http_message *msg, rrconn_t *cptr) {
    mg_http_printf_chunk(cptr->conn, "ID PROTO TYPE      LOCAL           REMOTE\n");
 
    for (t = cptr->conn->mgr->conns ; t ; t = t->next) {
-      mg_http_printf_chunk(cptr->conn, "%-3lu %4s %s %M %M\n", t->id, t->is_udp ? "UDP" : "TCP",
-         t->is_listening ? "LISTENING" : t->is_accepted ? "ACCEPTED " : "CONNECTED", mg_print_ip, &t->loc, mg_print_ip,
-         &t->rem);
+      mg_http_printf_chunk(cptr->conn, "%-3lu %4s %s %M %M\n", t->id, t->is_udp ? "UDP" : "TCP", t->is_listening ? "LISTENING" : t->is_accepted ? "ACCEPTED " :
+         "CONNECTED", mg_print_ip, &t->loc, mg_print_ip, &t->rem);
    }
 
    mg_http_printf_chunk(cptr->conn, "");   // Don't forget the last empty chunk
@@ -162,11 +161,13 @@ bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr) {
    if (!cptr || !msg) {
       return false;
    }
+
    if (mg_strcmp(msg->method, mg_str("GET")) && mg_strcmp(msg->method, mg_str("HEAD"))) {
       mg_http_reply(cptr->conn, 405, "Allow: GET, HEAD\r\n", "Method not allowed\n");
+
       return true;
    }
-   int items = ( sizeof(http_routes) / sizeof(http_route_t) ) - 1;
+   int items = (sizeof(http_routes) / sizeof(http_route_t) ) - 1;
 
    for (int i = 0 ; i < items ; i++) {
       int rv = 0;
@@ -187,10 +188,9 @@ bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr) {
  *     }
  */
       if ((msg->uri.len == match_len ||
-           (msg->uri.len == match_len + 1 && msg->uri.buf[match_len] == '/')) &&
-          !memcmp(msg->uri.buf, http_routes[i].match, match_len)) {
-         Log(LOG_CRAZY, "http.req", "Matched %s with request URI %.*s [length: %d]", http_routes[i].match,
-            (int)msg->uri.len, msg->uri.buf, match_len);
+         (msg->uri.len == match_len + 1 && msg->uri.buf[match_len] == '/')) &&
+         !memcmp(msg->uri.buf, http_routes[i].match, match_len)) {
+         Log(LOG_CRAZY, "http.req", "Matched %s with request URI %.*s [length: %d]", http_routes[i].match, (int)msg->uri.len, msg->uri.buf, match_len);
 
          // Strip trailing slash if it's there
          if (msg->uri.len > 0 && msg->uri.buf[msg->uri.len - 1] == '/') {
@@ -200,8 +200,7 @@ bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr) {
 
          return rv != 0;
       } else {
-         Log(LOG_CRAZY, "http.req", "Failed to match %.*s: %d: %s", (int)msg->uri.len, msg->uri.buf, i,
-            http_routes[i].match);
+         Log(LOG_CRAZY, "http.req", "Failed to match %.*s: %d: %s", (int)msg->uri.len, msg->uri.buf, i, http_routes[i].match);
       }
    }
 

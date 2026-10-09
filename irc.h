@@ -6,7 +6,7 @@
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #if     !defined(__librrprotocol_irc_h)
-#define	__librrprotocol_irc_h
+#define __librrprotocol_irc_h
 
 #include <librustyaxe/list.h>
 #include <librustyaxe/struct.h>

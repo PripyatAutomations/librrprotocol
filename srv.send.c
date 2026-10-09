@@ -46,9 +46,9 @@ void ws_broadcast_with_flags(u_int32_t flags, rrconn_t *sender, struct mg_str *m
    rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
-      if ( current && (current->is_ws && current->authenticated) && (current != sender) ) {
+      if (current && (current->is_ws && current->authenticated) && (current != sender) ) {
          if (( (flags & FLAG_STAFF) && current->user && has_priv(current->user->uid, "admin|owner") ) ||
-              client_has_flag(current, flags & ~FLAG_STAFF)) {
+            client_has_flag(current, flags & ~FLAG_STAFF)) {
             mg_ws_send(current->conn, msg_data->buf, msg_data->len, data_type);
          }
       }
@@ -85,7 +85,7 @@ bool send_global_alert(const char *sender, const char *data) {
    dict_add_ulong(alert_msg, "alert.ts", now);
 
    ws_broadcast_dict(NULL, alert_msg, WEBSOCKET_OP_TEXT);
-   free( (char *)escaped_msg );
+   free( (char *)escaped_msg);
    dict_free(alert_msg);
 
    return true;
@@ -112,7 +112,7 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
 
    mg_ws_send(dest->conn, jp, strlen(jp), data_type);
 
-   free( (void *)jp );
+   free( (void *)jp);
 
    return true;
 }
@@ -141,9 +141,9 @@ void ws_broadcast_dict_with_flags(u_int32_t flags, rrconn_t *sender, dict *d, in
    rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
-      if ( current && (current->is_ws && current->authenticated) && (current != sender) ) {
+      if (current && (current->is_ws && current->authenticated) && (current != sender) ) {
          if (( (flags & FLAG_STAFF) && current->user && has_priv(current->user->uid, "admin|owner") ) ||
-              client_has_flag(current, flags & ~FLAG_STAFF)) {
+            client_has_flag(current, flags & ~FLAG_STAFF)) {
             ws_send_dict(NULL, current, d, data_type);
          }
       }

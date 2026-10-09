@@ -26,15 +26,17 @@ bool is_admin_online(void) {
    if (http_client_list == NULL) {
       return false;
    }
-   for (rrconn_t *curr = http_client_list; curr; curr = curr->next) {
+
+   for (rrconn_t *curr = http_client_list ; curr ; curr = curr->next) {
       if (!curr->is_ws || !curr->authenticated || curr->user == NULL) {
          continue;
       }
 
-      if ( has_priv(curr->user->uid, "admin|owner") ) {
+      if (has_priv(curr->user->uid, "admin|owner") ) {
          return true;
       }
    }
+
    return false;
 }
 
@@ -43,16 +45,18 @@ bool is_elmer_online(void) {
    if (http_client_list == NULL) {
       return false;
    }
-   for (rrconn_t *curr = http_client_list; curr; curr = curr->next) {
+
+   for (rrconn_t *curr = http_client_list ; curr ; curr = curr->next) {
       if (!curr->is_ws || !curr->authenticated || !curr->user) {
          continue;
       }
 
-      if ( has_priv(curr->user->uid, "elmer") ) {
+      if (has_priv(curr->user->uid, "elmer") ) {
          Log(LOG_CRAZY, "auth", "is_elmer_online: returning cptr:<%x> - |%s|", curr, curr->chatname);
 
          return true;
       }
    }
+
    return false;
 }

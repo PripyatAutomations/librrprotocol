@@ -32,12 +32,12 @@ extern void ws_http_cb(struct mg_connection *c, int ev, void *ev_data);
 // This defines a hard-coded fallback path for httpd root, if not set in config
 #ifdef  HOST_POSIX
 #ifndef INSTALL_PREFIX
-#define	WWW_ROOT_FALLBACK "./www"
-#define	WWW_404_FALLBACK "./www/404.html"
+#define WWW_ROOT_FALLBACK "./www"
+#define WWW_404_FALLBACK "./www/404.html"
 #endif // !INSTALL_PREFIX
 #else
-#define	WWW_ROOT_FALLBACK "fs:www/"
-#define	WWW_404_FALLBACK "fs:www/404.html"
+#define WWW_ROOT_FALLBACK "fs:www/"
+#define WWW_404_FALLBACK "fs:www/404.html"
 #endif // HOST_POSIX.else
 
 extern char www_root[PATH_MAX];
@@ -46,8 +46,7 @@ extern char www_headers[32768];
 extern char www_404_path[PATH_MAX];
 extern rrconn_t *http_client_list;
 
-/* Configuration values may come from the normal dictionary or EEPROM.  Keep ownership
- * local and expand ~/$HOME before checking installed/development paths. */
+/* Configuration values may come from the normal dictionary or EEPROM.  Keep ownership local and expand ~/$HOME before checking installed/development paths. */
 static char *http_config_path(const char *key, const char *eeprom_key) {
    char *raw = (char *)cfg_get_exp(key);
 
@@ -85,7 +84,7 @@ struct mg_tls_opts tls_opts;
 
 void http_tls_init(void) {
    bool tls_error = false;
-   memset( &tls_opts, 0, sizeof(tls_opts) );
+   memset(&tls_opts, 0, sizeof(tls_opts) );
 
    tls_cert = mg_file_read(&mg_fs_posix, HTTP_TLS_CERT);
 
@@ -108,8 +107,7 @@ void http_tls_init(void) {
       tls_opts.cert = tls_cert;
       tls_opts.key = tls_key;
       tls_opts.skip_verification = 1;
-      Log(LOG_INFO, "http.tls", "TLS initialized succesfully, |cert: <%lu @ %p>| |key: <%lu @ %p>", tls_cert.len,
-         tls_cert, tls_key.len, tls_key.buf);
+      Log(LOG_INFO, "http.tls", "TLS initialized succesfully, |cert: <%lu @ %p>| |key: <%lu @ %p>", tls_cert.len, tls_cert, tls_key.len, tls_key.buf);
    }
 }
 #endif // HTTP_USE_TLS
@@ -138,7 +136,7 @@ bool http_init(struct mg_mgr *mgr) {
    // configured path is unavailable.
    const char *selected_root = NULL;
 
-   if ( cfg_www_root && is_dir(cfg_www_root) ) {
+   if (cfg_www_root && is_dir(cfg_www_root) ) {
       selected_root = cfg_www_root;
    }
 #ifdef HOST_POSIX
@@ -150,7 +148,7 @@ bool http_init(struct mg_mgr *mgr) {
       };
 
       for (int i = 0 ; fallbacks[i] ; i++) {
-         if ( is_dir(fallbacks[i]) ) {
+         if (is_dir(fallbacks[i]) ) {
             selected_root = fallbacks[i];
             Log(LOG_INFO, "http.init", "Configured www-root unavailable; using %s", selected_root);
             break;
@@ -158,19 +156,18 @@ bool http_init(struct mg_mgr *mgr) {
       }
    }
 #endif
-   prepare_msg( www_root, sizeof(www_root), "%s",
-      selected_root ? selected_root : (cfg_www_root ? cfg_www_root : WWW_ROOT_FALLBACK) );
+   prepare_msg(www_root, sizeof(www_root), "%s", selected_root ? selected_root : (cfg_www_root ? cfg_www_root : WWW_ROOT_FALLBACK) );
    Log(LOG_INFO, "http.init", "Set www-root to %s", www_root);
 
    // Prefer an existing configured 404 page, then the selected root's page,
    // and finally the platform fallback.
-   if ( cfg_404_path && is_file(cfg_404_path) ) {
+   if (cfg_404_path && is_file(cfg_404_path) ) {
       prepare_msg(www_404_path, sizeof(www_404_path), "%s", cfg_404_path);
    } else {
       char root_404[PATH_MAX];
       snprintf(root_404, sizeof(root_404), "%s/404.html", www_root);
 
-      if ( is_file(root_404) ) {
+      if (is_file(root_404) ) {
          prepare_msg(www_404_path, sizeof(www_404_path), "%s", root_404);
       } else {
          prepare_msg(www_404_path, sizeof(www_404_path), "%s", WWW_404_FALLBACK);
@@ -204,21 +201,19 @@ bool http_init(struct mg_mgr *mgr) {
 
    const char *s = cfg_get("net.http.bind");
 
-   if ( !s || !inet_aton(s, &sa_bind) ) {
+   if (!s || !inet_aton(s, &sa_bind) ) {
 #ifdef  USE_EEPROM
       eeprom_get_ip4("net/http/bind", &sa_bind);
 #endif // USE_EEPROM
    }
-   free( (char *)s );
+   free( (char *)s);
    prepare_msg(listen_addr, sizeof(listen_addr), "http://%s:%d", inet_ntoa(sa_bind), bind_port);
 
 #ifdef  USE_MONGOOSE
    fprintf(stderr, "mgr: <%p>, listen_addr:<%p> = %s\n", mgr, listen_addr, listen_addr);
 
-   if ( !mg_http_listen(mgr, listen_addr, ws_http_cb, NULL) ) {
-      Log(LOG_CRIT, "http",
-         "Failed to start http listener -- is program already running or something else listening on port %d?",
-         bind_port);
+   if (!mg_http_listen(mgr, listen_addr, ws_http_cb, NULL) ) {
+      Log(LOG_CRIT, "http", "Failed to start http listener -- is program already running or something else listening on port %d?", bind_port);
 
       // If net.http.required is set, exit cleanly rather than limping along
       if (cfg_get_bool("net.http.required", false) ) {
@@ -229,11 +224,11 @@ bool http_init(struct mg_mgr *mgr) {
       Log(LOG_CRIT, "http", "Continuing without http listener (net.http.required is false)");
    }
 
-   Log( LOG_INFO, "http", "HTTP listening at %s with www-root at %s", listen_addr, www_root );
+   Log(LOG_INFO, "http", "HTTP listening at %s with www-root at %s", listen_addr, www_root);
 
 #ifdef  HTTP_USE_TLS
 
-   if ( cfg_get_bool("net.http.tls-enabled", false) ) {
+   if (cfg_get_bool("net.http.tls-enabled", false) ) {
       int tls_bind_port = cfg_get_int("net.http.tls-port", 8443);
 
 #ifdef  USE_EEPROM
@@ -249,22 +244,20 @@ bool http_init(struct mg_mgr *mgr) {
       sa_tls_bind.s_addr = htonl(INADDR_ANY);
       s = cfg_get_exp("net.http.tls-bind");
 
-      if ( !s || !inet_aton(s, &sa_tls_bind) ) {
+      if (!s || !inet_aton(s, &sa_tls_bind) ) {
 #ifdef  USE_EEPROM
          eeprom_get_ip4("net/http/bind", &sa_tls_bind);
 #endif // USE_EEPROM
       }
-      free( (char *)s );
+      free( (char *)s);
       s = NULL;
 
       char tls_listen_addr[255];
       prepare_msg(tls_listen_addr, sizeof(tls_listen_addr), "https://%s:%d", inet_ntoa(sa_tls_bind), tls_bind_port);
       http_tls_init();
 
-      if ( !mg_http_listen(mgr, tls_listen_addr, ws_http_cb, NULL) ) {
-         Log(LOG_CRIT, "http",
-            "Failed to start https listener -- is program already running or something else listening on port %d?",
-            tls_bind_port);
+      if (!mg_http_listen(mgr, tls_listen_addr, ws_http_cb, NULL) ) {
+         Log(LOG_CRIT, "http", "Failed to start https listener -- is program already running or something else listening on port %d?", tls_bind_port);
 
          // If net.http.required is set, exit cleanly rather than limping along
          if (cfg_get_bool("net.http.required", false) ) {
@@ -274,7 +267,7 @@ bool http_init(struct mg_mgr *mgr) {
 
          Log(LOG_CRIT, "http", "Continuing without https listener (net.http.required is false)");
       }
-      Log( LOG_INFO, "http", "HTTPS listening at %s with www-root at %s", tls_listen_addr, www_root );
+      Log(LOG_INFO, "http", "HTTPS listening at %s with www-root at %s", tls_listen_addr, www_root);
    }
 #endif // HTTP_USE_TLS
 #endif // USE_MONGOOSE

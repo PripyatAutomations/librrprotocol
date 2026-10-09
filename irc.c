@@ -63,7 +63,7 @@ static void irc_try_send(rrconn_t *cptr) {
    char *p = cptr->sendq;
 
    // find how much of sendq is complete messages ending with \r\n
-   while ( ( p = strstr(p, "\r\n") ) ) {
+   while ( (p = strstr(p, "\r\n") ) ) {
       len = (p - cptr->sendq) + 2;
       p += 2;
    }
@@ -76,7 +76,7 @@ static void irc_try_send(rrconn_t *cptr) {
 
    if (n < 0) {
       if (errno != EAGAIN && errno != EWOULDBLOCK) {
-         Log( LOG_CRIT, "irc", "send failed: %s", strerror(errno) );
+         Log(LOG_CRIT, "irc", "send failed: %s", strerror(errno) );
          close(cptr->fd);
          cptr->connected = false;
       }
@@ -84,7 +84,7 @@ static void irc_try_send(rrconn_t *cptr) {
       return;
    }
 
-   if ( (size_t)n < len ) {
+   if ( (size_t)n < len) {
       // partial send, move remaining to front
       memmove(cptr->sendq, cptr->sendq + n, len - n);
       cptr->sendq[len - n] = '\0';
@@ -136,8 +136,7 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
 }
 
 /*
- * Process incoming data from an IRC connection: read what's available and feed complete
- * lines to irc_process_message(). Called from the poll loop /
+ * Process incoming data from an IRC connection: read what's available and feed complete lines to irc_process_message(). Called from the poll loop /
  * periodic timer (formerly a libev ev_io callback).
  */
 void irc_io_poll(rrconn_t *cptr) {
@@ -158,7 +157,7 @@ void irc_io_poll(rrconn_t *cptr) {
 
    if (n < 0) {
       if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
-         Log( LOG_CRIT, "irc", "recv failed: %s", strerror(errno) );
+         Log(LOG_CRIT, "irc", "recv failed: %s", strerror(errno) );
          close(cptr->fd);
          cptr->fd = -1;
          cptr->connected = false;
@@ -186,7 +185,7 @@ void irc_io_poll(rrconn_t *cptr) {
    // process complete lines
    char *start = cptr->recvq;
    char *end;
-   while ( ( end = strstr(start, "\r\n") ) ) {
+   while ( (end = strstr(start, "\r\n") ) ) {
       *end = '\0';
       Log(LOG_DEBUG, "net", "processing line: [%s]", start);
       irc_process_message(cptr, start);

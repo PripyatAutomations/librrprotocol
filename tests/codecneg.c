@@ -28,5 +28,6 @@ int main(void) {
    free(pink);
 
    puts("PASS: test-mode codec filtering");
+
    return 0;
 }
