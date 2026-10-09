@@ -1,5 +1,5 @@
 //
-// rrclient/ws.file-xfer.c: Support for sending files such as screen shots or
+// librrprotocl/ws.file-xfer.c: Support for sending files such as screen shots or
 // audio recordings.
 //
 //    This is part of rustyrig-fw.
@@ -177,9 +177,7 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
       mg_free(type);
 
       char *sid = mg_json_get_str(m->data, "$.id");
-      char idbuf[32] = {
-         0
-      };
+      char idbuf[32] = { 0 };
 
       if (sid) {
          mg_snprintf(idbuf, sizeof(idbuf), "%s", sid);
@@ -260,16 +258,3 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
    }
 }
 #endif // USE_MONGOOSE
-/*
- *  static void fn(struct mg_connection *c, int ev, void *ev_data, void fn_data)
- * {
- *  switch (ev) {
- *     case MG_EV_WS_OPEN: MG_INFO(("WS open")); break;
- *     case MG_EV_WS_MSG:  on_ws_msg(c, ev, ev_data); break;
- *     default: break;
- *  }
- *  (void) fn_data;
- *  }
- *
- *  // Example: call ws_send_file(c, "/path/to/file.png", "image/png") after WS is open
- */

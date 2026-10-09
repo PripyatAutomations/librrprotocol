@@ -1,3 +1,4 @@
+// librrprocol/cfg.servers.c: [server] block parsing
 //      This is part of rustyrig-fw. https://github.com/pripyatautomations/rustyrig-fw
 //
 // Do not pay money for this, except donations to the project, if you wish to.
@@ -161,7 +162,6 @@ bool add_server(const char *network, const char *str) {
       }
       sp->next = new_cfg;
    }
-
    return true;
 }
 
@@ -203,7 +203,6 @@ static bool config_servers_save_cb(FILE *fp, const char *path) {
       fputc('\n', fp);
       fputc('\n', fp);
    }
-
    return false;
 }
 
@@ -211,97 +210,3 @@ static bool config_servers_save_cb(FILE *fp, const char *path) {
 bool cfg_servers_init(void) {
    return cfg_add_save_callback("cfg.servers", config_servers_save_cb);
 }
-
-// XXX: Re-enable this and make use of it
-#if     0
-///////////////
-// XXX: upgrade this to be able to be called by a timer
-// XXX: It should check for an existing connection to each network
-// XXX: Need to add support for ws/wss connections
-bool check_server_autoconnects(void) {
-   // Handle connecting to servers in networks.auto
-   const char *networks = cfg_get_exp("networks.auto");
-
-   if (networks) {
-      char *tv = strdup(networks);
-      // Split this on ',' and connect to allow configured networks
-      char *sp = strtok(tv, ", ");
-
-      // use a dictionary to store this stuff
-      dict *newsrv = dict_new();
-
-      while (sp) {
-         char this_network[256];
-         memset(this_network, 0, sizeof(this_network) );
-         snprintf(this_network, sizeof(this_network), "%s", sp);
-         dict_add(newsrv, "autoconnect.network", this_network);
-         rrlist_t *temp_list = NULL;   // head of temporary list
-
-         server_cfg_t *srvp = server_list;
-         while (srvp) {
-            if (strcasecmp(srvp->network, this_network) == 0) {
-               // Wrap server pointer in a list node
-               rrlist_t *node = malloc(sizeof(rrlist_t) );
-
-               if (!node) {
-                  // OOM
-                  abort();
-               }
-
-               node->ptr = srvp;
-               node->prev = node->next = NULL;
-
-               // Insert into temp_list sorted by priority (descending)
-               rrlist_t *cur = temp_list;
-               rrlist_t *prev = NULL;
-               while (cur && ( (server_cfg_t *)cur->ptr)->priority >= srvp->priority) {
-                  prev = cur;
-                  cur = cur->next;
-               }
-
-               if (!prev) {
-                  // insert at head
-                  node->next = temp_list;
-
-                  if (temp_list) {
-                     temp_list->prev = node;
-                  }
-                  temp_list = node;
-               } else {
-                  // insert after prev
-                  node->next = prev->next;
-                  node->prev = prev;
-
-                  if (prev->next) {
-                     prev->next->prev = node;
-                  }
-                  prev->next = node;
-               }
-            }
-            srvp = srvp->next;
-         }
-         rrlist_t *node = temp_list;
-         while (node) {
-            server_cfg_t *srv = node->ptr;
-#if     0
-            rrconn_t *cli;
-
-            if ( (cli = irc_cli_connect(srv) ) ) {
-               // Add to the connection list
-               rrlist_add(&client_conns, cli, LIST_TAIL);
-            }
-#endif
-            event_emit_dict("connecting", NULL, newsrv);
-            node = node->next;
-         }
-         sp = strtok(NULL, " ,");
-      }
-      free(tv);
-      free( (void *)networks);
-      networks = NULL;
-      dict_free(newsrv);
-   }
-
-   return false;
-}
-#endif

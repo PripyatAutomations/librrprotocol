@@ -1,5 +1,5 @@
 //
-// auth.h: This stuff is in cli.auth.c, srv.auth.c and srv.auth.*.c
+// librrprotocol/auth.h: This stuff is in cli.auth.c, srv.auth.c and srv.auth.*.c
 //
 //    This is part of rustyrig-fw.
 // https://github.com/pripyatautomations/rustyrig-fw

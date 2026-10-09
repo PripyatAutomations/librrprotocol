@@ -50,6 +50,5 @@ bool ws_handle_alert_msg(rrconn_t *cptr, dict *d) {
    }
 
    event_emit_dict("alert", NULL, d);
-
    return true;
 }
