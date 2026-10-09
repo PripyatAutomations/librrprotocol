@@ -11,10 +11,14 @@
 #include <stdbool.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librrprotocol/irc.h>
 
 bool irc_builtin_error_cb(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 2) {
+      return true;
+   }
    Log(LOG_CRIT, "irc", "[%s] Got ERROR from server: |%s|", irc_name(cptr), (mp->argv[1] ? mp->argv[1] : "(null)") );
-   event_emit("irc.error", cptr, mp);
+   irc_emit_message("irc.error", cptr, mp);
 //   ui_print(NULL, "{red}>>> {bright-red}ERROR:{bright-cyan} %s
 // {red}<<<{reset}",
 //      mp->argv[1]);
@@ -23,6 +27,9 @@ bool irc_builtin_error_cb(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_join_cb(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 2) {
+      return true;
+   }
    char *nick = mp->prefix;
 
    if (!nick) {
@@ -32,20 +39,18 @@ bool irc_builtin_join_cb(rrconn_t *cptr, irc_message_t *mp) {
    }
    char *nick_end = strchr(nick, '!');
    char tmp_nick[NICKLEN + 1];
-   size_t nicklen = (nick_end - nick);
+   size_t nicklen = nick_end ? (size_t)(nick_end - nick) : strlen(nick);
 
    if (nicklen <= 0) {
       // XXX: we should handle messages without full masks here
-      Log(LOG_CRIT, "irc", "join_cb nicklen <= 0: %d", nicklen);
+      Log(LOG_CRIT, "irc", "join_cb nicklen <= 0: %zu", nicklen);
 
       return true;
    }
-   char *chan = mp->argv[1];
-   char *win_title = (*chan ? chan : "status");
-   char *network = cptr->server->network;
+   const char *network = irc_name(cptr);
 
    memset(tmp_nick, 0, NICKLEN + 1);
-   snprintf(tmp_nick, NICKLEN + 1, "%.*s", nicklen, nick);
+   snprintf(tmp_nick, NICKLEN + 1, "%.*s", (int)nicklen, nick);
 
    Log(LOG_INFO, "irc", "[%s] * %s joined %s", network, tmp_nick, mp->argv[1]);
 //   ui_print(tw,
@@ -55,7 +60,7 @@ bool irc_builtin_join_cb(rrconn_t *cptr, irc_message_t *mp) {
 
    // XXX: We need to embed this into the parser, so unknown commands will pass
    // through too...
-   event_emit("irc.join", cptr, mp);
+   irc_emit_message("irc.join", cptr, mp);
 
    // XXX: We need to attach the channel to the server instead of the
    // connection?
@@ -64,6 +69,9 @@ bool irc_builtin_join_cb(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_notice_cb(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 3) {
+      return true;
+   }
    char *nick = mp->prefix;
 
    if (!nick) {
@@ -71,32 +79,21 @@ bool irc_builtin_notice_cb(rrconn_t *cptr, irc_message_t *mp) {
    }
    char *nick_end = strchr(nick, '!');
    char tmp_nick[NICKLEN + 1];
-   char *network = cptr->server->network;
-   size_t nicklen = (nick_end - nick);
-
-   if (nicklen <= 0) {
-      return true;
-   }
-   memset(tmp_nick, 0, NICKLEN + 1);
-   snprintf(tmp_nick, NICKLEN + 1, "%.*s", nicklen, nick);
-
-   char *win_title = tmp_nick;
-   // Is this a query or channel message?
-   bool is_private = true;
-
-   if (*mp->argv[1] == '&' || *mp->argv[1] == '#') {
-      is_private = false;
-      win_title = mp->argv[1];
-   }
-   Log(LOG_INFO, "irc", "*notice* %s <%s> %s", irc_name(cptr), mp->argv[1], tmp_nick, mp->argv[2]);
+   size_t nicklen = nick_end ? (size_t)(nick_end - nick) : strlen(nick);
+   snprintf(tmp_nick, sizeof(tmp_nick), "%.*s", (int)nicklen, nick);
+   Log(LOG_INFO, "irc", "*notice* %s <%s> %s: %s", irc_name(cptr), mp->argv[1], tmp_nick, mp->argv[2]);
 //   ui_print("status", "[%s] *%s* <%s> %s", network, mp->argv[1], tmp_nick,
 //      mp->argv[2]);
-   event_emit("irc.notice", cptr, mp);
+   irc_emit_message("irc.notice", cptr, mp);
 
    return false;
 }
 
 bool irc_builtin_part_cb(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 2) {
+      return true;
+   }
+
    if (!cptr) {
       Log(LOG_CRIT, "irc", "%s: No cptr given", __FUNCTION__);
 
@@ -114,14 +111,14 @@ bool irc_builtin_part_cb(rrconn_t *cptr, irc_message_t *mp) {
       0
    };
 
-   if (nick_end) {
-      size_t nicklen = nick_end - mp->prefix;
+   {
+      size_t nicklen = nick_end ? (size_t)(nick_end - mp->prefix) : strlen(mp->prefix);
 
       if (nicklen > 0 && nicklen < sizeof(tmp_nick) ) {
          snprintf(tmp_nick, sizeof(tmp_nick), "%.*s", (int)nicklen, mp->prefix);
       }
    }
-   char *network = cptr->server->network;
+   const char *network = irc_name(cptr);
    Log(LOG_INFO, "irc", "[%s] * %s left %s", network, tmp_nick, win_title);
 
    if (strcmp(cptr->nick, tmp_nick) == 0) {
@@ -136,12 +133,15 @@ bool irc_builtin_part_cb(rrconn_t *cptr, irc_message_t *mp) {
 // {bright-magenta}%s{reset}",
 //         get_chat_ts(0), network, tmp_nick, win_title);
    }
-   event_emit("irc.part", cptr, mp);
+   irc_emit_message("irc.part", cptr, mp);
 
    return false;
 }
 
 bool irc_builtin_ping_cb(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 2) {
+      return true;
+   }
    // pull out the message argument from argv[2]
    const char *data = mp->argv[1];
 
@@ -154,19 +154,25 @@ bool irc_builtin_ping_cb(rrconn_t *cptr, irc_message_t *mp) {
    } else {
       Log(LOG_CRIT, "irc.parser", "[%s] Empty ping from cptr:<%p>", irc_name(cptr), cptr);
    }
-   event_emit("irc.ping", cptr, mp);
+   irc_emit_message("irc.ping", cptr, mp);
 
    return false;
 }
 
 bool irc_builtin_pong_cb(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 2) {
+      return true;
+   }
    Log(LOG_CRAZY, "irc", "[%s] Got PONG from server: |%s|", irc_name(cptr), (mp->argv[1] ? mp->argv[1] : "(null)") );
-   event_emit("irc.pong", cptr, mp);
+   irc_emit_message("irc.pong", cptr, mp);
 
    return false;
 }
 
 bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 3) {
+      return true;
+   }
    char *nick = mp->prefix;
 
    if (!nick) {
@@ -174,47 +180,37 @@ bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
    }
    char *nick_end = strchr(nick, '!');
    char tmp_nick[NICKLEN + 1];
-   char *network = cptr->server->network;
-   size_t nicklen = (nick_end - nick);
+   const char *network = irc_name(cptr);
+   size_t nicklen = nick_end ? (size_t)(nick_end - nick) : strlen(nick);
 
    memset(tmp_nick, 0, NICKLEN + 1);
-   snprintf(tmp_nick, NICKLEN + 1, "%.*s", nicklen, nick);
+   snprintf(tmp_nick, NICKLEN + 1, "%.*s", (int)nicklen, nick);
 
    char *win_title = tmp_nick;
    // Is this a query or channel message?
-   bool is_private = true;
 
    if (*mp->argv[1] == '&' || *mp->argv[1] == '#') {
-      is_private = false;
       win_title = mp->argv[1];
    }
 
    if (*mp->argv[2] == '\001') {
       // CTCP parser
       // - Command
-      char cmd[64];
-      memset(cmd, 0, 64);
-      char *scp = mp->argv[2] + 1;
-      char *ecp = strchr(scp, ' ');
-      size_t ecl = strlen(scp);
+      char payload[IRC_MSGLEN];
+      size_t length = strlen(mp->argv[2]);
 
-      if (!ecp) {
-         ecp = scp + ecl;
+      if (length < 2 || mp->argv[2][length - 1] != '\001') {
+         return true;
       }
-      *ecp = '\0';
-      snprintf(cmd, 64, "%.*s", (ecp - scp), scp);
+      memcpy(payload, mp->argv[2] + 1, length - 2);
+      payload[length - 2] = '\0';
+      char *cmd = payload;
+      char *data = strchr(payload, ' ');
 
-      // data
-      char *sdp = ecp + 1;
-      size_t edl = strlen(sdp);
-      char *edp = sdp + edl;
-      char *data = sdp;
-
-      if (edl > 0) {
-         // Remove the CTCP \001 ending
-         *edp = '\0';
+      if (data) {
+         *data++ = '\0';
       } else {
-         edp = NULL;
+         data = payload + length - 2;
       }
 
       // CTCP handling
@@ -246,19 +242,22 @@ bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
          irc_send(cptr, "NOTICE %s :\001VERSION rustyrig %s\001", tmp_nick, VERSION);
       }
       // CTCP handler needs to remove the \001 characters internally!
-      event_emit("irc.ctcp", cptr, mp);
+      irc_emit_message("irc.ctcp", cptr, mp);
    } else {
       // Normal messages
 //      ui_print("status", "%s {bright-yellow}***
 // PRIVMSG{reset} from {bright-cyan}%s{reset} msg: %s {bright-yellow}***{reset}
 // ", get_chat_ts(0), tmp_nick, mp->argv[2]);
-      event_emit("irc.privmsg", cptr, mp);
+      irc_emit_message("irc.privmsg", cptr, mp);
    }
 
    return false;
 }
 
 bool irc_builtin_quit_cb(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 1) {
+      return true;
+   }
    char *nick = mp->prefix;
 
    if (!nick) {
@@ -266,17 +265,17 @@ bool irc_builtin_quit_cb(rrconn_t *cptr, irc_message_t *mp) {
    }
    char *nick_end = strchr(nick, '!');
    char tmp_nick[NICKLEN + 1];
-   size_t nicklen = (nick_end - nick);
+   size_t nicklen = nick_end ? (size_t)(nick_end - nick) : strlen(nick);
 
    if (nicklen <= 0) {
       return true;
    }
    memset(tmp_nick, 0, NICKLEN + 1);
-   snprintf(tmp_nick, NICKLEN + 1, "%.*s", nicklen, nick);
+   snprintf(tmp_nick, NICKLEN + 1, "%.*s", (int)nicklen, nick);
 
-   char *network = cptr->server->network;
+   const char *network = irc_name(cptr);
    Log(LOG_INFO, "irc", "[%s] * %s has QUIT: \"%s\"", network, tmp_nick, (mp->argv[1] ? mp->argv[1] : "No reason given.") );
-   event_emit("irc.quit", cptr, mp);
+   irc_emit_message("irc.quit", cptr, mp);
 
    // XXX: This needs to show a notice in all common channels instead of just
    // status
@@ -294,29 +293,21 @@ bool irc_builtin_quit_cb(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_topic_cb(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 3) {
+      return true;
+   }
    char *nick = mp->prefix;
 
    if (!nick) {
       return true;
    }
-   char *network = cptr->server->network;
-   char *chan = mp->argv[1];
-   char *topic = mp->argv[2];
-
-   char *nick_end = strchr(nick, '!');
-   char tmp_nick[NICKLEN + 1];
-   size_t nicklen = (nick_end - nick);
-
-   memset(tmp_nick, 0, NICKLEN + 1);
-   snprintf(tmp_nick, NICKLEN + 1, "%.*s", nicklen, nick);
-
    // rrclient updates the window status line via the irc.topic event
-   event_emit("irc.topic", cptr, mp);
+   irc_emit_message("irc.topic", cptr, mp);
 
    return false;
 }
 
-const irc_command_t irc_commands[] = {
+const rr_irc_command_t irc_commands[] = {
    {
       .name = "ERROR", .desc = "ERROR response", .event_key = "irc.error",
       .cb = irc_builtin_error_cb

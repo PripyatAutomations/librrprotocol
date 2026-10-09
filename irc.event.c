@@ -1,54 +1,25 @@
 #include <librustyaxe/core.h>
-#include <librustyaxe/irc.struct.h>
-#include <librustyaxe/irc.parser.h>
+#include <librrprotocol/irc.h>
 
-typedef struct rusty_client {
-   int sock_fd;          //      // Socket file descriptor
-#if     defined(USE_MONGOOSE)
-   struct mg_connection *mg_conn;  // Store socket or mongoose connection
-#endif
-} client_t;
-
-// return false if success, true if error
-bool irc_socket_ready(client_t *cptr, const char *msg_data, size_t msg_len) {
-   return false;
-}
-
-// return false if success, true if error
-bool irc_socket_closed(client_t *cptr, const char *msg_data, size_t msg_len) {
-   return false;
-}
-
-// return false if success, true if error
-bool irc_socket_connected(client_t *cptr, const char *msg_data, size_t msg_len) {
-   return false;
-}
-rusty_module_hook_t proto_irc_hooks[] = {
-   {
-      "socket.closed", CB_MSG, &irc_socket_closed, NULL
-   },
-   {
-      "socket.connected", CB_MSG, &irc_socket_connected, NULL
-   },
-   {
-      "socket.ready", CB_MSG, &irc_socket_ready, NULL
+void irc_emit_message(const char *event, rrconn_t *cptr, const irc_message_t *mp) {
+   if (!event || !mp || mp->argc < 1 || !mp->argv) {
+      return;
    }
-};
+   dict *d = dict_new();
 
-// Module file header
-typedef struct rusty_module_header {
-   // Module API version
-   unsigned int mod_api_ver;
-   char                 *mod_author;
-   char                 *mod_copyright;
-   char                 *mod_ver;
-   rusty_module_hook_t  *static_hooks[];
-} rusty_module_header_t;
+   if (!d) {
+      return;
+   }
+   dict_add(d, "msg.cmd", mp->argv[0]);
+   dict_add(d, "msg.prefix", mp->prefix ? mp->prefix : "");
+   dict_add_int(d, "msg.argc", mp->argc);
 
-rusty_module_header_t mod_proto_irc = {
-   .mod_api_ver = RUSTY_MODULE_API_VER,
-   .mod_author = "rustyaxe <rustyaxe@istabpeople.com>",
-   .mod_copyright = "Copyright 2025 rustyaxe. Released under MIT license",
-   .mod_ver = VERSION,
-   .static_hooks = proto_irc_hooks
-};
+   for (int i = 0 ; i < mp->argc ; i++) {
+      char key[32];
+      snprintf(key, sizeof(key), "msg.arg%d", i);
+      dict_add(d, key, mp->argv[i]);
+   }
+
+   event_emit_dict(event, cptr, d);
+   dict_free(d);
+}

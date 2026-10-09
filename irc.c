@@ -20,12 +20,28 @@
 #include <errno.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librrprotocol/irc.h>
+#include <poll.h>
+
+static void irc_close_connection(rrconn_t *cptr) {
+   if (cptr->fd < 0) {
+      return;
+   }
+   close(cptr->fd);
+   cptr->fd = -1;
+   cptr->connected = 0;
+   cptr->authenticated = false;
+   cptr->sent_login = false;
+   cptr->sendq[0] = cptr->recvq[0] = '\0';
+   event_emit("irc.disconnected", cptr, "");
+}
 
 bool irc_init(void) {
-   // XXX: These need to go into the irc_init() or
-   // irc_client_init/irc_server_init functions as appropriate!
-   irc_register_default_callbacks();
-   irc_register_default_numeric_callbacks();
+   if (!irc_register_default_callbacks() || !irc_register_default_numeric_callbacks()) {
+      irc_shutdown();
+
+      return true;
+   }
 
    return false;
 }
@@ -56,7 +72,7 @@ dict *irc_generate_vars(rrconn_t *cptr, const char *chan) {
 
 // Send as much of this user's sendq as we can
 static void irc_try_send(rrconn_t *cptr) {
-   if (!cptr || cptr->fd <= 0) {
+   if (!cptr || cptr->fd < 0) {
       return;
    }
    size_t len = 0;
@@ -71,46 +87,36 @@ static void irc_try_send(rrconn_t *cptr) {
    if (len == 0) {
       return;
    }
-   ssize_t n = send(cptr->fd, cptr->sendq, len, 0);
-   Log(LOG_CRIT, "irc", "send(%d) to cptr:<%p>: %d bytes: %.*s", cptr->fd, cptr, (int)n, (int)len, cptr->sendq);
+   ssize_t n = send(cptr->fd, cptr->sendq, len, MSG_DONTWAIT | MSG_NOSIGNAL);
 
    if (n < 0) {
-      if (errno != EAGAIN && errno != EWOULDBLOCK) {
+      if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
          Log(LOG_CRIT, "irc", "send failed: %s", strerror(errno) );
-         close(cptr->fd);
-         cptr->connected = false;
+         irc_close_connection(cptr);
       }
 
       return;
    }
 
-   if ( (size_t)n < len) {
-      // partial send, move remaining to front
-      memmove(cptr->sendq, cptr->sendq + n, len - n);
-      cptr->sendq[len - n] = '\0';
-   } else {
-      // full send, move any leftover queued messages
-      size_t remaining = strlen(cptr->sendq + len);
+   size_t queued = strlen(cptr->sendq);
+   memmove(cptr->sendq, cptr->sendq + n, queued - (size_t)n + 1);
 
-      if (remaining > 0) {
-         memmove(cptr->sendq, cptr->sendq + len, remaining + 1);
-      } else {
-         cptr->sendq[0] = '\0';
-      }
-   }
 }
 
 bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
-   if (!cptr || !fmt || cptr->fd <= 0) {
+   if (!cptr || !fmt || cptr->fd < 0) {
       return false;
    }
    char msg[IRC_MSGLEN];
    va_list ap;
    va_start(ap, fmt);
-   vsnprintf(msg, sizeof(msg), fmt, ap);
+   int written = vsnprintf(msg, sizeof(msg), fmt, ap);
    va_end(ap);
 
-   size_t msglen = strlen(msg);
+   if (written < 0 || written > IRC_MSGLEN - 2 || strchr(msg, '\r') || strchr(msg, '\n')) {
+      return false;
+   }
+   size_t msglen = (size_t)written;
 
    if (msglen + 2 + strlen(cptr->sendq) >= SENDQLEN) {
       Log(LOG_WARN, "irc", "sendq full, dropping message");
@@ -126,13 +132,15 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
    cptr->sendq[cur_len] = '\0';
 
    // attempt to send immediately
-   irc_try_send(cptr);
+   if (cptr->connected) {
+      irc_try_send(cptr);
+   }
 
    // NB: Any leftover data in the sendq will be flushed by the periodic
    // timer / poll loop calling irc_try_send() again, since we don't have
    // an event loop to watch for writability anymore.
 
-   return true;
+   return cptr->fd >= 0;
 }
 
 /*
@@ -140,17 +148,57 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
  * periodic timer (formerly a libev ev_io callback).
  */
 void irc_io_poll(rrconn_t *cptr) {
-   if (!cptr || cptr->fd <= 0 || !cptr->connected) {
+   if (!cptr || cptr->fd < 0 || !cptr->server) {
       return;
+   }
+
+   if (!cptr->connected) {
+      struct pollfd socket_poll = {
+         .fd = cptr->fd, .events = POLLOUT
+      };
+      int ready = poll(&socket_poll, 1, 0);
+
+      if (ready <= 0) {
+         return;
+      }
+      int error = 0;
+      socklen_t length = sizeof(error);
+
+      if (getsockopt(cptr->fd, SOL_SOCKET, SO_ERROR, &error, &length) < 0 || error) {
+         irc_close_connection(cptr);
+
+         return;
+      }
+      cptr->connected = now;
+   }
+
+   if (!cptr->sent_login) {
+      bool sent = true;
+
+      if (cptr->server->pass[0]) {
+         if (cptr->server->account[0]) {
+            sent = irc_send(cptr, "PASS %s:%s", cptr->server->account, cptr->server->pass);
+         } else {
+            sent = irc_send(cptr, "PASS %s", cptr->server->pass);
+         }
+      }
+      const char *ident = cptr->server->ident[0] ? cptr->server->ident : cptr->nick;
+      sent = sent && irc_send(cptr, "NICK %s", cptr->nick) &&
+         irc_send(cptr, "USER %s 0 * :%s", ident, cptr->nick);
+
+      if (!sent || cptr->fd < 0) {
+         irc_close_connection(cptr);
+
+         return;
+      }
+      cptr->sent_login = true;
    }
 
    char buf[IRC_MSGLEN];
    ssize_t n = recv(cptr->fd, buf, sizeof(buf) - 1, MSG_DONTWAIT);
 
    if (n == 0) {
-      close(cptr->fd);
-      cptr->fd = -1;
-      cptr->connected = false;
+      irc_close_connection(cptr);
 
       return;
    }
@@ -158,9 +206,7 @@ void irc_io_poll(rrconn_t *cptr) {
    if (n < 0) {
       if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
          Log(LOG_CRIT, "irc", "recv failed: %s", strerror(errno) );
-         close(cptr->fd);
-         cptr->fd = -1;
-         cptr->connected = false;
+         irc_close_connection(cptr);
       }
       // fallthrough: flush any pending sendq
       irc_try_send(cptr);
@@ -174,9 +220,16 @@ void irc_io_poll(rrconn_t *cptr) {
    size_t cur_len = strlen(cptr->recvq);
 
    if (cur_len + n >= RECVQLEN) {
-      Log(LOG_WARN, "irc", "recvq overflow, resetting");
-      cptr->recvq[0] = '\0';
-      cur_len = 0;
+      Log(LOG_WARN, "irc", "recvq overflow, closing connection");
+      irc_close_connection(cptr);
+
+      return;
+   }
+
+   if (memchr(buf, '\0', (size_t)n)) {
+      irc_close_connection(cptr);
+
+      return;
    }
    memcpy(cptr->recvq + cur_len, buf, n);
    cur_len += n;
@@ -186,28 +239,30 @@ void irc_io_poll(rrconn_t *cptr) {
    char *start = cptr->recvq;
    char *end;
    while ( (end = strstr(start, "\r\n") ) ) {
+      if ((size_t)(end - start) > IRC_MSGLEN - 2) {
+         irc_close_connection(cptr);
+
+         return;
+      }
       *end = '\0';
       Log(LOG_DEBUG, "net", "processing line: [%s]", start);
+      cptr->last_heard = now;
       irc_process_message(cptr, start);
 
-      // send login on first server message
-      if (!cptr->sent_login) {
-         if (cptr->server->pass[0]) {
-            if (cptr->server->account[0]) {
-               irc_send(cptr, "PASS %s:%s", cptr->server->account, cptr->server->pass);
-            } else {
-               irc_send(cptr, "PASS %s", cptr->server->pass);
-            }
-         }
-         irc_send(cptr, "NICK %s", cptr->nick);
-         const char *ident = cptr->server->ident[0] ? cptr->server->ident : cptr->nick;
-         irc_send(cptr, "USER %s 0 * :%s", ident, cptr->nick);
-         cptr->sent_login = true;
+      if (cptr->fd < 0) {
+         return;
       }
+
       start = end + 2;
    }
    // move leftover partial line to front
    size_t leftover = strlen(start);
+
+   if (leftover > IRC_MSGLEN - 1) {
+      irc_close_connection(cptr);
+
+      return;
+   }
    memmove(cptr->recvq, start, leftover + 1);
 
    // flush any pending sendq data

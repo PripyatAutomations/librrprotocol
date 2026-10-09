@@ -14,11 +14,14 @@
 #include <stdbool.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librrprotocol/irc.h>
 
-const char *site_id = "RPLYWVCL31";
-const char *rig_id = "ft891";
 
 bool irc_builtin_num_print(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 2) {
+      return true;
+   }
+
    if (!mp || mp->argc <= 3) {
       return false;
    }
@@ -43,19 +46,27 @@ bool irc_builtin_num_print(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num001(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 3) {
+      return true;
+   }
    Log(LOG_DEBUG, "irc", "[%s] *** %s ***", irc_name(cptr), mp->argv[2]);
 //   ui_print("status", "%s [{green}%s{reset}] *** %s ***", get_chat_ts(0),
 //      irc_name(cptr), mp->argv[2]);
-   cptr->connected = true;
+   snprintf(cptr->nick, sizeof(cptr->nick), "%s", mp->argv[1]);
+   cptr->authenticated = true;
    // rrclient updates its UI via the irc.connected event
-   event_emit("irc.connected", cptr, mp);
+   irc_emit_message("irc.connected", cptr, mp);
 
    irc_send(cptr, "MODE %s +ix", cptr->nick);
 
    // Handle autojoin if configured
    // Per Server:
-   if (*cptr->server->autojoin) {
+   if (cptr->server && *cptr->server->autojoin) {
       char *aj = strdup(cptr->server->autojoin);   // safe copy to modify
+
+      if (!aj) {
+         return true;
+      }
       char *tok, *saveptr = NULL;
 
       for (tok = strtok_r(aj, ",", &saveptr) ; tok ; tok = strtok_r(NULL, ",", &saveptr) ) {
@@ -75,12 +86,16 @@ bool irc_builtin_num001(rrconn_t *cptr, irc_message_t *mp) {
    // Per network
    char key[256];
    memset(key, 0, 256);
-   snprintf(key, 256, "network.%s.autojoin", cptr->server->network);
+   snprintf(key, 256, "network.%s.autojoin", irc_name(cptr));
 
    const char *net_aj = cfg_get_exp(key);
 
    if (net_aj && *net_aj) {
       char *aj = strdup(net_aj);   // safe copy to modify
+
+      if (!aj) {
+         return true;
+      }
       char *tok, *saveptr = NULL;
 
       for (tok = strtok_r(aj, ",", &saveptr) ; tok ; tok = strtok_r(NULL, ",", &saveptr) ) {
@@ -109,12 +124,15 @@ bool irc_builtin_num001(rrconn_t *cptr, irc_message_t *mp) {
 //      "%s {bright-cyan}>>>{reset} Attached to rig {bright-cyan}%s.%s{reset}
 // via {bright-magenta}IRC{reset} transport [{green}%s{reset}]
 // {bright-cyan}<<<{reset}",
-//      get_chat_ts(0), site_id, rig_id, cptr->server->network);
+//      get_chat_ts(0), site_id, rig_id, irc_name(cptr));
 
    return false;
 }
 
 bool irc_builtin_num004(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 3) {
+      return true;
+   }
    Log(LOG_DEBUG, "irc", "[%s] *** %s ***", irc_name(cptr), mp->argv[2]);
 //   ui_print("status", "%s [{green}%s{reset}] *** %s ***", get_chat_ts(0),
 //      irc_name(cptr), mp->argv[2]);
@@ -123,6 +141,10 @@ bool irc_builtin_num004(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num005(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 2) {
+      return true;
+   }
+
    if (!mp || mp->argc <= 3) {
       return false;
    }
@@ -147,13 +169,13 @@ bool irc_builtin_num005(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num251(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 3) {
+      return true;
+   }
+
    if (!mp || mp->argc <= 0) {
       return true;
    }
-   char *nick = mp->argv[2];
-   char *server = mp->argv[3];
-   char *info = mp->argv[4];
-
    char buf[1024];
    size_t pos = 0;
 
@@ -174,6 +196,10 @@ bool irc_builtin_num251(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num311(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 7) {
+      return true;
+   }
+
    if (!mp || mp->argc < 7) {
       return true;
    }
@@ -190,6 +216,10 @@ bool irc_builtin_num311(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num312(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 5) {
+      return true;
+   }
+
    if (!mp || mp->argc <= 0) {
       return true;
    }
@@ -218,6 +248,10 @@ bool irc_builtin_num312(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num313(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 1) {
+      return true;
+   }
+
    if (!mp || mp->argc <= 0) {
       return false;
    }
@@ -242,6 +276,10 @@ bool irc_builtin_num313(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num317(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 5) {
+      return true;
+   }
+
    if (!mp || mp->argc < 4) {
       return false;
    }
@@ -266,6 +304,10 @@ bool irc_builtin_num317(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num318(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 2) {
+      return true;
+   }
+
    if (!mp || mp->argc < 1) {
       return false;
    }
@@ -279,6 +321,10 @@ bool irc_builtin_num318(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num319(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 3) {
+      return true;
+   }
+
    if (!mp || mp->argc < 2) {
       return false;
    }
@@ -305,13 +351,13 @@ bool irc_builtin_num319(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num332(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 4) {
+      return true;
+   }
+
    if (!mp || mp->argc <= 0) {
       return true;
    }
-   char *nick = mp->argv[1];
-   char *chan = mp->argv[2];
-   char *topic = mp->argv[3];
-
    char buf[1024];
    size_t pos = 0;
 
@@ -328,12 +374,16 @@ bool irc_builtin_num332(rrconn_t *cptr, irc_message_t *mp) {
 // arg1: %s arg2: %s arg3 %s", mp->prefix, mp->argc, mp->argv[0], mp->argv[1],
 // mp->argv[2], mp->argv[3]);
    // rrclient updates the window status line via the irc.topic event
-   event_emit("irc.topic", cptr, mp);
+   irc_emit_message("irc.topic", cptr, mp);
 
    return false;
 }
 
 bool irc_builtin_num353(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 4) {
+      return true;
+   }
+
    if (!mp || mp->argc <= 3) {
       return false;
    }
@@ -358,6 +408,10 @@ bool irc_builtin_num353(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num366(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 3) {
+      return true;
+   }
+
    if (mp->argc < 3) {
       return true;
    }
@@ -382,6 +436,9 @@ bool irc_builtin_num366(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num371(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 1) {
+      return true;
+   }
    Log(LOG_DEBUG, "irc", "[%s] Start of MOTD", irc_name(cptr) );
 //   ui_print( "status", "%s [{green}%s{reset}] *** Start of MOTD ***",
 //      get_chat_ts(0), irc_name(cptr) );
@@ -390,6 +447,10 @@ bool irc_builtin_num371(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num372(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 3) {
+      return true;
+   }
+
    if (mp->argc < 2) {
       return true;
    }
@@ -401,6 +462,9 @@ bool irc_builtin_num372(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num376(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 1) {
+      return true;
+   }
    Log(LOG_DEBUG, "irc", "[%s] End of MOTD", irc_name(cptr) );
 //   ui_print( "status", "%s [{green}%s{reset}] *** End of MOTD ***",
 //      get_chat_ts(0), irc_name(cptr) );
@@ -409,6 +473,10 @@ bool irc_builtin_num376(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num401(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 3) {
+      return true;
+   }
+
    if (mp->argc < 2) {
       return true;
    }
@@ -422,6 +490,10 @@ bool irc_builtin_num401(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num403(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 3) {
+      return true;
+   }
+
    if (mp->argc < 2) {
       return true;
    }
@@ -435,6 +507,10 @@ bool irc_builtin_num403(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num421(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 3) {
+      return true;
+   }
+
    if (!mp || mp->argc < 2) {
       return false;
    }
@@ -459,6 +535,10 @@ bool irc_builtin_num421(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num433(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 3) {
+      return true;
+   }
+
    if (mp->argc < 2) {
       return true;
    }
@@ -472,6 +552,10 @@ bool irc_builtin_num433(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num461(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 3) {
+      return true;
+   }
+
    if (mp->argc < 2) {
       return true;
    }
@@ -485,6 +569,10 @@ bool irc_builtin_num461(rrconn_t *cptr, irc_message_t *mp) {
 }
 
 bool irc_builtin_num482(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 3) {
+      return true;
+   }
+
    if (!mp || mp->argc < 2) {
       return false;
    }
@@ -510,7 +598,7 @@ bool irc_builtin_num482(rrconn_t *cptr, irc_message_t *mp) {
    return false;
 }
 
-const irc_numeric_t irc_numerics[] = {
+const rr_irc_numeric_t irc_numerics[] = {
    // --- Connection / welcome ---
    {
       .code = 1, .name = "RPL_WELCOME", .desc = "Welcome to the Internet Relay Network",

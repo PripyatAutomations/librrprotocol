@@ -22,7 +22,8 @@
 #include <librrprotocol/rrprotocol.h>
 
 rrconn_t *irc_cli_connect(server_cfg_t *srv) {
-   if (!srv) {
+   // TLS requires a transport backend; never silently send credentials in plaintext.
+   if (!srv || !srv->host[0] || srv->port < 1 || srv->port > 65535 || srv->tls) {
       return NULL;
    }
    rrconn_t *cptr = calloc(1, sizeof(*cptr) );
@@ -58,6 +59,7 @@ rrconn_t *irc_cli_connect(server_cfg_t *srv) {
          continue;
       }
       int flags = fcntl(fd, F_GETFL);
+
       if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
          Log(LOG_WARN, "irc.net", "Unable to make socket nonblocking: %s", strerror(errno));
          close(fd);
@@ -69,7 +71,7 @@ rrconn_t *irc_cli_connect(server_cfg_t *srv) {
       Log(LOG_DEBUG, "irc.net", "connect(fd=%d) rc=%d errno=%d", fd, rc, errno);
 
       if (rc == 0) {
-         cptr->connected = true;
+         cptr->connected = now;
          break;
       } else if (errno == EINPROGRESS) {
          cptr->connected = false;

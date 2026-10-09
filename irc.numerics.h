@@ -10,6 +10,8 @@
 #if     !defined(__irc_numeric_h)
 #define __irc_numeric_h
 
-extern const irc_numeric_t irc_numerics[];
+#include <librrprotocol/irc.types.h>
+
+extern const rr_irc_numeric_t irc_numerics[];
 
 #endif /* !defined(__irc_numeric_h) */

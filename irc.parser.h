@@ -18,6 +18,8 @@
 #include <librustyaxe/json.h>
 #include <librustyaxe/list.h>
 
+#include <librrprotocol/irc.types.h>
+
 // Parse the irc message into tokens
 extern irc_message_t *irc_parse_message(const char *msg);
 
@@ -27,11 +29,11 @@ extern bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp);
 // Handle an IRC message (parse and dispatch)
 extern bool irc_process_message(rrconn_t *cptr, const char *msg);
 
-// Add a callback to the list
-extern bool irc_register_callback(irc_callback_t *cb);
+// Borrow a wire callback (false on success); duplicate registration is harmless.
+extern bool irc_register_callback(rr_irc_callback_t *cb);
 
-// Remove a callback from the list
-extern bool irc_remove_callback(irc_callback_t *cb);
+// Unlink a borrowed callback (false on success); caller retains its storage.
+extern bool irc_remove_callback(rr_irc_callback_t *cb);
 
 extern bool irc_register_default_callbacks(void);
 extern bool irc_register_default_numeric_callbacks(void);

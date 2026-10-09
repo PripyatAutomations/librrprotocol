@@ -10,6 +10,7 @@
 
 #include <librustyaxe/list.h>
 #include <librustyaxe/struct.h>
+#include <librrprotocol/irc.types.h>
 // CAPABilities crud
 #include <librrprotocol/irc.capab.h>
 
@@ -31,6 +32,11 @@
 #include <librrprotocol/irc.channel.h>
 
 extern bool irc_init(void);
+extern void irc_shutdown(void);
+extern void irc_io_poll(rrconn_t *cptr);
+extern void irc_message_free(irc_message_t *mp);
+/* Events contain JSON: msg.cmd, msg.prefix, msg.argc, msg.arg0 ... . */
+extern void irc_emit_message(const char *event, rrconn_t *cptr, const irc_message_t *mp);
 extern bool irc_send(rrconn_t *cptr, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 
 static inline char *irc_name(rrconn_t *cptr) {
@@ -42,7 +48,7 @@ static inline char *irc_name(rrconn_t *cptr) {
       return cptr->hostname;
    }
 
-   return NULL;
+   return "irc";
 }
 
 #endif // !defined(__librrprotocol_irc_h)
