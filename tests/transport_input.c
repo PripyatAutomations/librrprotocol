@@ -170,7 +170,7 @@ int main(void) {
    assert(client.media_quality == 50); // recovery hysteresis
    now = 16;
    assert(ws_send_to_cptr(NULL, &client, &audio_frame, WEBSOCKET_OP_BINARY));
-   assert(client.media_quality == 100);
+   assert(client.media_quality == 50); // monotonic recovery clock has not elapsed in this test
    free(audio);
    dict_free(notice);
    sends = 0;

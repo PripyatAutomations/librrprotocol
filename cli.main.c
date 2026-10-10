@@ -1,5 +1,7 @@
+#include <librrprotocol/traffic.h>
 #include <librrprotocol/wire.h>
 #include <librrprotocol/latency.h>
+#include <librrprotocol/media.health.h>
 //
 // rrgtk/cli.main.c: Client stuff
 //    This is part of rustyrig-fw.
@@ -338,6 +340,8 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          return;
       }
 
+      if ((wm->flags & 0x0F) == WEBSOCKET_OP_TEXT || (wm->flags & 0x0F) == WEBSOCKET_OP_BINARY)
+         rr_traffic_count(cptr, false, (wm->flags & 0x0F) == WEBSOCKET_OP_BINARY, wm->data.len);
       if ((wm->flags & 0x0F) == WEBSOCKET_OP_BINARY) {
          // Binary (audio, waterfall, etc) frames
          ws_binframe_process_client(cptr, wm->data.buf, wm->data.len);
@@ -488,7 +492,7 @@ void ws_fini(struct mg_mgr *mgr) {
 }
 
 // Send to a specific, authenticated websocket session
-bool ws_send_to_cptr(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_data, int data_type) {
+static bool ws_send_frame(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_data, int data_type, bool setup) {
    if (!cptr || !cptr->conn || !msg_data || !msg_data->buf ||
       (data_type != WEBSOCKET_OP_TEXT && data_type != WEBSOCKET_OP_BINARY) ||
       (cptr->server && !cptr->is_ws) || cptr->conn->is_closing || cptr->conn->is_draining) {
@@ -502,12 +506,11 @@ bool ws_send_to_cptr(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_data, 
    bool realtime = data_type == WEBSOCKET_OP_BINARY && msg_data->len >= RR_BINFRAME_HDR_LEN &&
       !rr_binframe_parse((const uint8_t *)msg_data->buf, msg_data->len, &frame) &&
       (frame.hdr.subsystem == RR_BINFRAME_SUBSYS_AUDIO || frame.hdr.subsystem == RR_BINFRAME_SUBSYS_VIDEO);
-   size_t limit = realtime ? (frame.hdr.subsystem == RR_BINFRAME_SUBSYS_AUDIO ? 8192 : 262144) : 1048576;
+   size_t limit = realtime && !setup ? (frame.hdr.subsystem == RR_BINFRAME_SUBSYS_AUDIO ? 8192 : 262144) : 1048576;
    if (realtime) {
-      unsigned quality = c->send.len >= limit / 2 ? 50 : c->send.len >= limit / 4 ? 75 : 100;
-      unsigned previous = cptr->media_quality ? cptr->media_quality : 100;
-      if (quality < previous || now < cptr->media_quality_changed || now - cptr->media_quality_changed >= 5) {
-         cptr->media_quality = quality;
+      bool notify;
+      unsigned quality = rr_media_quality(cptr, &frame.hdr, c->send.len, limit, mono_us(), &notify);
+      if (notify) {
          cptr->media_quality_changed = now;
          dict *hint = dict_new();
          if (hint) {
@@ -538,7 +541,16 @@ bool ws_send_to_cptr(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_data, 
       Log(LOG_WARN, "ws", "Closing connection after incomplete frame enqueue");
       return false;
    }
+   rr_traffic_count(cptr, true, data_type == WEBSOCKET_OP_BINARY, msg_data->len);
    return true;
+}
+
+bool ws_send_to_cptr(rrconn_t *sender, rrconn_t *cptr, struct mg_str *data, int opcode) {
+   return ws_send_frame(sender, cptr, data, opcode, false);
+}
+
+bool ws_send_setup_to_cptr(rrconn_t *sender, rrconn_t *cptr, struct mg_str *data) {
+   return ws_send_frame(sender, cptr, data, WEBSOCKET_OP_BINARY, true);
 }
 
 // Send to all logged in instances of the user

@@ -1,3 +1,4 @@
+#include <librrprotocol/media.health.h>
 //
 // rrclient/ws.ping.c
 //    This is part of rustyrig-fw.
@@ -89,6 +90,8 @@ bool ws_handle_pong_msg(rrconn_t *cptr, dict *d) {
          rtt_ms = 0;
       }
       last_ping_rtt_ms = rtt_ms;
+      cptr->ping_rtt_ms = rtt_ms;
+      rr_media_rtt_sample(cptr, (uint64_t)rtt_ms * 1000);
       Log(LOG_CRAZY, "ws.pong", "Client-side RTT: %lldms", rtt_ms);
    }
 

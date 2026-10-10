@@ -63,7 +63,7 @@ struct rr_binframe_hdr {
    uint8_t stream;                       // sender-assigned stream id
    uint32_t seq;                         // wraps; big-endian on the wire
    uint32_t payload_len;                 // big-endian on the wire
-   uint64_t ts;                          // usec since epoch; 0 = unset
+   uint64_t ts;                          // sender monotonic usec; 0 = unset
 } __attribute__( (packed) );
 
 // Parsed view of a frame; data points into the caller's buffer

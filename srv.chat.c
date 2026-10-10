@@ -1797,7 +1797,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          dict_add_ulong(wi, "talk.last_heard", (unsigned long)acptr->last_heard);
          dict_add(wi, "talk.ua", acptr->user_agent ? acptr->user_agent : "unknown");
 
-         ws_send_dict(NULL, cptr, wi, WEBSOCKET_OP_TEXT);
+         event_emit_dict("protocol.whois", cptr, wi);
          dict_free(wi);
       } else if (strcasecmp(cmd, "die") == 0) {
          ws_chat_cmd_die(cptr, reason);

@@ -1,3 +1,5 @@
+#include <librrprotocol/traffic.h>
+#include <librrprotocol/media.health.h>
 #include <librrprotocol/wire.h>
 // librrprotocol/srv.http.c
 //    This is part of rustyrig-fw.
@@ -280,6 +282,7 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
       cptr->latency_ms = rtt > INT_MAX ? INT_MAX : (int)rtt;
       last_ping_rtt_ms = rtt;
       cptr->ping_rtt_ms = rtt;
+      rr_media_rtt_sample(cptr, rtt_us);
       Log(LOG_INFO, "ping", "RTT to user %s: %lld ms (%lld us) (global last_ping_rtt_ms=%lld)", cptr->chatname, rtt, rtt_us, last_ping_rtt_ms);
 
       // Let higher layers (audio/etc) track latency
@@ -533,6 +536,9 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
    // XXX: This should be moved to an option in config perhaps?
    Log(LOG_CRAZY, "http", "ws_handle WS message: %zu bytes", msg->data.len);
 #endif
+
+   if ((msg->flags & 0x0F) == WEBSOCKET_OP_TEXT || (msg->flags & 0x0F) == WEBSOCKET_OP_BINARY)
+      rr_traffic_count(cptr, false, (msg->flags & 0x0F) == WEBSOCKET_OP_BINARY, msg->data.len);
 
    // Binary (audio, waterfall) frames
    if ((msg->flags & 0x0F) == WEBSOCKET_OP_BINARY) {

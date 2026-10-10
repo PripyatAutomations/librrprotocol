@@ -133,6 +133,9 @@ static const rr_wire_field_t wire_fields_4[] = {
    {"media.ts", "ts"},
    {"media.vfo", "vfo"},
    {"media.vfo-uuid", "vfo-uuid"},
+   {"media.quality", "quality"},
+   {"media.late-us", "late-us"},
+   {"media.gaps", "gaps"},
 };
 static const rr_wire_field_t wire_fields_5[] = {
    {"msg.ts", "time"},
@@ -192,6 +195,19 @@ static const rr_wire_field_t wire_fields_6[] = {
    {"media.joined", "media-info.joined"},
    {"talk.msg", "text"},
    {"talk.msg_id", "msg_id"},
+   {"talk.usage.tx-text-bytes", "usage.tx-text-bytes"},
+   {"talk.usage.tx-text-frames", "usage.tx-text-frames"},
+   {"talk.usage.tx-binary-bytes", "usage.tx-binary-bytes"},
+   {"talk.usage.tx-binary-frames", "usage.tx-binary-frames"},
+   {"talk.usage.rx-text-bytes", "usage.rx-text-bytes"},
+   {"talk.usage.rx-text-frames", "usage.rx-text-frames"},
+   {"talk.usage.rx-binary-bytes", "usage.rx-binary-bytes"},
+   {"talk.usage.rx-binary-frames", "usage.rx-binary-frames"},
+   {"talk.usage.total-bytes", "usage.total-bytes"},
+   {"talk.usage.session-seconds", "usage.session-seconds"},
+   {"talk.usage.tx-seconds", "usage.tx-seconds"},
+   {"talk.usage.reset-at", "usage.reset-at"},
+   {"talk.usage.bandwidth-remaining", "usage.bandwidth-remaining"},
 };
 static const rr_wire_field_t wire_fields_7[] = {
    {"msg.ts", "time"},
@@ -294,6 +310,7 @@ static const rr_wire_rule_t wire_rules[] = {
    {"media.subscribed", "media", "media.cmd", "subscribed", wire_fields_4, sizeof(wire_fields_4) / sizeof(wire_fields_4[0])},
    {"media.unsubscribe", "media", "media.cmd", "unsubscribe", wire_fields_4, sizeof(wire_fields_4) / sizeof(wire_fields_4[0])},
    {"media.unsubscribed", "media", "media.cmd", "unsubscribed", wire_fields_4, sizeof(wire_fields_4) / sizeof(wire_fields_4[0])},
+   {"media.feedback", "media", "media.cmd", "feedback", wire_fields_4, sizeof(wire_fields_4) / sizeof(wire_fields_4[0])},
    {"serial.available", "serial", "serial.cmd", "available", wire_fields_5, sizeof(wire_fields_5) / sizeof(wire_fields_5[0])},
    {"serial.close", "serial", "serial.cmd", "close", wire_fields_5, sizeof(wire_fields_5) / sizeof(wire_fields_5[0])},
    {"serial.closed", "serial", "serial.cmd", "closed", wire_fields_5, sizeof(wire_fields_5) / sizeof(wire_fields_5[0])},

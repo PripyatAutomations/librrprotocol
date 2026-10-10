@@ -240,6 +240,7 @@ void http_remove_client(struct mg_connection *c) {
 
    while (current) {
       if (current->conn == c) {
+         event_emit("protocol.session.closed", current, NULL);
          // Found the client to remove, mark it dead
          mg_ws_send(c, NULL, 0, WEBSOCKET_OP_CLOSE);
          current->conn->is_closing = 1;

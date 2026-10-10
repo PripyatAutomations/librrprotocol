@@ -1,3 +1,4 @@
+#include <librrprotocol/media.health.h>
 //
 // librrprotocol/ws.mediachan.c: media channel registry, subscribe protocol
 //    This is part of rustyrig-fw.
@@ -521,8 +522,6 @@ void media_part_room(rrconn_t *cptr, const char *room) {
    }
 }
 
-// Per-channel central sequence number for fan-out frames (wraps)
-static uint32_t media_seq = 0;
 
 // Fan out one media payload to every connection subscribed to channel `cp`.
 // The server owns the wire header values (see doc/media-frames.md).
@@ -549,7 +548,7 @@ bool ws_media_broadcast_subscribed(struct rr_mediachan *cp, const uint8_t *paylo
    return ws_media_broadcast_subscribed_except(cp, NULL, payload, len, codec);
 }
 
-static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *target, rrconn_t *exclude, const uint8_t *payload, size_t len, const char codec[4]) {
+static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *target, rrconn_t *exclude, const uint8_t *payload, size_t len, const char codec[4], bool setup) {
    if (!cp || cp->uuid[0] == '\0' || !payload || len > RR_BINFRAME_MAX_PAYLOAD) {
       return true;
    }
@@ -563,7 +562,7 @@ static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *targ
       memcpy(codecbuf, cp->codec, 4);
    }
    uint8_t *frame = NULL;
-   int flen = rr_binframe_frame(&frame, cp->subsystem, codecbuf, cp->direction, cp->vfo, cp->rig, (uint8_t)(chan_id & 0xFF), ++media_seq, mono_us(), payload, len);
+   int flen = rr_binframe_frame(&frame, cp->subsystem, codecbuf, cp->direction, cp->vfo, cp->rig, (uint8_t)(chan_id & 0xFF), 0, mono_us(), payload, len);
 
    if (flen < 0) {
       return true;
@@ -577,8 +576,14 @@ static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *targ
          chan_id_in_array(cur->tx_channels, MAX_TX_CHANNELS, chan_id) ) ||
          (cp->direction == RR_BINFRAME_DIR_RX &&
          chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id) ) ) ) {
+         struct rr_binframe parsed;
+         rr_binframe_parse(frame, flen, &parsed);
+         uint32_t sequence = rr_media_next_sequence(cur, &parsed.hdr);
+         rr_binframe_pack_hdr(frame, flen, cp->subsystem, codecbuf, cp->direction, cp->vfo, cp->rig,
+            chan_id, sequence, len, parsed.hdr.ts);
          struct mg_str payload = {(char *)frame, flen};
-         ws_send_to_cptr(NULL, cur, &payload, WEBSOCKET_OP_BINARY);
+         if (setup) ws_send_setup_to_cptr(NULL, cur, &payload);
+         else ws_send_to_cptr(NULL, cur, &payload, WEBSOCKET_OP_BINARY);
       }
       cur = cur->next;
    }
@@ -587,11 +592,15 @@ static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *targ
 }
 
 bool ws_media_broadcast_subscribed_except(struct rr_mediachan *cp, rrconn_t *exclude, const uint8_t *payload, size_t len, const char codec[4]) {
-   return ws_media_send_frame_filtered(cp, NULL, exclude, payload, len, codec);
+   return ws_media_send_frame_filtered(cp, NULL, exclude, payload, len, codec, false);
 }
 
 bool ws_media_send_frame(struct rr_mediachan *cp, rrconn_t *cptr, const uint8_t *payload, size_t len, const char codec[4]) {
-   return ws_media_send_frame_filtered(cp, cptr, NULL, payload, len, codec);
+   return ws_media_send_frame_filtered(cp, cptr, NULL, payload, len, codec, false);
+}
+
+bool ws_media_send_setup_frame(struct rr_mediachan *cp, rrconn_t *cptr, const uint8_t *payload, size_t len, const char codec[4]) {
+   return ws_media_send_frame_filtered(cp, cptr, NULL, payload, len, codec, true);
 }
 
 bool media_source_authorized(rrconn_t *cptr) {
@@ -617,6 +626,17 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
    if (!media_cmd) {
       Log(LOG_DEBUG, "ws.media", "media message without media.cmd");
       return false;
+   }
+
+   if (!strcasecmp(media_cmd, "feedback")) {
+      long stream = dict_get_long(d, "media.stream", 0);
+      if (!cptr->authenticated || stream < 1 || stream > MAX_MEDIA_CHANNELS) return false;
+      struct rr_mediachan *channel = &media_channels[stream - 1];
+      if (!channel->uuid[0] || channel->subsystem != RR_BINFRAME_SUBSYS_AUDIO ||
+         channel->direction != RR_BINFRAME_DIR_RX || !chan_id_in_array(cptr->rx_channels, MAX_RX_CHANNELS, stream) ||
+         !media_client_in_channel_room(cptr, channel) ||
+         !rr_media_feedback(cptr, d, stream, channel->direction, channel->codec, mono_us())) return false;
+      return true;
    }
 
    if (strcasecmp(media_cmd, "capab") == 0) {

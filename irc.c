@@ -1,3 +1,4 @@
+#include <librrprotocol/traffic.h>
 //
 // irc.c
 //    This is part of rustyrig-fw.
@@ -137,7 +138,9 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
       msg[msglen++] = '\r';
       msg[msglen++] = '\n';
 
-      return mg_send(cptr->conn, msg, msglen);
+      bool sent = mg_send(cptr->conn, msg, msglen);
+      if (sent) rr_traffic_count(cptr, true, false, msglen);
+      return sent;
    }
 #endif
 
@@ -157,6 +160,7 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
    cptr->sendq[cur_len++] = '\r';
    cptr->sendq[cur_len++] = '\n';
    cptr->sendq[cur_len] = '\0';
+   rr_traffic_count(cptr, true, false, msglen + 2);
 
    // attempt to send immediately
    if (cptr->connected) {
@@ -304,6 +308,7 @@ void irc_receive(rrconn_t *cptr, const void *data, size_t n) {
       *end = '\0';
       Log(LOG_DEBUG, "net", "processing line: [%s]", start);
       cptr->last_heard = now;
+      rr_traffic_count(cptr, false, false, (size_t)(end + 2 - start));
       irc_process_message(cptr, start);
 
       if (cptr->fd < 0
