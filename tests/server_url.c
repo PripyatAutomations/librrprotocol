@@ -16,21 +16,28 @@ int main(void) {
    assert(url.transport == RR_TRANSPORT_IRCS && url.tls && url.irc && url.ipv6);
    assert(!strcmp(url.host, "::1") && url.port == 6697);
    assert(rr_server_url_parse("WSS://example.test:443", &url) && url.tls);
+   assert(rr_server_url_parse("irc://localhost", &url) && url.port == 6667);
+   assert(rr_server_url_parse("ircs://[::1]", &url) && url.port == 6697);
+   assert(rr_server_url_parse("ws://localhost/ws/", &url) && url.port == 8420);
+   assert(rr_server_url_parse("wss://localhost/", &url) && url.port == 4420);
    const char *invalid[] = {
-      "localhost:8420", "http://example.test:80", "ws://localhost/ws/",
-      "irc://localhost", "ircs://localhost:0", "ws://localhost:65536/ws/",
+      "localhost:8420", "http://example.test:80",
+      "ircs://localhost:0", "ws://localhost:65536/ws/",
       "ws://localhost:-1/ws/", "ws://localhost:8420x/ws/", "ws://:8420/ws/",
       "ws://user:pass@localhost:8420/ws/", "irc://localhost:6667/channel",
       "ws://localhost:8420/ws/#fragment", "ws://localhost:8420/\r\nQUIT",
-      "irc://::1:6667", "irc://[not-ipv6]:6667", "irc://[::1]",
+      "irc://::1:6667", "irc://[not-ipv6]:6667",
       "ws://localhost:99999999999999999999/ws/", "ws://local host:80/",
       "ws://localhost:80\\other", "ws://localhost:80?query", ""
    };
-   for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
+
+   for (size_t i = 0 ; i < sizeof(invalid) / sizeof(invalid[0]) ; i++) {
       assert(!rr_server_url_parse(invalid[i], &url));
    }
+
    assert(!rr_server_url_parse(NULL, &url));
    assert(!rr_server_url_parse("ws://localhost:80", NULL));
-   puts("PASS: explicit URL schemes/ports, TLS selection, IPv6 and malformed addresses");
+   puts("PASS: URL schemes, default/explicit ports, TLS selection, IPv6 and malformed addresses");
+
    return 0;
 }

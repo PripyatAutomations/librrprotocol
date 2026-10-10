@@ -49,6 +49,7 @@ bool ws_handle_alert_msg(rrconn_t *cptr, dict *d) {
       dict_add_ulong(d, "alert.ts", now);
    }
 
-   event_emit_dict("alert", NULL, d);
+   event_emit_dict("alert", cptr, d);
+
    return true;
 }

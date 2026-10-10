@@ -100,7 +100,7 @@ bool ws_handle_rigctl_cli_msg(rrconn_t *cptr, dict *d) {
          dict *tx_ev = dict_new();
          dict_add(tx_ev, "tx.user", (char *)cmd_user);
          dict_add_bool(tx_ev, "tx.state", cmd_ptt);
-         event_emit_dict("ptt.tx", NULL, tx_ev);
+         event_emit_dict("ptt.tx", cptr, tx_ev);
          dict_free(tx_ev);
       }
    } else {

@@ -22,7 +22,7 @@
 extern dict *cfg;
 extern time_t now;
 extern const char *server_name;
-extern char session_token[HTTP_TOKEN_LEN + 1];  // TODO: Move into the ws_conn structure
+extern char session_token[HTTP_TOKEN_LEN + 1];  // Compatibility view of the selected native connection
 
 bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
    bool rv = true;
@@ -47,7 +47,7 @@ bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
    const char *error = dict_get(d, "auth.error", NULL);
 
    if (error) {
-      event_emit_dict("auth.error", NULL, d);
+      event_emit_dict("auth.error", cptr, d);
       rv = true;
       goto cleanup;
    }
@@ -63,18 +63,21 @@ bool ws_handle_client_auth_msg(rrconn_t *cptr, dict *d) {
       time_t ts = dict_get_time_t(d, "auth.ts", now);
 
       if (token) {
+         snprintf(cptr->token, sizeof(cptr->token), "%s", token);
          memset(session_token, 0, HTTP_TOKEN_LEN + 1);
          snprintf(session_token, HTTP_TOKEN_LEN + 1, "%s", token);
       } else {
          Log(LOG_CRIT, "rrproto.auth", "CHALLENGE with invalid token from %s", server_name);
          goto cleanup;
       }
-      const char *login_pass = get_server_property(server_name, "server.pass");
+      const char *login_pass = cptr->server ? cptr->server->pass : get_server_property(server_name, "server.pass");
       Log(LOG_AUDIT, "auth.ws", "Got login challenge from server %s", server_name);
       ws_send_passwd(cptr, user, login_pass, nonce);
-      event_emit_dict("logging-in", NULL, d);
+      event_emit_dict("logging-in", cptr, d);
    } else if (cmd && strcasecmp(cmd, "authorized") == 0) {
-      event_emit_dict("authorized", NULL, d);
+      cptr->authenticated = true;
+      snprintf(cptr->chatname, sizeof(cptr->chatname), "%s", user);
+      event_emit_dict("authorized", cptr, d);
    }
 
 cleanup:
@@ -139,7 +142,7 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
    dict_add(auth_msg, "auth.cmd", "pass");
    dict_add(auth_msg, "auth.user", user);
    dict_add(auth_msg, "auth.pass", temp_pw);
-   dict_add(auth_msg, "auth.token", session_token);
+   dict_add(auth_msg, "auth.token", cptr->token);
    bool sent = ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
    dict_free(auth_msg);
    explicit_bzero(temp_pw, strlen(temp_pw) );

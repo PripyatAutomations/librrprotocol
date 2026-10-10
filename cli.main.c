@@ -150,7 +150,7 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
    char evname[64];
    memset(evname, 0, sizeof(evname) );
    snprintf(evname, sizeof(evname), "ws.msg.%s", (msg_type ? msg_type : "unknown") );
-   event_emit_dict(evname, msg_type && !strcmp(msg_type, "serial") ? cptr : NULL, d);
+   event_emit_dict(evname, cptr, d);
 
    // Walk the table of handlers
    int i = 0;
@@ -276,11 +276,12 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 #endif // HTTP_DEBUG_CRAZY
    } else if (ev == MG_EV_CONNECT) {
       // TLS must start before the WebSocket HTTP upgrade, not after it.
-      const char *url = get_server_property(server_name, "server.url");
+      const char *profile = cptr->server ? cptr->server->network : server_name;
+      const char *url = get_server_property(profile, "server.url");
 
       if (c->is_tls) {
          struct mg_tls_opts opts = {
-            .name = mg_url_host(url)
+            .name = cptr->server ? mg_str(cptr->server->host) : mg_url_host(url)
          };
 
          if (tls_ca_path) {
@@ -292,16 +293,16 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       }
       // send the connected event
       dict *d = dict_new();
-      dict_add(d, "connected.server", (char *)server_name);
-      event_emit_dict("connected", NULL, d);
+      dict_add(d, "connected.server", (char *)(cptr->server ? cptr->server->network : server_name));
+      event_emit_dict("connected", cptr, d);
       dict_free(d);
    } else if (ev == MG_EV_WRITE) {
       // Handle writing audio frames one by one
    } else if (ev == MG_EV_WS_OPEN) {
-      const char *this_server = server_name;
+      const char *this_server = cptr->server ? cptr->server->network : server_name;
       ws_connected = true;
 
-      const char *login_user = get_server_property(this_server, "server.user");
+      const char *login_user = cptr->server && cptr->server->nick[0] ? cptr->server->nick : get_server_property(this_server, "server.user");
       Log(LOG_DEBUG, "ws", "ev_ws_connect: server: |%s| user: |%s|", server_name, login_user);
 
       if (!login_user) {
@@ -312,8 +313,8 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       // Let client UI know we are connected (but not logged into!)
       dict *d = dict_new();
       dict_add(d, "auth.user", (char *)login_user);
-      dict_add(d, "auth.server", (char *)server_name);
-      event_emit_dict("connected", NULL, d);
+      dict_add(d, "auth.server", (char *)(cptr->server ? cptr->server->network : server_name));
+      event_emit_dict("connected", cptr, d);
       ws_send_hello(cptr);
       ws_send_login(cptr, login_user);
       dict_free(d);
@@ -378,11 +379,11 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          if (ev_data) {
             dict *d = dict_new();
             dict_add(d, "error.msg", (char *)ev_data);
-            event_emit_dict("http.error", NULL, d);
+            event_emit_dict("http.error", cptr, d);
             dict_free(d);
          } else {
             Log(LOG_CRIT, "rrprotocol", "HTTP error! Unknown error");
-            event_emit("http.error", NULL, NULL);
+            event_emit("http.error", cptr, NULL);
          }
       }
    } else if (ev == MG_EV_CLOSE) {
@@ -398,8 +399,8 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 
          dict *d = dict_new();
          dict_add(d, "msg.type", "auth");
-         dict_add(d, "auth.server", server_name);
-         event_emit_dict("disconnected", NULL, d);
+         dict_add(d, "auth.server", cptr->server ? cptr->server->network : server_name);
+         event_emit_dict("disconnected", cptr, d);
          dict_free(d);
       }
    }

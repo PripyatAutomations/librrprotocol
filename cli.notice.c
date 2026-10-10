@@ -37,7 +37,7 @@ bool ws_handle_notice_msg(rrconn_t *cptr, dict *d) {
 
       return false;
    }
-   event_emit_dict("notice.msg", NULL, d);
+   event_emit_dict("notice.msg", cptr, d);
 
    return true;
 }
@@ -64,7 +64,7 @@ bool ws_handle_callsign_msg(rrconn_t *cptr, dict *d) {
          return false;
       }
    }
-   event_emit_dict("callsign.line", NULL, d);
+   event_emit_dict("callsign.line", cptr, d);
 
    return true;
 }

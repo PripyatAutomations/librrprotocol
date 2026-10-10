@@ -1925,3 +1925,39 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
    return true;
 }
+
+/* Save/load the component view when entering a server connection context. */
+typedef struct {
+   ws_room_meta_t room_meta[32];
+   uint32_t authoritative_vfo_mask;
+   char authoritative_room_override[128];
+} ws_rooms_context;
+void ws_rooms_context_swap(void **saved) {
+   if (!*saved) {
+      *saved = calloc(1, sizeof(ws_rooms_context));
+
+      if (!*saved) {
+         abort();
+      }
+      ((ws_rooms_context *)*saved)->authoritative_vfo_mask = 3;
+   }
+   ws_rooms_context *state = *saved;
+   {
+      __typeof__(room_meta) temporary;
+      memcpy(&temporary, &room_meta, sizeof(room_meta));
+      memcpy(&room_meta, &state->room_meta, sizeof(room_meta));
+      memcpy(&state->room_meta, &temporary, sizeof(room_meta));
+   }
+   {
+      __typeof__(authoritative_vfo_mask) temporary;
+      memcpy(&temporary, &authoritative_vfo_mask, sizeof(authoritative_vfo_mask));
+      memcpy(&authoritative_vfo_mask, &state->authoritative_vfo_mask, sizeof(authoritative_vfo_mask));
+      memcpy(&state->authoritative_vfo_mask, &temporary, sizeof(authoritative_vfo_mask));
+   }
+   {
+      __typeof__(authoritative_room_override) temporary;
+      memcpy(&temporary, &authoritative_room_override, sizeof(authoritative_room_override));
+      memcpy(&authoritative_room_override, &state->authoritative_room_override, sizeof(authoritative_room_override));
+      memcpy(&state->authoritative_room_override, &temporary, sizeof(authoritative_room_override));
+   }
+}

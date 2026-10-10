@@ -8,11 +8,11 @@ time_t now;
 bool dying, restarting;
 int main(void) {
    assert(!add_server("chat", "localhost:6667"));
-   assert(!add_server("chat", "irc://localhost"));
+
    assert(!add_server("chat", "irc://localhost:99999"));
    assert(!add_server("chat", "ws://localhost:8420/ws/"));
    assert(!server_list);
-   assert(add_server("chat", "irc://localhost:6667"));
+   assert(add_server("chat", "irc://localhost"));
    assert(add_server("secure", "ircs://nick:secret@[::1]:6697|autojoin=#room"));
    assert(server_list->port == 6667 && !server_list->tls);
    assert(server_list->next->port == 6697 && server_list->next->tls);
@@ -32,5 +32,6 @@ int main(void) {
       server_list = next;
    }
    puts("PASS: legacy IRC config validates URL schemes/ports and saves explicit IPv6/default ports");
+
    return 0;
 }

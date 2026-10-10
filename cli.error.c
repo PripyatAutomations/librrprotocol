@@ -38,7 +38,7 @@ bool ws_handle_error_msg(rrconn_t *cptr, dict *d) {
    if (!error_from) {
       dict_add(d, "error.from", "***SERVER***");
    }
-   event_emit_dict("error", NULL, d);
+   event_emit_dict("error", cptr, d);
 
    return true;
 }

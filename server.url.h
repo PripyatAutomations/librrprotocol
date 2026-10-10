@@ -20,6 +20,6 @@ typedef struct {
    const char *path; /* Borrowed from the input URL. */
 } rr_server_url_t;
 
-/* Require a supported scheme, host and explicit port. False means invalid. */
+/* Require a supported scheme, host; omitted ports use transport defaults. False means invalid. */
 bool rr_server_url_parse(const char *url, rr_server_url_t *out);
 #endif
