@@ -3,7 +3,7 @@
 #define RR_PROTOCOL_WIRE_H
 #include <librustyaxe/core.h>
 
-/* Initial object/property codec. Not yet connected to live transport; the
+/* Initial object/property, auth and connection-message codec. Not yet connected to live transport; the
  * cutover must replace all message families together, without legacy fallback.
  * Returned strings/dictionaries are owned by the caller. NULL means invalid
  * input, unsupported operation, exceeded limits or allocation failure.

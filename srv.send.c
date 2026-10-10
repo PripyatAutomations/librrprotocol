@@ -32,7 +32,7 @@ void ws_broadcast(rrconn_t *sender, struct mg_str *msg_data, int data_type) {
    while (current) {
       // NULL sender means it came from the server itself
       if ( (current->is_ws && current->authenticated) && (current != sender) ) {
-         mg_ws_send(current->conn, msg_data->buf, msg_data->len, data_type);
+         ws_send_to_cptr(sender, current, msg_data, data_type);
       }
       current = current->next;
    }
@@ -50,7 +50,7 @@ void ws_broadcast_with_flags(u_int32_t flags, rrconn_t *sender, struct mg_str *m
       if (current && (current->is_ws && current->authenticated) && (current != sender) ) {
          if (( (flags & FLAG_STAFF) && current->user && has_priv(current->user->uid, "admin|owner") ) ||
             client_has_flag(current, flags & ~FLAG_STAFF)) {
-            mg_ws_send(current->conn, msg_data->buf, msg_data->len, data_type);
+            ws_send_to_cptr(sender, current, msg_data, data_type);
          }
       }
       current = current->next;
@@ -93,10 +93,8 @@ bool send_global_alert(const char *sender, const char *data) {
 }
 
 bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
-   (void)sender;
-
-   if (!d || !dest || !dest->conn) {
-      Log(LOG_WARN, "rrproto.srv", "Unable to send msg dict:<%p> to conn:<%p> - invalid destination", d, dest);
+   if (!d || !dest || !dest->conn || data_type != WEBSOCKET_OP_TEXT) {
+      Log(LOG_WARN, "rrproto.srv", "Unable to send msg dict:<%p> to conn:<%p> - invalid dictionary, destination or frame type", d, dest);
 
       return false;
    }
@@ -114,7 +112,8 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
 
    Log(LOG_CRAZY, "ws.proto", "Sending dict <%p> to conn <%p> (%zu bytes)", (void *)d, (void *)dest, strlen(jp));
 
-   mg_ws_send(dest->conn, jp, strlen(jp), data_type);
+   struct mg_str payload = mg_str(jp);
+   ws_send_to_cptr(sender, dest, &payload, WEBSOCKET_OP_TEXT);
 
    free( (void *)jp);
 

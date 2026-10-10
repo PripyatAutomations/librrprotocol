@@ -827,8 +827,14 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
             prepare_msg(msgbuf, sizeof(msgbuf), "kicked by %s (Reason: %s)", cptr->chatname, (reason ? reason : "No reason given") );
             Log(LOG_AUDIT, "admin.kick", "%s %s", acptr->chatname, msgbuf);
 #ifdef  USE_MONGOOSE
-            struct mg_str ms = mg_str(msgbuf);
-            ws_broadcast_with_flags(FLAG_STAFF, NULL, &ms, WEBSOCKET_OP_TEXT);
+            dict *notice = dict_new();
+            if (notice) {
+               dict_add(notice, "msg.type", "notice");
+               dict_add(notice, "notice.msg", msgbuf);
+               dict_add_ulong(notice, "msg.ts", now);
+               ws_broadcast_dict_with_flags(FLAG_STAFF, NULL, notice, WEBSOCKET_OP_TEXT);
+               dict_free(notice);
+            }
             ws_kick_client(acptr, msgbuf);
 #endif // USE_MONGOOSE
             kicked++;

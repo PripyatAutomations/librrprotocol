@@ -79,6 +79,12 @@ int main(void) {
    fclose(input);
    free(line);
    assert(!rr_wire_encode(NULL) && !rr_wire_decode(NULL));
+   dict *alias = dict_new();
+   dict_add(alias, "msg.type", "auth");
+   dict_add(alias, "auth.cmd", "error");
+   dict_add(alias, "auth.error", "alias");
+   assert(!rr_wire_encode(alias));
+   dict_free(alias);
    dict *internal = dict_new();
    dict_add(internal, "msg.type", "property");
    dict_add(internal, "property.cmd", "set");

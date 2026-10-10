@@ -12,7 +12,8 @@ static const char *operations[] = {
    "object.descriptor", "object.added", "object.removed", "object.end",
    "object.result", "object.inventory-entry", "object.inventory-end",
    "property.set", "property.descriptor", "property.state", "property.changed",
-   "property.result", NULL
+   "property.result", "hello", "ping", "pong", "error", "notice", "alert",
+   "auth.login", "auth.pass", "auth.logout", "auth.challenge", "auth.authorized", "auth.error", NULL
 };
 
 static const char *family_for(const char *operation) {
@@ -22,7 +23,13 @@ static const char *family_for(const char *operation) {
 
    for (unsigned i = 0 ; operations[i] ; i++) {
       if (!strcmp(operation, operations[i])) {
-         return !strncmp(operation, "object.", 7) ? "object" : "property";
+         const char *families[] = { "object", "property", "auth", "hello", "ping", "pong", "error", "notice", "alert", NULL };
+         for (unsigned j = 0 ; families[j] ; j++) {
+            size_t length = strlen(families[j]);
+            if (!strncmp(operation, families[j], length) && (!operation[length] || operation[length] == '.')) {
+               return families[j];
+            }
+         }
       }
    }
 
@@ -56,6 +63,18 @@ static bool payload_field(const char *family, const char *key) {
       "name", "type", "readable", "writable", "unit", "minimum", "maximum",
       "step", "enum", "observed", "known", "available", "version", "value", NULL
    };
+   if (strcmp(family, "object") && strcmp(family, "property")) {
+      const char *allowed = !strcmp(family, "auth") ? " user error nonce pass token ts privs server password-change-required password-expires password-set msg " :
+         !strcmp(family, "hello") ? " swver hwver role " :
+         !strcmp(family, "error") ? " code from msg target ts vfo " :
+         !strcmp(family, "notice") ? " msg " :
+         !strcmp(family, "alert") ? " from msg ts " : " ts ";
+      char token[128];
+      if (snprintf(token, sizeof(token), " %s ", key) >= (int)sizeof(token)) {
+         return false;
+      }
+      return strstr(allowed, token) != NULL;
+   }
    const char **fields = !strcmp(family, "object") ? object_fields : property_fields;
 
    for (unsigned i = 0 ; fields[i] ; i++) {
@@ -85,43 +104,43 @@ static bool copy_value(dict *out, const char *key, dict *in, const char *source,
    switch (type) {
       case VAL_NULL: {
          error = dict_add_null(out, key);
-                                                      break;
+         break;
       }
       case VAL_STR: {
          error = dict_add(out, key, v->s);
-                                                      break;
+         break;
       }
       case VAL_BOOL: {
          error = dict_add_bool(out, key, v->i);
-                                                            break;
+         break;
       }
       case VAL_CHAR: {
          error = dict_add_char(out, key, v->c);
-                                                            break;
+         break;
       }
       case VAL_INT: {
          error = dict_add_int(out, key, v->i);
-                                                          break;
+         break;
       }
       case VAL_UINT: {
          error = dict_add_uint(out, key, v->ui);
-                                                             break;
+         break;
       }
       case VAL_LONG: {
          error = dict_add_long(out, key, v->l);
-                                                            break;
+         break;
       }
       case VAL_ULONG: {
          error = dict_add_ulong(out, key, v->ul);
-                                                               break;
+         break;
       }
       case VAL_LLONG: {
          error = dict_add_llong(out, key, v->ll);
-                                                               break;
+         break;
       }
       case VAL_ULLONG: {
          error = dict_add_ullong(out, key, v->ull);
-                                                                  break;
+         break;
       }
       case VAL_FLOAT: case VAL_FLOATP: case VAL_DOUBLE: case VAL_DOUBLEP: {
          double number = dict_get_double(in, source, NAN);
@@ -147,13 +166,16 @@ static dict *transform(dict *in, bool encode) {
    if (encode) {
       family = dict_get(in, "msg.type", NULL);
 
-      if (!family || (strcmp(family, "object") && strcmp(family, "property"))) {
+      if (!family) {
          return NULL;
       }
       snprintf(command_key, sizeof(command_key), "%s.cmd", family);
       const char *command = dict_get(in, command_key, NULL);
 
-      if (!command || snprintf(operation, sizeof(operation), "%s.%s", family, command) >= sizeof(operation) || !family_for(operation)) {
+      int length = command ? snprintf(operation, sizeof(operation), "%s.%s", family, command) :
+         snprintf(operation, sizeof(operation), "%s", !strcmp(family, "auth") && dict_get(in, "auth.error", NULL) ? "auth.error" : family);
+      if (length >= (int)sizeof(operation) || !family_for(operation) ||
+         (command && !strcmp(operation, "auth.error"))) {
          return NULL;
       }
    } else {
@@ -177,7 +199,8 @@ static dict *transform(dict *in, bool encode) {
          goto invalid;
       }
    } else if (dict_add(out, "msg.type", family) ||
-      dict_add(out, command_key, operation + strlen(family) + 1)) {
+      (strchr(operation, '.') && strcmp(operation, "auth.error") &&
+       dict_add(out, command_key, operation + strlen(family) + 1))) {
       goto invalid;
    }
    int rank = 0;
@@ -196,19 +219,28 @@ static dict *transform(dict *in, bool encode) {
       const char *destination = key;
       char path[128];
 
-      if (!metadata(key)) {
+      bool model = !strcmp(family, "object") || !strcmp(family, "property");
+      if (encode && !strcmp(key, "msg.ts")) {
+         destination = "time";
+      } else if (!encode && !strcmp(key, "time")) {
+         destination = "msg.ts";
+      } else if ((!strcmp(family, "ping") || !strcmp(family, "pong")) &&
+                 !strcmp(key, encode ? "ping.ts" : "echo")) {
+         destination = encode ? "echo" : "ping.ts";
+      } else if (!model || !metadata(key)) {
          if (encode) {
             size_t prefix = strlen(family);
 
             if (strncmp(key, family, prefix) || key[prefix] != '.' || !payload_field(family, key + prefix + 1)) {
                goto invalid;
             }
-            destination = key + prefix + 1;
+            destination = !strcmp(key + prefix + 1, "msg") ? "text" : key + prefix + 1;
          } else {
-            if (!payload_field(family, key)) {
+            const char *field = !strcmp(key, "text") ? "msg" : key;
+            if (!strcmp(key, "msg") || !payload_field(family, field)) {
                goto invalid;
             }
-            snprintf(path, sizeof(path), "%s.%s", family, key);
+            snprintf(path, sizeof(path), "%s.%s", family, field);
             destination = path;
          }
       }

@@ -20,6 +20,7 @@ void mg_tls_init(struct mg_connection *c, const struct mg_tls_opts *opts) {
    tls_calls++;
 }
 static struct mg_connection *last_dest;
+static char last_text[4096];
 void event_emit_dict(const char *event, rrconn_t *client, dict *d) {
    (void)client;
    (void)d;
@@ -33,8 +34,11 @@ void event_emit_dict(const char *event, rrconn_t *client, dict *d) {
    }
 }
 size_t mg_ws_send(struct mg_connection *c, const void *buf, size_t len, int opcode) {
-   (void)buf;
-   (void)opcode;
+   if (opcode == WEBSOCKET_OP_TEXT && buf) {
+      assert(len < sizeof(last_text));
+      memcpy(last_text, buf, len);
+      last_text[len] = '\0';
+   }
    sends++;
    last_dest = c;
 
@@ -119,6 +123,26 @@ int main(void) {
    sends = 0;
    ws_send_to_name(&other, "TARGET", &data, WEBSOCKET_OP_TEXT);
    assert(!sends);
+   /* Semantic dictionary sends use the same frame adapter, and dictionaries
+    * can never masquerade as binary media. */
+   dict *notice = dict_new();
+   dict_add(notice, "msg.type", "notice");
+   dict_add(notice, "notice.msg", "structured text");
+   sends = 0;
+   assert(!ws_send_dict(NULL, &client, notice, WEBSOCKET_OP_BINARY) && !sends);
+   assert(ws_send_dict(NULL, &client, notice, WEBSOCKET_OP_TEXT));
+   assert(sends == 1 && last_dest == &c);
+   dict *sent = json2dict(last_text);
+   assert(sent && !strcmp(dict_get(sent, "notice.msg", ""), "structured text"));
+   dict_free(sent);
+   dict_free(notice);
+   sends = 0;
+   assert(ws_kick_client_by_c(&c, "test kick"));
+   assert(sends == 2 && c.is_draining);
+   sent = json2dict(last_text);
+   assert(sent && !strcmp(dict_get(sent, "msg.type", ""), "auth") &&
+      strstr(dict_get(sent, "auth.error", ""), "test kick"));
+   dict_free(sent);
    http_client_list = NULL;
    free(client.cli_version);
    puts("PASS: WebSocket opcodes/NUL/root/size, exact binary lengths and named-session delivery");

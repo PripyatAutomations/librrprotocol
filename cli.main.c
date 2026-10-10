@@ -475,7 +475,9 @@ void ws_fini(struct mg_mgr *mgr) {
 
 // Send to a specific, authenticated websocket session
 void ws_send_to_cptr(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_data, int data_type) {
-   if (!cptr || !msg_data) {
+   if (!cptr || !cptr->conn || !msg_data || !msg_data->buf ||
+      (data_type != WEBSOCKET_OP_TEXT && data_type != WEBSOCKET_OP_BINARY) ||
+      (cptr->server && !cptr->is_ws)) {
       return;
    }
    mg_ws_send(cptr->conn, msg_data->buf, msg_data->len, data_type);
@@ -584,16 +586,14 @@ bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
    dict *d = dict_new();
    dict_add(d, "msg.type", "auth");
    dict_add(d, "auth.error", resp_buf);
-   const char *jp = dict2json(d);
-   // Rewrite this to use ws_send_dict();
-   mg_ws_send(c, jp, strlen(jp), WEBSOCKET_OP_TEXT);
+   rrconn_t *target = http_find_client_by_c(c);
+   bool sent = ws_send_dict(NULL, target, d, WEBSOCKET_OP_TEXT);
    mg_ws_send(c, NULL, 0, WEBSOCKET_OP_CLOSE);
    c->is_draining = 1;
    event_emit_dict("disconnected", NULL, d);
    dict_free(d);
-   free( (void *)jp);
 
-   return true;
+   return sent;
 }
 #endif // USE_MONGOOSE
 

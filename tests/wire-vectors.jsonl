@@ -36,3 +36,21 @@
 {"reject": "[{\"op\":\"object.snapshot\"}]"}
 {"reject": "{\"op\":\"object.snapshot\",}"}
 {"reject": "{\"op\":\"object.snapshot\",\"extra\":true}"}
+{"internal": "{\"msg\":{\"type\":\"hello\",\"ts\":1791580800},\"hello\":{\"swver\":\"beta\",\"hwver\":\"generic\",\"role\":\"video-source\"}}", "wire": "{\"op\":\"hello\",\"time\":1791580800,\"swver\":\"beta\",\"hwver\":\"generic\",\"role\":\"video-source\"}"}
+{"internal": "{\"msg\":{\"type\":\"auth\",\"ts\":1791580800},\"auth\":{\"cmd\":\"login\",\"user\":\"alice\"}}", "wire": "{\"op\":\"auth.login\",\"time\":1791580800,\"user\":\"alice\"}"}
+{"internal": "{\"msg\":{\"type\":\"auth\",\"ts\":1791580800},\"auth\":{\"cmd\":\"pass\",\"user\":\"alice\",\"pass\":\"hash\"}}", "wire": "{\"op\":\"auth.pass\",\"time\":1791580800,\"user\":\"alice\",\"pass\":\"hash\"}"}
+{"internal": "{\"msg\":{\"type\":\"auth\",\"ts\":1791580800},\"auth\":{\"cmd\":\"logout\",\"user\":\"alice\",\"token\":\"private-token\"}}", "wire": "{\"op\":\"auth.logout\",\"time\":1791580800,\"user\":\"alice\",\"token\":\"private-token\"}"}
+{"internal": "{\"msg\":{\"type\":\"auth\",\"ts\":1791580800},\"auth\":{\"cmd\":\"challenge\",\"user\":\"alice\",\"nonce\":\"nonce\",\"token\":\"private-token\",\"ts\":1791580800}}", "wire": "{\"op\":\"auth.challenge\",\"time\":1791580800,\"user\":\"alice\",\"nonce\":\"nonce\",\"token\":\"private-token\",\"ts\":1791580800}"}
+{"internal": "{\"msg\":{\"type\":\"auth\",\"ts\":1791580800},\"auth\":{\"cmd\":\"authorized\",\"user\":\"alice\",\"privs\":\"view,chat\",\"password-change-required\":false}}", "wire": "{\"op\":\"auth.authorized\",\"time\":1791580800,\"user\":\"alice\",\"privs\":\"view,chat\",\"password-change-required\":false}"}
+{"internal": "{\"msg\":{\"type\":\"auth\",\"ts\":1791580800},\"auth\":{\"error\":\"Denied\"}}", "wire": "{\"op\":\"auth.error\",\"time\":1791580800,\"error\":\"Denied\"}"}
+{"internal": "{\"msg\":{\"type\":\"error\",\"ts\":1791580800},\"error\":{\"code\":\"denied\",\"msg\":\"No permission\",\"target\":\"#rig\",\"ts\":1791580800,\"vfo\":\"A\"}}", "wire": "{\"op\":\"error\",\"time\":1791580800,\"code\":\"denied\",\"text\":\"No permission\",\"target\":\"#rig\",\"ts\":1791580800,\"vfo\":\"A\"}"}
+{"internal": "{\"msg\":{\"type\":\"notice\",\"ts\":1791580800},\"notice\":{\"msg\":\"kicked by alice\"}}", "wire": "{\"op\":\"notice\",\"time\":1791580800,\"text\":\"kicked by alice\"}"}
+{"internal": "{\"msg\":{\"type\":\"alert\",\"ts\":1791580800},\"alert\":{\"msg\":\"Station offline\",\"from\":\"server\",\"ts\":1791580800}}", "wire": "{\"op\":\"alert\",\"time\":1791580800,\"text\":\"Station offline\",\"from\":\"server\",\"ts\":1791580800}"}
+{"internal": "{\"msg\":{\"type\":\"ping\",\"ts\":1791580800},\"ping\":{\"ts\":1000}}", "wire": "{\"op\":\"ping\",\"time\":1791580800,\"echo\":1000}"}
+{"internal": "{\"msg\":{\"type\":\"pong\",\"ts\":1791580800},\"ping\":{\"ts\":1000}}", "wire": "{\"op\":\"pong\",\"time\":1791580800,\"echo\":1000}"}
+{"internal": "{\"msg\":{\"type\":\"pong\",\"ts\":1791580800}}", "wire": "{\"op\":\"pong\",\"time\":1791580800}"}
+{"reject": "{\"op\":\"auth.unknown\"}"}
+{"reject": "{\"op\":\"hello\",\"cmd\":\"hello\"}"}
+{"reject": "{\"op\":\"notice\",\"msg\":\"old spelling\"}"}
+{"reject": "{\"op\":\"pong\",\"ping\":{\"ts\":1}}"}
+{"reject": "{\"op\":\"error\",\"text\":\"a\",\"text\":\"b\"}"}
