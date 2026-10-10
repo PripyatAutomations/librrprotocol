@@ -333,7 +333,10 @@
         "talk.usage.session-seconds": "usage.session-seconds",
         "talk.usage.tx-seconds": "usage.tx-seconds",
         "talk.usage.reset-at": "usage.reset-at",
-        "talk.usage.bandwidth-remaining": "usage.bandwidth-remaining"
+        "talk.usage.bandwidth-remaining": "usage.bandwidth-remaining",
+        "talk.usage.tx-remaining": "usage.tx-remaining",
+        "talk.usage.tx-enforced": "usage.tx-enforced",
+        "talk.usage.bandwidth-status": "usage.bandwidth-status"
       }
     },
     {

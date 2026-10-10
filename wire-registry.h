@@ -208,6 +208,9 @@ static const rr_wire_field_t wire_fields_6[] = {
    {"talk.usage.tx-seconds", "usage.tx-seconds"},
    {"talk.usage.reset-at", "usage.reset-at"},
    {"talk.usage.bandwidth-remaining", "usage.bandwidth-remaining"},
+   {"talk.usage.tx-remaining", "usage.tx-remaining"},
+   {"talk.usage.tx-enforced", "usage.tx-enforced"},
+   {"talk.usage.bandwidth-status", "usage.bandwidth-status"},
 };
 static const rr_wire_field_t wire_fields_7[] = {
    {"msg.ts", "time"},
