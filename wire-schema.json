@@ -1,0 +1,453 @@
+{
+  "version": 1,
+  "websocket_subprotocol": "rustyrig.v1",
+  "groups": [
+    {
+      "type": "object",
+      "command_key": "object.cmd",
+      "operations": {
+        "object.snapshot": "snapshot",
+        "object.unsubscribe": "unsubscribe",
+        "object.inventory": "inventory",
+        "object.begin": "begin",
+        "object.descriptor": "descriptor",
+        "object.added": "added",
+        "object.removed": "removed",
+        "object.end": "end",
+        "object.result": "result",
+        "object.inventory-entry": "inventory-entry",
+        "object.inventory-end": "inventory-end"
+      },
+      "fields": {
+        "msg.ts": "time",
+        "target": "target",
+        "request.id": "request.id",
+        "request.room": "request.room",
+        "stream.epoch": "stream.epoch",
+        "stream.seq": "stream.seq",
+        "result.code": "result.code",
+        "inventory.access": "inventory.access",
+        "inventory.action": "inventory.action",
+        "inventory.backend": "inventory.backend",
+        "inventory.codec": "inventory.codec",
+        "inventory.coordinates": "inventory.coordinates",
+        "inventory.depth": "inventory.depth",
+        "inventory.direction": "inventory.direction",
+        "inventory.frequency": "inventory.frequency",
+        "inventory.kind": "inventory.kind",
+        "inventory.name": "inventory.name",
+        "inventory.room": "inventory.room",
+        "inventory.service": "inventory.service",
+        "inventory.source": "inventory.source",
+        "inventory.state": "inventory.state",
+        "inventory.subsystem": "inventory.subsystem",
+        "object.alias": "alias",
+        "object.backend": "backend",
+        "object.lifecycle": "lifecycle",
+        "object.name": "name",
+        "object.owner": "owner",
+        "object.room": "room",
+        "object.type": "type",
+        "object.uuid": "uuid",
+        "inventory.uuid": "inventory.uuid"
+      }
+    },
+    {
+      "type": "property",
+      "command_key": "property.cmd",
+      "operations": {
+        "property.set": "set",
+        "property.descriptor": "descriptor",
+        "property.state": "state",
+        "property.changed": "changed",
+        "property.result": "result"
+      },
+      "fields": {
+        "msg.ts": "time",
+        "target": "target",
+        "request.id": "request.id",
+        "request.room": "request.room",
+        "stream.epoch": "stream.epoch",
+        "stream.seq": "stream.seq",
+        "result.code": "result.code",
+        "inventory.access": "inventory.access",
+        "inventory.action": "inventory.action",
+        "inventory.backend": "inventory.backend",
+        "inventory.codec": "inventory.codec",
+        "inventory.coordinates": "inventory.coordinates",
+        "inventory.depth": "inventory.depth",
+        "inventory.direction": "inventory.direction",
+        "inventory.frequency": "inventory.frequency",
+        "inventory.kind": "inventory.kind",
+        "inventory.name": "inventory.name",
+        "inventory.room": "inventory.room",
+        "inventory.service": "inventory.service",
+        "inventory.source": "inventory.source",
+        "inventory.state": "inventory.state",
+        "inventory.subsystem": "inventory.subsystem",
+        "property.available": "available",
+        "property.changed-at": "changed-at",
+        "property.compat-name": "compat-name",
+        "property.enum": "enum",
+        "property.known": "known",
+        "property.name": "name",
+        "property.observed": "observed",
+        "property.readable": "readable",
+        "property.status": "status",
+        "property.type": "type",
+        "property.unit": "unit",
+        "property.value": "value",
+        "property.version": "version",
+        "property.writable": "writable",
+        "property.minimum": "minimum",
+        "property.maximum": "maximum",
+        "property.step": "step"
+      }
+    },
+    {
+      "type": "auth",
+      "command_key": "auth.cmd",
+      "operations": {
+        "auth.login": "login",
+        "auth.pass": "pass",
+        "auth.logout": "logout",
+        "auth.challenge": "challenge",
+        "auth.authorized": "authorized",
+        "auth.error": null
+      },
+      "fields": {
+        "msg.ts": "time",
+        "auth.error": "error",
+        "auth.msg": "text",
+        "auth.nonce": "nonce",
+        "auth.pass": "pass",
+        "auth.password-change-required": "password-change-required",
+        "auth.password-expires": "password-expires",
+        "auth.password-set": "password-set",
+        "auth.privs": "privs",
+        "auth.server": "server",
+        "auth.token": "token",
+        "auth.ts": "ts",
+        "auth.user": "user"
+      }
+    },
+    {
+      "type": "cat",
+      "command_key": "cat.cmd",
+      "operations": {
+        "cat.freq": "freq",
+        "cat.mode": "mode",
+        "cat.power": "power",
+        "cat.ptt": "ptt",
+        "cat.width": "width",
+        "cat.state": null
+      },
+      "fields": {
+        "msg.ts": "time",
+        "cat.freq": "freq",
+        "cat.mode": "mode",
+        "cat.power": "power",
+        "cat.ptt": "ptt",
+        "cat.room": "room",
+        "cat.state.active": "state.active",
+        "cat.state.freq": "state.freq",
+        "cat.state.mode": "state.mode",
+        "cat.state.power": "state.power",
+        "cat.state.ptt": "state.ptt",
+        "cat.state.selected": "state.selected",
+        "cat.state.vfo": "state.vfo",
+        "cat.state.width": "state.width",
+        "cat.state.widths": "state.widths",
+        "cat.user": "user",
+        "cat.vfo": "vfo",
+        "cat.width": "width",
+        "cat.state.freq-available": "state.freq-available",
+        "cat.state.mode-available": "state.mode-available",
+        "cat.state.width-available": "state.width-available"
+      }
+    },
+    {
+      "type": "media",
+      "command_key": "media.cmd",
+      "operations": {
+        "media.available": "available",
+        "media.capab": "capab",
+        "media.chan-remove": "chan-remove",
+        "media.codec": "codec",
+        "media.isupport": "isupport",
+        "media.list": "list",
+        "media.source": "source",
+        "media.source-ok": "source-ok",
+        "media.subscribe": "subscribe",
+        "media.subscribed": "subscribed",
+        "media.unsubscribe": "unsubscribe",
+        "media.unsubscribed": "unsubscribed"
+      },
+      "fields": {
+        "msg.ts": "time",
+        "media.active": "active",
+        "media.chan-uuid": "chan-uuid",
+        "media.codec": "codec",
+        "media.codecs": "codecs",
+        "media.control-room": "control-room",
+        "media.descr": "descr",
+        "media.dir": "dir",
+        "media.joined": "joined",
+        "media.name": "name",
+        "media.old-codec": "old-codec",
+        "media.preferred": "preferred",
+        "media.rate": "rate",
+        "media.rig": "rig",
+        "media.rig-uuid": "rig-uuid",
+        "media.room": "room",
+        "media.stream": "stream",
+        "media.subsys": "subsys",
+        "media.ts": "ts",
+        "media.vfo": "vfo",
+        "media.vfo-uuid": "vfo-uuid"
+      }
+    },
+    {
+      "type": "serial",
+      "command_key": "serial.cmd",
+      "operations": {
+        "serial.available": "available",
+        "serial.close": "close",
+        "serial.closed": "closed",
+        "serial.configure": "configure",
+        "serial.configured": "configured",
+        "serial.error": "error",
+        "serial.list": "list",
+        "serial.list-end": "list-end",
+        "serial.open": "open",
+        "serial.opened": "opened",
+        "serial.read": "read",
+        "serial.written": "written"
+      },
+      "fields": {
+        "msg.ts": "time",
+        "serial.baud": "baud",
+        "serial.error": "error",
+        "serial.mode": "mode",
+        "serial.name": "name",
+        "serial.port": "port",
+        "serial.seq": "seq",
+        "serial.stream": "stream"
+      }
+    },
+    {
+      "type": "talk",
+      "command_key": "talk.cmd",
+      "operations": {
+        "talk.die": "die",
+        "talk.grid": "grid",
+        "talk.help": "help",
+        "talk.join": "join",
+        "talk.kick": "kick",
+        "talk.list": "list",
+        "talk.media": "media",
+        "talk.msg": "msg",
+        "talk.mute": "mute",
+        "talk.names": "names",
+        "talk.part": "part",
+        "talk.qrz": "qrz",
+        "talk.quit": "quit",
+        "talk.quota": "quota",
+        "talk.replay-complete": "replay-complete",
+        "talk.replay-start": "replay-start",
+        "talk.restart": "restart",
+        "talk.room": "room",
+        "talk.room-added": "room-added",
+        "talk.room-list": "room-list",
+        "talk.room-removed": "room-removed",
+        "talk.room-vfo": "room-vfo",
+        "talk.room-vfo-list": "room-vfo-list",
+        "talk.syslog": "syslog",
+        "talk.topic": "topic",
+        "talk.unmute": "unmute",
+        "talk.user": "user",
+        "talk.userinfo": "userinfo",
+        "talk.whois": "whois"
+      },
+      "fields": {
+        "msg.ts": "time",
+        "talk.action": "action",
+        "talk.args.reason": "args.reason",
+        "talk.chunk_index": "chunk_index",
+        "talk.confirmation": "confirmation",
+        "talk.connected": "connected",
+        "talk.data": "data",
+        "talk.email": "email",
+        "talk.filename": "filename",
+        "talk.filetype": "filetype",
+        "talk.force": "force",
+        "talk.from": "from",
+        "talk.history": "history",
+        "talk.ip": "ip",
+        "talk.last_heard": "last_heard",
+        "talk.msg.global": "global",
+        "talk.msg_type": "msg_type",
+        "talk.muted": "muted",
+        "talk.privs": "privs",
+        "talk.ptt-room": "ptt-room",
+        "talk.ptt-vfo": "ptt-vfo",
+        "talk.query": "query",
+        "talk.reason": "reason",
+        "talk.room": "room",
+        "talk.rooms": "rooms",
+        "talk.session": "session",
+        "talk.sessions": "sessions",
+        "talk.state.tx": "state.tx",
+        "talk.target": "target",
+        "talk.topic": "topic",
+        "talk.total_chunks": "total_chunks",
+        "talk.tx": "tx",
+        "talk.ua": "ua",
+        "talk.user": "user",
+        "talk.username": "username",
+        "talk.vfo": "vfo",
+        "talk.vfos": "vfos",
+        "room.vfo-mask": "room-info.vfo-mask",
+        "room.tx-control": "room-info.tx-control",
+        "room.rx-tuning-mask": "room-info.rx-tuning-mask",
+        "room.site": "room-info.site",
+        "room.rx-tunable": "room-info.rx-tunable",
+        "room.has-vfos": "room-info.has-vfos",
+        "media.room": "media-info.room",
+        "media.joined": "media-info.joined",
+        "talk.msg": "text",
+        "talk.msg_id": "msg_id"
+      }
+    },
+    {
+      "type": "hello",
+      "command_key": null,
+      "operations": {
+        "hello": null
+      },
+      "fields": {
+        "msg.ts": "time",
+        "hello.hwver": "hwver",
+        "hello.role": "role",
+        "hello.swver": "swver",
+        "hello.protocol": "protocol"
+      }
+    },
+    {
+      "type": "ping",
+      "command_key": null,
+      "operations": {
+        "ping": null
+      },
+      "fields": {
+        "msg.ts": "time",
+        "ping.ts": "echo"
+      }
+    },
+    {
+      "type": "pong",
+      "command_key": null,
+      "operations": {
+        "pong": null
+      },
+      "fields": {
+        "msg.ts": "time",
+        "ping.ts": "echo"
+      }
+    },
+    {
+      "type": "error",
+      "command_key": null,
+      "operations": {
+        "error": null
+      },
+      "fields": {
+        "msg.ts": "time",
+        "error.code": "code",
+        "error.from": "from",
+        "error.msg": "text",
+        "error.target": "target",
+        "error.ts": "ts",
+        "error.vfo": "vfo"
+      }
+    },
+    {
+      "type": "notice",
+      "command_key": null,
+      "operations": {
+        "notice": null
+      },
+      "fields": {
+        "msg.ts": "time",
+        "notice.msg": "text"
+      }
+    },
+    {
+      "type": "alert",
+      "command_key": null,
+      "operations": {
+        "alert": null
+      },
+      "fields": {
+        "msg.ts": "time",
+        "alert.data": "data",
+        "alert.from": "from",
+        "alert.msg": "text",
+        "alert.ts": "ts",
+        "alert.type": "type"
+      }
+    },
+    {
+      "type": "quit",
+      "command_key": null,
+      "operations": {
+        "quit": null
+      },
+      "fields": {
+        "msg.ts": "time",
+        "quit.reason": "reason",
+        "quit.sessions": "sessions",
+        "msg.user": "sender"
+      }
+    },
+    {
+      "type": "rehash",
+      "command_key": null,
+      "operations": {
+        "rehash": null
+      },
+      "fields": {
+        "msg.ts": "time"
+      }
+    },
+    {
+      "type": "callsign",
+      "command_key": null,
+      "operations": {
+        "callsign": null
+      },
+      "fields": {
+        "msg.ts": "time",
+        "callsign.done": "done",
+        "callsign.status": "status",
+        "callsign.fields.*": "fields.*"
+      }
+    },
+    {
+      "type": "ptt.tot-expired",
+      "command_key": null,
+      "operations": {
+        "ptt.tot-expired": null
+      },
+      "fields": {
+        "msg.ts": "time",
+        "ptt.tot.freq": "freq",
+        "ptt.tot.mode": "mode",
+        "ptt.tot.secs": "secs",
+        "ptt.tot.user": "user",
+        "ptt.tot.vfo": "vfo",
+        "ptt.tot.width": "width"
+      }
+    }
+  ]
+}

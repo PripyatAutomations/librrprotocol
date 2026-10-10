@@ -10,6 +10,7 @@ librrprotocol_objs += connman.o
 librrprotocol_objs += server.url.o
 librrprotocol_objs += objects.o
 librrprotocol_objs += wire.o
+librrprotocol_objs += latency.o
 librrprotocol_objs += ws.serial.o
 librrprotocol_objs += cfg.fwdsp.o		# config section callbacks for [fwdsp]/[pipeline]
 librrprotocol_objs += cfg.servers.o

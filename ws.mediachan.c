@@ -577,7 +577,8 @@ static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *targ
          chan_id_in_array(cur->tx_channels, MAX_TX_CHANNELS, chan_id) ) ||
          (cp->direction == RR_BINFRAME_DIR_RX &&
          chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id) ) ) ) {
-         mg_ws_send(cur->conn, frame, flen, WEBSOCKET_OP_BINARY);
+         struct mg_str payload = {(char *)frame, flen};
+         ws_send_to_cptr(NULL, cur, &payload, WEBSOCKET_OP_BINARY);
       }
       cur = cur->next;
    }

@@ -845,6 +845,7 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
          char msgbuf[HTTP_WS_MAX_MSG + 1];
          prepare_msg(msgbuf, sizeof(msgbuf), "KICK '%s' command matched no connected users", target);
          dict *err_msg = dict_new();
+         dict_add(err_msg, "msg.type", "error");
          dict_add(err_msg, "error.msg", msgbuf);
          dict_add_ulong(err_msg, "error.ts", now);
 
@@ -1105,7 +1106,6 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
    cptr->last_heard = now;
    cptr->last_chat = now;
 
-   const char *token = dict_get(d, "talk.token", NULL);
    const char *cmd = dict_get(d, "talk.cmd", NULL);
    const char *data = dict_get(d, "talk.data", NULL);
    const char *target = dict_get(d, "talk.target", NULL);
@@ -1726,6 +1726,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                 * File chunks need their additional metadata preserved.
                 */
                if (strcasecmp(msg_type, "file_chunk") == 0) {
+                  dict_add(talk_msg, "talk.msg_id", dict_get(d, "talk.msg_id", ""));
                   const char *filetype =
                      dict_get(d, "talk.filetype", NULL);
                   const char *filename =

@@ -6,80 +6,52 @@
 #include <librrprotocol/http.h>
 #include <librrprotocol/wire.h>
 
-/* PARITY: rustyrig-www/js/webui.wire.js */
-static const char *operations[] = {
-   "object.snapshot", "object.unsubscribe", "object.inventory", "object.begin",
-   "object.descriptor", "object.added", "object.removed", "object.end",
-   "object.result", "object.inventory-entry", "object.inventory-end",
-   "property.set", "property.descriptor", "property.state", "property.changed",
-   "property.result", "hello", "ping", "pong", "error", "notice", "alert",
-   "auth.login", "auth.pass", "auth.logout", "auth.challenge", "auth.authorized", "auth.error", NULL
-};
+typedef struct {
+   const char *internal, *wire;
+} rr_wire_field_t;
+typedef struct {
+   const char *operation, *type, *command_key, *command;
+   const rr_wire_field_t *fields;
+   size_t field_count;
+} rr_wire_rule_t;
+/* PARITY: rustyrig-www/js/webui.wire.registry.js */
+#include <librrprotocol/wire-registry.h>
 
-static const char *family_for(const char *operation) {
-   if (!operation) {
+static const rr_wire_rule_t *rule_for(dict *in, bool encode) {
+   const char *identity = dict_get(in, encode ? "msg.type" : "op", NULL);
+   if (!identity) {
       return NULL;
    }
-
-   for (unsigned i = 0 ; operations[i] ; i++) {
-      if (!strcmp(operation, operations[i])) {
-         const char *families[] = { "object", "property", "auth", "hello", "ping", "pong", "error", "notice", "alert", NULL };
-         for (unsigned j = 0 ; families[j] ; j++) {
-            size_t length = strlen(families[j]);
-            if (!strncmp(operation, families[j], length) && (!operation[length] || operation[length] == '.')) {
-               return families[j];
-            }
-         }
+   for (unsigned i = 0 ; i < sizeof(wire_rules) / sizeof(wire_rules[0]) ; i++) {
+      const rr_wire_rule_t *rule = &wire_rules[i];
+      if (strcmp(identity, encode ? rule->type : rule->operation)) {
+         continue;
+      }
+      if (!encode) {
+         return rule;
+      }
+      const char *command = rule->command_key ? dict_get(in, rule->command_key, NULL) : NULL;
+      if ((!command && !rule->command) || (command && rule->command && !strcmp(command, rule->command))) {
+         return rule;
       }
    }
 
    return NULL;
 }
 
-static bool metadata(const char *key) {
-   const char *fields[] = {
-      "target", "request.id", "request.room", "stream.epoch", "stream.seq",
-      "result.code", "inventory.kind", "inventory.name", "inventory.depth",
-      "inventory.uuid", "inventory.room", "inventory.backend", "inventory.frequency",
-      "inventory.codec", "inventory.direction", "inventory.subsystem",
-      "inventory.coordinates", "inventory.source", "inventory.service",
-      "inventory.state", "inventory.access", "inventory.action", NULL
-   };
-
-   for (unsigned i = 0 ; fields[i] ; i++) {
-      if (!strcmp(fields[i], key)) {
-         return true;
+static bool field_path(const rr_wire_rule_t *rule, const char *key, bool encode, char *path, size_t capacity) {
+   for (unsigned i = 0 ; i < rule->field_count ; i++) {
+      const char *from = encode ? rule->fields[i].internal : rule->fields[i].wire;
+      const char *to = encode ? rule->fields[i].wire : rule->fields[i].internal;
+      size_t length = strlen(from);
+      if (length && from[length - 1] == '*') {
+         if (strncmp(key, from, length - 1) || !key[length - 1] || strchr(key + length - 1, '.')) {
+            continue;
+         }
+         return snprintf(path, capacity, "%.*s%s", (int)strlen(to) - 1, to, key + length - 1) < (int)capacity;
       }
-   }
-
-   return false;
-}
-
-static bool payload_field(const char *family, const char *key) {
-   const char *object_fields[] = {
-      "uuid", "type", "owner", "alias", "name", "lifecycle", "backend", "room", NULL
-   };
-   const char *property_fields[] = {
-      "name", "type", "readable", "writable", "unit", "minimum", "maximum",
-      "step", "enum", "observed", "known", "available", "version", "value", NULL
-   };
-   if (strcmp(family, "object") && strcmp(family, "property")) {
-      const char *allowed = !strcmp(family, "auth") ? " user error nonce pass token ts privs server password-change-required password-expires password-set msg " :
-         !strcmp(family, "hello") ? " swver hwver role " :
-         !strcmp(family, "error") ? " code from msg target ts vfo " :
-         !strcmp(family, "notice") ? " msg " :
-         !strcmp(family, "alert") ? " from msg ts " : " ts ";
-      char token[128];
-      if (snprintf(token, sizeof(token), " %s ", key) >= (int)sizeof(token)) {
-         return false;
-      }
-      return strstr(allowed, token) != NULL;
-   }
-   const char **fields = !strcmp(family, "object") ? object_fields : property_fields;
-
-   for (unsigned i = 0 ; fields[i] ; i++) {
-      if (!strcmp(fields[i], key)) {
-         return true;
+      if (!strcmp(from, key)) {
+         return snprintf(path, capacity, "%s", to) < (int)capacity;
       }
    }
 
@@ -160,101 +132,43 @@ static bool copy_value(dict *out, const char *key, dict *in, const char *source,
 }
 
 static dict *transform(dict *in, bool encode) {
-   const char *family;
-   char operation[64], command_key[32];
-
-   if (encode) {
-      family = dict_get(in, "msg.type", NULL);
-
-      if (!family) {
-         return NULL;
-      }
-      snprintf(command_key, sizeof(command_key), "%s.cmd", family);
-      const char *command = dict_get(in, command_key, NULL);
-
-      int length = command ? snprintf(operation, sizeof(operation), "%s.%s", family, command) :
-         snprintf(operation, sizeof(operation), "%s", !strcmp(family, "auth") && dict_get(in, "auth.error", NULL) ? "auth.error" : family);
-      if (length >= (int)sizeof(operation) || !family_for(operation) ||
-         (command && !strcmp(operation, "auth.error"))) {
-         return NULL;
-      }
-   } else {
-      const char *op = dict_get(in, "op", NULL);
-      family = family_for(op);
-
-      if (!family) {
-         return NULL;
-      }
-      snprintf(operation, sizeof(operation), "%s", op);
-      snprintf(command_key, sizeof(command_key), "%s.cmd", family);
+   const rr_wire_rule_t *rule = rule_for(in, encode);
+   if (!rule) {
+      if (encode) Log(LOG_WARN, "wire", "Unsupported outgoing operation: %s", dict_get(in, "msg.type", "missing"));
+      return NULL;
    }
    dict *out = dict_new();
-
    if (!out) {
       return NULL;
    }
-
-   if (encode) {
-      if (dict_add(out, "op", operation)) {
-         goto invalid;
-      }
-   } else if (dict_add(out, "msg.type", family) ||
-      (strchr(operation, '.') && strcmp(operation, "auth.error") &&
-       dict_add(out, command_key, operation + strlen(family) + 1))) {
+   if (encode ? dict_add(out, "op", rule->operation) :
+       (dict_add(out, "msg.type", rule->type) || (rule->command && dict_add(out, rule->command_key, rule->command)))) {
       goto invalid;
    }
    int rank = 0;
    const char *key;
    dict_value_t value;
    val_type_t type;
-
    while ((rank = dict_enumerate_typed(in, rank, &key, &value, &type)) >= 0) {
-      if (encode && (!strcmp(key, "msg.type") || !strcmp(key, command_key))) {
+      if (encode ? (!strcmp(key, "msg.type") || (rule->command_key && !strcmp(key, rule->command_key))) : !strcmp(key, "op")) {
          continue;
       }
-
-      if (!encode && !strcmp(key, "op")) {
-         continue;
-      }
-      const char *destination = key;
       char path[128];
-
-      bool model = !strcmp(family, "object") || !strcmp(family, "property");
-      if (encode && !strcmp(key, "msg.ts")) {
-         destination = "time";
-      } else if (!encode && !strcmp(key, "time")) {
-         destination = "msg.ts";
-      } else if ((!strcmp(family, "ping") || !strcmp(family, "pong")) &&
-                 !strcmp(key, encode ? "ping.ts" : "echo")) {
-         destination = encode ? "echo" : "ping.ts";
-      } else if (!model || !metadata(key)) {
-         if (encode) {
-            size_t prefix = strlen(family);
-
-            if (strncmp(key, family, prefix) || key[prefix] != '.' || !payload_field(family, key + prefix + 1)) {
-               goto invalid;
-            }
-            destination = !strcmp(key + prefix + 1, "msg") ? "text" : key + prefix + 1;
-         } else {
-            const char *field = !strcmp(key, "text") ? "msg" : key;
-            if (!strcmp(key, "msg") || !payload_field(family, field)) {
-               goto invalid;
-            }
-            snprintf(path, sizeof(path), "%s.%s", family, field);
-            destination = path;
-         }
-      }
-
-      if (!copy_value(out, destination, in, key, type, &value)) {
+      if (!field_path(rule, key, encode, path, sizeof(path)) ||
+          !copy_value(out, path, in, key, type, &value)) {
+         if (encode) Log(LOG_WARN, "wire", "Invalid outgoing field %s for %s", key, rule->operation);
          goto invalid;
       }
    }
+
    return out;
 invalid:
    dict_free(out);
 
    return NULL;
 }
+
+static bool literal_keys(const char *json);
 
 char *rr_wire_encode(dict *message) {
    dict *wire = transform(message, true);
@@ -265,7 +179,7 @@ char *rr_wire_encode(dict *message) {
    char *json = dict2json(wire);
    dict_free(wire);
 
-   if (json && strlen(json) > HTTP_WS_MAX_MSG) {
+   if (json && (strlen(json) > HTTP_WS_MAX_MSG || !literal_keys(json))) {
       free(json);
       json = NULL;
    }

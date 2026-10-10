@@ -91,7 +91,7 @@ extern bool ws_init(struct mg_mgr *mgr);
 extern bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg);
 
 // Send to a specific, authenticated websocket user by cptr
-extern void ws_send_to_cptr(rrconn_t *sender, rrconn_t *acptr, struct mg_str *msg_data, int data_type);
+extern bool ws_send_to_cptr(rrconn_t *sender, rrconn_t *acptr, struct mg_str *msg_data, int data_type);
 
 // Send to all users, except the sender (UNLESS sender is NULL)
 extern void ws_send_to_name(rrconn_t *sender, const char *username, struct mg_str *msg_data, int data_type);

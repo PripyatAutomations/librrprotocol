@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+python3 librrprotocol/tests/generate_wire.py --check
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 ${CC:-cc} ${CFLAGS:-} -I. -Iinc -Ibuild/${PROFILE:-radio} \

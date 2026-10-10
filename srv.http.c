@@ -1,3 +1,4 @@
+#include <librrprotocol/wire.h>
 // librrprotocol/srv.http.c
 //    This is part of rustyrig-fw.
 // https://github.com/pripyatautomations/rustyrig-fw
@@ -278,6 +279,7 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
       long long rtt = rtt_us / 1000;
       cptr->latency_ms = rtt > INT_MAX ? INT_MAX : (int)rtt;
       last_ping_rtt_ms = rtt;
+      cptr->ping_rtt_ms = rtt;
       Log(LOG_INFO, "ping", "RTT to user %s: %lld ms (%lld us) (global last_ping_rtt_ms=%lld)", cptr->chatname, rtt, rtt_us, last_ping_rtt_ms);
 
       // Let higher layers (audio/etc) track latency
@@ -456,6 +458,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
          dict *pong = dict_new();
          dict_add(pong, "msg.type", "pong");
          dict_add_ulong(pong, "msg.ts", ping_ts);
+         if (dict_get_type(d, "ping.ts") != VAL_END) dict_add_llong(pong, "ping.ts", dict_get_llong(d, "ping.ts", 0));
          ws_send_dict(NULL, cptr, pong, WEBSOCKET_OP_TEXT);
          dict_free(pong);
          result = true;
@@ -469,8 +472,7 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
          result = ws_handle_pong(cptr, d);
          goto cleanup;
       }
-   } else if (strcasecmp(msg_type, "rigctl") == 0) {
-      result = ws_handle_rigctl_msg(cptr, d);
+
    } else if (strcasecmp(msg_type, "rehash") == 0) {
       // Reload server config & user db. Restricted to admin/owner privs.
       // PARITY: rustyrig-www/js/webui (send msg.type:rehash on /rehash)
@@ -560,10 +562,11 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
       while (*root == ' ' || *root == '\t' || *root == '\r' || *root == '\n') {
          root++;
       }
-      dict *d = *root == '{' ? json2dict(buf) : NULL;
+      dict *d = *root == '{' ? rr_wire_decode(buf) : NULL;
 
       if (!d) {
-         Log(LOG_WARN, "http.ws", "Rejected invalid JSON object");
+         Log(LOG_WARN, "http.ws", "Rejected invalid RustyRig message");
+         ws_send_error(cptr, "Invalid RustyRig wire message");
 
          return false;
       }
@@ -741,6 +744,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       dict_add(d, "msg.type", "hello");
       dict_add_ulong(d, "msg.ts", now);
       dict_add(d, "hello.swver", VERSION);
+      dict_add_uint(d, "hello.protocol", RR_PROTOCOL_VERSION);
       dict_add(d, "hello.hwver", HARDWARE);
       ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
       dict_free(d);

@@ -2,9 +2,9 @@
 #ifndef RR_PROTOCOL_WIRE_H
 #define RR_PROTOCOL_WIRE_H
 #include <librustyaxe/core.h>
+#include <librrprotocol/wire-version.h>
 
-/* Initial object/property, auth and connection-message codec. Not yet connected to live transport; the
- * cutover must replace all message families together, without legacy fallback.
+/* Single-version transport codec; internal event dictionaries are not wire JSON.
  * Returned strings/dictionaries are owned by the caller. NULL means invalid
  * input, unsupported operation, exceeded limits or allocation failure.
  * PARITY: rustyrig-www/js/webui.wire.js */

@@ -1,3 +1,5 @@
+#include <librrprotocol/wire.h>
+#include <librrprotocol/latency.h>
 //
 // rrgtk/cli.main.c: Client stuff
 //    This is part of rustyrig-fw.
@@ -145,8 +147,7 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
    struct ws_msg_routes *rp = ws_routes_cli;
    const char *msg_type = dict_get(d, "msg.type", NULL);
 
-   // Send an event; messages with no msg.type (e.g. legacy media capab) emit
-   // a generic "ws.msg.unknown" event instead of "ws.msg.(null)"
+   // Publish the decoded message for interested application listeners.
    char evname[64];
    memset(evname, 0, sizeof(evname) );
    snprintf(evname, sizeof(evname), "ws.msg.%s", (msg_type ? msg_type : "unknown") );
@@ -162,8 +163,6 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
       }
 
       if (msg_type && strcasecmp(rp[i].type, msg_type) == 0) {
-         /* Emit a generic event for this raw websocket message type so other parts of the system can listen to socket-level messages without depending on the
-          * current in-process handlers. The existing handler is still called afterwards for backward compatibility. */
          // Call the stored handler
          return rp[i].cb(cptr, d);
       }
@@ -299,6 +298,18 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
    } else if (ev == MG_EV_WRITE) {
       // Handle writing audio frames one by one
    } else if (ev == MG_EV_WS_OPEN) {
+      struct mg_http_message *response = ev_data;
+      struct mg_str *protocol = response ? mg_http_get_header(response, "Sec-WebSocket-Protocol") : NULL;
+      if (!protocol || protocol->len != strlen(RR_WS_SUBPROTOCOL) ||
+         memcmp(protocol->buf, RR_WS_SUBPROTOCOL, protocol->len)) {
+         Log(LOG_WARN, "ws", "Server did not negotiate %s", RR_WS_SUBPROTOCOL);
+         c->is_closing = 1;
+         dict *error = dict_new();
+         dict_add(error, "error.msg", "Incompatible RustyRig wire protocol");
+         event_emit_dict("http.error", cptr, error);
+         dict_free(error);
+         return;
+      }
       const char *this_server = cptr->server ? cptr->server->network : server_name;
       ws_connected = true;
 
@@ -351,10 +362,13 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          while (*root == ' ' || *root == '\t' || *root == '\r' || *root == '\n') {
             root++;
          }
-         dict *d = *root == '{' ? json2dict(buf) : NULL;
+         dict *d = *root == '{' ? rr_wire_decode(buf) : NULL;
 
          if (!d) {
             Log(LOG_WARN, "http", "ws_handle_cli: invalid text frame len=%zu flags=0x%02x", msg_data.len, wm->flags);
+         }
+         if (rr_latency_received(cptr, d, mono_us())) {
+            Log(LOG_DEBUG, "ws", "Correlated response RTT: %llu us", (unsigned long long)cptr->response_rtt_us);
          }
          ws_txtframe_dispatch(cptr, d);
          memset(buf, 0, sizeof(buf) );
@@ -474,13 +488,57 @@ void ws_fini(struct mg_mgr *mgr) {
 }
 
 // Send to a specific, authenticated websocket session
-void ws_send_to_cptr(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_data, int data_type) {
+bool ws_send_to_cptr(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_data, int data_type) {
    if (!cptr || !cptr->conn || !msg_data || !msg_data->buf ||
       (data_type != WEBSOCKET_OP_TEXT && data_type != WEBSOCKET_OP_BINARY) ||
-      (cptr->server && !cptr->is_ws)) {
-      return;
+      (cptr->server && !cptr->is_ws) || cptr->conn->is_closing || cptr->conn->is_draining) {
+      return false;
    }
-   mg_ws_send(cptr->conn, msg_data->buf, msg_data->len, data_type);
+   struct mg_connection *c = cptr->conn;
+   size_t header = 2 + (msg_data->len < 126 ? 0 : msg_data->len <= 65535 ? 2 : 8) + (c->is_client ? 4 : 0);
+   /* Keep control traffic reliable and bound realtime media latency. Never
+    * trim a partially written frame, and never disconnect merely for pressure. */
+   struct rr_binframe frame;
+   bool realtime = data_type == WEBSOCKET_OP_BINARY && msg_data->len >= RR_BINFRAME_HDR_LEN &&
+      !rr_binframe_parse((const uint8_t *)msg_data->buf, msg_data->len, &frame) &&
+      (frame.hdr.subsystem == RR_BINFRAME_SUBSYS_AUDIO || frame.hdr.subsystem == RR_BINFRAME_SUBSYS_VIDEO);
+   size_t limit = realtime ? (frame.hdr.subsystem == RR_BINFRAME_SUBSYS_AUDIO ? 8192 : 262144) : 1048576;
+   if (realtime) {
+      unsigned quality = c->send.len >= limit / 2 ? 50 : c->send.len >= limit / 4 ? 75 : 100;
+      unsigned previous = cptr->media_quality ? cptr->media_quality : 100;
+      if (quality < previous || now < cptr->media_quality_changed || now - cptr->media_quality_changed >= 5) {
+         cptr->media_quality = quality;
+         cptr->media_quality_changed = now;
+         dict *hint = dict_new();
+         if (hint) {
+            char codec[5];
+            memcpy(codec, frame.hdr.codec, 4); codec[4] = 0;
+            dict_add(hint, "media.codec", codec);
+            dict_add_uint(hint, "media.quality", quality);
+            dict_add_uint(hint, "media.subsys", frame.hdr.subsystem);
+            dict_add_uint(hint, "media.rig", frame.hdr.rig);
+            dict_add_uint(hint, "media.vfo", frame.hdr.vfo);
+            dict_add_uint(hint, "media.direction", frame.hdr.direction);
+            event_emit_dict("media.quality-hint", cptr, hint);
+            dict_free(hint);
+         }
+      }
+   }
+   if (msg_data->len > limit - header || c->send.len > limit - header - msg_data->len) {
+      if (!cptr->queue_warned || now < cptr->queue_warned || now - cptr->queue_warned >= 5) {
+         cptr->queue_warned = now;
+         Log(LOG_WARN, "ws", "%s under pressure: %zu queued bytes, %zu byte frame",
+            realtime ? "Skipping realtime media" : "Rejecting control enqueue", c->send.len, msg_data->len);
+         if (!realtime) event_emit("protocol.backpressure", cptr, "Outgoing control queue full");
+      }
+      return false;
+   }
+   if (mg_ws_send(c, msg_data->buf, msg_data->len, data_type) != header + msg_data->len) {
+      c->is_closing = 1;
+      Log(LOG_WARN, "ws", "Closing connection after incomplete frame enqueue");
+      return false;
+   }
+   return true;
 }
 
 // Send to all logged in instances of the user

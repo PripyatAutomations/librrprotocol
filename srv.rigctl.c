@@ -191,13 +191,8 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    cptr->last_heard = now;       // avoid unneeded keep-alives
    cptr->last_cat = now;         // last CAT message received from user
    const char *cmd = dict_get(d, "cat.cmd", NULL);
-   // Accept both the nested client format (cat.vfo) and the state format (cat.state.vfo)
    const char *vfo = dict_get(d, "cat.vfo", NULL);
 
-   if (!vfo) {
-      vfo = dict_get(d, "cat.state.vfo", NULL);
-   }
-   const char *state = dict_get(d, "cat.state", NULL);
 
    // This can be hit before login (or by ghosted sessions); without a user
    // pointer we can't check privileges, so reject the command.
@@ -209,10 +204,9 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    }
 
    if (cmd && !strcasecmp(cmd, "ptt")) {
-      const char *key = dict_get_type(d, "cat.state.ptt") != VAL_END ? "cat.state.ptt" : "cat.ptt";
       dict_value_t value;
 
-      if (!rr_object_value_get(d, key, VAL_BOOL, &value)) {
+      if (!rr_object_value_get(d, "cat.ptt", VAL_BOOL, &value)) {
          ws_send_error(cptr, "PTT for VFO %s in room %s requires true or false", vfo ? vfo : "(missing)", dict_get(d, "cat.room", ws_authoritative_room()));
 
          return false;
@@ -220,7 +214,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    }
    const char *control_room = dict_get(d, "cat.room", ws_authoritative_room());
    bool releasing = cmd && !strcasecmp(cmd, "ptt") &&
-      !dict_get_bool(d, "cat.state.ptt", dict_get_bool(d, "cat.ptt", false));
+      !dict_get_bool(d, "cat.ptt", false);
    bool own_release = releasing && cptr->is_ptt;
    rrconn_t *release_holder = releasing ? whos_talking() : NULL;
    bool override_release = releasing && !own_release && release_holder &&
@@ -322,8 +316,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
             return false;
          }
-         // Client sends cat.ptt; server-originated echoes use cat.state.ptt
-         bool ptt_state = dict_get_bool(d, "cat.state.ptt", dict_get_bool(d, "cat.ptt", false) );
+         bool ptt_state = dict_get_bool(d, "cat.ptt", false);
 
          bool already_keyed = ptt_state && cptr->is_ptt;
 
@@ -470,10 +463,9 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
             return false;
          }
-         const char *key = dict_get_type(d, "cat.state.freq") != VAL_END ? "cat.state.freq" : "cat.freq";
          dict_value_t frequency;
 
-         if (!rr_object_value_get(d, key, VAL_INT, &frequency) || frequency.i <= 0) {
+         if (!rr_object_value_get(d, "cat.freq", VAL_INT, &frequency) || frequency.i <= 0) {
             ws_send_error(cptr, "Invalid frequency for VFO %s in room %s: provide a positive integer frequency in Hz within the CAT range", vfo, control_room);
 
             return false;
@@ -491,9 +483,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_add(cat_msg, "cat.room", control_room);
          dict_add(cat_msg, "cat.cmd", "freq");
          dict_add_long(cat_msg, "cat.freq", new_freq);
-         // Include cat.state.* so client VFO state/UI updates immediately,
-         // without waiting for the next backend poll to publish cat.state
-         dict_add_long(cat_msg, "cat.state.freq", new_freq);
+         // Receipt acknowledgement; backend observations confirm state.
          dict_add_ulong(cat_msg, "msg.ts", now);
          dict_add(cat_msg, "cat.user", cptr->chatname);
          dict_add(cat_msg, "cat.vfo", vfo);
@@ -515,11 +505,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          event_emit_dict("rigctl", NULL, cmd_d);
          dict_free(cmd_d);
       } else if (strcasecmp(cmd, "width") == 0) {
-         const char *width = dict_get(d, "cat.state.width", NULL);
-
-         if (!width) {
-            width = dict_get(d, "cat.width", NULL);
-         }
+         const char *width = dict_get(d, "cat.width", NULL);
 
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
             ws_send_error(cptr, "Cannot apply %s to VFO %s in room %s: TX account privilege is required", cmd, vfo, control_room);
@@ -560,15 +546,13 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          cptr->last_cat = now;         // last CAT message received from user
          cptr->last_heard = now;
 
-         // Tell everyone immediately (with cat.state.* so client VFO state/UI
-         // updates without waiting for the next backend poll)
+         // Receipt acknowledgement; backend observations confirm state.
          // Audit trail is logged by the rigctl event handler
          dict *cat_msg = dict_new();
          dict_add(cat_msg, "msg.type", "cat");
          dict_add(cat_msg, "cat.room", control_room);
          dict_add(cat_msg, "cat.cmd", "width");
          dict_add(cat_msg, "cat.width", width);
-         dict_add(cat_msg, "cat.state.width", width);
          dict_add(cat_msg, "cat.user", cptr->chatname);
          dict_add(cat_msg, "cat.vfo", vfo);
          dict_add_ulong(cat_msg, "msg.ts", now);
@@ -588,11 +572,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          event_emit_dict("rigctl", NULL, cmd_d);
          dict_free(cmd_d);
       } else if (strcasecmp(cmd, "mode") == 0) {
-         const char *mode = dict_get(d, "cat.state.mode", NULL);
-
-         if (!mode) {
-            mode = dict_get(d, "cat.mode", NULL);
-         }
+         const char *mode = dict_get(d, "cat.mode", NULL);
 
          if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
             ws_send_error(cptr, "Cannot apply %s to VFO %s in room %s: TX account privilege is required", cmd, vfo, control_room);
@@ -623,9 +603,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_add(cat_msg, "cat.room", control_room);
          dict_add(cat_msg, "cat.cmd", "mode");
          dict_add(cat_msg, "cat.mode", mode);
-         // Include cat.state.* so client VFO state/UI updates immediately,
-         // without waiting for the next backend poll to publish cat.state
-         dict_add(cat_msg, "cat.state.mode", mode);
+         // Receipt acknowledgement; backend observations confirm state.
          dict_add(cat_msg, "cat.user", cptr->chatname);
          dict_add(cat_msg, "cat.vfo", vfo);
          dict_add_ulong(cat_msg, "msg.ts", now);

@@ -1,3 +1,5 @@
+#include <librrprotocol/wire.h>
+#include <librrprotocol/latency.h>
 //
 // ws.bcast.c
 //    This is part of rustyrig-fw.
@@ -81,6 +83,7 @@ bool send_global_alert(const char *sender, const char *data) {
    const char *escaped_msg = escape_html(data);
 
    dict *alert_msg = dict_new();
+   dict_add(alert_msg, "msg.type", "alert");
    dict_add(alert_msg, "alert.from", sender);
    dict_add(alert_msg, "alert.msg", escaped_msg);
    dict_add_ulong(alert_msg, "alert.ts", now);
@@ -102,7 +105,7 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
    if (dest->server && !dest->is_ws) {
       return data_type == WEBSOCKET_OP_TEXT && irc_send_dict(dest, d);
    }
-   const char *jp = dict2json(d);
+   const char *jp = rr_wire_encode(d);
 
    if (!jp) {
       Log(LOG_WARN, "rrproto.srv", "Unable to serialize msg dict:<%p> to conn:<%p>", d, dest);
@@ -113,11 +116,12 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
    Log(LOG_CRAZY, "ws.proto", "Sending dict <%p> to conn <%p> (%zu bytes)", (void *)d, (void *)dest, strlen(jp));
 
    struct mg_str payload = mg_str(jp);
-   ws_send_to_cptr(sender, dest, &payload, WEBSOCKET_OP_TEXT);
+   bool sent = ws_send_to_cptr(sender, dest, &payload, WEBSOCKET_OP_TEXT);
 
+   if (sent && dest->server) rr_latency_sent(dest, d, mono_us());
    free( (void *)jp);
 
-   return true;
+   return sent;
 }
 
 // Broadcast a message to all WebSocket clients (using http_client_list)

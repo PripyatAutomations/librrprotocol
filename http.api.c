@@ -1,3 +1,4 @@
+#include <librrprotocol/wire.h>
 //
 // http.api.c
 //    This is part of rustyrig-fw.
@@ -95,8 +96,15 @@ static bool http_api_time(struct mg_http_message *msg, rrconn_t *cptr) {
 }
 
 static bool http_api_ws(struct mg_http_message *msg, rrconn_t *cptr) {
-   // Upgrade to websocket
-   mg_ws_upgrade(cptr->conn, msg, NULL);
+   struct mg_str *protocol = mg_http_get_header(msg, "Sec-WebSocket-Protocol");
+   if (!protocol || protocol->len != strlen(RR_WS_SUBPROTOCOL) ||
+      memcmp(protocol->buf, RR_WS_SUBPROTOCOL, protocol->len)) {
+      mg_http_reply(cptr->conn, 426, "Connection: close\r\nSec-WebSocket-Protocol: " RR_WS_SUBPROTOCOL "\r\n",
+         "RustyRig requires WebSocket subprotocol %s\n", RR_WS_SUBPROTOCOL);
+      cptr->conn->is_draining = 1;
+      return false;
+   }
+   mg_ws_upgrade(cptr->conn, msg, "Sec-WebSocket-Protocol: " RR_WS_SUBPROTOCOL "\r\n");
    cptr->conn->data[0] = 'W';
 
    return true;

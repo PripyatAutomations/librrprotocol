@@ -484,13 +484,13 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          // Send our capabilities
          const char *configured_codecs = cfg_get_exp("codecs.allowed");
          char *my_codecs = codec_filter_test_mode(configured_codecs, cfg_get_bool("audio.test-mode", true) );
-         const char *capab_msg = media_capab_prepare(my_codecs);
+         dict *capab_msg = media_capab_prepare(my_codecs);
          free( (void *)configured_codecs);
          free( (void *)my_codecs);
 
          if (capab_msg) {
-            mg_ws_send(cptr->conn, capab_msg, strlen(capab_msg), WEBSOCKET_OP_TEXT);
-            free( (char *)capab_msg);
+            ws_send_dict(NULL, cptr, capab_msg, WEBSOCKET_OP_TEXT);
+            dict_free(capab_msg);
          } else {
             Log(LOG_CRIT, "ws.media", ">> No codecs negotiated");
          }

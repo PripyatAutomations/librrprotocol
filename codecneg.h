@@ -11,6 +11,7 @@
 #if     !defined(__common_codecneg_h)
 #define __common_codecneg_h
 #include <stdint.h>
+#include <librustyaxe/dict.h>
 #include <stdbool.h>
 #include <ctype.h>
 #include <sys/types.h>
@@ -45,7 +46,7 @@ typedef struct audio_frame {
 
 // ws_send_media_capab: Send our media.capab message. If codecs is not NULL,
 // send overlapping codecs, else send all preferred codecs.
-extern const char *media_capab_prepare(const char *codecs);
+extern dict *media_capab_prepare(const char *codecs);
 
 // codec_filter_common: Return a string with only the codecs supported by both
 // parties or NULL. *MUST* be freed if not NULL!

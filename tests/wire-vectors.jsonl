@@ -12,7 +12,7 @@
 {"internal": "{\"msg\":{\"type\":\"property\"},\"property\":{\"cmd\":\"result\"},\"request\":{\"id\":\"tune-1\"},\"result\":{\"code\":\"ok\"},\"stream\":{\"epoch\":\"00000000-0000-4000-8000-000000000099\",\"seq\":\"15\"}}", "wire": "{\"op\":\"property.result\",\"request\":{\"id\":\"tune-1\"},\"result\":{\"code\":\"ok\"},\"stream\":{\"epoch\":\"00000000-0000-4000-8000-000000000099\",\"seq\":\"15\"}}"}
 {"internal": "{\"msg\":{\"type\":\"object\"},\"object\":{\"cmd\":\"inventory-entry\"},\"request\":{\"id\":\"inventory\"},\"inventory\":{\"kind\":\"rig\",\"depth\":1,\"name\":\"[rig] \\\"one\\\"\",\"state\":\"available\"}}", "wire": "{\"op\":\"object.inventory-entry\",\"request\":{\"id\":\"inventory\"},\"inventory\":{\"kind\":\"rig\",\"depth\":1,\"name\":\"[rig] \\\"one\\\"\",\"state\":\"available\"}}"}
 {"internal": "{\"msg\":{\"type\":\"property\"},\"property\":{\"cmd\":\"changed\",\"name\":\"frequency\",\"type\":\"integer\",\"value\":145000000,\"observed\":true,\"known\":true,\"available\":true,\"version\":\"18446744073709551615\"},\"target\":\"00000000-0000-4000-8000-000000000005\",\"stream\":{\"epoch\":\"00000000-0000-4000-8000-000000000099\",\"seq\":\"18446744073709551615\"}}", "wire": "{\"op\":\"property.changed\",\"name\":\"frequency\",\"type\":\"integer\",\"value\":145000000,\"observed\":true,\"known\":true,\"available\":true,\"version\":\"18446744073709551615\",\"target\":\"00000000-0000-4000-8000-000000000005\",\"stream\":{\"epoch\":\"00000000-0000-4000-8000-000000000099\",\"seq\":\"18446744073709551615\"}}"}
-{"internal": "{\"msg\":{\"type\":\"property\"},\"property\":{\"cmd\":\"set\",\"name\":\"label\",\"value\":\"Hello 🌍\\n\\\"[station]\\\"\"},\"request\":{\"id\":\"escaped\"},\"target\":\"00000000-0000-4000-8000-000000000005\"}", "wire": "{\"op\":\"property.set\",\"name\":\"label\",\"value\":\"Hello 🌍\\n\\\"[station]\\\"\",\"request\":{\"id\":\"escaped\"},\"target\":\"00000000-0000-4000-8000-000000000005\"}"}
+{"internal": "{\"msg\":{\"type\":\"property\"},\"property\":{\"cmd\":\"set\",\"name\":\"label\",\"value\":\"Hello \ud83c\udf0d\\n\\\"[station]\\\"\"},\"request\":{\"id\":\"escaped\"},\"target\":\"00000000-0000-4000-8000-000000000005\"}", "wire": "{\"op\":\"property.set\",\"name\":\"label\",\"value\":\"Hello \ud83c\udf0d\\n\\\"[station]\\\"\",\"request\":{\"id\":\"escaped\"},\"target\":\"00000000-0000-4000-8000-000000000005\"}"}
 {"reject": "{\"msg\":{\"type\":\"object\"},\"object\":{\"cmd\":\"snapshot\"}}"}
 {"reject": "{\"op\":\"object.snapshot\",\"msg\":{\"type\":\"object\"}}"}
 {"reject": "{\"op\":\"object.snapshot\",\"msg\":{}}"}
@@ -54,3 +54,78 @@
 {"reject": "{\"op\":\"notice\",\"msg\":\"old spelling\"}"}
 {"reject": "{\"op\":\"pong\",\"ping\":{\"ts\":1}}"}
 {"reject": "{\"op\":\"error\",\"text\":\"a\",\"text\":\"b\"}"}
+{"internal": "{\"msg\":{\"type\":\"object\"},\"object\":{\"cmd\":\"unsubscribe\"}}", "wire": "{\"op\":\"object.unsubscribe\"}"}
+{"internal": "{\"msg\":{\"type\":\"object\"},\"object\":{\"cmd\":\"inventory\"}}", "wire": "{\"op\":\"object.inventory\"}"}
+{"internal": "{\"msg\":{\"type\":\"object\"},\"object\":{\"cmd\":\"added\"}}", "wire": "{\"op\":\"object.added\"}"}
+{"internal": "{\"msg\":{\"type\":\"object\"},\"object\":{\"cmd\":\"removed\"}}", "wire": "{\"op\":\"object.removed\"}"}
+{"internal": "{\"msg\":{\"type\":\"object\"},\"object\":{\"cmd\":\"result\"}}", "wire": "{\"op\":\"object.result\"}"}
+{"internal": "{\"msg\":{\"type\":\"object\"},\"object\":{\"cmd\":\"inventory-end\"}}", "wire": "{\"op\":\"object.inventory-end\"}"}
+{"internal": "{\"msg\":{\"type\":\"cat\"},\"cat\":{\"cmd\":\"freq\"}}", "wire": "{\"op\":\"cat.freq\"}"}
+{"internal": "{\"msg\":{\"type\":\"cat\"},\"cat\":{\"cmd\":\"mode\"}}", "wire": "{\"op\":\"cat.mode\"}"}
+{"internal": "{\"msg\":{\"type\":\"cat\"},\"cat\":{\"cmd\":\"power\"}}", "wire": "{\"op\":\"cat.power\"}"}
+{"internal": "{\"msg\":{\"type\":\"cat\"},\"cat\":{\"cmd\":\"ptt\"}}", "wire": "{\"op\":\"cat.ptt\"}"}
+{"internal": "{\"msg\":{\"type\":\"cat\"},\"cat\":{\"cmd\":\"width\"}}", "wire": "{\"op\":\"cat.width\"}"}
+{"internal": "{\"msg\":{\"type\":\"cat\"}}", "wire": "{\"op\":\"cat.state\"}"}
+{"internal": "{\"msg\":{\"type\":\"media\"},\"media\":{\"cmd\":\"available\"}}", "wire": "{\"op\":\"media.available\"}"}
+{"internal": "{\"msg\":{\"type\":\"media\"},\"media\":{\"cmd\":\"capab\"}}", "wire": "{\"op\":\"media.capab\"}"}
+{"internal": "{\"msg\":{\"type\":\"media\"},\"media\":{\"cmd\":\"chan-remove\"}}", "wire": "{\"op\":\"media.chan-remove\"}"}
+{"internal": "{\"msg\":{\"type\":\"media\"},\"media\":{\"cmd\":\"codec\"}}", "wire": "{\"op\":\"media.codec\"}"}
+{"internal": "{\"msg\":{\"type\":\"media\"},\"media\":{\"cmd\":\"isupport\"}}", "wire": "{\"op\":\"media.isupport\"}"}
+{"internal": "{\"msg\":{\"type\":\"media\"},\"media\":{\"cmd\":\"list\"}}", "wire": "{\"op\":\"media.list\"}"}
+{"internal": "{\"msg\":{\"type\":\"media\"},\"media\":{\"cmd\":\"source\"}}", "wire": "{\"op\":\"media.source\"}"}
+{"internal": "{\"msg\":{\"type\":\"media\"},\"media\":{\"cmd\":\"source-ok\"}}", "wire": "{\"op\":\"media.source-ok\"}"}
+{"internal": "{\"msg\":{\"type\":\"media\"},\"media\":{\"cmd\":\"subscribe\"}}", "wire": "{\"op\":\"media.subscribe\"}"}
+{"internal": "{\"msg\":{\"type\":\"media\"},\"media\":{\"cmd\":\"subscribed\"}}", "wire": "{\"op\":\"media.subscribed\"}"}
+{"internal": "{\"msg\":{\"type\":\"media\"},\"media\":{\"cmd\":\"unsubscribe\"}}", "wire": "{\"op\":\"media.unsubscribe\"}"}
+{"internal": "{\"msg\":{\"type\":\"media\"},\"media\":{\"cmd\":\"unsubscribed\"}}", "wire": "{\"op\":\"media.unsubscribed\"}"}
+{"internal": "{\"msg\":{\"type\":\"serial\"},\"serial\":{\"cmd\":\"available\"}}", "wire": "{\"op\":\"serial.available\"}"}
+{"internal": "{\"msg\":{\"type\":\"serial\"},\"serial\":{\"cmd\":\"close\"}}", "wire": "{\"op\":\"serial.close\"}"}
+{"internal": "{\"msg\":{\"type\":\"serial\"},\"serial\":{\"cmd\":\"closed\"}}", "wire": "{\"op\":\"serial.closed\"}"}
+{"internal": "{\"msg\":{\"type\":\"serial\"},\"serial\":{\"cmd\":\"configure\"}}", "wire": "{\"op\":\"serial.configure\"}"}
+{"internal": "{\"msg\":{\"type\":\"serial\"},\"serial\":{\"cmd\":\"configured\"}}", "wire": "{\"op\":\"serial.configured\"}"}
+{"internal": "{\"msg\":{\"type\":\"serial\"},\"serial\":{\"cmd\":\"error\"}}", "wire": "{\"op\":\"serial.error\"}"}
+{"internal": "{\"msg\":{\"type\":\"serial\"},\"serial\":{\"cmd\":\"list\"}}", "wire": "{\"op\":\"serial.list\"}"}
+{"internal": "{\"msg\":{\"type\":\"serial\"},\"serial\":{\"cmd\":\"list-end\"}}", "wire": "{\"op\":\"serial.list-end\"}"}
+{"internal": "{\"msg\":{\"type\":\"serial\"},\"serial\":{\"cmd\":\"open\"}}", "wire": "{\"op\":\"serial.open\"}"}
+{"internal": "{\"msg\":{\"type\":\"serial\"},\"serial\":{\"cmd\":\"opened\"}}", "wire": "{\"op\":\"serial.opened\"}"}
+{"internal": "{\"msg\":{\"type\":\"serial\"},\"serial\":{\"cmd\":\"read\"}}", "wire": "{\"op\":\"serial.read\"}"}
+{"internal": "{\"msg\":{\"type\":\"serial\"},\"serial\":{\"cmd\":\"written\"}}", "wire": "{\"op\":\"serial.written\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"die\"}}", "wire": "{\"op\":\"talk.die\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"grid\"}}", "wire": "{\"op\":\"talk.grid\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"help\"}}", "wire": "{\"op\":\"talk.help\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"join\"}}", "wire": "{\"op\":\"talk.join\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"kick\"}}", "wire": "{\"op\":\"talk.kick\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"list\"}}", "wire": "{\"op\":\"talk.list\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"media\"}}", "wire": "{\"op\":\"talk.media\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"msg\"}}", "wire": "{\"op\":\"talk.msg\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"mute\"}}", "wire": "{\"op\":\"talk.mute\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"names\"}}", "wire": "{\"op\":\"talk.names\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"part\"}}", "wire": "{\"op\":\"talk.part\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"qrz\"}}", "wire": "{\"op\":\"talk.qrz\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"quit\"}}", "wire": "{\"op\":\"talk.quit\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"quota\"}}", "wire": "{\"op\":\"talk.quota\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"replay-complete\"}}", "wire": "{\"op\":\"talk.replay-complete\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"replay-start\"}}", "wire": "{\"op\":\"talk.replay-start\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"restart\"}}", "wire": "{\"op\":\"talk.restart\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"room\"}}", "wire": "{\"op\":\"talk.room\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"room-added\"}}", "wire": "{\"op\":\"talk.room-added\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"room-list\"}}", "wire": "{\"op\":\"talk.room-list\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"room-removed\"}}", "wire": "{\"op\":\"talk.room-removed\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"room-vfo\"}}", "wire": "{\"op\":\"talk.room-vfo\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"room-vfo-list\"}}", "wire": "{\"op\":\"talk.room-vfo-list\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"syslog\"}}", "wire": "{\"op\":\"talk.syslog\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"topic\"}}", "wire": "{\"op\":\"talk.topic\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"unmute\"}}", "wire": "{\"op\":\"talk.unmute\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"user\"}}", "wire": "{\"op\":\"talk.user\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"userinfo\"}}", "wire": "{\"op\":\"talk.userinfo\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"whois\"}}", "wire": "{\"op\":\"talk.whois\"}"}
+{"internal": "{\"msg\":{\"type\":\"quit\"}}", "wire": "{\"op\":\"quit\"}"}
+{"internal": "{\"msg\":{\"type\":\"rehash\"}}", "wire": "{\"op\":\"rehash\"}"}
+{"internal": "{\"msg\":{\"type\":\"callsign\"}}", "wire": "{\"op\":\"callsign\"}"}
+{"internal": "{\"msg\":{\"type\":\"ptt.tot-expired\"}}", "wire": "{\"op\":\"ptt.tot-expired\"}"}
+{"internal": "{\"msg\":{\"type\":\"cat\"},\"cat\":{\"state\":{\"vfo\":\"A\",\"freq-available\":false,\"mode-available\":true,\"mode\":\"USB\"}}}", "wire": "{\"op\":\"cat.state\",\"state\":{\"vfo\":\"A\",\"freq-available\":false,\"mode-available\":true,\"mode\":\"USB\"}}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"join\",\"room\":\"#rig0\"},\"room\":{\"vfo-mask\":3,\"tx-control\":true},\"media\":{\"room\":\"#rig0\",\"joined\":true}}", "wire": "{\"op\":\"talk.join\",\"room\":\"#rig0\",\"room-info\":{\"vfo-mask\":3,\"tx-control\":true},\"media-info\":{\"room\":\"#rig0\",\"joined\":true}}"}
+{"internal": "{\"msg\":{\"type\":\"object\"},\"object\":{\"cmd\":\"inventory-entry\"},\"inventory\":{\"kind\":\"site\",\"uuid\":\"00000000-0000-4000-8000-000000000001\"}}", "wire": "{\"op\":\"object.inventory-entry\",\"inventory\":{\"kind\":\"site\",\"uuid\":\"00000000-0000-4000-8000-000000000001\"}}"}
+{"internal": "{\"msg\":{\"type\":\"serial\"},\"serial\":{\"cmd\":\"open\",\"port\":\"ttyHOST0\"}}", "wire": "{\"op\":\"serial.open\",\"port\":\"ttyHOST0\"}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"msg\",\"data\":\"hello\",\"msg_type\":\"pub\",\"msg\":{\"global\":false}}}", "wire": "{\"op\":\"talk.msg\",\"data\":\"hello\",\"msg_type\":\"pub\",\"global\":false}"}
+{"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"msg\",\"data\":\"chunk\",\"msg_type\":\"file_chunk\",\"msg_id\":\"sample\",\"chunk_index\":0,\"total_chunks\":1}}", "wire": "{\"op\":\"talk.msg\",\"data\":\"chunk\",\"msg_type\":\"file_chunk\",\"msg_id\":\"sample\",\"chunk_index\":0,\"total_chunks\":1}"}

@@ -36,15 +36,16 @@
 #include <fwdsp/fwdsp-shared.h>
 
 // if passed NULL for codecs, use all available codecs
-const char *media_capab_prepare(const char *codecs) {
+dict *media_capab_prepare(const char *codecs) {
    if (!codecs) {
       return NULL;
    }
-   // emit codec message
-   char msgbuf[1024];
-   snprintf(msgbuf, sizeof(msgbuf), "{ \"msg\": { \"type\": \"media\" }, \"media\": { \"cmd\": \"capab\", \"codecs\": \"%s\" } }", codecs);
-
-   return strdup(msgbuf);
+   dict *message = dict_new();
+   if (!message) return NULL;
+   dict_add(message, "msg.type", "media");
+   dict_add(message, "media.cmd", "capab");
+   dict_add(message, "media.codecs", codecs);
+   return message;
 }
 
 char *codec_filter_common(const char *preferred, const char *available) {
