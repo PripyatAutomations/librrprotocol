@@ -22,6 +22,7 @@
 #include <librrprotocol/state.h>
 #include <librrprotocol/client-flags.h>
 #include <librrprotocol/connman.h>
+#include <librrprotocol/server.url.h>
 #include <librrprotocol/cfg.fwdsp.h>
 extern const char *server_name;
 

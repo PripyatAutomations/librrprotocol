@@ -18,6 +18,7 @@
 #include <time.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librrprotocol/irc.h>
 
 extern time_t now;
 
@@ -100,6 +101,9 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
       return false;
    }
 
+   if (dest->server && !dest->is_ws) {
+      return data_type == WEBSOCKET_OP_TEXT && irc_send_dict(dest, d);
+   }
    const char *jp = dict2json(d);
 
    if (!jp) {

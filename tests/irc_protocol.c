@@ -41,6 +41,7 @@ static void parser_tests(rrconn_t *conn) {
    assert(!irc_parse_message(""));
    assert(!irc_parse_message("   "));
    assert(!irc_parse_message(":prefix"));
+   assert(!irc_parse_message(": PING :token"));
    assert(!irc_parse_message("PING :x\r\nNICK attacker"));
    assert(!irc_parse_message("CMD 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16"));
    irc_message_t *mp = irc_parse_message(":nick!u@h PRIVMSG #room :hello world");
@@ -137,6 +138,8 @@ int main(void) {
    assert(conn.authenticated && !strcmp(conn.nick, "accepted"));
    assert(!irc_process_message(&conn, "UNRECOGNIZED"));
    assert(unknowns == 1);
+   assert(!irc_process_message(&conn, "000 tester :reserved"));
+   assert(unknowns == 2);
    irc_shutdown();
    assert(!irc_init());
    irc_shutdown();

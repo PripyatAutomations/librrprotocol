@@ -21,6 +21,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <librustyaxe/core.h>
+#include <librrprotocol/server.url.h>
 extern bool dying;
 extern time_t now;
 
@@ -102,11 +103,9 @@ bool add_server(const char *network, const char *str) {
       new_cfg->tls = true;
    } else if (strncasecmp(p, "irc://", 6) == 0) {
       p += 6;
-   } else if (strncasecmp(p, "wss://", 6) == 0) {
-      new_cfg->tls = true;
-      p += 6;
-   } else if (strncasecmp(p, "ws://", 5) == 0) {
-      p += 5;
+   } else {
+      free(new_cfg);
+      return false;
    }
    // Split host and options
    const char *opts = strchr(p, '|');
@@ -115,7 +114,8 @@ bool add_server(const char *network, const char *str) {
    char hostbuf[256];
 
    if (hostlen >= sizeof(hostbuf) ) {
-      hostlen = sizeof(hostbuf) - 1;
+      free(new_cfg);
+      return false;
    }
    memcpy(hostbuf, p, hostlen);
    hostbuf[hostlen] = '\0';
@@ -136,16 +136,15 @@ bool add_server(const char *network, const char *str) {
       }
       memmove(hostbuf, at + 1, strlen(at + 1) + 1);
    }
-   // Parse host[:port]
-   char *colon = strchr(hostbuf, ':');
-
-   if (colon) {
-      *colon = '\0';
-      new_cfg->port = atoi(colon + 1);
-   } else {
-      new_cfg->port = new_cfg->tls ? 6697 : 6667;
+   char endpoint[sizeof(hostbuf) + 8];
+   snprintf(endpoint, sizeof(endpoint), "%s%s", new_cfg->tls ? "ircs://" : "irc://", hostbuf);
+   rr_server_url_t parsed;
+   if (!rr_server_url_parse(endpoint, &parsed)) {
+      free(new_cfg);
+      return false;
    }
-   snprintf(new_cfg->host, sizeof(new_cfg->host), "%s", hostbuf);
+   new_cfg->port = parsed.port;
+   snprintf(new_cfg->host, sizeof(new_cfg->host), "%s", parsed.host);
 
    // Parse options if present
    if (opts) {
@@ -177,21 +176,16 @@ static bool config_servers_save_cb(FILE *fp, const char *path) {
    for (server_cfg_t *sp = server_list ; sp ; sp = sp->next) {
       fprintf(fp, "[network:%s]\n", sp->network);
 
-      // Rebuild the URL: [irc[s]://][nick[:pass]@]host:port[|opts]
+      fprintf(fp, "%s", sp->tls ? "ircs://" : "irc://");
       if (sp->nick[0]) {
+         fprintf(fp, "%s", sp->nick);
          if (sp->pass[0]) {
-            fprintf(fp, "%s%s:%s@%s", sp->tls ? "ircs://" : "irc://", sp->nick, sp->pass, sp->host);
-         } else {
-            fprintf(fp, "%s%s@%s", sp->tls ? "ircs://" : "irc://", sp->nick, sp->host);
+            fprintf(fp, ":%s", sp->pass);
          }
-      } else {
-         fprintf(fp, "%s%s", sp->tls ? "ircs://" : "irc://", sp->host);
+         fputc('@', fp);
       }
-
-      // Default ports don't need to be written
-      if (sp->port && sp->port != (sp->tls ? 6697 : 6667) ) {
-         fprintf(fp, ":%d", sp->port);
-      }
+      bool ipv6 = strchr(sp->host, ':') != NULL;
+      fprintf(fp, "%s%s%s:%d", ipv6 ? "[" : "", sp->host, ipv6 ? "]" : "", sp->port);
 
       if (sp->priority != 0) {
          fprintf(fp, "|priority=%d", sp->priority);

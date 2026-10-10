@@ -91,6 +91,11 @@ irc_message_t *irc_parse_message(const char *msg) {
       s++;
       char *space = strchr(s, ' ');
 
+      if (space == s) {
+         free(dup);
+         free(mp);
+         return NULL;
+      }
       if (space) {
          *space = '\0';
       }
@@ -182,7 +187,7 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
    int code = numeric ? atoi(cmd) : 0;
    rr_irc_callback_t *p = irc_callbacks;
    while (p) {
-      if ((numeric && p->numeric == code) ||
+      if ((numeric && p->numeric > 0 && p->numeric == code) ||
          (!numeric && !p->numeric && p->cmd && !strcasecmp(p->cmd, cmd))) {
          bool failed = p->cb ? p->cb(cptr, mp) : false;
 

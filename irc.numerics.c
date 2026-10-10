@@ -59,64 +59,6 @@ bool irc_builtin_num001(rrconn_t *cptr, irc_message_t *mp) {
 
    irc_send(cptr, "MODE %s +ix", cptr->nick);
 
-   // Handle autojoin if configured
-   // Per Server:
-   if (cptr->server && *cptr->server->autojoin) {
-      char *aj = strdup(cptr->server->autojoin);   // safe copy to modify
-
-      if (!aj) {
-         return true;
-      }
-      char *tok, *saveptr = NULL;
-
-      for (tok = strtok_r(aj, ",", &saveptr) ; tok ; tok = strtok_r(NULL, ",", &saveptr) ) {
-         char *chan = tok;
-         char *key = strchr(tok, ':');
-
-         if (key) {
-            *key++ = '\0';   // split channel:key
-            irc_send(cptr, "JOIN %s %s", chan, key);
-         } else {
-            irc_send(cptr, "JOIN %s", chan);
-         }
-      }
-
-      free(aj);
-   }
-   // Per network
-   char key[256];
-   memset(key, 0, 256);
-   snprintf(key, 256, "network.%s.autojoin", irc_name(cptr));
-
-   const char *net_aj = cfg_get_exp(key);
-
-   if (net_aj && *net_aj) {
-      char *aj = strdup(net_aj);   // safe copy to modify
-
-      if (!aj) {
-         return true;
-      }
-      char *tok, *saveptr = NULL;
-
-      for (tok = strtok_r(aj, ",", &saveptr) ; tok ; tok = strtok_r(NULL, ",", &saveptr) ) {
-         char *chan = tok;
-         char *key = strchr(tok, ':');
-
-         if (key) {
-            *key++ = '\0';   // split channel:key
-            irc_send(cptr, "JOIN %s %s", chan, key);
-         } else {
-            irc_send(cptr, "JOIN %s", chan);
-         }
-      }
-
-      free(aj);
-//   } else {
-//      ui_print(tui_active_window(), "net_aj: key %s returned %s", key,
-// net_aj);
-   }
-   free( (char *)net_aj);
-
    // Blorp a WHOIS for ourself
    irc_send(cptr, "WHOIS %s", cptr->nick);
 
