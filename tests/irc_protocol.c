@@ -112,7 +112,7 @@ int main(void) {
    ssize_t n = recv(sockets[1], reply, sizeof(reply) - 1, MSG_DONTWAIT);
    assert(n > 0);
    reply[n] = '\0';
-   assert(!strcmp(reply, "NICK tester\r\nUSER tester 0 * :tester\r\n"));
+   assert(!strcmp(reply, "CAP LS 302\r\nNICK tester\r\nUSER tester 0 * :tester\r\n"));
    assert(!irc_send(&conn, "NICK injected\r\nQUIT"));
    unsigned before = messages;
    assert(send(sockets[1], "PING :token\r", 12, 0) == 12);

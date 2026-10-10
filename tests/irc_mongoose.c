@@ -14,20 +14,27 @@ void mg_tls_init(struct mg_connection *conn, const struct mg_tls_opts *opts) {
    tls_calls++;
 }
 static void check_registration(bool tls) {
-   server_cfg_t server = {0};
+   server_cfg_t server = {
+      0
+   };
    snprintf(server.host, sizeof(server.host), "chat.example.test");
    snprintf(server.pass, sizeof(server.pass), "secret");
-   rrconn_t client = { .fd = -1, .server = &server };
+   rrconn_t client = {
+      .fd = -1, .server = &server
+   };
    snprintf(client.nick, sizeof(client.nick), "tester");
-   struct mg_connection connection = { .fn_data = &client, .is_tls = tls };
+   struct mg_connection connection = {
+      .fn_data = &client, .is_tls = tls
+   };
    irc_mongoose_handler(&connection, MG_EV_OPEN, NULL);
    irc_mongoose_handler(&connection, MG_EV_CONNECT, NULL);
+
    if (tls) {
       assert(!client.sent_login && !connection.send.len && tls_calls == 1);
       irc_mongoose_handler(&connection, MG_EV_TLS_HS, NULL);
    }
    assert(client.sent_login && client.connected == now);
-   const char *registration = "PASS secret\r\nNICK tester\r\nUSER tester 0 * :tester\r\n";
+   const char *registration = "PASS secret\r\nCAP LS 302\r\nNICK tester\r\nUSER tester 0 * :tester\r\n";
    assert(connection.send.len == strlen(registration));
    assert(!memcmp(connection.send.buf, registration, strlen(registration)));
    const char *ping = "PING :probe\r\n";
@@ -51,7 +58,9 @@ static void check_registration(bool tls) {
    assert(!ws_send_dict(NULL, &client, talk, WEBSOCKET_OP_TEXT));
    assert(connection.send.len == previous);
    dict_free(talk);
-   char nul[] = {'X', '\0', '\r', '\n'};
+   char nul[] = {
+      'X', '\0', '\r', '\n'
+   };
    assert(mg_iobuf_add(&connection.recv, 0, nul, sizeof(nul)) == sizeof(nul));
    irc_mongoose_handler(&connection, MG_EV_READ, NULL);
    assert(connection.is_closing);
@@ -68,5 +77,6 @@ int main(void) {
    irc_shutdown();
    event_shutdown();
    puts("PASS: IRC Mongoose TCP/TLS lifecycle, registration ordering, plain IRC output and input validation");
+
    return 0;
 }

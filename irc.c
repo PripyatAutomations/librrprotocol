@@ -25,11 +25,14 @@
 
 static void irc_close_connection(rrconn_t *cptr) {
 #if defined(USE_MONGOOSE)
+
    if (cptr->conn) {
       cptr->conn->is_closing = 1;
+
       return;
    }
 #endif
+
    if (cptr->fd < 0) {
       return;
    }
@@ -39,6 +42,7 @@ static void irc_close_connection(rrconn_t *cptr) {
    cptr->authenticated = false;
    cptr->sent_login = false;
    cptr->sendq[0] = cptr->recvq[0] = '\0';
+   irc_capabilities_clear(cptr);
    event_emit("irc.disconnected", cptr, "");
 }
 
@@ -124,20 +128,22 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
    }
    size_t msglen = (size_t)written;
 #if defined(USE_MONGOOSE)
+
    if (cptr->conn) {
       if (!cptr->connected || cptr->conn->is_closing ||
-          cptr->conn->send.len + msglen + 2 > SENDQLEN) {
+         cptr->conn->send.len + msglen + 2 > SENDQLEN) {
          return false;
       }
       msg[msglen++] = '\r';
       msg[msglen++] = '\n';
+
       return mg_send(cptr->conn, msg, msglen);
    }
 #endif
+
    if (cptr->fd < 0) {
       return false;
    }
-
 
    if (msglen + 2 + strlen(cptr->sendq) >= SENDQLEN) {
       Log(LOG_WARN, "irc", "sendq full, dropping message");
@@ -227,13 +233,16 @@ bool irc_client_register(rrconn_t *cptr) {
    if (!cptr) {
       return false;
    }
+
    if (!cptr->sent_login) {
       if (!cptr->server) {
          return false;
       }
       const char *ident = cptr->server->ident[0] ? cptr->server->ident : cptr->nick;
+
       if (!cptr->nick[0] || strpbrk(cptr->nick, " :\t\r\n") || strpbrk(ident, " :\t\r\n")) {
          irc_close_connection(cptr);
+
          return false;
       }
       bool sent = true;
@@ -245,7 +254,8 @@ bool irc_client_register(rrconn_t *cptr) {
             sent = irc_send(cptr, "PASS %s", cptr->server->pass);
          }
       }
-      sent = sent && irc_send(cptr, "NICK %s", cptr->nick) &&
+      irc_capabilities_reset(cptr);
+      sent = sent && irc_send(cptr, "CAP LS 302") && irc_send(cptr, "NICK %s", cptr->nick) &&
          irc_send(cptr, "USER %s 0 * :%s", ident, cptr->nick);
 
       if (!sent) {
@@ -255,6 +265,7 @@ bool irc_client_register(rrconn_t *cptr) {
       }
       cptr->sent_login = true;
    }
+
    return true;
 }
 
@@ -297,9 +308,9 @@ void irc_receive(rrconn_t *cptr, const void *data, size_t n) {
 
       if (cptr->fd < 0
 #if defined(USE_MONGOOSE)
-          && !cptr->conn
+         && !cptr->conn
 #endif
-      ) {
+         ) {
          return;
       }
 

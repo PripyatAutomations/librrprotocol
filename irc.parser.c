@@ -32,6 +32,8 @@ static rr_irc_callback_t *owned_callbacks[256];
 static size_t owned_count;
 
 void irc_shutdown(void) {
+   irc_capabilities_shutdown();
+
    for (size_t i = 0 ; i < owned_count ; i++) {
       rr_irc_callback_t *cb = owned_callbacks[i];
       irc_remove_callback(cb);
@@ -94,8 +96,10 @@ irc_message_t *irc_parse_message(const char *msg) {
       if (space == s) {
          free(dup);
          free(mp);
+
          return NULL;
       }
+
       if (space) {
          *space = '\0';
       }
@@ -182,6 +186,7 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
       return true;
    }
    const char *cmd = mp->argv[0];
+   irc_capabilities_message(cptr, mp);
    bool numeric = strlen(cmd) == 3 && isdigit((unsigned char)cmd[0]) &&
       isdigit((unsigned char)cmd[1]) && isdigit((unsigned char)cmd[2]);
    int code = numeric ? atoi(cmd) : 0;

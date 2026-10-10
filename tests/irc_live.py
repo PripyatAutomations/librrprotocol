@@ -28,7 +28,7 @@ for secure in (False, True):
                     assert chunk, 'client disconnected during registration'
                     incoming += chunk
                     assert len(incoming) < 16384
-                assert incoming.startswith(b'PASS secret\r\nNICK tester\r\n')
+                assert incoming.startswith(b'PASS secret\r\nCAP LS 302\r\nNICK tester\r\n')
                 stream.sendall(b':local 001 tester :welcome\r\nPING :transport-probe\r\n')
                 incoming = b''
                 while b'PONG :transport-probe\r\n' not in incoming:

@@ -100,14 +100,17 @@ extern struct mg_str tls_ca_path_str;
 /* The application supplies and owns cptr and its server configuration. */
 void irc_mongoose_handler(struct mg_connection *c, int ev, void *data) {
    rrconn_t *cptr = c ? c->fn_data : NULL;
+
    if (!cptr) {
       return;
    }
+
    if (ev == MG_EV_OPEN) {
       cptr->conn = c;
       cptr->fd = -1;
    } else if (ev == MG_EV_CONNECT) {
       cptr->conn = c;
+
       if (c->is_tls) {
          struct mg_tls_opts opts = {
             .name = mg_str(cptr->server->host),
@@ -122,14 +125,16 @@ void irc_mongoose_handler(struct mg_connection *c, int ev, void *data) {
       cptr->connected = now;
       irc_client_register(cptr);
    } else if (ev == MG_EV_READ) {
-      for (size_t offset = 0; offset < c->recv.len && !c->is_closing;) {
+      for (size_t offset = 0 ; offset < c->recv.len && !c->is_closing ; ) {
          size_t length = c->recv.len - offset;
+
          if (length > IRC_MSGLEN - 1) {
             length = IRC_MSGLEN - 1;
          }
          irc_receive(cptr, c->recv.buf + offset, length);
          offset += length;
       }
+
       mg_iobuf_del(&c->recv, 0, c->recv.len);
    } else if (ev == MG_EV_ERROR) {
       dict *d = dict_new();
@@ -138,6 +143,7 @@ void irc_mongoose_handler(struct mg_connection *c, int ev, void *data) {
       dict_free(d);
       c->is_closing = 1;
    } else if (ev == MG_EV_CLOSE && cptr->conn == c) {
+      irc_capabilities_clear(cptr);
       cptr->conn = NULL;
       cptr->connected = 0;
       cptr->authenticated = false;
@@ -152,11 +158,13 @@ static bool irc_target_valid(const char *target) {
    if (!target || !*target || *target == ':') {
       return false;
    }
-   for (const unsigned char *p = (const unsigned char *)target; *p; p++) {
+
+   for (const unsigned char *p = (const unsigned char *)target ; *p ; p++) {
       if (*p <= ' ' || *p == 127) {
          return false;
       }
    }
+
    return true;
 }
 
@@ -169,29 +177,38 @@ bool irc_send_dict(rrconn_t *cptr, dict *d) {
    const char *cmd = dict_get(d, "talk.cmd", "");
    const char *target = dict_get(d, "talk.target", "");
    const char *text = dict_get(d, "talk.data", "");
+
    if (!strcmp(type, "ping")) {
       return irc_send(cptr, "PING :%ld", (long)now);
    }
+
    if (!strcmp(type, "talk")) {
       if (!strcmp(cmd, "list")) {
          return irc_send(cptr, "LIST");
       }
+
       if (!strcmp(cmd, "join") && irc_target_valid(target)) {
          return irc_send(cptr, "JOIN %s", target);
       }
+
       if (!strcmp(cmd, "part") && irc_target_valid(target)) {
          return irc_send(cptr, "PART %s", target);
       }
+
       if (!strcmp(cmd, "topic") && irc_target_valid(target)) {
          return *text ? irc_send(cptr, "TOPIC %s :%s", target, text) : irc_send(cptr, "TOPIC %s", target);
       }
+
       if (!strcmp(cmd, "whois")) {
          const char *who = dict_get(d, "talk.user", target);
+
          return irc_target_valid(who) && irc_send(cptr, "WHOIS %s", who);
       }
+
       if (!strcmp(cmd, "msg") && irc_target_valid(target)) {
          const char *kind = dict_get(d, "talk.msg_type", "pub");
          bool sent;
+
          if (!strcmp(kind, "notice")) {
             sent = irc_send(cptr, "NOTICE %s :%s", target, text);
          } else if (!strcmp(kind, "action")) {
@@ -199,12 +216,15 @@ bool irc_send_dict(rrconn_t *cptr, dict *d) {
          } else {
             sent = irc_send(cptr, "PRIVMSG %s :%s", target, text);
          }
+
          if (sent) {
             event_emit_dict("irc.sent", cptr, d);
          }
+
          return sent;
       }
    }
    event_emit_dict("irc.command.unsupported", cptr, d);
+
    return false;
 }
