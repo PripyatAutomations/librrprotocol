@@ -165,6 +165,16 @@ int main(void) {
    dict_add(request, "media.codec", "pc16");
    dict_add_int(request, "media.quality", 50);
    assert(ws_handle_mediachan_msg(&client, request));
+   // Exercise compact wire decoding and the real server dispatcher too.
+   // Testing only ws_handle_mediachan_msg missed its missing dispatch entry.
+   char feedback_wire[256];
+   snprintf(feedback_wire, sizeof(feedback_wire),
+      "{\"op\":\"media.feedback\",\"stream\":%u,\"dir\":0,\"codec\":\"pc16\",\"quality\":75,\"late-us\":0,\"gaps\":0}", stream);
+   struct mg_ws_message feedback_frame = {
+      .flags = WEBSOCKET_OP_TEXT,
+      .data = { .buf = feedback_wire, .len = strlen(feedback_wire) }
+   };
+   assert(ws_handle(&client, &feedback_frame));
    client.authenticated = false;
    assert(!ws_handle_mediachan_msg(&client, request));
    client.authenticated = true;

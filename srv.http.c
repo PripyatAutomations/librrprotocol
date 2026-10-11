@@ -440,12 +440,13 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       }
 
       // Channel subscription commands: list/subscribe/unsubscribe and the
-      // media source registration. capab/codec/isupport are negotiated in
+      // media source registration/receiver feedback. capab/codec/isupport are negotiated in
       // codecneg/ws.media paths.
       if (strcasecmp(media_cmd, "list") == 0 ||
          strcasecmp(media_cmd, "subscribe") == 0 ||
          strcasecmp(media_cmd, "unsubscribe") == 0 ||
          strcasecmp(media_cmd, "source") == 0 ||
+         strcasecmp(media_cmd, "feedback") == 0 ||
          strcasecmp(media_cmd, "codec") == 0) {
          result = ws_handle_mediachan_msg(cptr, d);
          goto cleanup;
