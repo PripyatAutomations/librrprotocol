@@ -199,7 +199,7 @@ bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
       char payload[IRC_MSGLEN];
       size_t length = strlen(mp->argv[2]);
 
-      if (length < 2 || mp->argv[2][length - 1] != '\001') {
+      if (length < 2 || length >= sizeof(payload) || mp->argv[2][length - 1] != '\001') {
          return true;
       }
       memcpy(payload, mp->argv[2] + 1, length - 2);
@@ -221,25 +221,13 @@ bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
          // action is technically a CTCP
          Log(LOG_INFO, "irc", "[%s] * %s / %s %s", network, win_title, tmp_nick, data);
 //         ui_print(wp, "%s * %s %s", get_chat_ts(0), tmp_nick, data);
-      } else if (strcasecmp(cmd, "PING") == 0) {
-//         ui_print(NULL,
-//            "%s [{green}%s{reset} %s {bright-yellow}*PING*{reset} %s",
-// get_chat_ts(0), network,
-//            tmp_nick, data);
-         irc_send(cptr, "NOTICE %s :\001PING %s\001", tmp_nick, data);
       } else if (strcasecmp(cmd, "RRCALL") == 0) {
          Log(LOG_INFO, "irc", "[%s] CTCP RRCALL from %s: %s", network, tmp_nick, data);
 //         ui_print(NULL,
 //            "%s [{green}%s{reset}] {bright-yellow}*RRCALL*{reset} from %s:
 // %s", get_chat_ts(0),
 //            network, tmp_nick, data);
-      } else if (strcasecmp(cmd, "VERSION") == 0) {
-//         ui_print("status",
-//            "%s [[green}%s{reset}] %s {bright-yellow}*VERSION*{reset} ",
-// get_chat_ts(0), network,
-//            tmp_nick);
-         Log(LOG_INFO, "irc", "[%s] CTCP VERSION from %s", network, tmp_nick);
-         irc_send(cptr, "NOTICE %s :\001VERSION rustyrig %s\001", tmp_nick, VERSION);
+
       }
       // CTCP handler needs to remove the \001 characters internally!
       irc_emit_message("irc.ctcp", cptr, mp);
