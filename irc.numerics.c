@@ -510,6 +510,22 @@ bool irc_builtin_num461(rrconn_t *cptr, irc_message_t *mp) {
    return false;
 }
 
+bool irc_builtin_num470(rrconn_t *cptr, irc_message_t *mp) {
+   if (!cptr || !mp || mp->argc < 4 || !mp->argv ||
+       !mp->argv[1] || !mp->argv[2] || !mp->argv[3] ||
+       strcasecmp(mp->argv[1], cptr->nick) ||
+       (mp->argv[2][0] != '#' && mp->argv[2][0] != '&') || !mp->argv[2][1] ||
+       (mp->argv[3][0] != '#' && mp->argv[3][0] != '&') || !mp->argv[3][1]) {
+      return true;
+   }
+
+   if (strcasecmp(mp->argv[2], mp->argv[3])) {
+      irc_emit_message("irc.channel.redirect", cptr, mp);
+   }
+
+   return false;
+}
+
 bool irc_builtin_num482(rrconn_t *cptr, irc_message_t *mp) {
    if (!cptr || !mp || mp->argc < 3) {
       return true;
@@ -704,6 +720,10 @@ const rr_irc_numeric_t irc_numerics[] = {
    {
       .code = 465, .name = "ERR_YOUREBANNEDCREEP", .desc = "You are banned from this server",
       .cb = NULL
+   },
+   {
+      .code = 470, .name = "ERR_LINKCHANNEL", .desc = "Channel join redirected",
+      .cb = irc_builtin_num470
    },
    {
       .code = 471, .name = "ERR_CHANNELISFULL", .desc = "Channel is full", .cb = NULL

@@ -10,7 +10,7 @@
 
 time_t now = 100;
 bool dying, restarting;
-static unsigned messages, privmsgs, unknowns, topics;
+static unsigned messages, privmsgs, unknowns, topics, redirects;
 static char last_event[4096];
 static void observe(const char *event, const char *data, rrconn_t *conn, void *user) {
    (void)conn;
@@ -25,6 +25,14 @@ static void observe(const char *event, const char *data, rrconn_t *conn, void *u
       unknowns++;
    } else if (!strcmp(event, "irc.topic")) {
       topics++;
+   }
+   if (!strcmp(event, "irc.channel.redirect")) {
+      dict *d = json2dict(data);
+      assert(d && !strcmp(dict_get(d, "msg.arg2", ""), "#old"));
+      assert(!strcmp(dict_get(d, "msg.arg3", ""), "#new"));
+      assert(!strcmp(dict_get(d, "msg.arg4", ""), "Forwarding"));
+      dict_free(d);
+      redirects++;
    }
    snprintf(last_event, sizeof(last_event), "%s", data);
 }
@@ -102,6 +110,7 @@ int main(void) {
    event_on("irc.privmsg", observe, NULL);
    event_on("irc.unsupported", observe, NULL);
    event_on("irc.topic", observe, NULL);
+   event_on("irc.channel.redirect", observe, NULL);
    parser_tests(&conn);
    channel_tests();
    assert(!irc_init());
@@ -134,6 +143,13 @@ int main(void) {
    assert(!irc_process_message(&conn, ":nick QUIT"));
    assert(!irc_process_message(&conn, ":server 332 tester #room :a topic"));
    assert(topics == 1);
+   assert(!irc_process_message(&conn, ":server 470 tester #old #new :Forwarding"));
+   assert(redirects == 1);
+   assert(irc_process_message(&conn, ":server 470 tester #old"));
+   assert(irc_process_message(&conn, ":server 470 other #old #new :Wrong recipient"));
+   assert(irc_process_message(&conn, ":server 470 tester #old nick :Wrong target"));
+   assert(!irc_process_message(&conn, ":server 470 tester #old #OLD :Same channel"));
+   assert(redirects == 1);
    assert(!irc_process_message(&conn, ":server 001 accepted :welcome"));
    assert(conn.authenticated && !strcmp(conn.nick, "accepted"));
    assert(!irc_process_message(&conn, "UNRECOGNIZED"));
