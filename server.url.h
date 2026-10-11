@@ -13,6 +13,9 @@ typedef enum {
 typedef struct {
    rr_transport_t transport;
    char host[HOSTLEN + 1];
+   bool credentials;
+   char user[NICKLEN + 1];
+   char pass[PASSLEN + 1];
    uint16_t port;
    bool tls;
    bool irc;

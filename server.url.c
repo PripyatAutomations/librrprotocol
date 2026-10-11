@@ -14,6 +14,30 @@
 #include <arpa/inet.h>
 #include <librrprotocol/server.url.h>
 
+/* Decode URL userinfo without treating '+' as a form-encoded space. */
+static bool decode_userinfo(const char *begin, const char *end, char *out, size_t capacity) {
+   size_t used = 0;
+   while (begin < end) {
+      unsigned char value = (unsigned char)*begin++;
+      if (value == '%') {
+         if (end - begin < 2 || !isxdigit((unsigned char)begin[0]) || !isxdigit((unsigned char)begin[1])) {
+            return false;
+         }
+         value = 0;
+         for (int i = 0 ; i < 2 ; i++) {
+            unsigned char digit = (unsigned char)*begin++;
+            value = value * 16 + (isdigit(digit) ? digit - '0' : tolower(digit) - 'a' + 10);
+         }
+      }
+      if (value < ' ' || value == 127 || used + 1 >= capacity) {
+         return false;
+      }
+      out[used++] = value;
+   }
+   out[used] = '\0';
+   return true;
+}
+
 bool rr_server_url_parse(const char *url, rr_server_url_t *out) {
    if (!url || !out || !*url) {
       return false;
@@ -50,6 +74,19 @@ bool rr_server_url_parse(const char *url, rr_server_url_t *out) {
       if (*p <= ' ' || *p == 127 || *p == '#' || *p == '\\') {
          return false;
       }
+   }
+
+   const char *authority_end = host + strcspn(host, "/");
+   const char *at = memchr(host, '@', (size_t)(authority_end - host));
+   if (at) {
+      const char *colon = memchr(host, ':', (size_t)(at - host));
+      if (parsed.irc || !colon || colon == host ||
+          !decode_userinfo(host, colon, parsed.user, sizeof(parsed.user)) ||
+          !decode_userinfo(colon + 1, at, parsed.pass, sizeof(parsed.pass))) {
+         return false;
+      }
+      parsed.credentials = true;
+      host = at + 1;
    }
 
    const char *end;

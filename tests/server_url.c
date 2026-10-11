@@ -20,11 +20,23 @@ int main(void) {
    assert(rr_server_url_parse("ircs://[::1]", &url) && url.port == 6697);
    assert(rr_server_url_parse("ws://localhost/ws/", &url) && url.port == 8420);
    assert(rr_server_url_parse("wss://localhost/", &url) && url.port == 4420);
+   assert(rr_server_url_parse("ws://user:pass@localhost:8420/ws/", &url));
+   assert(url.credentials && !strcmp(url.user, "user") && !strcmp(url.pass, "pass"));
+   assert(!strcmp(url.host, "localhost") && url.port == 8420 && !strcmp(url.path, "/ws/"));
+   assert(rr_server_url_parse("wss://user:p%40ss%3Aword+@localhost/ws/", &url));
+   assert(url.tls && !strcmp(url.pass, "p@ss:word+"));
+   assert(rr_server_url_parse("ws://user:@[::1]/ws/", &url) && url.credentials && !url.pass[0] && url.ipv6);
+   assert(rr_server_url_parse("ws://localhost/ws/@user", &url) && !url.credentials);
+   char oversized[256];
+   snprintf(oversized, sizeof(oversized), "ws://user:%0*d@localhost/ws/", PASSLEN + 1, 0);
+   assert(!rr_server_url_parse(oversized, &url));
    const char *invalid[] = {
       "localhost:8420", "http://example.test:80",
       "ircs://localhost:0", "ws://localhost:65536/ws/",
       "ws://localhost:-1/ws/", "ws://localhost:8420x/ws/", "ws://:8420/ws/",
-      "ws://user:pass@localhost:8420/ws/", "irc://localhost:6667/channel",
+      "ws://:pass@localhost/ws/", "ws://user@localhost/ws/", "ws://user:%00@localhost/ws/",
+      "ws://user:%0a@localhost/ws/", "ws://user:%xx@localhost/ws/", "ws://user:p@ss@localhost/ws/",
+      "irc://user:pass@localhost", "irc://localhost:6667/channel",
       "ws://localhost:8420/ws/#fragment", "ws://localhost:8420/\r\nQUIT",
       "irc://::1:6667", "irc://[not-ipv6]:6667",
       "ws://localhost:99999999999999999999/ws/", "ws://local host:80/",
