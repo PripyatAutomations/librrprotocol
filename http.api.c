@@ -1,4 +1,3 @@
-#include <librrprotocol/wire.h>
 //
 // http.api.c
 //    This is part of rustyrig-fw.
@@ -21,6 +20,7 @@
 #include <arpa/inet.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librrprotocol/wire.h>
 
 // This defines a hard-coded fallback path for httpd root, if not set in config
 #if     defined(HOST_POSIX)
