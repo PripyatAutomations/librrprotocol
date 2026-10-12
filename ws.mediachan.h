@@ -28,23 +28,23 @@
 #include <librustyaxe/core.h>
 
 #ifndef MAX_MEDIA_CHANNELS
-#define MAX_MEDIA_CHANNELS 64     // max channels in the registry
+#define MAX_MEDIA_CHANNELS 64   // max channels in the registry
 #endif
 
 // media channel: one streamable direction of a binframe subsystem
 struct rr_mediachan {
-   char uuid[64];                    // server-assigned channel uuid
-   uint8_t subsystem;                // RR_BINFRAME_SUBSYS_* (ws.binframe.h)
-   uint8_t direction;                // RR_BINFRAME_DIR_RX or RR_BINFRAME_DIR_TX
-   uint8_t vfo;                      // rr_vfo_t (0 = VFO A; 0xFF = n/a)
-   uint8_t rig;                      // rig index; 0 = default; 0xFF = n/a
-   char name[64];                     // stable endpoint name, e.g. rig0.vfo_a.rx
-   char room[128];                   // joined room required for this channel
+   char uuid[64];               // server-assigned channel uuid
+   uint8_t subsystem;           // RR_BINFRAME_SUBSYS_* (ws.binframe.h)
+   uint8_t direction;           // RR_BINFRAME_DIR_RX or RR_BINFRAME_DIR_TX
+   uint8_t vfo;                 // rr_vfo_t (0 = VFO A; 0xFF = n/a)
+   uint8_t rig;                 // rig index; 0 = default; 0xFF = n/a
+   char name[64];               // stable endpoint name, e.g. rig0.vfo_a.rx
+   char room[128];              // joined room required for this channel
    char rig_uuid[64];
    char vfo_uuid[64];
-   char codec[5];                    // negotiated codec magic, or "" when unset
-   char descr[128];                  // human-readable description
-   bool active;                      // is this channel actually streaming?
+   char codec[5];               // negotiated codec magic, or "" when unset
+   char descr[128];             // human-readable description
+   bool active;                 // is this channel actually streaming?
 };
 
 // Server-side channel registry (rrserver owns the instances)

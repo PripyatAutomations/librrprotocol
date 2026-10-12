@@ -62,9 +62,9 @@ extern bool ws_handle_talk_msg(rrconn_t *cptr, dict *d);
 extern bool rr_object_client_message(rrconn_t *cptr, dict *d);
 
 struct ws_msg_routes {
-   const char *type;             // auth|ping|talk|cat|alert|error|hello etc
-   bool auth_reqd;               // Is this only for authenticated users?
-   bool (*cb)(/*rrconn_t *cptr, dict *d*/);
+   const char *type;            // auth|ping|talk|cat|alert|error|hello etc
+   bool auth_reqd;              // Is this only for authenticated users?
+   bool (*cb)(/*rrconn_t *cptr, dict *d */);
 };
 
 struct ws_msg_routes ws_routes_cli[] = {
@@ -133,7 +133,7 @@ bool ws_handle_hello_msg(rrconn_t *cptr, dict *d) {
    } else {
       const char *jp = dict2json(d);
       Log(LOG_INFO, "auth.ws", "*** server sent unparsable hello: %s", jp);
-      free( (void *)jp);
+      free((void *)jp);
    }
 
    return true;
@@ -151,8 +151,8 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
 
    // Publish the decoded message for interested application listeners.
    char evname[64];
-   memset(evname, 0, sizeof(evname) );
-   snprintf(evname, sizeof(evname), "ws.msg.%s", (msg_type ? msg_type : "unknown") );
+   memset(evname, 0, sizeof(evname));
+   snprintf(evname, sizeof(evname), "ws.msg.%s", (msg_type ? msg_type : "unknown"));
    event_emit_dict(evname, cptr, d);
 
    // Walk the table of handlers
@@ -187,14 +187,14 @@ static bool ws_binframe_process_client(rrconn_t *client, const char *data, size_
       return false;
    }
    struct rr_binframe f;
-   int rv = rr_binframe_parse( (const uint8_t *)data, len, &f);
+   int rv = rr_binframe_parse((const uint8_t *)data, len, &f);
 
    if (rv < 0) {
       // invalid/unrecognized frame; parse already logged the reason
       return false;
    }
 
-   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_SERIAL_FRAME_CODEC, 4) ) {
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_SERIAL_FRAME_CODEC, 4)) {
       if (!rr_serial_frame_valid(&f) || len != RR_BINFRAME_HDR_LEN + f.len) {
          return false;
       }
@@ -204,7 +204,7 @@ static bool ws_binframe_process_client(rrconn_t *client, const char *data, size_
    }
 
    // Complete receiver NMEA is an opt-in, read-only media stream.
-   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_NMEA_FRAME_CODEC, 4) ) {
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_NMEA_FRAME_CODEC, 4)) {
       if (f.hdr.direction != RR_BINFRAME_DIR_RX || f.hdr.vfo != RR_BINFRAME_VFO_NA ||
          !f.hdr.stream || !f.len || f.len > 509 || len != RR_BINFRAME_HDR_LEN + f.len) {
          return false;
@@ -215,19 +215,15 @@ static bool ws_binframe_process_client(rrconn_t *client, const char *data, size_
    }
 
    // GPS position records are fixed-size, read-only MODEM media frames.
-   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_GPS_FRAME_CODEC, 4) ) {
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_GPS_FRAME_CODEC, 4)) {
       if (f.hdr.direction != RR_BINFRAME_DIR_RX || f.hdr.vfo != RR_BINFRAME_VFO_NA ||
-         !f.hdr.stream || f.len != RR_GPS_POSITION_PAYLOAD_LEN ||
-         len != RR_BINFRAME_HDR_LEN + f.len) {
+         !f.hdr.stream || f.len != RR_GPS_POSITION_PAYLOAD_LEN || len != RR_BINFRAME_HDR_LEN + f.len) {
          return false;
       }
-      int64_t lat = (int32_t)( (uint32_t)f.data[0] << 24 | (uint32_t)f.data[1] << 16 |
-               (uint32_t)f.data[2] << 8 | f.data[3]);
-      int64_t lon = (int32_t)( (uint32_t)f.data[4] << 24 | (uint32_t)f.data[5] << 16 |
-               (uint32_t)f.data[6] << 8 | f.data[7]);
+      int64_t lat = (int32_t) ((uint32_t) f.data[0] << 24 | (uint32_t) f.data[1] << 16 | (uint32_t) f.data[2] << 8 | f.data[3]);
+      int64_t lon = (int32_t) ((uint32_t) f.data[4] << 24 | (uint32_t) f.data[5] << 16 | (uint32_t) f.data[6] << 8 | f.data[7]);
 
-      if (lat < -900000000 || lat > 900000000 || lon < -1800000000 || lon > 1800000000 ||
-         (f.data[8] & ~(RR_GPS_POSITION_VALID | RR_GPS_POSITION_MANUAL) ) ) {
+      if (lat < -900000000 || lat > 900000000 || lon < -1800000000 || lon > 1800000000 || (f.data[8] & ~(RR_GPS_POSITION_VALID | RR_GPS_POSITION_MANUAL))) {
          return false;
       }
       event_emit_binary(RR_GPS_FRAME_EVENT, client, data, len);
@@ -261,7 +257,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
    rrconn_t *cptr = NULL;
 
    if (c->fn_data) {
-      cptr = (rrconn_t *)c->fn_data;
+      cptr = (rrconn_t *) c->fn_data;
    } else {
       Log(LOG_CRIT, "rrproto.cli.main", "No fn_data in mg_conn:<%p>", c);
 
@@ -302,14 +298,15 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
    } else if (ev == MG_EV_WS_OPEN) {
       struct mg_http_message *response = ev_data;
       struct mg_str *protocol = response ? mg_http_get_header(response, "Sec-WebSocket-Protocol") : NULL;
-      if (!protocol || protocol->len != strlen(RR_WS_SUBPROTOCOL) ||
-         memcmp(protocol->buf, RR_WS_SUBPROTOCOL, protocol->len)) {
+
+      if (!protocol || protocol->len != strlen(RR_WS_SUBPROTOCOL) || memcmp(protocol->buf, RR_WS_SUBPROTOCOL, protocol->len)) {
          Log(LOG_WARN, "ws", "Server did not negotiate %s", RR_WS_SUBPROTOCOL);
          c->is_closing = 1;
          dict *error = dict_new();
          dict_add(error, "error.msg", "Incompatible RustyRig wire protocol");
          event_emit_dict("http.error", cptr, error);
          dict_free(error);
+
          return;
       }
       const char *this_server = cptr->server ? cptr->server->network : server_name;
@@ -340,8 +337,10 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          return;
       }
 
-      if ((wm->flags & 0x0F) == WEBSOCKET_OP_TEXT || (wm->flags & 0x0F) == WEBSOCKET_OP_BINARY)
+      if ((wm->flags & 0x0F) == WEBSOCKET_OP_TEXT || (wm->flags & 0x0F) == WEBSOCKET_OP_BINARY) {
          rr_traffic_count(cptr, false, (wm->flags & 0x0F) == WEBSOCKET_OP_BINARY, wm->data.len);
+      }
+
       if ((wm->flags & 0x0F) == WEBSOCKET_OP_BINARY) {
          // Binary (audio, waterfall, etc) frames
          ws_binframe_process_client(cptr, wm->data.buf, wm->data.len);
@@ -359,7 +358,7 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 
          // Copy to a null terminated buffer
          char buf[HTTP_WS_MAX_MSG + 1];
-         memset(buf, 0, sizeof(buf) );
+         memset(buf, 0, sizeof(buf));
          memcpy(buf, msg_data.buf, msg_data.len);
 
          const char *root = buf;
@@ -371,11 +370,12 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          if (!d) {
             Log(LOG_WARN, "http", "ws_handle_cli: invalid text frame len=%zu flags=0x%02x", msg_data.len, wm->flags);
          }
+
          if (rr_latency_received(cptr, d, mono_us())) {
             Log(LOG_DEBUG, "ws", "Correlated response RTT: %llu us", (unsigned long long)cptr->response_rtt_us);
          }
          ws_txtframe_dispatch(cptr, d);
-         memset(buf, 0, sizeof(buf) );
+         memset(buf, 0, sizeof(buf));
          dict_free(d);
       }
 
@@ -427,24 +427,22 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
 void ws_client_init(void) {
    const char *log_http = cfg_get_exp("log.http");
 
-   if (log_http && (strcasecmp(log_http, "true") == 0 ||
-      strcasecmp(log_http, "yes") == 0) ) {
+   if (log_http && (strcasecmp(log_http, "true") == 0 || strcasecmp(log_http, "yes") == 0)) {
 #ifdef  USE_MONGOOSE
-      mg_log_set(MG_LL_DEBUG);   // or MG_LL_VERBOSE for even more
+      mg_log_set(MG_LL_DEBUG);  // or MG_LL_VERBOSE for even more
 #endif // USE_MONGOOSE
    } else {
 #ifdef  USE_MONGOOSE
       mg_log_set(MG_LL_ERROR);
 #endif // USE_MONGOOSE
    }
-   free( (void *)log_http);
+   free((void *)log_http);
    const char *log_http_crazy = cfg_get_exp("log.http.crazy");
 
-   if (log_http_crazy && (strcasecmp(log_http_crazy, "true") == 0 ||
-      strcasecmp(log_http_crazy, "yes") == 0) ) {
+   if (log_http_crazy && (strcasecmp(log_http_crazy, "true") == 0 || strcasecmp(log_http_crazy, "yes") == 0)) {
       cfg_http_debug = true;
    }
-   free( (void *)log_http_crazy);
+   free((void *)log_http_crazy);
 
 #ifdef  USE_MONGOOSE
    mg_mgr_init(&mgr);
@@ -500,22 +498,25 @@ static bool ws_send_frame(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_d
    }
    struct mg_connection *c = cptr->conn;
    size_t header = 2 + (msg_data->len < 126 ? 0 : msg_data->len <= 65535 ? 2 : 8) + (c->is_client ? 4 : 0);
-   /* Keep control traffic reliable and bound realtime media latency. Never
-    * trim a partially written frame, and never disconnect merely for pressure. */
+   /* Keep control traffic reliable and bound realtime media latency. Never trim a partially written frame, and never disconnect merely for pressure. */
    struct rr_binframe frame;
    bool realtime = data_type == WEBSOCKET_OP_BINARY && msg_data->len >= RR_BINFRAME_HDR_LEN &&
       !rr_binframe_parse((const uint8_t *)msg_data->buf, msg_data->len, &frame) &&
       (frame.hdr.subsystem == RR_BINFRAME_SUBSYS_AUDIO || frame.hdr.subsystem == RR_BINFRAME_SUBSYS_VIDEO);
    size_t limit = realtime && !setup ? (frame.hdr.subsystem == RR_BINFRAME_SUBSYS_AUDIO ? 8192 : 262144) : 1048576;
+
    if (realtime) {
       bool notify;
       unsigned quality = rr_media_quality(cptr, &frame.hdr, c->send.len, limit, mono_us(), &notify);
+
       if (notify) {
          cptr->media_quality_changed = now;
          dict *hint = dict_new();
+
          if (hint) {
             char codec[5];
-            memcpy(codec, frame.hdr.codec, 4); codec[4] = 0;
+            memcpy(codec, frame.hdr.codec, 4);
+            codec[4] = 0;
             dict_add(hint, "media.codec", codec);
             dict_add_uint(hint, "media.quality", quality);
             dict_add_uint(hint, "media.subsys", frame.hdr.subsystem);
@@ -527,21 +528,29 @@ static bool ws_send_frame(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_d
          }
       }
    }
+
    if (msg_data->len > limit - header || c->send.len > limit - header - msg_data->len) {
       if (!cptr->queue_warned || now < cptr->queue_warned || now - cptr->queue_warned >= 5) {
          cptr->queue_warned = now;
-         Log(LOG_WARN, "ws", "%s under pressure: %zu queued bytes, %zu byte frame",
-            realtime ? "Skipping realtime media" : "Rejecting control enqueue", c->send.len, msg_data->len);
-         if (!realtime) event_emit("protocol.backpressure", cptr, "Outgoing control queue full");
+         Log(LOG_WARN, "ws", "%s under pressure: %zu queued bytes, %zu byte frame", realtime ? "Skipping realtime media" : "Rejecting control enqueue", c->send.
+            len, msg_data->len);
+
+         if (!realtime) {
+            event_emit("protocol.backpressure", cptr, "Outgoing control queue full");
+         }
       }
+
       return false;
    }
+
    if (mg_ws_send(c, msg_data->buf, msg_data->len, data_type) != header + msg_data->len) {
       c->is_closing = 1;
       Log(LOG_WARN, "ws", "Closing connection after incomplete frame enqueue");
+
       return false;
    }
    rr_traffic_count(cptr, true, data_type == WEBSOCKET_OP_BINARY, msg_data->len);
+
    return true;
 }
 
@@ -601,7 +610,7 @@ bool ws_kick_by_uid(int uid, const char *reason) {
 bool ws_kick_client(rrconn_t *cptr, const char *reason) {
    // skip freeing resources if no client structure
    if (!cptr) {
-      Log(LOG_DEBUG, "auth", "ws_kick_client with NULL cptr and reason: %s", (reason ? reason : "(none)") );
+      Log(LOG_DEBUG, "auth", "ws_kick_client with NULL cptr and reason: %s", (reason ? reason : "(none)"));
 
       return false;
    }
@@ -630,7 +639,7 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
 
    // XXX: Delete the user
    if (!cptr->conn) {
-      Log(LOG_DEBUG, "auth", "ws_kick_client for cptr <%p> has mg_conn <%p> and is invalid", cptr, (cptr ? cptr->conn : NULL) );
+      Log(LOG_DEBUG, "auth", "ws_kick_client for cptr <%p> has mg_conn <%p> and is invalid", cptr, (cptr ? cptr->conn : NULL));
 
       return false;
    }
@@ -652,7 +661,7 @@ bool ws_kick_client_by_c(struct mg_connection *c, const char *reason) {
    }
 
    // Tell their client they've been disconnected
-   prepare_msg(resp_buf, sizeof(resp_buf), "Client kicked: %s", (reason ? reason : "no reason given") );
+   prepare_msg(resp_buf, sizeof(resp_buf), "Client kicked: %s", (reason ? reason : "no reason given"));
    dict *d = dict_new();
    dict_add(d, "msg.type", "auth");
    dict_add(d, "auth.error", resp_buf);
@@ -676,12 +685,12 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
       return false;
    }
 
-   if (!cptr->authenticated || !cptr->user || cptr->user->password_change_required ||
-      (cptr->user->password_expires > 0 && cptr->user->password_expires <= now)) {
+   if (!cptr->authenticated || !cptr->user || cptr->user->password_change_required || (cptr->user->password_expires > 0 && cptr->user->password_expires <= now))
+   {
       return false;
    }
    struct rr_binframe f;
-   int rv = rr_binframe_parse( (const uint8_t *)buf, len, &f);
+   int rv = rr_binframe_parse((const uint8_t *)buf, len, &f);
 
    if (rv < 0) {
       Log(LOG_DEBUG, "ws.binframe", "Dropping unparseable frame");
@@ -699,9 +708,8 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    }
 
    // Serial ownership/privileges are checked by rrserver, independently of PTT/audio.
-   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_SERIAL_FRAME_CODEC, 4) ) {
-      if (!rr_serial_frame_valid(&f) || f.hdr.direction != RR_BINFRAME_DIR_TX ||
-         len != RR_BINFRAME_HDR_LEN + f.len) {
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && !memcmp(f.hdr.codec, RR_SERIAL_FRAME_CODEC, 4)) {
+      if (!rr_serial_frame_valid(&f) || f.hdr.direction != RR_BINFRAME_DIR_TX || len != RR_BINFRAME_HDR_LEN + f.len) {
          return false;
       }
       event_emit_binary(RR_SERIAL_FRAME_EVENT, cptr, buf, len);
@@ -710,14 +718,14 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    }
 
    // GPS position is produced only by configured server adapters/configuration.
-   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && (!memcmp(f.hdr.codec, RR_GPS_FRAME_CODEC, 4) || !memcmp(f.hdr.codec, RR_NMEA_FRAME_CODEC, 4) ) ) {
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_MODEM && (!memcmp(f.hdr.codec, RR_GPS_FRAME_CODEC, 4) || !memcmp(f.hdr.codec, RR_NMEA_FRAME_CODEC, 4))) {
       return false;
    }
    bool is_tx_frame = (f.hdr.direction == RR_BINFRAME_DIR_TX);
    const char *negotiated = is_tx_frame ? cptr->codec_tx : cptr->codec_rx;
 
    if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_AUDIO && negotiated[0] == '\0') {
-      Log(LOG_DEBUG, "ws.binframe", "Dropping audio frame: no codec negotiated for %s", (is_tx_frame ? "tx" : "rx") );
+      Log(LOG_DEBUG, "ws.binframe", "Dropping audio frame: no codec negotiated for %s", (is_tx_frame ? "tx" : "rx"));
 
       return false;
    }
@@ -727,8 +735,7 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    // for the channels they registered. The frame's (subsystem, direction,
    // vfo, rig) must match a channel that connection is subscribed to.
    if (is_tx_frame && cptr->user &&
-      (has_priv(cptr->user->uid, "media.source") ||
-      (f.hdr.subsystem == RR_BINFRAME_SUBSYS_VIDEO && media_source_authorized(cptr)))) {
+      (has_priv(cptr->user->uid, "media.source") || (f.hdr.subsystem == RR_BINFRAME_SUBSYS_VIDEO && media_source_authorized(cptr)))) {
       struct rr_mediachan *cp = media_chan_find(f.hdr.subsystem, f.hdr.direction, f.hdr.vfo, f.hdr.rig);
 
       if (!cp) {
@@ -737,9 +744,9 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
 
          return false;
       }
-      u_int32_t chan_id = (u_int32_t)(cp - media_channels) + 1;
+      u_int32_t chan_id = (u_int32_t) (cp - media_channels) + 1;
 
-      if (!chan_id_in_array(cptr->tx_channels, MAX_TX_CHANNELS, chan_id) ) {
+      if (!chan_id_in_array(cptr->tx_channels, MAX_TX_CHANNELS, chan_id)) {
          Log(LOG_AUDIT, "ws.media", "Dropping source frame from %s for unsubscribed channel %s", cptr->chatname, cp->uuid);
 
          return false;
@@ -765,28 +772,26 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    // also receives the payload on a program event so rrserver can decode it
    // into the rig TX PCM sink.
    if (is_tx_frame) {
-      if (!cptr->user || cptr->user->is_muted || !has_priv(cptr->user->uid, "admin|owner|tx|noob") ||
-         (has_priv(cptr->user->uid, "noob") && !is_elmer_online())) {
+      if (!cptr->user || cptr->user->is_muted || !has_priv(cptr->user->uid, "admin|owner|tx|noob") || (has_priv(cptr->user->uid, "noob") && !is_elmer_online()))
+      {
          return false;
       }
 
       if (f.hdr.subsystem != RR_BINFRAME_SUBSYS_AUDIO || !cptr->is_ptt ||
-         cptr->ptt_vfo < 'A' || cptr->ptt_vfo > 'Z' ||
-         (f.hdr.vfo != RR_BINFRAME_VFO_NA && cptr->ptt_vfo != (char)('A' + f.hdr.vfo)) ) {
+         cptr->ptt_vfo < 'A' || cptr->ptt_vfo > 'Z' || (f.hdr.vfo != RR_BINFRAME_VFO_NA && cptr->ptt_vfo != (char)('A' + f.hdr.vfo))) {
          return false;
       }
       struct rr_mediachan *tx = media_chan_find(f.hdr.subsystem, RR_BINFRAME_DIR_TX, f.hdr.vfo, f.hdr.rig);
 
-      if (!tx || (cptr->ptt_room[0] && strcasecmp(cptr->ptt_room, tx->room) ) || !media_client_in_channel_room(cptr, tx) || !tx->codec[0] || strncmp(tx->codec,
-         (const char *)f.hdr.codec, 4) != 0 ||
-         strncmp(cptr->codec_tx, tx->codec, 4) != 0) {
+      if (!tx || (cptr->ptt_room[0] && strcasecmp(cptr->ptt_room, tx->room)) || !media_client_in_channel_room(cptr, tx) || !tx->codec[0] || strncmp(tx->codec, (
+         const char *)f.hdr.codec, 4) != 0 || strncmp(cptr->codec_tx, tx->codec, 4) != 0) {
          Log(LOG_AUDIT, "ws.media", "Dropping TX frame from %s: channel codec/PTT mismatch", cptr->chatname);
 
          return false;
       }
-      u_int32_t chan_id = (u_int32_t)(tx - media_channels) + 1;
+      u_int32_t chan_id = (u_int32_t) (tx - media_channels) + 1;
 
-      if (!chan_id_in_array(cptr->tx_channels, MAX_TX_CHANNELS, chan_id) ) {
+      if (!chan_id_in_array(cptr->tx_channels, MAX_TX_CHANNELS, chan_id)) {
          Log(LOG_AUDIT, "ws.media", "Dropping TX frame from %s for unsubscribed channel %s", cptr->chatname, tx->uuid);
 
          return false;
@@ -812,7 +817,7 @@ bool ws_send_error(rrconn_t *cptr, const char *fmt, ...) {
       return false;
    }
    char fullmsg[HTTP_WS_MAX_MSG - 55];
-   memset(fullmsg, 0, sizeof(fullmsg) );
+   memset(fullmsg, 0, sizeof(fullmsg));
    va_list ap;
    va_start(ap, fmt);
    vsnprintf(fullmsg, sizeof(fullmsg), fmt, ap);
@@ -834,7 +839,7 @@ bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...) {
       return false;
    }
    char fullmsg[HTTP_WS_MAX_MSG - 55];
-   memset(fullmsg, 0, sizeof(fullmsg) );
+   memset(fullmsg, 0, sizeof(fullmsg));
 
    va_list ap;
    va_start(ap, fmt);
@@ -844,8 +849,8 @@ bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...) {
    dict *alert_msg = dict_new();
    dict_add(alert_msg, "msg.type", "alert");
    dict_add(alert_msg, "alert.msg", escaped_msg);
-   dict_add_ulong(alert_msg, "alert.ts", now);   // clients read alert.ts (see
-                                                 // send_global_alert)
+   dict_add_ulong(alert_msg, "alert.ts", now);  // clients read alert.ts (see
+   // send_global_alert)
    bool sent = ws_send_dict(NULL, cptr, alert_msg, WEBSOCKET_OP_TEXT);
    free(escaped_msg);
    dict_free(alert_msg);
@@ -859,7 +864,7 @@ bool ws_send_notice(rrconn_t *cptr, const char *fmt, ...) {
       return false;
    }
    char fullmsg[HTTP_WS_MAX_MSG - 55];
-   memset(fullmsg, 0, sizeof(fullmsg) );
+   memset(fullmsg, 0, sizeof(fullmsg));
 
    va_list ap;
    va_start(ap, fmt);

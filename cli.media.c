@@ -28,12 +28,15 @@
 static char cli_common_codecs[256] = {
    0
 };
+
 static char cli_preferred_codec[5] = {
    0
 };
+
 static char cli_codec_tx[5] = {
    0
 };
+
 static char cli_codec_rx[5] = {
    0
 };
@@ -92,8 +95,8 @@ bool media_send_client_capab(rrconn_t *cptr) {
       return false;
    }
    const char *configured_codecs = cfg_get_exp("codecs.allowed");
-   char *my_codecs = codec_filter_test_mode(configured_codecs, cfg_get_bool("audio.test-mode", true) );
-   free( (void *)configured_codecs);
+   char *my_codecs = codec_filter_test_mode(configured_codecs, cfg_get_bool("audio.test-mode", true));
+   free((void *)configured_codecs);
 
    if (!my_codecs || !*my_codecs) {
       free(my_codecs);
@@ -152,8 +155,8 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
          return false;
       }
       const char *configured_codecs = cfg_get_exp("codecs.allowed");
-      char *my_codecs = codec_filter_test_mode(configured_codecs, cfg_get_bool("audio.test-mode", true) );
-      free( (void *)configured_codecs);
+      char *my_codecs = codec_filter_test_mode(configured_codecs, cfg_get_bool("audio.test-mode", true));
+      free((void *)configured_codecs);
 
       if (!my_codecs) {
          Log(LOG_CRIT, "ws.media", "codecs.allowed must be set to negotiate codecs!");
@@ -170,7 +173,7 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
          return false;
       }
       // The first common codec is our default/preferred
-      memset(cli_preferred_codec, 0, sizeof(cli_preferred_codec) );
+      memset(cli_preferred_codec, 0, sizeof(cli_preferred_codec));
       memcpy(cli_preferred_codec, common, 4);
       snprintf(cli_common_codecs, sizeof(cli_common_codecs), "%s", common);
       Log(LOG_INFO, "ws.media", "Negotiated common codecs: %s (default: %s)", common, cli_preferred_codec);
@@ -206,14 +209,12 @@ bool ws_handle_media_msg(rrconn_t *cptr, dict *d) {
          }
       }
       Log(LOG_INFO, "ws.media", "Server confirms codecs: %s (preferred: %s)", (media_codecs ? media_codecs : "<none>"), (media_preferred ? media_preferred :
-         "<none>") );
+         "<none>"));
 
       return true;
    } else if (strcasecmp(media_cmd, "available") == 0 ||
       strcasecmp(media_cmd, "subscribed") == 0 ||
-      strcasecmp(media_cmd, "unsubscribed") == 0 ||
-      strcasecmp(media_cmd, "chan-remove") == 0 ||
-      strcasecmp(media_cmd, "feedback") == 0) {
+      strcasecmp(media_cmd, "unsubscribed") == 0 || strcasecmp(media_cmd, "chan-remove") == 0 || strcasecmp(media_cmd, "feedback") == 0) {
       // Channel subscription notifications: handled by the program via the
       // ws.msg.media event (PARITY: rrclient/events.c rrclient_handle_media);
       // nothing to do at the wire level here, so don't log it as unhandled.
@@ -338,11 +339,11 @@ bool media_send_source(rrconn_t *cptr, const char *uuid) {
    dict_free(d);
 
    if (!sent) {
-      Log(LOG_WARN, "ws.media", "Unable to register media source (channel %s)", (uuid && uuid[0] ? uuid : "<all>") );
+      Log(LOG_WARN, "ws.media", "Unable to register media source (channel %s)", (uuid && uuid[0] ? uuid : "<all>"));
 
       return false;
    }
-   Log(LOG_INFO, "ws.media", "Registering as media source (channel %s)", (uuid && uuid[0] ? uuid : "<all>") );
+   Log(LOG_INFO, "ws.media", "Registering as media source (channel %s)", (uuid && uuid[0] ? uuid : "<all>"));
 
    return true;
 }

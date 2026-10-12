@@ -2,6 +2,7 @@
 #ifndef RR_SERVER_EVENTS_H
 #define RR_SERVER_EVENTS_H
 #include <librustyaxe/core.h>
+#define RR_SERVER_HTTP_EVENT "protocol.server.http"
 #define RR_SERVER_ROUTE_EVENT "protocol.server.route"
 #define RR_SERVER_SEND_EVENT "protocol.server.send"
 #define RR_SERVER_PUBLISH_EVENT "protocol.server.publish"
@@ -14,5 +15,12 @@ typedef struct {
    dict *message;
    const char *room;
 } rr_server_publish_t;
+struct mg_connection;
+struct mg_http_message;
+typedef struct {
+   struct mg_connection *connection;
+   struct mg_http_message *request;
+   bool handled, detach_client;
+} rr_server_http_t;
 bool ws_process_dict(rrconn_t *client, dict *message);
 #endif
