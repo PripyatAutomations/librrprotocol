@@ -141,7 +141,7 @@ const char *http_content_type(const char *type) {
    if (!type) {
       return NULL;
    }
-   int items = (sizeof(http_res_types) / sizeof(struct http_res_types) );
+   int items = (sizeof(http_res_types) / sizeof(struct http_res_types));
 
    for (int i = 0 ; i < items ; i++) {
       // end of table marker?
@@ -188,11 +188,9 @@ bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
       return true;
    }
    char path[4096], real_path[8192];
-   int path_len = msg->uri.len < sizeof(path) ?
-      mg_url_decode(msg->uri.buf, msg->uri.len, path, sizeof(path), 0) : -1;
+   int path_len = msg->uri.len < sizeof(path) ? mg_url_decode(msg->uri.buf, msg->uri.len, path, sizeof(path), 0) : -1;
 
-   if (path_len <= 0 || (size_t)path_len >= sizeof(path) ||
-      memchr(path, '\0', (size_t)path_len) || path[0] != '/' || check_url(path)) {
+   if (path_len <= 0 || (size_t)path_len >= sizeof(path) || memchr(path, '\0', (size_t)path_len) || path[0] != '/' || check_url(path)) {
       mg_http_reply(cptr->conn, 400, "Content-Type: text/plain\r\n", "Invalid path\n");
 
       return true;
@@ -277,7 +275,7 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
       long long rtt_us = current_mono - ping_mono;
 
       if (rtt_us < 0) {
-         rtt_us = 0;              // shouldn't happen on a monotonic clock
+         rtt_us = 0;            // shouldn't happen on a monotonic clock
       }
       long long rtt = rtt_us / 1000;
       cptr->latency_ms = rtt > INT_MAX ? INT_MAX : (int)rtt;
@@ -330,8 +328,7 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
       return false;
    }
 
-   if (cptr->authenticated && cptr->user && cptr->user->password_expires > 0 &&
-      cptr->user->password_expires <= now) {
+   if (cptr->authenticated && cptr->user && cptr->user->password_expires > 0 && cptr->user->password_expires <= now) {
       ws_kick_client(cptr, "Password expired; ask an administrator to reset it");
 
       return false;
@@ -340,11 +337,9 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
    if (cptr->authenticated && cptr->user && cptr->user->password_change_required) {
       const char *command = dict_get(d, "talk.cmd", "");
       const char *tail = dict_get(d, "talk.data", "");
-      bool password_change = !strcasecmp(msg_type, "talk") && !strcasecmp(command, "user") &&
-         !strncasecmp(tail, "pass ", 5);
+      bool password_change = !strcasecmp(msg_type, "talk") && !strcasecmp(command, "user") && !strncasecmp(tail, "pass ", 5);
 
-      if (!password_change && strcasecmp(msg_type, "auth") && strcasecmp(msg_type, "pong") &&
-         strcasecmp(msg_type, "hello")) {
+      if (!password_change && strcasecmp(msg_type, "auth") && strcasecmp(msg_type, "pong") && strcasecmp(msg_type, "hello")) {
          ws_send_error(cptr, "Password change required: /user pass %s <new-password>", cptr->user->name);
 
          return false;
@@ -367,10 +362,7 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
    // version negotiation on connect). Everything else - including client
    // pings, which are an easy DoS/amplification vector - is denied.
    // PARITY: rustyrig-www/js/webui.js (send_ping / webui.auth.js login flow)
-   if (!cptr->authenticated &&
-      strcasecmp(msg_type, "auth") != 0 &&
-      strcasecmp(msg_type, "pong") != 0 &&
-      strcasecmp(msg_type, "hello") != 0) {
+   if (!cptr->authenticated && strcasecmp(msg_type, "auth") != 0 && strcasecmp(msg_type, "pong") != 0 && strcasecmp(msg_type, "hello") != 0) {
       Log(LOG_AUDIT, "auth", "Denied %s from unauthenticated client %s on cptr:<%p> from %s:%d", msg_type, (cptr->chatname[0] != '\0' ? cptr->chatname :
          "(unknown)"), cptr, cptr->user_ip, cptr->user_port);
 
@@ -382,11 +374,16 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
       goto cleanup;
    }
 
-   rr_server_io_t route = { .message = d };
+   rr_server_io_t route = {
+      .message = d
+   };
    event_emit_binary(RR_SERVER_ROUTE_EVENT, cptr, &route, sizeof(route));
-   if (route.handled) return route.result;
 
-   if (!strcmp(msg_type, "object") || !strcmp(msg_type, "property") ) {
+   if (route.handled) {
+      return route.result;
+   }
+
+   if (!strcmp(msg_type, "object") || !strcmp(msg_type, "property")) {
       extern bool rr_object_server_request(rrconn_t *, dict *);
       result = rr_object_server_request(cptr, d);
    } else if (strcasecmp(msg_type, "serial") == 0) {
@@ -407,19 +404,19 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
       // If this msg contains a cat.cmd it's a client command (freq/mode/ptt
       // etc) - route it to the rigctl handler. Messages without a cat.cmd
       // are state broadcasts from the server and don't need processing here.
-      if (dict_get(d, "cat.cmd", NULL) ) {
+      if (dict_get(d, "cat.cmd", NULL)) {
          result = ws_handle_rigctl_msg(cptr, d);
       }
    } else if (strcasecmp(msg_type, "hello") == 0) {
       const char *hello_hwver = dict_get(d, "hello.hwver", "generic");
       const char *hello_swver = dict_get(d, "hello.swver", NULL);
-      Log(LOG_DEBUG, "ws", "Got HELLO from client at cptr:<%p>: swver=%s, hwver=%s", cptr, hello_swver, (hello_hwver ? hello_hwver : "generic") );
+      Log(LOG_DEBUG, "ws", "Got HELLO from client at cptr:<%p>: swver=%s, hwver=%s", cptr, hello_swver, (hello_hwver ? hello_hwver : "generic"));
       free(cptr->cli_version);
       cptr->cli_version = malloc(HTTP_UA_LEN);
 
       if (cptr->cli_version) {
          memset(cptr->cli_version, 0, HTTP_UA_LEN);
-         snprintf(cptr->cli_version, HTTP_UA_LEN, "%s@%s", (hello_swver ? hello_swver : "unknown"), (hello_hwver ? hello_hwver : "generic") );
+         snprintf(cptr->cli_version, HTTP_UA_LEN, "%s@%s", (hello_swver ? hello_swver : "unknown"), (hello_hwver ? hello_hwver : "generic"));
       }
       // hello.role marks connections which are not ordinary chat users (e.g.
       // video-source webcams); they get their own flag and are excluded from
@@ -450,9 +447,7 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
       if (strcasecmp(media_cmd, "list") == 0 ||
          strcasecmp(media_cmd, "subscribe") == 0 ||
          strcasecmp(media_cmd, "unsubscribe") == 0 ||
-         strcasecmp(media_cmd, "source") == 0 ||
-         strcasecmp(media_cmd, "feedback") == 0 ||
-         strcasecmp(media_cmd, "codec") == 0) {
+         strcasecmp(media_cmd, "source") == 0 || strcasecmp(media_cmd, "feedback") == 0 || strcasecmp(media_cmd, "codec") == 0) {
          result = ws_handle_mediachan_msg(cptr, d);
          goto cleanup;
       }
@@ -467,7 +462,10 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
          dict *pong = dict_new();
          dict_add(pong, "msg.type", "pong");
          dict_add_ulong(pong, "msg.ts", ping_ts);
-         if (dict_get_type(d, "ping.ts") != VAL_END) dict_add_llong(pong, "ping.ts", dict_get_llong(d, "ping.ts", 0));
+
+         if (dict_get_type(d, "ping.ts") != VAL_END) {
+            dict_add_llong(pong, "ping.ts", dict_get_llong(d, "ping.ts", 0));
+         }
          ws_send_dict(NULL, cptr, pong, WEBSOCKET_OP_TEXT);
          dict_free(pong);
          result = true;
@@ -485,8 +483,7 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
    } else if (strcasecmp(msg_type, "rehash") == 0) {
       // Reload server config & user db. Restricted to admin/owner privs.
       // PARITY: rustyrig-www/js/webui (send msg.type:rehash on /rehash)
-      if (!cptr->authenticated || !cptr->user ||
-         !(has_priv(cptr->user->uid, "admin|owner") ) ) {
+      if (!cptr->authenticated || !cptr->user || !(has_priv(cptr->user->uid, "admin|owner"))) {
          Log(LOG_AUDIT, "auth", "Denied rehash request from %s on cptr:<%p> from %s:%d", (cptr->chatname[0] != '\0' ? cptr->chatname : "(unauthenticated)"),
             cptr, cptr->user_ip, cptr->user_port);
          dict *err = dict_new();
@@ -510,7 +507,7 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
       // CHAT RELATED
       result = ws_handle_chat_msg(cptr, d);
    } else {
-      Log(LOG_WARN, "http.ws", "Invalid command |%s| from %s", msg_type, (cptr->chatname[0] ? cptr->chatname : "(unknown)") );
+      Log(LOG_WARN, "http.ws", "Invalid command |%s| from %s", msg_type, (cptr->chatname[0] ? cptr->chatname : "(unknown)"));
       ws_send_error(cptr, "Invalid command: %s", msg_type);
       result = false;
    }
@@ -534,7 +531,7 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
    }
 
    if (!cptr || !msg || !msg->data.buf) {
-      Log(LOG_DEBUG, "http.ws", "ws_handle got msg:<%p> c:<%p> data:<%p>", msg, cptr, (msg ? msg->data.buf : NULL) );
+      Log(LOG_DEBUG, "http.ws", "ws_handle got msg:<%p> c:<%p> data:<%p>", msg, cptr, (msg ? msg->data.buf : NULL));
 
       return false;
    }
@@ -543,8 +540,9 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
    Log(LOG_CRAZY, "http", "ws_handle WS message: %zu bytes", msg->data.len);
 #endif
 
-   if ((msg->flags & 0x0F) == WEBSOCKET_OP_TEXT || (msg->flags & 0x0F) == WEBSOCKET_OP_BINARY)
+   if ((msg->flags & 0x0F) == WEBSOCKET_OP_TEXT || (msg->flags & 0x0F) == WEBSOCKET_OP_BINARY) {
       rr_traffic_count(cptr, false, (msg->flags & 0x0F) == WEBSOCKET_OP_BINARY, msg->data.len);
+   }
 
    // Binary (audio, waterfall) frames
    if ((msg->flags & 0x0F) == WEBSOCKET_OP_BINARY) {
@@ -567,7 +565,7 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
 
       struct mg_str msg_data = msg->data;
       char buf[HTTP_WS_MAX_MSG + 1];
-      memset(buf, 0, sizeof(buf) );
+      memset(buf, 0, sizeof(buf));
       memcpy(buf, msg_data.buf, msg_data.len);
 //      fprintf(stderr, "buf(%d): %s(%d)\n", msg_data.len, buf, strlen(buf));
       const char *root = buf;
@@ -585,7 +583,7 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
 
       bool result = ws_process_dict(cptr, d);
       dict_free(d);
-      memset(buf, 0, sizeof(buf) );
+      memset(buf, 0, sizeof(buf));
 
       return result;
    }
@@ -634,7 +632,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
    if (!c) {
       return;
    }
-   struct mg_http_message *hm = (struct mg_http_message *) ev_data;
+   struct mg_http_message *hm = (struct mg_http_message *)ev_data;
 
    // Try to find the cptr for this mg_connection. We only create one on
    // connection-establishing events (OPEN/ACCEPT/HTTP_MSG) - creating one
@@ -654,7 +652,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          cptr = http_add_client(c, false);
       }
 
-      if (cptr && cfg_get_bool("net.http.hex-dump", false) ) {
+      if (cptr && cfg_get_bool("net.http.hex-dump", false)) {
          cptr->conn->is_hexdumping = 1;
       }
    } else if (ev == MG_EV_CONNECT) {
@@ -717,18 +715,18 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
             struct mg_str *ua_hdr = mg_http_get_header(hm, "User-Agent");
 
             if (ua_hdr) {
-               if (!http_client_set_user_agent(cptr, ua_hdr->buf, ua_hdr->len) ) {
+               if (!http_client_set_user_agent(cptr, ua_hdr->buf, ua_hdr->len)) {
                   Log(LOG_CRIT, "http.core", "Unable to save HTTP User-Agent");
                   c->is_closing = 1;
 
                   return;
                }
-               Log(LOG_DEBUG, "http.core", "New session cptr:<%p> User-Agent: %s (%zu)", cptr, cptr->user_agent, strlen(cptr->user_agent) );
+               Log(LOG_DEBUG, "http.core", "New session cptr:<%p> User-Agent: %s (%zu)", cptr, cptr->user_agent, strlen(cptr->user_agent));
             }
          }
       }
 
-      if (cptr->user_agent && is_http_banned(cptr->user_agent) ) {
+      if (cptr->user_agent && is_http_banned(cptr->user_agent)) {
          Log(LOG_INFO, "http", "Rejecting banned User-Agent: %s", cptr->user_agent);
          mg_http_reply(c, 403, "Content-Type: text/plain\r\n", "Forbidden\n");
 
@@ -736,7 +734,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       }
 
       // Send the request to our HTTP router
-      if (hm && !http_dispatch_route(hm, cptr) ) {
+      if (hm && !http_dispatch_route(hm, cptr)) {
          Log(LOG_CRAZY, "http.core", "fall through to http_static");
          http_static(hm, cptr);
       }
