@@ -367,6 +367,8 @@ void media_send_chan_removed_all(struct rr_mediachan *cp) {
    if (!cp || cp->uuid[0] == '\0') {
       return;
    }
+   rr_media_catalog_t change = {.channel = cp, .removed = true};
+   event_emit_binary(RR_MEDIA_CATALOG_EVENT, NULL, &change, sizeof(change));
    rrconn_t *cur = http_client_list;
 
    while (cur) {
@@ -424,6 +426,8 @@ bool media_send_available(rrconn_t *cptr, struct rr_mediachan *cp) {
 
 bool media_send_available_all(rrconn_t *cptr) {
    if (!cptr) {
+      rr_media_catalog_t change = {0};
+      event_emit_binary(RR_MEDIA_CATALOG_EVENT, NULL, &change, sizeof(change));
       rrconn_t *cur = http_client_list;
       while (cur) {
          media_send_available_all(cur);
@@ -851,6 +855,8 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
 
          return false;
       }
+      if (cp->subsystem == RR_BINFRAME_SUBSYS_AUDIO)
+         snprintf(is_tx ? cptr->codec_tx : cptr->codec_rx, sizeof(cptr->codec_tx), "%s", cp->codec);
       dict *sub = dict_new();
       dict_add(sub, "msg.type", "media");
       dict_add(sub, "media.cmd", "subscribed");

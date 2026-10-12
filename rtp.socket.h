@@ -6,6 +6,10 @@ typedef struct rr_rtp_attachment rr_rtp_attachment_t;
 typedef bool (*rr_rtp_frame_fn)(void *user, const uint8_t *frame, size_t length);
 /* Host socket adapter. The packet/protection implementation is separate. */
 rr_rtp_socket_t *rr_rtp_socket_open(const char *host, unsigned port);
+/* Source policy receives numeric IP and attachment userdata before any packet
+ * is accepted. NULL attachment means the initial network-only check. */
+typedef bool (*rr_rtp_source_fn)(void *context, void *attachment_user, const char *ip);
+void rr_rtp_socket_set_source_filter(rr_rtp_socket_t *socket, rr_rtp_source_fn filter, void *context);
 void rr_rtp_socket_close(rr_rtp_socket_t *socket);
 rr_rtp_attachment_t *rr_rtp_socket_attach(rr_rtp_socket_t *socket, uint32_t ssrc, const uint8_t key[RR_RTP_KEY_LEN], bool encrypted, const char *endpoint,
    void *user);

@@ -21,6 +21,7 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/codecneg.h>
+#include <librrprotocol/server.events.h>
 
 // This defines a hard-coded fallback path for httpd root, if not set in config
 #ifdef  HOST_POSIX
@@ -387,6 +388,17 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       }
 
       if (correct_length && difference == 0) {
+#ifdef USE_MONGOOSE
+         if (cptr->conn) {
+            rr_server_admission_t admission = {cptr->conn->is_tls ? "https" : "http", cptr->user_ip, up, true};
+            event_emit_binary(RR_SERVER_ADMISSION_EVENT, cptr, &admission, sizeof(admission));
+            if (!admission.allowed) {
+               free(temp_pw);
+               ws_kick_client(cptr, "Listener access denied");
+               return false;
+            }
+         }
+#endif
          // special handling for guests; we generate a random suffix
          // force rewriting if they use any nick starting with Guest.
          if (strncasecmp(up->name, "guest", 5) == 0) {

@@ -21,8 +21,16 @@ struct rr_rtp_attachment {
 };
 struct rr_rtp_socket {
    int fd;
+   rr_rtp_source_fn source_filter;
+   void *filter_context;
    struct rr_rtp_attachment peers[RR_RTP_ATTACHMENTS];
 };
+void rr_rtp_socket_set_source_filter(rr_rtp_socket_t *s, rr_rtp_source_fn filter, void *context) {
+   if (s) {
+      s->source_filter = filter;
+      s->filter_context = context;
+   }
+}
 static bool address(const char *host, unsigned port, struct sockaddr_storage *out, socklen_t *length) {
    char service[16];
    snprintf(service, sizeof(service), "%u", port);
@@ -187,6 +195,9 @@ void rr_rtp_socket_poll(rr_rtp_socket_t *s, uint64_t now, bool (*validate) (void
       if (size < 12 || size > RR_RTP_MTU) {
          continue;
       }
+      char source_ip[128];
+      if (getnameinfo((struct sockaddr *)&from, length, source_ip, sizeof(source_ip), NULL, 0, NI_NUMERICHOST)) continue;
+      if (s->source_filter && !s->source_filter(s->filter_context, NULL, source_ip)) continue;
       unsigned offset = packet[1] == 201 ? 4 : 8;
       uint32_t ssrc = (uint32_t) packet[offset] << 24 | (uint32_t) packet[offset + 1] << 16 | (uint32_t) packet[offset + 2] << 8 | packet[offset + 3];
 
@@ -204,6 +215,7 @@ void rr_rtp_socket_poll(rr_rtp_socket_t *s, uint64_t now, bool (*validate) (void
          if (!p->client && p->address_length && packet[1] != 201 && (length != p->address_length || memcmp(&from, &p->address, length))) {
             break;
          }
+         if (s->source_filter && !s->source_filter(s->filter_context, p->user, source_ip)) break;
          const uint8_t *data = NULL;
          size_t data_length = 0;
          int result = rr_rtp_receive(p->rtp, packet, size, now, &data, &data_length);
@@ -231,6 +243,11 @@ void rr_rtp_socket_poll(rr_rtp_socket_t *s, uint64_t now, bool (*validate) (void
    }
 }
 #else
+void rr_rtp_socket_set_source_filter(rr_rtp_socket_t *s, rr_rtp_source_fn filter, void *context) {
+   (void)s;
+   (void)filter;
+   (void)context;
+}
 rr_rtp_socket_t *rr_rtp_socket_open(const char *host, unsigned port) {
    (void)host;
    (void)port;

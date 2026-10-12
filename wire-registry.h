@@ -146,6 +146,7 @@ static const rr_wire_field_t wire_fields_4[] = {
    {"media.fragment", "fragment"},
    {"media.total", "total"},
    {"media.frame-seq", "frame-seq"},
+   {"media.setup", "setup"},
 };
 static const rr_wire_field_t wire_fields_5[] = {
    {"msg.ts", "time"},

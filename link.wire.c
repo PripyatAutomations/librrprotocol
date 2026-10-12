@@ -7,20 +7,20 @@
 #include <librrprotocol/link.wire.h>
 
 static const char *fields[] = {
-   "op", "node", "site", "root", "username", "password", "role", "nodes", "parent", "dest", "kind", "session", "payload"
+   "op", "node", "site", "username", "password", "nodes", "parent", "dest", "kind", "session", "payload"
 };
 static bool valid(dict *d) {
    const char *op = dict_get(d, "op", "");
    unsigned required;
 
    if (!strcmp(op, "link.hello")) {
-      required = 127;
+      required = 31;
    } else if (!strcmp(op, "link.snapshot")) {
-      required = 1 | (1 << 7);
+      required = 1 | (1 << 5);
    } else if (!strcmp(op, "link.ready")) {
       required = 1;
    } else if (!strcmp(op, "link.introduce")) {
-      required = 1 | (1 << 1) | (1 << 8);
+      required = 1 | (1 << 1) | (1 << 6);
    } else if (!strcmp(op, "link.withdraw")) {
       required = 1 | (1 << 1);
    } else if (!strcmp(op, "link.application")) {
@@ -39,7 +39,7 @@ static bool valid(dict *d) {
       if (!known) {
          return false;
       }
-      required = 1 | (1 << 1) | (1 << 4) | (15 << 9);
+      required = 1 | (1 << 1) | (1 << 3) | (15 << 7);
    } else {
       return false;
    }
@@ -56,7 +56,7 @@ static bool valid(dict *d) {
          }
       }
 
-      if (i == sizeof(fields) / sizeof(fields[0]) || dict_get_type(d, key) != VAL_STR || !value || strlen(value) > (i == 7 ? 20000U : i == 12 ? 24000U : 256U))
+      if (i == sizeof(fields) / sizeof(fields[0]) || dict_get_type(d, key) != VAL_STR || !value || strlen(value) > (i == 5 ? 20000U : i == 10 ? 24000U : 256U))
       {
          return false;
       }

@@ -499,6 +499,8 @@ static bool ws_send_frame(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_d
       event_emit_binary(RR_MEDIA_BINARY_EVENT, cptr, &io, sizeof(io));
 
       if (io.handled) {
+         if (io.result)
+            rr_traffic_count(cptr, true, true, msg_data->len);
          return io.result;
       }
    }

@@ -1,3 +1,4 @@
+#include <librrprotocol/server.events.h>
 // http.c
 //    This is part of rustyrig-fw.
 // https://github.com/pripyatautomations/rustyrig-fw
@@ -316,7 +317,9 @@ rrconn_t *whos_talking(void) {
       }
       cptr = cptr->next;
    }
-   return NULL;
+   rr_server_talker_t query = {0};
+   event_emit_binary(RR_SERVER_TALKER_EVENT, NULL, &query, sizeof(query));
+   return query.client;
 }
 
 /* Transfer an unauthenticated HTTP socket to an application-owned protocol. */

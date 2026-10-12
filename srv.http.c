@@ -442,9 +442,9 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
       }
 
       // Channel subscription commands: list/subscribe/unsubscribe and the
-      // media source registration/receiver feedback. capab/codec/isupport are negotiated in
+      // media source registration/receiver feedback and codec capabilities.
       // codecneg/ws.media paths.
-      if (strcasecmp(media_cmd, "list") == 0 ||
+      if (strcasecmp(media_cmd, "capab") == 0 || strcasecmp(media_cmd, "list") == 0 ||
          strcasecmp(media_cmd, "subscribe") == 0 ||
          strcasecmp(media_cmd, "unsubscribe") == 0 ||
          strcasecmp(media_cmd, "source") == 0 || strcasecmp(media_cmd, "feedback") == 0 || strcasecmp(media_cmd, "codec") == 0) {
@@ -671,6 +671,14 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          mg_tls_init(cptr->conn, &opts);
       }
    } else if (ev == MG_EV_ACCEPT) {
+      char peer_ip[64];
+      mg_snprintf(peer_ip, sizeof(peer_ip), "%M", mg_print_ip, &c->rem);
+      rr_server_admission_t admission = {c->fn_data ? "https" : "http", peer_ip, NULL, true};
+      event_emit_binary(RR_SERVER_ADMISSION_EVENT, cptr, &admission, sizeof(admission));
+      if (!admission.allowed) {
+         c->is_closing = 1;
+         return;
+      }
       if (c->is_listening) {
          // defensive: listeners never fire ACCEPT
 

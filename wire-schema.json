@@ -219,7 +219,8 @@
         "media.data": "data",
         "media.fragment": "fragment",
         "media.total": "total",
-        "media.frame-seq": "frame-seq"
+        "media.frame-seq": "frame-seq",
+        "media.setup": "setup"
       }
     },
     {

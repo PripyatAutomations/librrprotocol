@@ -5,7 +5,7 @@
 #include <librrprotocol/link.wire.h>
 int main(void) {
    const char *hello =
-      "{\"op\":\"link.hello\",\"node\":\"uuid\",\"site\":\"site\",\"root\":\"\",\"username\":\"peer\",\"password\":\"private\",\"role\":\"child\"}";
+      "{\"op\":\"link.hello\",\"node\":\"uuid\",\"site\":\"site\",\"username\":\"peer\",\"password\":\"private\"}";
    dict *d = rr_link_wire_decode(hello, strlen(hello));
    assert(d);
    char *encoded = rr_link_wire_encode(d);

@@ -24,7 +24,7 @@ static void write32(uint8_t *p, uint32_t n) {
 }
 bool rr_rtp_supported(bool encrypted) {
 #ifdef RR_RTP_ENCRYPTION
-
+   (void)encrypted;
    return true;
 #else
 
@@ -152,7 +152,7 @@ bool rr_rtp_send(rr_rtp_t *peer, const void *frame, size_t length, uint64_t time
    return true;
 }
 int rr_rtp_receive(rr_rtp_t *peer, uint8_t *packet, size_t length, uint64_t now_us, const uint8_t **frame, size_t *frame_length) {
-   if (!peer || !packet || length < 8 || length > RR_RTP_MTU) {
+   if (!peer || !packet || !frame || !frame_length || length < 8 || length > RR_RTP_MTU) {
       return -1;
    }
    int size = length;

@@ -38,9 +38,7 @@ extern const char *config_file;
 extern bool ws_chat_err_noprivs(rrconn_t *cptr, const char *action);
 extern bool ws_chat_error_need_reason(rrconn_t *cptr, const char *command);
 
-static rr_subproc_t callsign_lookup_process = {
-   .pid = -1, .error_fd = -1
-};
+static subproc_t callsign_lookup_process = SUBPROC_INIT;
 
 static bool callsign_lookup_atexit_registered = false;
 static bool callsign_lookup_ready = false;
@@ -52,7 +50,7 @@ static char callsign_lookup_reply[HTTP_WS_MAX_MSG];
 static size_t callsign_lookup_reply_len = 0;
 
 static void callsign_lookup_stop(void) {
-   rr_subproc_stop(&callsign_lookup_process, SIGTERM);
+   subproc_stop(&callsign_lookup_process, SIGTERM);
    callsign_lookup_ready = false;
    callsign_lookup_pending = false;
    callsign_lookup_client = NULL;
@@ -62,7 +60,7 @@ static void callsign_lookup_stop(void) {
 }
 
 static bool callsign_lookup_readline(char *line, size_t len, int timeout_ms) {
-   return rr_subproc_readline(&callsign_lookup_process, line, len, timeout_ms);
+   return subproc_read_line(&callsign_lookup_process, line, len, timeout_ms);
 }
 
 static bool callsign_lookup_wait_ready(int timeout_ms) {
@@ -93,9 +91,9 @@ static bool callsign_lookup_wait_ready(int timeout_ms) {
     * request probe it again. */
    if (timeout_ms == 0) {
       int status = 0;
-      pid_t ended = waitpid(callsign_lookup_process.pid, &status, WNOHANG);
+      bool ended = subproc_reap(&callsign_lookup_process, &status);
 
-      if (ended == callsign_lookup_process.pid) {
+      if (ended) {
          if (WIFEXITED(status)) {
             Log(LOG_WARN, "callsign", "lookup exited before ready (status %d)", WEXITSTATUS(status));
          } else if (WIFSIGNALED(status)) {
@@ -108,9 +106,9 @@ static bool callsign_lookup_wait_ready(int timeout_ms) {
    }
 
    int status = 0;
-   pid_t ended = waitpid(callsign_lookup_process.pid, &status, WNOHANG);
+   bool ended = subproc_reap(&callsign_lookup_process, &status);
 
-   if (ended == callsign_lookup_process.pid) {
+   if (ended) {
       if (WIFEXITED(status)) {
          Log(LOG_WARN, "callsign", "lookup exited before ready (status %d)", WEXITSTATUS(status));
       } else if (WIFSIGNALED(status)) {
@@ -248,7 +246,7 @@ static bool callsign_lookup_start(void) {
       program, "-q", "-f", config_file, NULL
    };
 
-   if (!rr_subproc_spawn(&callsign_lookup_process, program, argv, true)) {
+   if (!subproc_spawn(&callsign_lookup_process, program, argv, true)) {
       Log(LOG_WARN, "callsign", "Cannot start lookup: subprocess setup failed for %s: %s", program, strerror(errno));
       callsign_lookup_stop();
       free(program);
@@ -344,7 +342,7 @@ static bool callsign_lookup_request(rrconn_t *cptr, const char *request) {
       return false;
    }
 
-   if (!rr_subproc_write_line(&callsign_lookup_process, request)) {
+   if (!subproc_write_line(&callsign_lookup_process, request)) {
       Log(LOG_WARN, "callsign", "lookup request failed while writing to helper (pid %ld): %s", (long)callsign_lookup_process.pid, strerror(errno));
       callsign_lookup_stop();
 
