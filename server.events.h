@@ -40,7 +40,10 @@ typedef struct {
    rrconn_t *target, *exclude;
    bool setup;
 } rr_media_fanout_t;
-typedef struct { const struct rr_mediachan *channel; bool interested; } rr_media_demand_t;
+typedef struct {
+   const struct rr_mediachan *channel;
+   bool interested;
+} rr_media_demand_t;
 bool ws_binframe_process_client(rrconn_t *client, const char *data, size_t length);
 bool ws_process_dict(rrconn_t *client, dict *message);
 #endif

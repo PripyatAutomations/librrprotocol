@@ -88,8 +88,14 @@ void http_tls_init(void) {
 
    char *cert_path = http_config_path("net.http.tls-cert", "net/http/tls-cert");
    char *key_path = http_config_path("net.http.tls-key", "net/http/tls-key");
-   if (!cert_path) cert_path = strdup(HTTP_TLS_CERT);
-   if (!key_path) key_path = strdup(HTTP_TLS_KEY);
+
+   if (!cert_path) {
+      cert_path = strdup(HTTP_TLS_CERT);
+   }
+
+   if (!key_path) {
+      key_path = strdup(HTTP_TLS_KEY);
+   }
    tls_cert = mg_file_read(&mg_fs_posix, cert_path);
 
    if (!tls_cert.buf) {
@@ -105,6 +111,7 @@ void http_tls_init(void) {
 
    free(cert_path);
    free(key_path);
+
    if (tls_error == true) {
       Log(LOG_CRIT, "http.tls", "No cert/key, aborting TLS setup");
       Log(LOG_CRIT, "http.tls", "Either fix this or disable TLS!");

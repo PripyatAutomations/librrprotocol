@@ -733,12 +733,16 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          return;
       }
 
-      rr_server_http_t request = { .connection = c, .request = hm };
+      rr_server_http_t request = {
+         .connection = c, .request = hm
+      };
       event_emit_binary(RR_SERVER_HTTP_EVENT, cptr, &request, sizeof(request));
+
       if (request.handled) {
          if (request.detach_client) {
             http_detach_client(c);
          }
+
          return;
       }
 

@@ -493,10 +493,16 @@ void ws_fini(struct mg_mgr *mgr) {
 // Send to a specific, authenticated websocket session
 static bool ws_send_frame(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_data, int data_type, bool setup) {
    if (cptr && msg_data && msg_data->buf && data_type == WEBSOCKET_OP_BINARY) {
-      rr_media_binary_t io = { .frame = (const uint8_t *)msg_data->buf, .length = msg_data->len, .setup = setup };
+      rr_media_binary_t io = {
+         .frame = (const uint8_t *)msg_data->buf, .length = msg_data->len, .setup = setup
+      };
       event_emit_binary(RR_MEDIA_BINARY_EVENT, cptr, &io, sizeof(io));
-      if (io.handled) return io.result;
+
+      if (io.handled) {
+         return io.result;
+      }
    }
+
    if (!cptr || !cptr->conn || !msg_data || !msg_data->buf ||
       (data_type != WEBSOCKET_OP_TEXT && data_type != WEBSOCKET_OP_BINARY) ||
       (cptr->server && !cptr->is_ws) || cptr->conn->is_closing || cptr->conn->is_draining) {
@@ -695,9 +701,14 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    {
       return false;
    }
-   rr_media_binary_t io = { .frame = (const uint8_t *)buf, .length = len };
+   rr_media_binary_t io = {
+      .frame = (const uint8_t *)buf, .length = len
+   };
    event_emit_binary(RR_MEDIA_INBOUND_EVENT, cptr, &io, sizeof(io));
-   if (io.handled) return io.result;
+
+   if (io.handled) {
+      return io.result;
+   }
    struct rr_binframe f;
    int rv = rr_binframe_parse((const uint8_t *)buf, len, &f);
 
@@ -792,8 +803,8 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
       }
       struct rr_mediachan *tx = media_chan_find(f.hdr.subsystem, RR_BINFRAME_DIR_TX, f.hdr.vfo, f.hdr.rig);
 
-      if (!tx || (cptr->ptt_room[0] && strcasecmp(cptr->ptt_room, tx->room)) || !media_client_in_channel_room(cptr, tx) || !tx->codec[0] || strncmp(tx->codec, (
-         const char *)f.hdr.codec, 4) != 0 || strncmp(cptr->codec_tx, tx->codec, 4) != 0) {
+      if (!tx || (cptr->ptt_room[0] && strcasecmp(cptr->ptt_room, tx->room)) || !media_client_in_channel_room(cptr, tx) || !tx->codec[0]
+         || strncmp(tx->codec, (const char *)f.hdr.codec, 4) != 0 || strncmp(cptr->codec_tx, tx->codec, 4) != 0) {
          Log(LOG_AUDIT, "ws.media", "Dropping TX frame from %s: channel codec/PTT mismatch", cptr->chatname);
 
          return false;
