@@ -1,3 +1,4 @@
+#include <librrprotocol/server.events.h>
 //
 // ws.chat.c
 //    This is part of rustyrig-fw.
@@ -704,6 +705,10 @@ bool ws_client_part_room(rrconn_t *cptr, const char *room) {
 }
 
 void ws_broadcast_room_dict(rrconn_t *sender, dict *d, const char *room) {
+   if (d) {
+      rr_server_publish_t publish = { .message = d, .room = room };
+      event_emit_binary(RR_SERVER_PUBLISH_EVENT, sender, &publish, sizeof(publish));
+   }
    if (!d) {
       return;
    }
@@ -863,7 +868,7 @@ static bool ws_chat_cmd_kick(rrconn_t *cptr, const char *target, const char *rea
 
 // Send the updated userinfo for a single user; see ws_send_users below for
 // everyone
-static bool ws_send_userinfo_room(rrconn_t *cptr, rrconn_t *acptr, const char *room) {
+bool ws_send_userinfo_room(rrconn_t *cptr, rrconn_t *acptr, const char *room) {
    if (!cptr || !cptr->authenticated || !cptr->user) {
       return false;
    }
@@ -943,6 +948,8 @@ bool ws_send_room_users(rrconn_t *cptr, const char *room) {
    if (!cptr || !room || !ws_client_in_room(cptr, room)) {
       return false;
    }
+
+   event_emit(RR_SERVER_ROSTER_EVENT, cptr, room);
 
    for (rrconn_t *current = http_client_list ; current ; current = current->next) {
       if (ws_client_in_room(current, room) ) {

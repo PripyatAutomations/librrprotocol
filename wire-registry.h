@@ -211,6 +211,8 @@ static const rr_wire_field_t wire_fields_6[] = {
    {"talk.usage.tx-remaining", "usage.tx-remaining"},
    {"talk.usage.tx-enforced", "usage.tx-enforced"},
    {"talk.usage.bandwidth-status", "usage.bandwidth-status"},
+   {"talk.remote-rooms", "remote-rooms"},
+   {"talk.servers", "servers"},
 };
 static const rr_wire_field_t wire_fields_7[] = {
    {"msg.ts", "time"},
@@ -355,6 +357,7 @@ static const rr_wire_rule_t wire_rules[] = {
    {"talk.user", "talk", "talk.cmd", "user", wire_fields_6, sizeof(wire_fields_6) / sizeof(wire_fields_6[0])},
    {"talk.userinfo", "talk", "talk.cmd", "userinfo", wire_fields_6, sizeof(wire_fields_6) / sizeof(wire_fields_6[0])},
    {"talk.whois", "talk", "talk.cmd", "whois", wire_fields_6, sizeof(wire_fields_6) / sizeof(wire_fields_6[0])},
+   {"talk.users", "talk", "talk.cmd", "users", wire_fields_6, sizeof(wire_fields_6) / sizeof(wire_fields_6[0])},
    {"hello", "hello", NULL, NULL, wire_fields_7, sizeof(wire_fields_7) / sizeof(wire_fields_7[0])},
    {"ping", "ping", NULL, NULL, wire_fields_8, sizeof(wire_fields_8) / sizeof(wire_fields_8[0])},
    {"pong", "pong", NULL, NULL, wire_fields_9, sizeof(wire_fields_9) / sizeof(wire_fields_9[0])},

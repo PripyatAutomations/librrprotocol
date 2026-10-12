@@ -1,3 +1,4 @@
+#include <librrprotocol/server.events.h>
 #include <librrprotocol/wire.h>
 #include <librrprotocol/latency.h>
 //
@@ -96,6 +97,11 @@ bool send_global_alert(const char *sender, const char *data) {
 }
 
 bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
+   if (d && dest && data_type == WEBSOCKET_OP_TEXT) {
+      rr_server_io_t send = { .message = d };
+      event_emit_binary(RR_SERVER_SEND_EVENT, dest, &send, sizeof(send));
+      if (send.handled) return send.result;
+   }
    if (!d || !dest || !dest->conn || data_type != WEBSOCKET_OP_TEXT) {
       Log(LOG_WARN, "rrproto.srv", "Unable to send msg dict:<%p> to conn:<%p> - invalid dictionary, destination or frame type", d, dest);
 
@@ -126,6 +132,10 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
 
 // Broadcast a message to all WebSocket clients (using http_client_list)
 void ws_broadcast_dict(rrconn_t *sender, dict *d, int data_type) {
+   if (d && data_type == WEBSOCKET_OP_TEXT) {
+      rr_server_publish_t publish = { .message = d };
+      event_emit_binary(RR_SERVER_PUBLISH_EVENT, sender, &publish, sizeof(publish));
+   }
    if (!d) {
       return;
    }

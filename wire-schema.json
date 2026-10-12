@@ -271,7 +271,8 @@
         "talk.unmute": "unmute",
         "talk.user": "user",
         "talk.userinfo": "userinfo",
-        "talk.whois": "whois"
+        "talk.whois": "whois",
+        "talk.users": "users"
       },
       "fields": {
         "msg.ts": "time",
@@ -336,7 +337,9 @@
         "talk.usage.bandwidth-remaining": "usage.bandwidth-remaining",
         "talk.usage.tx-remaining": "usage.tx-remaining",
         "talk.usage.tx-enforced": "usage.tx-enforced",
-        "talk.usage.bandwidth-status": "usage.bandwidth-status"
+        "talk.usage.bandwidth-status": "usage.bandwidth-status",
+        "talk.remote-rooms": "remote-rooms",
+        "talk.servers": "servers"
       }
     },
     {

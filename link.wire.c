@@ -6,7 +6,7 @@
 #endif
 #include <librrprotocol/link.wire.h>
 
-static const char *fields[] = { "op", "node", "site", "root", "username", "password", "role", "nodes", "parent" };
+static const char *fields[] = { "op", "node", "site", "root", "username", "password", "role", "nodes", "parent", "dest", "kind", "session", "payload" };
 static bool valid(dict *d) {
    const char *op = dict_get(d, "op", "");
    unsigned required;
@@ -15,6 +15,7 @@ static bool valid(dict *d) {
    else if (!strcmp(op, "link.ready")) required = 1;
    else if (!strcmp(op, "link.introduce")) required = 1 | (1 << 1) | (1 << 8);
    else if (!strcmp(op, "link.withdraw")) required = 1 | (1 << 1);
+   else if (!strcmp(op, "link.application")) required = 1 | (1 << 1) | (1 << 4) | (15 << 9);
    else return false;
    unsigned seen = 0;
    int rank = 0;
@@ -26,7 +27,7 @@ static bool valid(dict *d) {
          if (!strcmp(key, fields[i])) break;
       }
       if (i == sizeof(fields) / sizeof(fields[0]) || dict_get_type(d, key) != VAL_STR ||
-         !value || strlen(value) > (i == 7 ? 20000U : 256U)) return false;
+         !value || strlen(value) > (i == 7 ? 20000U : i == 12 ? 24000U : 256U)) return false;
       seen |= 1U << i;
    }
    return seen == required;

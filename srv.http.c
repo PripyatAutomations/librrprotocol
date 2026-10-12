@@ -1,3 +1,4 @@
+#include <librrprotocol/server.events.h>
 #include <librrprotocol/traffic.h>
 #include <librrprotocol/media.health.h>
 #include <librrprotocol/wire.h>
@@ -315,7 +316,7 @@ cleanup:
 //
 // Handle a TEXT ws message
 //
-static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
+bool ws_process_dict(rrconn_t *cptr, dict *d) {
    bool result = false;
    bool ping_pong = false;      // ping?/pong! message?
    const char *msg_type = dict_get(d, "msg.type", NULL);
@@ -380,6 +381,10 @@ static bool ws_txtframe_process(rrconn_t *cptr, dict *d) {
       }
       goto cleanup;
    }
+
+   rr_server_io_t route = { .message = d };
+   event_emit_binary(RR_SERVER_ROUTE_EVENT, cptr, &route, sizeof(route));
+   if (route.handled) return route.result;
 
    if (!strcmp(msg_type, "object") || !strcmp(msg_type, "property") ) {
       extern bool rr_object_server_request(rrconn_t *, dict *);
@@ -578,7 +583,7 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
          return false;
       }
 
-      bool result = ws_txtframe_process(cptr, d);
+      bool result = ws_process_dict(cptr, d);
       dict_free(d);
       memset(buf, 0, sizeof(buf) );
 
