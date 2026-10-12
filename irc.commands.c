@@ -1,3 +1,4 @@
+#include <librrprotocol/irc.dcc.h>
 //      This is part of rustyrig-fw. https://github.com/pripyatautomations/rustyrig-fw
 //
 // Do not pay money for this, except donations to the project, if you wish to.
@@ -72,6 +73,7 @@ bool irc_builtin_notice_cb(rrconn_t *cptr, irc_message_t *mp) {
    if (!cptr || !mp || mp->argc < 3) {
       return true;
    }
+   if (irc_dcc_audio_message(cptr, mp) || irc_dcc_message(cptr, mp)) return false;
    char *nick = mp->prefix;
 
    if (!nick) {
@@ -173,6 +175,7 @@ bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
    if (!cptr || !mp || mp->argc < 3) {
       return true;
    }
+   if (irc_dcc_audio_message(cptr, mp) || irc_dcc_message(cptr, mp)) return false;
    char *nick = mp->prefix;
 
    if (!nick) {

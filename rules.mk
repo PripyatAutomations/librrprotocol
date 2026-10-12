@@ -32,7 +32,7 @@ librrprotocol_objs += cli.syslog.o
 librrprotocol_objs += http.api.o
 librrprotocol_objs += http.bans.o
 # IRC uses nonblocking sockets; applications drive irc_io_poll().
-librrprotocol_objs += irc.o
+librrprotocol_objs += irc.o irc.audio.o irc.audio.session.o irc.dcc.o
 librrprotocol_objs += irc.capab.o
 librrprotocol_objs += irc.channel.o
 #librrprotocol_objs += irc.client.o

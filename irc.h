@@ -8,9 +8,11 @@
 #if     !defined(__librrprotocol_irc_h)
 #define __librrprotocol_irc_h
 
+#include <stdint.h>
 #include <librustyaxe/list.h>
 #include <librustyaxe/struct.h>
 #include <librrprotocol/irc.types.h>
+#include <librrprotocol/irc.audio.h>
 // CAPABilities crud
 #include <librrprotocol/irc.capab.h>
 

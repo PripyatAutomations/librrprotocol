@@ -1,3 +1,4 @@
+#include <librrprotocol/irc.dcc.h>
 //
 // irc.parser.c: handle IRC messages and dispatch them to the registered callback
 //
@@ -22,6 +23,7 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/irc.h>
+#include <librrprotocol/irc.audio.session.h>
 
 extern const rr_irc_command_t irc_commands[];
 
@@ -32,6 +34,8 @@ static rr_irc_callback_t *owned_callbacks[256];
 static size_t owned_count;
 
 void irc_shutdown(void) {
+   irc_audio_sessions_shutdown();
+   irc_dcc_shutdown();
    irc_capabilities_shutdown();
 
    for (size_t i = 0 ; i < owned_count ; i++) {
@@ -226,7 +230,7 @@ bool irc_process_message(rrconn_t *cptr, const char *msg) {
    irc_message_t *mp = irc_parse_message(msg);
 
    if (!mp) {
-      Log(LOG_DEBUG, "irc.parser", "Failed parsing msg:<%p>: |%s|", msg, msg);
+      Log(LOG_DEBUG, "irc.parser", "Failed parsing msg:<%p>: |%s|", msg, strcasestr(msg, "DCC AUDIO") ? "DCC AUDIO credentials omitted" : msg);
 
       return true;
    }

@@ -307,7 +307,10 @@ void irc_receive(rrconn_t *cptr, const void *data, size_t n) {
          return;
       }
       *end = '\0';
-      Log(LOG_DEBUG, "net", "processing line: [%s]", start);
+      if (strcasestr(start, "DCC AUDIO"))
+         Log(LOG_DEBUG, "net", "processing DCC AUDIO referral (credentials omitted)");
+      else
+         Log(LOG_DEBUG, "net", "processing line: [%s]", start);
       cptr->last_heard = now;
       rr_traffic_count(cptr, false, false, (size_t)(end + 2 - start));
       irc_process_message(cptr, start);

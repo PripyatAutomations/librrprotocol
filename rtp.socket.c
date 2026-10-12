@@ -53,28 +53,22 @@ rr_rtp_socket_t *rr_rtp_socket_open(const char *host, unsigned port) {
    if (!s) {
       return NULL;
    }
-   s->fd = socket(AF_INET, SOCK_DGRAM, 0);
-
-   if (s->fd < 0) {
-      free(s);
-
-      return NULL;
-   }
-   struct sockaddr_storage addr = {
-      0
-   };
+   s->fd = -1;
+   struct sockaddr_storage addr = {0};
    socklen_t length = sizeof(struct sockaddr_in);
-
    if (port) {
       if (!address(host, port, &addr, &length)) {
          rr_rtp_socket_close(s);
-
          return NULL;
       }
    } else {
       ((struct sockaddr_in *)&addr)->sin_family = AF_INET;
    }
-
+   s->fd = socket(addr.ss_family, SOCK_DGRAM, 0);
+   if (s->fd < 0) {
+      free(s);
+      return NULL;
+   }
    if (bind(s->fd, (struct sockaddr *)&addr, length) || fcntl(s->fd, F_SETFL, O_NONBLOCK) < 0) {
       rr_rtp_socket_close(s);
 
@@ -149,6 +143,11 @@ rr_rtp_attachment_t *rr_rtp_socket_attach(rr_rtp_socket_t *s, uint32_t ssrc, con
 static bool send_packet(const uint8_t *packet, size_t length, void *user) {
    struct rr_rtp_attachment *p = user;
 
+   if (p->socket->source_filter && p->address_length) {
+      char ip[NI_MAXHOST];
+      if (getnameinfo((struct sockaddr *)&p->address, p->address_length, ip, sizeof(ip), NULL, 0, NI_NUMERICHOST) ||
+         !p->socket->source_filter(p->socket->filter_context, p->user, ip)) return false;
+   }
    return p->address_length && sendto(p->socket->fd, packet, length, MSG_DONTWAIT, (struct sockaddr *)&p->address, p->address_length) == (ssize_t) length;
 }
 bool rr_rtp_socket_active(const rr_rtp_attachment_t *p, uint64_t now) {
