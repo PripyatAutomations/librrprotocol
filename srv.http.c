@@ -600,7 +600,6 @@ void ws_release_ptt_on_disconnect(rrconn_t *cptr) {
       return;
    }
 
-   cptr->is_ptt = false;
    dict *rig_msg = dict_new();
 
    if (!rig_msg) {
@@ -623,6 +622,7 @@ void ws_release_ptt_on_disconnect(rrconn_t *cptr) {
       };
       dict_add(rig_msg, "cat.vfo", vfo_buf);
    }
+   cptr->is_ptt = false;
    event_emit_dict("rig.ptt", cptr, rig_msg);
    dict_free(rig_msg);
 }

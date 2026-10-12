@@ -14,7 +14,7 @@ static bool valid(dict *d) {
    unsigned required;
 
    if (!strcmp(op, "link.hello")) {
-      required = 31;
+      required = 1 | (1 << 1) | (1 << 2) | (1 << 4);
    } else if (!strcmp(op, "link.snapshot")) {
       required = 1 | (1 << 5);
    } else if (!strcmp(op, "link.ready")) {

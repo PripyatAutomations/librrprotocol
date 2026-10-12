@@ -5,9 +5,9 @@
 #include <librrprotocol/link.wire.h>
 int main(void) {
    const char *hello =
-      "{\"op\":\"link.hello\",\"node\":\"uuid\",\"site\":\"site\",\"username\":\"peer\",\"password\":\"private\"}";
+      "{\"op\":\"link.hello\",\"node\":\"uuid\",\"site\":\"site\",\"password\":\"private\"}";
    dict *d = rr_link_wire_decode(hello, strlen(hello));
-   assert(d);
+   assert(d && !dict_get(d, "username", NULL));
    char *encoded = rr_link_wire_encode(d);
    assert(encoded);
    dict *copy = rr_link_wire_decode(encoded, strlen(encoded));
@@ -54,6 +54,7 @@ int main(void) {
       "{\"op\":\"link.ready\"}{\"op\":\"link.ready\"}",
       "{\"op\":\"link.withdraw\",\"node\":\"a\\u0000b\"}",
       "{\"op\":\"link.hello\",\"node\":\"uuid\"}",
+      "{\"op\":\"link.hello\",\"node\":\"uuid\",\"site\":\"site\",\"username\":\"peer\",\"password\":\"private\"}",
       "{\"op\":\"talk.msg\"}"
    };
 
