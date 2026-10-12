@@ -14,7 +14,7 @@ unsigned irc_hash_nick(const char *nick) {
    unsigned h = 5381;
 
    for (const unsigned char *p = (const unsigned char *)nick ; *p ; p++) {
-      h = ( (h << 5) + h) ^ tolower(*p);
+      h = ((h << 5) + h) ^ tolower(*p);
    }
 
    return h % USER_HASHSZ;
@@ -50,7 +50,7 @@ irc_chan_user_t *chan_add_user(irc_channel_t *chan, const char *raw) {
       0
    };
    size_t n = 0;
-   while (*p && !isspace( (unsigned char)*p) && n + 1 < sizeof(nick) ) {
+   while (*p && !isspace((unsigned char)*p) && n + 1 < sizeof(nick)) {
       nick[n++] = *p++;
    }
    nick[n] = '\0';
@@ -62,12 +62,12 @@ irc_chan_user_t *chan_add_user(irc_channel_t *chan, const char *raw) {
    irc_chan_user_t *u = chan_find_user(chan, nick);
 
    if (!u) {
-      u = calloc(1, sizeof(*u) );
+      u = calloc(1, sizeof(*u));
 
       if (!u) {
          return NULL;
       }
-      strlcpy(u->nick, nick, sizeof(u->nick) );
+      strlcpy(u->nick, nick, sizeof(u->nick));
       u->next = chan->user_table[h];
       chan->user_table[h] = u;
       chan->users++;
@@ -84,7 +84,7 @@ void chan_remove_user(irc_channel_t *chan, const char *nick) {
    unsigned h = irc_hash_nick(nick);
    irc_chan_user_t **pp = &chan->user_table[h];
    while (*pp) {
-      if (strcasecmp( (*pp)->nick, nick) == 0) {
+      if (strcasecmp((*pp)->nick, nick) == 0) {
          irc_chan_user_t *t = *pp;
          *pp = t->next;
          free(t);
@@ -132,7 +132,7 @@ void irc_handle_353(irc_channel_t *chan, const char *names) {
    }
    const char *p = names;
    while (*p) {
-      while (isspace( (unsigned char)*p) ) {
+      while (isspace((unsigned char)*p)) {
          p++;
       }
 
@@ -140,7 +140,7 @@ void irc_handle_353(irc_channel_t *chan, const char *names) {
          break;
       }
       const char *start = p;
-      while (*p && !isspace( (unsigned char)*p) ) {
+      while (*p && !isspace((unsigned char)*p)) {
          p++;
       }
       size_t len = p - start;
@@ -148,7 +148,7 @@ void irc_handle_353(irc_channel_t *chan, const char *names) {
       if (len > 0) {
          char tmp[128];
 
-         if (len >= sizeof(tmp) ) {
+         if (len >= sizeof(tmp)) {
             len = sizeof(tmp) - 1;
          }
          memcpy(tmp, start, len);
@@ -166,7 +166,7 @@ void handle_numeric_353(irc_channel_t *chan, const irc_message_t *msg) {
    const char *names = msg->argv[4];   // usually :user1 @op user2
 
    if (names[0] == ':') {
-      names++;       // skip leading ':'
+      names++;                  // skip leading ':'
    }
    irc_handle_353(chan, names);
 }
@@ -175,7 +175,7 @@ void handle_join(irc_channel_t *chan, const irc_message_t *msg) {
    if (!chan || !msg || !msg->prefix || msg->argc < 2) {
       return;
    }
-   const char *nick = msg->prefix;    // prefix = nick!user@host
+   const char *nick = msg->prefix;  // prefix = nick!user@host
    char clean_nick[NICKLEN + 1] = {
       0
    };
@@ -198,7 +198,7 @@ void handle_part_or_quit(irc_channel_t *chan, const irc_message_t *msg) {
    if (!chan || !msg || !msg->prefix) {
       return;
    }
-   const char *nick = msg->prefix;    // prefix = nick!user@host
+   const char *nick = msg->prefix;  // prefix = nick!user@host
    char clean_nick[NICKLEN + 1] = {
       0
    };

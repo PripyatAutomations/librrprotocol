@@ -20,6 +20,7 @@
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/codecneg.h>
 #include <librrprotocol/ws.h>
+#include <librrprotocol/server.events.h>
 #include <librrprotocol/ws.mediachan.h>
 
 // PARITY: librrprotocol/ws.mediachan.c (server side of the same messages)
@@ -75,6 +76,8 @@ bool media_send_codec_select(rrconn_t *cptr, const char *codec, const char *chan
    dict_add(d, "media.codec", codec);
    dict_add(d, "media.chan-uuid", channel_uuid);
    dict_add_ulong(d, "media.ts", now);
+   rr_server_io_t request = { .message = d };
+   event_emit_binary(RR_MEDIA_REQUEST_EVENT, cptr, &request, sizeof(request));
    bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
 
@@ -116,6 +119,8 @@ bool media_send_client_capab(rrconn_t *cptr) {
    dict_add(d, "media.cmd", "capab");
    dict_add(d, "media.codecs", my_codecs);
    dict_add_ulong(d, "media.ts", now);
+   rr_server_io_t request = { .message = d };
+   event_emit_binary(RR_MEDIA_REQUEST_EVENT, cptr, &request, sizeof(request));
    bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
    free(my_codecs);
@@ -241,6 +246,8 @@ bool media_send_list(rrconn_t *cptr) {
    dict_add(d, "msg.type", "media");
    dict_add(d, "media.cmd", "list");
    dict_add_ulong(d, "media.ts", now);
+   rr_server_io_t request = { .message = d };
+   event_emit_binary(RR_MEDIA_REQUEST_EVENT, cptr, &request, sizeof(request));
    bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
 
@@ -272,6 +279,8 @@ bool media_send_subscribe(rrconn_t *cptr, const char *uuid) {
    dict_add(d, "media.cmd", "subscribe");
    dict_add(d, "media.chan-uuid", uuid);
    dict_add_ulong(d, "media.ts", now);
+   rr_server_io_t request = { .message = d };
+   event_emit_binary(RR_MEDIA_REQUEST_EVENT, cptr, &request, sizeof(request));
    bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
 
@@ -301,6 +310,8 @@ bool media_send_unsubscribe(rrconn_t *cptr, const char *uuid) {
    dict_add(d, "media.cmd", "unsubscribe");
    dict_add(d, "media.chan-uuid", uuid);
    dict_add_ulong(d, "media.ts", now);
+   rr_server_io_t request = { .message = d };
+   event_emit_binary(RR_MEDIA_REQUEST_EVENT, cptr, &request, sizeof(request));
    bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
 
@@ -335,6 +346,8 @@ bool media_send_source(rrconn_t *cptr, const char *uuid) {
    if (uuid && uuid[0] != '\0') {
       dict_add(d, "media.chan-uuid", uuid);
    }
+   rr_server_io_t request = { .message = d };
+   event_emit_binary(RR_MEDIA_REQUEST_EVENT, cptr, &request, sizeof(request));
    bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
 

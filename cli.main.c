@@ -1,3 +1,4 @@
+#include <librrprotocol/server.events.h>
 #include <librrprotocol/traffic.h>
 #include <librrprotocol/wire.h>
 #include <librrprotocol/latency.h>
@@ -179,7 +180,7 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
 
 // Deal with the binary frames we receive from the server
 // (audio, waterfall, modem data, etc). See doc/media-frames.md.
-static bool ws_binframe_process_client(rrconn_t *client, const char *data, size_t len) {
+bool ws_binframe_process_client(rrconn_t *client, const char *data, size_t len) {
    if (!data || len < RR_BINFRAME_HDR_LEN) {
       // no real packet will EVER be under the header size, even a keep-alive
       Log(LOG_DEBUG, "ws", "%s: data:<%p> len: %zu", __FUNCTION__, data, len);
@@ -491,6 +492,11 @@ void ws_fini(struct mg_mgr *mgr) {
 
 // Send to a specific, authenticated websocket session
 static bool ws_send_frame(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_data, int data_type, bool setup) {
+   if (cptr && msg_data && msg_data->buf && data_type == WEBSOCKET_OP_BINARY) {
+      rr_media_binary_t io = { .frame = (const uint8_t *)msg_data->buf, .length = msg_data->len, .setup = setup };
+      event_emit_binary(RR_MEDIA_BINARY_EVENT, cptr, &io, sizeof(io));
+      if (io.handled) return io.result;
+   }
    if (!cptr || !cptr->conn || !msg_data || !msg_data->buf ||
       (data_type != WEBSOCKET_OP_TEXT && data_type != WEBSOCKET_OP_BINARY) ||
       (cptr->server && !cptr->is_ws) || cptr->conn->is_closing || cptr->conn->is_draining) {
@@ -689,6 +695,9 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    {
       return false;
    }
+   rr_media_binary_t io = { .frame = (const uint8_t *)buf, .length = len };
+   event_emit_binary(RR_MEDIA_INBOUND_EVENT, cptr, &io, sizeof(io));
+   if (io.handled) return io.result;
    struct rr_binframe f;
    int rv = rr_binframe_parse((const uint8_t *)buf, len, &f);
 

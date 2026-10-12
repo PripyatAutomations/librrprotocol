@@ -24,16 +24,16 @@ enum TuningState {
    TS_TX_READY
 };
 
-extern void shutdown_rig(uint32_t signum);       // main.c
+extern void shutdown_rig(uint32_t signum);   // main.c
 extern void restart_rig(void);
 
 ////////////////////
-extern int my_argc;              // in main.c
-extern char **my_argv;           // in main.c
-extern bool dying;               // in main.c
-extern bool restarting;          // in main.c
-extern time_t now;               // in main.c
-extern struct timespec last_rig_poll;    // in main.c
+extern int my_argc;             // in main.c
+extern char **my_argv;          // in main.c
+extern bool dying;              // in main.c
+extern bool restarting;         // in main.c
+extern time_t now;              // in main.c
+extern struct timespec last_rig_poll;  // in main.c
 extern struct timespec loop_start;
 
 #endif // !defined(__rr_state_h)

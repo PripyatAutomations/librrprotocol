@@ -20,6 +20,7 @@ void mg_tls_init(struct mg_connection *c, const struct mg_tls_opts *opts) {
    assert(c->is_tls && !mg_strcmp(opts->name, mg_str("example.test")));
    tls_calls++;
 }
+
 static struct mg_connection *last_dest;
 static char last_text[4096];
 void event_emit_dict(const char *event, rrconn_t *client, dict *d) {
@@ -78,7 +79,9 @@ int main(void) {
    http_handler(&c, MG_EV_WS_OPEN, NULL);
    assert(c.is_closing && protocol_errors == 1 && !sends);
    c.is_closing = false;
-   struct mg_http_message incompatible = {0};
+   struct mg_http_message incompatible = {
+      0
+   };
    incompatible.headers[0].name = mg_str("Sec-WebSocket-Protocol");
    incompatible.headers[0].value = mg_str("rustyrig.old");
    http_handler(&c, MG_EV_WS_OPEN, &incompatible);
@@ -138,8 +141,7 @@ int main(void) {
    sends = 0;
    ws_send_to_name(&other, "TARGET", &data, WEBSOCKET_OP_TEXT);
    assert(!sends);
-   /* Semantic dictionary sends use the same frame adapter, and dictionaries
-    * can never masquerade as binary media. */
+   /* Semantic dictionary sends use the same frame adapter, and dictionaries can never masquerade as binary media. */
    dict *notice = dict_new();
    dict_add(notice, "msg.type", "notice");
    dict_add(notice, "notice.msg", "structured text");
@@ -158,7 +160,9 @@ int main(void) {
    assert(ws_send_dict(NULL, &client, notice, WEBSOCKET_OP_TEXT));
    uint8_t *audio = NULL;
    int audio_len = rr_binframe_frame(&audio, RR_BINFRAME_SUBSYS_AUDIO, "opus", RR_BINFRAME_DIR_RX, 0, 0, 1, 1, 0, "frame", 5);
-   struct mg_str audio_frame = {(char *)audio, (size_t)audio_len};
+   struct mg_str audio_frame = {
+      (char *)audio, (size_t)audio_len
+   };
    c.send.len = 8192;
    now = 10;
    sends = 0;
@@ -177,8 +181,7 @@ int main(void) {
    assert(ws_kick_client_by_c(&c, "test kick"));
    assert(sends == 2 && c.is_draining);
    sent = rr_wire_decode(last_text);
-   assert(sent && !strcmp(dict_get(sent, "msg.type", ""), "auth") &&
-      strstr(dict_get(sent, "auth.error", ""), "test kick"));
+   assert(sent && !strcmp(dict_get(sent, "msg.type", ""), "auth") && strstr(dict_get(sent, "auth.error", ""), "test kick"));
    dict_free(sent);
    http_client_list = NULL;
    free(client.cli_version);

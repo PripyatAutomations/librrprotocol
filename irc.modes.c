@@ -42,35 +42,35 @@ irc_mode_t irc_user_modes[] = {
    // modern daemons may add more, e.g. +B for bot, +Z for SSL-only
    {
       0, NULL, false, false
-   }                         // terminator
+   }                            // terminator
 };
 
 irc_mode_t irc_channel_modes[] = {
    {
       'I', "Invite exception", true, true
-   },                                                      // arg = mask
+   },                                        // arg = mask
    {
       'a', "Channel admin", true, true
-   },                                                      // arg = nickname
+   },                                     // arg = nickname
    {
       'b', "Ban user mask", true, true
-   },                                                      // arg = mask
+   },                                     // arg = mask
    {
       'e', "Ban exception", true, true
-   },                                                      // arg = mask
+   },                                     // arg = mask
    {
       'h', "Half-op", true, true
-   },                                                      // arg = nickname
+   },                               // arg = nickname
    {
       'i', "Invite only", true, true
-   },                                                      // arg = mask
+   },                                     // arg = mask
    {
       'k', "Channel key (password)", true, true
-   },                                                      // arg = key
+   },                                              // arg = key
    {
       'l', "User limit", true, false
-   },                                                      // arg = number (only
-                                                           // on set)
+   },                                     // arg = number (only
+   // on set)
    {
       'm', "Moderated channel", false, false
    },
@@ -79,13 +79,13 @@ irc_mode_t irc_channel_modes[] = {
    },
    {
       'o', "Channel operator privilege", true, true
-   },                                                      // arg = nickname
+   },                                                    // arg = nickname
    {
       'p', "Private channel", false, false
    },
    {
       'q', "Channel founder", true, true
-   },                                                      // arg = nickname
+   },                                        // arg = nickname
    {
       's', "Secret channel", false, false
    },
@@ -94,10 +94,10 @@ irc_mode_t irc_channel_modes[] = {
    },
    {
       'v', "Voice privilege (can speak in +m)", true, true
-   },                                                        // arg = nickname
+   },                                                          // arg = nickname
    {
       0, NULL, false, false
-   }                         // terminator
+   }                            // terminator
 };
 
 irc_mode_t *irc_find_cmode(char c) {

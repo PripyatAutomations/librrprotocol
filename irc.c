@@ -90,7 +90,7 @@ static void irc_try_send(rrconn_t *cptr) {
    char *p = cptr->sendq;
 
    // find how much of sendq is complete messages ending with \r\n
-   while ( (p = strstr(p, "\r\n") ) ) {
+   while ((p = strstr(p, "\r\n"))) {
       len = (p - cptr->sendq) + 2;
       p += 2;
    }
@@ -102,7 +102,7 @@ static void irc_try_send(rrconn_t *cptr) {
 
    if (n < 0) {
       if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
-         Log(LOG_CRIT, "irc", "send failed: %s", strerror(errno) );
+         Log(LOG_CRIT, "irc", "send failed: %s", strerror(errno));
          irc_close_connection(cptr);
       }
 
@@ -131,15 +131,18 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
 #if defined(USE_MONGOOSE)
 
    if (cptr->conn) {
-      if (!cptr->connected || cptr->conn->is_closing ||
-         cptr->conn->send.len + msglen + 2 > SENDQLEN) {
+      if (!cptr->connected || cptr->conn->is_closing || cptr->conn->send.len + msglen + 2 > SENDQLEN) {
          return false;
       }
       msg[msglen++] = '\r';
       msg[msglen++] = '\n';
 
       bool sent = mg_send(cptr->conn, msg, msglen);
-      if (sent) rr_traffic_count(cptr, true, false, msglen);
+
+      if (sent) {
+         rr_traffic_count(cptr, true, false, msglen);
+      }
+
       return sent;
    }
 #endif
@@ -166,7 +169,6 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
    if (cptr->connected) {
       irc_try_send(cptr);
    }
-
    // NB: Any leftover data in the sendq will be flushed by the periodic
    // timer / poll loop calling irc_try_send() again, since we don't have
    // an event loop to watch for writability anymore.
@@ -218,7 +220,7 @@ void irc_io_poll(rrconn_t *cptr) {
 
    if (n < 0) {
       if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
-         Log(LOG_CRIT, "irc", "recv failed: %s", strerror(errno) );
+         Log(LOG_CRIT, "irc", "recv failed: %s", strerror(errno));
          irc_close_connection(cptr);
       }
       // fallthrough: flush any pending sendq
@@ -259,8 +261,7 @@ bool irc_client_register(rrconn_t *cptr) {
          }
       }
       irc_capabilities_reset(cptr);
-      sent = sent && irc_send(cptr, "CAP LS 302") && irc_send(cptr, "NICK %s", cptr->nick) &&
-         irc_send(cptr, "USER %s 0 * :%s", ident, cptr->nick);
+      sent = sent && irc_send(cptr, "CAP LS 302") && irc_send(cptr, "NICK %s", cptr->nick) && irc_send(cptr, "USER %s 0 * :%s", ident, cptr->nick);
 
       if (!sent) {
          irc_close_connection(cptr);
@@ -299,7 +300,7 @@ void irc_receive(rrconn_t *cptr, const void *data, size_t n) {
    // process complete lines
    char *start = cptr->recvq;
    char *end;
-   while ( (end = strstr(start, "\r\n") ) ) {
+   while ((end = strstr(start, "\r\n"))) {
       if ((size_t)(end - start) > IRC_MSGLEN - 2) {
          irc_close_connection(cptr);
 

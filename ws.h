@@ -24,16 +24,16 @@ struct ws_client {
 #ifdef USE_MONGOOSE
    struct mg_connection *conn;
 #endif
-   struct ws_client *next;    // Next client in the list
+   struct ws_client *next;      // Next client in the list
 };
 
 struct ws_audio_frame {
-   uint32_t sender;                      // sender of the message (connection
-                                         // index)
-   uint32_t dest;                        // destination? server is 0
+   uint32_t sender;             // sender of the message (connection
+   // index)
+   uint32_t dest;               // destination? server is 0
    enum {
-      AU_PCM16U = 0,                    // 16-bit PCM-u
-      AU_PCM24U,                        // 24-bit PCM-u
+      AU_PCM16U = 0,            // 16-bit PCM-u
+      AU_PCM24U,                // 24-bit PCM-u
    } frame_type;
 };
 typedef struct ws_audio_frame ws_audio_frame_t;
@@ -54,16 +54,16 @@ typedef struct ws_conn ws_conn_t;
 extern bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type);
 extern void ws_broadcast_dict(rrconn_t *sender, dict *d, int data_type);
 extern void ws_broadcast_dict_with_flags(u_int32_t flags, rrconn_t *sender, dict *d, int data_type);
-extern bool ws_kick_client(rrconn_t *cptr, const char *reason);                     // disconnect
-                                                                                    // a userextern
-                                                                                    // void
-                                                                                    // ws_remove_client(rrconn_t
-                                                                                    // *cptr);
+extern bool ws_kick_client(rrconn_t *cptr, const char *reason);   // disconnect
+// a userextern
+// void
+// ws_remove_client(rrconn_t
+// *cptr);
 extern bool ws_kick_by_name(const char *name, const char *reason);
 extern bool ws_kick_by_uid(int uid, const char *reason);
 extern bool ws_send_ping(rrconn_t *cptr);
-extern long long last_ping_rtt_ms;   // srv.ping.c: last measured ping RTT (ms), -1 until
-                                     // first pong
+extern long long last_ping_rtt_ms;  // srv.ping.c: last measured ping RTT (ms), -1 until
+                                    // first pong
 extern bool ws_send_alert(rrconn_t *cptr, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 extern bool ws_send_error(rrconn_t *cptr, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 
@@ -118,8 +118,8 @@ extern bool ws_handle_auth_msg(rrconn_t *cptr, dict *d);
 // ws.rigctl.c
 extern bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d);
 
-extern void ws_blorp_userlist_cb(void *arg);                     // timer calls this to
-                                                                 // set userlists
+extern void ws_blorp_userlist_cb(void *arg); // timer calls this to
+// set userlists
 // Handle incoming messages
 extern void ws_handler(rrconn_t *cptr, int ev, void *ev_data);
 

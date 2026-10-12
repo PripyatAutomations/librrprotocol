@@ -20,7 +20,7 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-extern dict *cfg;                // config.c
+extern dict *cfg;               // config.c
 extern bool cfg_show_pings;
 
 bool ws_handle_ping_msg(rrconn_t *cptr, dict *d) {
@@ -76,7 +76,7 @@ bool ws_handle_pong_msg(rrconn_t *cptr, dict *d) {
    }
 
    time_t now = time(NULL);
-   Log(LOG_CRAZY, "ws.pong", "* Pong! RTT: %lld secs *", (long long)(now - pong_ts) );
+   Log(LOG_CRAZY, "ws.pong", "* Pong! RTT: %lld secs *", (long long)(now - pong_ts));
 
    // Echoed monotonic ping.ts from the server's PING: diff against our own clock for ms
    // RTT
@@ -91,7 +91,7 @@ bool ws_handle_pong_msg(rrconn_t *cptr, dict *d) {
       }
       last_ping_rtt_ms = rtt_ms;
       cptr->ping_rtt_ms = rtt_ms;
-      rr_media_rtt_sample(cptr, (uint64_t)rtt_ms * 1000);
+      rr_media_rtt_sample(cptr, (uint64_t) rtt_ms * 1000);
       Log(LOG_CRAZY, "ws.pong", "Client-side RTT: %lldms", rtt_ms);
    }
 

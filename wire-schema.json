@@ -182,7 +182,8 @@
         "media.subscribed": "subscribed",
         "media.unsubscribe": "unsubscribe",
         "media.unsubscribed": "unsubscribed",
-        "media.feedback": "feedback"
+        "media.feedback": "feedback",
+        "media.frame": "frame"
       },
       "fields": {
         "msg.ts": "time",
@@ -208,7 +209,17 @@
         "media.vfo-uuid": "vfo-uuid",
         "media.quality": "quality",
         "media.late-us": "late-us",
-        "media.gaps": "gaps"
+        "media.gaps": "gaps",
+        "media.transport": "transport",
+        "media.direct": "direct",
+        "media.direct-key": "direct-key",
+        "media.direct-ssrc": "direct-ssrc",
+        "media.direct-security": "direct-security",
+        "media.owner-stream": "owner-stream",
+        "media.data": "data",
+        "media.fragment": "fragment",
+        "media.total": "total",
+        "media.frame-seq": "frame-seq"
       }
     },
     {

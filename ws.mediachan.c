@@ -1,4 +1,5 @@
 #include <librrprotocol/media.health.h>
+#include <librrprotocol/server.events.h>
 //
 // librrprotocol/ws.mediachan.c: media channel registry, subscribe protocol
 //    This is part of rustyrig-fw.
@@ -533,6 +534,9 @@ bool ws_media_channel_has_subscribers(const struct rr_mediachan *cp) {
    if (!cp || cp->uuid[0] == '\0') {
       return false;
    }
+   rr_media_demand_t query = { .channel = cp };
+   event_emit_binary(RR_MEDIA_DEMAND_EVENT, NULL, &query, sizeof(query));
+   if (query.interested) return true;
    u_int32_t chan_id = (u_int32_t) (cp - media_channels) + 1;
    rrconn_t *cur = http_client_list;
    while (cur) {
@@ -574,6 +578,9 @@ static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *targ
       return true;
    }
 
+   rr_media_fanout_t fanout = { .channel = cp, .frame = frame, .length = flen,
+      .target = target, .exclude = exclude, .setup = setup };
+   event_emit_binary(RR_MEDIA_FANOUT_EVENT, NULL, &fanout, sizeof(fanout));
    rrconn_t *cur = http_client_list;
    while (cur) {
       if ((!target || cur == target) && cur != exclude && cur->is_ws &&

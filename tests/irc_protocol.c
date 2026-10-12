@@ -26,6 +26,7 @@ static void observe(const char *event, const char *data, rrconn_t *conn, void *u
    } else if (!strcmp(event, "irc.topic")) {
       topics++;
    }
+
    if (!strcmp(event, "irc.channel.redirect")) {
       dict *d = json2dict(data);
       assert(d && !strcmp(dict_get(d, "msg.arg2", ""), "#old"));
@@ -36,6 +37,7 @@ static void observe(const char *event, const char *data, rrconn_t *conn, void *u
    }
    snprintf(last_event, sizeof(last_event), "%s", data);
 }
+
 static unsigned custom_calls;
 static bool custom(rrconn_t *conn, irc_message_t *message) {
    (void)conn;

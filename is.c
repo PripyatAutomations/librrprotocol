@@ -32,7 +32,7 @@ bool is_admin_online(void) {
          continue;
       }
 
-      if (has_priv(curr->user->uid, "admin|owner") ) {
+      if (has_priv(curr->user->uid, "admin|owner")) {
          return true;
       }
    }
@@ -51,7 +51,7 @@ bool is_elmer_online(void) {
          continue;
       }
 
-      if (has_priv(curr->user->uid, "elmer") ) {
+      if (has_priv(curr->user->uid, "elmer")) {
          Log(LOG_CRAZY, "auth", "is_elmer_online: returning cptr:<%x> - |%s|", curr, curr->chatname);
 
          return true;

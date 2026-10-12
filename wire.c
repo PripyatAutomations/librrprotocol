@@ -26,18 +26,23 @@ typedef struct {
 
 static const rr_wire_rule_t *rule_for(dict *in, bool encode) {
    const char *identity = dict_get(in, encode ? "msg.type" : "op", NULL);
+
    if (!identity) {
       return NULL;
    }
+
    for (unsigned i = 0 ; i < sizeof(wire_rules) / sizeof(wire_rules[0]) ; i++) {
       const rr_wire_rule_t *rule = &wire_rules[i];
+
       if (strcmp(identity, encode ? rule->type : rule->operation)) {
          continue;
       }
+
       if (!encode) {
          return rule;
       }
       const char *command = rule->command_key ? dict_get(in, rule->command_key, NULL) : NULL;
+
       if ((!command && !rule->command) || (command && rule->command && !strcmp(command, rule->command))) {
          return rule;
       }
@@ -51,12 +56,15 @@ static bool field_path(const rr_wire_rule_t *rule, const char *key, bool encode,
       const char *from = encode ? rule->fields[i].internal : rule->fields[i].wire;
       const char *to = encode ? rule->fields[i].wire : rule->fields[i].internal;
       size_t length = strlen(from);
+
       if (length && from[length - 1] == '*') {
          if (strncmp(key, from, length - 1) || !key[length - 1] || strchr(key + length - 1, '.')) {
             continue;
          }
+
          return snprintf(path, capacity, "%.*s%s", (int)strlen(to) - 1, to, key + length - 1) < (int)capacity;
       }
+
       if (!strcmp(from, key)) {
          return snprintf(path, capacity, "%s", to) < (int)capacity;
       }
@@ -121,7 +129,10 @@ static bool copy_value(dict *out, const char *key, dict *in, const char *source,
          error = dict_add_ullong(out, key, v->ull);
          break;
       }
-      case VAL_FLOAT: case VAL_FLOATP: case VAL_DOUBLE: case VAL_DOUBLEP: {
+      case VAL_FLOAT:
+      case VAL_FLOATP:
+      case VAL_DOUBLE:
+      case VAL_DOUBLEP: {
          double number = dict_get_double(in, source, NAN);
 
          if (!isfinite(number)) {
@@ -140,16 +151,22 @@ static bool copy_value(dict *out, const char *key, dict *in, const char *source,
 
 static dict *transform(dict *in, bool encode) {
    const rr_wire_rule_t *rule = rule_for(in, encode);
+
    if (!rule) {
-      if (encode) Log(LOG_WARN, "wire", "Unsupported outgoing operation: %s", dict_get(in, "msg.type", "missing"));
+      if (encode) {
+         Log(LOG_WARN, "wire", "Unsupported outgoing operation: %s", dict_get(in, "msg.type", "missing"));
+      }
+
       return NULL;
    }
    dict *out = dict_new();
+
    if (!out) {
       return NULL;
    }
+
    if (encode ? dict_add(out, "op", rule->operation) :
-       (dict_add(out, "msg.type", rule->type) || (rule->command && dict_add(out, rule->command_key, rule->command)))) {
+      (dict_add(out, "msg.type", rule->type) || (rule->command && dict_add(out, rule->command_key, rule->command)))) {
       goto invalid;
    }
    int rank = 0;
@@ -161,13 +178,14 @@ static dict *transform(dict *in, bool encode) {
          continue;
       }
       char path[128];
-      if (!field_path(rule, key, encode, path, sizeof(path)) ||
-          !copy_value(out, path, in, key, type, &value)) {
-         if (encode) Log(LOG_WARN, "wire", "Invalid outgoing field %s for %s", key, rule->operation);
+
+      if (!field_path(rule, key, encode, path, sizeof(path)) || !copy_value(out, path, in, key, type, &value)) {
+         if (encode) {
+            Log(LOG_WARN, "wire", "Invalid outgoing field %s for %s", key, rule->operation);
+         }
          goto invalid;
       }
    }
-
    return out;
 invalid:
    dict_free(out);
@@ -248,8 +266,7 @@ static bool literal_keys(const char *json) {
 
          if ((p - start == 3 && !memcmp(start, "msg", 3)) ||
             (p - start == 3 && !memcmp(start, "cmd", 3)) ||
-            (p - start == 6 && !memcmp(start, "object", 6)) ||
-            (p - start == 8 && !memcmp(start, "property", 8))) {
+            (p - start == 6 && !memcmp(start, "object", 6)) || (p - start == 8 && !memcmp(start, "property", 8))) {
             return false;
          }
       }

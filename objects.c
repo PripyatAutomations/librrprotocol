@@ -23,7 +23,7 @@ bool rr_object_uuid_valid(const char *uuid) {
          if (uuid[i] != '-') {
             return false;
          }
-      } else if (!isdigit( (unsigned char)uuid[i]) && !(uuid[i] >= 'a' && uuid[i] <= 'f') ) {
+      } else if (!isdigit((unsigned char)uuid[i]) && !(uuid[i] >= 'a' && uuid[i] <= 'f')) {
          return false;
       }
    }
@@ -53,11 +53,17 @@ const char *rr_object_type_name(val_type_t type) {
       case VAL_BOOL: {
          return "boolean";
       }
-      case VAL_INT: case VAL_UINT: case VAL_LONG: case VAL_ULONG:
-      case VAL_LLONG: case VAL_ULLONG: case VAL_CHAR: {
+      case VAL_INT:
+      case VAL_UINT:
+      case VAL_LONG:
+      case VAL_ULONG:
+      case VAL_LLONG:
+      case VAL_ULLONG:
+      case VAL_CHAR: {
          return "integer";
       }
-      case VAL_FLOAT: case VAL_DOUBLE: {
+      case VAL_FLOAT:
+      case VAL_DOUBLE: {
          return "number";
       }
       default: {
@@ -78,7 +84,7 @@ bool rr_object_seq_get(dict *d, const char *key, uint64_t *seq) {
    }
    const char *s = dict_get(d, key, "");
 
-   if (!*s || (s[0] == '0' && s[1]) ) {
+   if (!*s || (s[0] == '0' && s[1])) {
       return false;
    }
 
@@ -160,13 +166,12 @@ bool rr_object_value_put(dict *d, const char *key, val_type_t type, const dict_v
       }
    }
 
-   return n >= -9007199254740991LL && n <= 9007199254740991LL &&
-          !dict_add_llong(d, key, n);
+   return n >= -9007199254740991LL && n <= 9007199254740991LL && !dict_add_llong(d, key, n);
 }
 
 bool rr_object_value_get(dict *d, const char *key, val_type_t type, dict_value_t *v) {
    val_type_t actual = dict_get_type(d, key);
-   memset(v, 0, sizeof(*v) );
+   memset(v, 0, sizeof(*v));
 
    if (type == VAL_STR) {
       v->s = actual == VAL_STR ? dict_get(d, key, NULL) : NULL;
@@ -179,16 +184,14 @@ bool rr_object_value_get(dict *d, const char *key, val_type_t type, dict_value_t
 
       return actual == VAL_BOOL;
    }
-   bool integer = actual == VAL_INT || actual == VAL_UINT ||
-      actual == VAL_LONG || actual == VAL_ULONG || actual == VAL_LLONG ||
-      actual == VAL_ULLONG;
+   bool integer = actual == VAL_INT || actual == VAL_UINT || actual == VAL_LONG || actual == VAL_ULONG || actual == VAL_LLONG || actual == VAL_ULLONG;
 
    if (!integer && actual != VAL_DOUBLE && actual != VAL_FLOAT) {
       return false;
    }
    double number = dict_get_double(d, key, NAN);
 
-   if (!isfinite(number) ) {
+   if (!isfinite(number)) {
       return false;
    }
 

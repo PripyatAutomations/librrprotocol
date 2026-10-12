@@ -70,7 +70,7 @@ irc_message_t *irc_parse_message(const char *msg) {
    if (!msg || !*msg || strlen(msg) > IRC_MSGLEN - 2 || strchr(msg, '\r') || strchr(msg, '\n')) {
       return NULL;
    }
-   irc_message_t *mp = calloc(1, sizeof(*mp) );
+   irc_message_t *mp = calloc(1, sizeof(*mp));
 
    if (!mp) {
       fprintf(stderr, "OOM in irc_parse_message\n");
@@ -110,7 +110,7 @@ irc_message_t *irc_parse_message(const char *msg) {
    // Command
    if (s && *s) {
       while (*s == ' ') {
-         s++;   // skip leading spaces
+         s++;                   // skip leading spaces
       }
 
       if (*s) {
@@ -119,7 +119,7 @@ irc_message_t *irc_parse_message(const char *msg) {
          if (space) {
             *space = '\0';
          }
-         argv = xrealloc(argv, sizeof(char*) * (argc + 1) );
+         argv = xrealloc(argv, sizeof(char *) * (argc + 1));
          argv[argc++] = xstrdup(s);
          s = space ? space + 1 : NULL;
       }
@@ -143,7 +143,7 @@ irc_message_t *irc_parse_message(const char *msg) {
          return NULL;
       }
       // resize the array
-      argv = xrealloc(argv, sizeof(char*) * (argc + 1) );
+      argv = xrealloc(argv, sizeof(char *) * (argc + 1));
 
       if (*s == ':') {
          s++;
@@ -187,13 +187,11 @@ bool irc_dispatch_message(rrconn_t *cptr, irc_message_t *mp) {
    }
    const char *cmd = mp->argv[0];
    irc_capabilities_message(cptr, mp);
-   bool numeric = strlen(cmd) == 3 && isdigit((unsigned char)cmd[0]) &&
-      isdigit((unsigned char)cmd[1]) && isdigit((unsigned char)cmd[2]);
+   bool numeric = strlen(cmd) == 3 && isdigit((unsigned char)cmd[0]) && isdigit((unsigned char)cmd[1]) && isdigit((unsigned char)cmd[2]);
    int code = numeric ? atoi(cmd) : 0;
    rr_irc_callback_t *p = irc_callbacks;
    while (p) {
-      if ((numeric && p->numeric > 0 && p->numeric == code) ||
-         (!numeric && !p->numeric && p->cmd && !strcasecmp(p->cmd, cmd))) {
+      if ((numeric && p->numeric > 0 && p->numeric == code) || (!numeric && !p->numeric && p->cmd && !strcasecmp(p->cmd, cmd))) {
          bool failed = p->cb ? p->cb(cptr, mp) : false;
 
          if (!p->cb && p->event_key) {
@@ -280,7 +278,7 @@ bool irc_register_default_callbacks(void) {
       if (owned_count == sizeof(owned_callbacks) / sizeof(owned_callbacks[0])) {
          return false;
       }
-      rr_irc_callback_t *cb = calloc(1, sizeof(*cb) );
+      rr_irc_callback_t *cb = calloc(1, sizeof(*cb));
 
       if (!cb) {
          Log(LOG_CRIT, "irc", "OOM allocating callback for %s", cmd->name);
@@ -296,9 +294,9 @@ bool irc_register_default_callbacks(void) {
          return false;
       }
       cb->cb = cmd->cb ? cmd->cb : NULL;
-      cb->relayed = cmd->relayed;        // should it be relayed to other
-                                         // clients/servers?
-      cb->unidle = cmd->unidle;          // does this clear idle for the user?
+      cb->relayed = cmd->relayed;   // should it be relayed to other
+      // clients/servers?
+      cb->unidle = cmd->unidle; // does this clear idle for the user?
 
       if (cmd->event_key) {
          cb->event_key = strdup(cmd->event_key);
@@ -311,7 +309,7 @@ bool irc_register_default_callbacks(void) {
          }
       }
 
-      if (irc_register_callback(cb) ) {
+      if (irc_register_callback(cb)) {
          Log(LOG_CRIT, "irc", "Failed to register callback for %s", cmd->name);
          free(cb->cmd);
          free(cb->event_key);
@@ -341,7 +339,7 @@ bool irc_register_default_numeric_callbacks(void) {
       if (owned_count == sizeof(owned_callbacks) / sizeof(owned_callbacks[0])) {
          return false;
       }
-      rr_irc_callback_t *cb = calloc(1, sizeof(*cb) );
+      rr_irc_callback_t *cb = calloc(1, sizeof(*cb));
 
       if (!cb) {
          Log(LOG_CRIT, "irc", "OOM allocating numeric callback for %s", numeric->name);
@@ -349,8 +347,8 @@ bool irc_register_default_numeric_callbacks(void) {
          return false;
       }
       cb->cmd = strdup(numeric->name);
-      cb->relayed = false;                       // numerics are never relayed
-      cb->unidle = numeric->unidle;              // does this clear idle for the
+      cb->relayed = false;      // numerics are never relayed
+      cb->unidle = numeric->unidle; // does this clear idle for the
 
       // user?
       if (!cb->cmd) {
@@ -373,7 +371,7 @@ bool irc_register_default_numeric_callbacks(void) {
          }
       }
 
-      if (irc_register_callback(cb) ) {
+      if (irc_register_callback(cb)) {
          Log(LOG_CRIT, "irc", "Failed to register numeric %03d (%s)", numeric->code, numeric->name);
          free(cb->cmd);
          free(cb->event_key);

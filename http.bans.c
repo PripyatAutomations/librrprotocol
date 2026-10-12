@@ -24,12 +24,12 @@
 
 #ifdef  USE_HTTP
 struct http_ua_ban {
-   char *useragent;      // saved user agent regex
+   char *useragent;             // saved user agent regex
    regex_t regex;
    bool regex_compiled;
-   char *description;    // Description
-   bool enabled;         // is this ban enabled?
-   struct http_ua_ban *next;  // next ban
+   char *description;           // Description
+   bool enabled;                // is this ban enabled?
+   struct http_ua_ban *next;    // next ban
 };
 typedef struct http_ua_ban http_ua_ban_t;
 
@@ -44,8 +44,7 @@ bool is_http_banned(const char *ua) {
    // Check user-agent against the the user-agent bans
    struct http_ua_ban *b = http_ua_bans;
    while (b) {
-      if (b->enabled && b->regex_compiled &&
-         regexec(&b->regex, ua, 0, NULL, 0) == 0) {
+      if (b->enabled && b->regex_compiled && regexec(&b->regex, ua, 0, NULL, 0) == 0) {
          return true;
       }
       b = b->next;
@@ -60,10 +59,10 @@ bool load_http_ua_bans(const char *path) {
    if (!fp) {
       return true;
    }
-   while (!feof(fp) ) {
+   while (!feof(fp)) {
       memset(line, 0, 1024);
 
-      if (!fgets(line, 1024, fp) ) {
+      if (!fgets(line, 1024, fp)) {
          char *start = line + strspn(line, " \t\r\n");
 
          if (start != line) {
@@ -72,14 +71,13 @@ bool load_http_ua_bans(const char *path) {
       }
 
       // Skip comments and empty lines
-      if (line[0] == '#' || line[0] == ';' ||
-         (strlen(line) > 1 && (line[0] == '/' && line[1] == '/') ) || line[0] == '\n') {
+      if (line[0] == '#' || line[0] == ';' || (strlen(line) > 1 && (line[0] == '/' && line[1] == '/')) || line[0] == '\n') {
          continue;
       }
       // Remove trailing \r or \n characters
       char *end = line + strlen(line) - 1;
       char *start = NULL;
-      while (end >= line && (*end == '\r' || *end == '\n') ) {
+      while (end >= line && (*end == '\r' || *end == '\n')) {
          *end = '\0';
          end--;
       }
@@ -93,7 +91,7 @@ bool load_http_ua_bans(const char *path) {
       if (line[0] == '\n' || line[0] == '\0') {
          continue;
       }
-      http_ua_ban_t *new_ban = calloc(1, sizeof(*new_ban) );
+      http_ua_ban_t *new_ban = calloc(1, sizeof(*new_ban));
 
       if (!new_ban) {
          fclose(fp);

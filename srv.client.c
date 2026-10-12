@@ -224,7 +224,7 @@ rrconn_t *http_find_client_by_c(struct mg_connection *c) {
 }
 
 // Remove a client (WebSocket or HTTP) from the list
-void http_remove_client(struct mg_connection *c) {
+static void http_release_client(struct mg_connection *c, bool close_socket) {
    if (!c) {
       Log(LOG_CRIT, "http", "http_remove_client passed NULL mg_conn?!");
 
@@ -242,8 +242,10 @@ void http_remove_client(struct mg_connection *c) {
       if (current->conn == c) {
          event_emit("protocol.session.closed", current, NULL);
          // Found the client to remove, mark it dead
-         mg_ws_send(c, NULL, 0, WEBSOCKET_OP_CLOSE);
-         current->conn->is_closing = 1;
+         if (close_socket) {
+            mg_ws_send(c, NULL, 0, WEBSOCKET_OP_CLOSE);
+            current->conn->is_closing = 1;
+         }
          current->active = false;
 
          if (!prev) {
@@ -314,4 +316,13 @@ rrconn_t *whos_talking(void) {
       cptr = cptr->next;
    }
    return NULL;
+}
+
+/* Transfer an unauthenticated HTTP socket to an application-owned protocol. */
+void http_detach_client(struct mg_connection *c) {
+   http_release_client(c, false);
+}
+
+void http_remove_client(struct mg_connection *c) {
+   http_release_client(c, true);
 }

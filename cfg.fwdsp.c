@@ -26,15 +26,16 @@ bool config_fwdsp_init(void) {
       return true;
    }
 
-   if (!cfg_add_callback(NULL, "fwdsp", config_fwdsp_section_cb) ) {
+   if (!cfg_add_callback(NULL, "fwdsp", config_fwdsp_section_cb)) {
       return false;
    }
 
-   if (!cfg_add_callback(NULL, "pipelines", config_pipeline_section_cb) ) {
+   if (!cfg_add_callback(NULL, "pipelines", config_pipeline_section_cb)) {
       return false;
    }
 
    initialized = true;
+
    return true;
 }
 
@@ -47,6 +48,7 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
 
    if (!tmpbuf) {
       Log(LOG_CRIT, "cfg.fwdsp", "OOM in config_fwdsp_section_cb!");
+
       return true;
    }
    char *val = strchr(tmpbuf, '=');
@@ -54,9 +56,10 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
    if (!val || !val[1]) {
       Log(LOG_CRIT, "cfg.fwdsp", "config error at %s:%d: missing value: %s", path, line, buf);
       free(tmpbuf);
+
       return true;
    }
-   *val++ = '\0';   // split at '='
+   *val++ = '\0';               // split at '='
 
    while (*val == ' ' || *val == '\t') {
       val++;
@@ -64,13 +67,13 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
    // trim trailing whitespace
    char *end = val + strlen(val) - 1;
 
-   while (end >= val && (*end == ' ' || *end == '\t') ) {
+   while (end >= val && (*end == ' ' || *end == '\t')) {
       *end-- = '\0';
    }
    // trim trailing whitespace on key too
    char *kend = tmpbuf + strlen(tmpbuf) - 1;
 
-   while (kend >= tmpbuf && (*kend == ' ' || *kend == '\t') ) {
+   while (kend >= tmpbuf && (*kend == ' ' || *kend == '\t')) {
       *kend-- = '\0';
    }
    char fullkey[128];
@@ -83,6 +86,7 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
    dict_add(cfg, fullkey, val);
    Log(LOG_CRAZY, "cfg.fwdsp", "Loaded %s=%s from %s:%d", fullkey, val, path, line);
    free(tmpbuf);
+
    return false;
 }
 
@@ -96,13 +100,16 @@ bool config_pipeline_section_cb(const char *path, int line, const char *section,
 
    if (!tmpbuf) {
       Log(LOG_CRIT, "cfg.fwdsp", "OOM in config_pipeline_section_cb!");
+
       return true;
    }
 
    char *val = strchr(tmpbuf, '=');
+
    if (!val || !val[1]) {
       Log(LOG_CRIT, "cfg.fwdsp", "config error: pipeline entry missing value: %s", buf);
       free(tmpbuf);
+
       return true;
    }
    *val++ = '\0';
@@ -113,13 +120,13 @@ bool config_pipeline_section_cb(const char *path, int line, const char *section,
    // trim trailing whitespace
    char *end = val + strlen(val) - 1;
 
-   while (end >= val && (*end == ' ' || *end == '\t') ) {
+   while (end >= val && (*end == ' ' || *end == '\t')) {
       *end-- = '\0';
    }
    // trim key whitespace
    char *kend = tmpbuf + strlen(tmpbuf) - 1;
 
-   while (kend >= tmpbuf && (*kend == ' ' || *kend == '\t') ) {
+   while (kend >= tmpbuf && (*kend == ' ' || *kend == '\t')) {
       *kend-- = '\0';
    }
    // Accept both "pc16.rx" and "pipeline:pc16.rx" spellings
@@ -134,5 +141,6 @@ bool config_pipeline_section_cb(const char *path, int line, const char *section,
    dict_add(cfg, fullkey, val);
    Log(LOG_CRAZY, "cfg.fwdsp", "Loaded %s=%s from config", fullkey, val);
    free(tmpbuf);
+
    return false;
 }

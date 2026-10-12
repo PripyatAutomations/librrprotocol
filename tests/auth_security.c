@@ -133,9 +133,7 @@ static void test_nonce_generation(void) {
 
    for (size_t i = 0 ; i < strlen(nonce) ; i++) {
       assert((nonce[i] >= 'A' && nonce[i] <= 'Z') ||
-         (nonce[i] >= 'a' && nonce[i] <= 'z') ||
-         (nonce[i] >= '0' && nonce[i] <= '9') ||
-         nonce[i] == '+' || nonce[i] == '/');
+         (nonce[i] >= 'a' && nonce[i] <= 'z') || (nonce[i] >= '0' && nonce[i] <= '9') || nonce[i] == '+' || nonce[i] == '/');
    }
 
    char tiny[2] = {

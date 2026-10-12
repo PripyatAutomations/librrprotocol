@@ -1,0 +1,19 @@
+#ifndef RR_RTP_SOCKET_H
+#define RR_RTP_SOCKET_H
+#include "rtp.h"
+typedef struct rr_rtp_socket rr_rtp_socket_t;
+typedef struct rr_rtp_attachment rr_rtp_attachment_t;
+typedef bool (*rr_rtp_frame_fn)(void *user, const uint8_t *frame, size_t length);
+/* Host socket adapter. The packet/protection implementation is separate. */
+rr_rtp_socket_t *rr_rtp_socket_open(const char *host, unsigned port);
+void rr_rtp_socket_close(rr_rtp_socket_t *socket);
+rr_rtp_attachment_t *rr_rtp_socket_attach(rr_rtp_socket_t *socket, uint32_t ssrc,
+   const uint8_t key[RR_RTP_KEY_LEN], bool encrypted, const char *endpoint, void *user);
+void rr_rtp_socket_detach(rr_rtp_attachment_t *attachment);
+bool rr_rtp_socket_active(const rr_rtp_attachment_t *attachment, uint64_t now);
+bool rr_rtp_socket_send(rr_rtp_attachment_t *attachment, const void *frame, size_t length, uint64_t now);
+/* validate is called before accepting packets or sending probes. frame(NULL,0)
+ * denotes an authenticated binding/probe, not audio. */
+void rr_rtp_socket_poll(rr_rtp_socket_t *socket, uint64_t now,
+   bool (*validate)(void *user), rr_rtp_frame_fn frame);
+#endif

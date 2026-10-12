@@ -25,8 +25,8 @@
 static uint64_t gen_id(void) {
    uint64_t x = (uint64_t) mg_millis();
    uint8_t rnd[8];
-   mg_random(rnd, sizeof(rnd) );
-   memcpy(&x, rnd, sizeof(x) );
+   mg_random(rnd, sizeof(rnd));
+   memcpy(&x, rnd, sizeof(x));
    x ^= (uint64_t) mg_millis();
 
    return x ? x : 1;
@@ -56,7 +56,7 @@ static void ws_send_file(struct mg_connection *c, const char *path, const char *
    FILE *fp = fopen(path, "rb");
 
    if (!fp) {
-      Log(LOG_CRIT, "ws.file-xfer", "Failed opening file %s - %d:%s", path, errno, strerror(errno) );
+      Log(LOG_CRIT, "ws.file-xfer", "Failed opening file %s - %d:%s", path, errno, strerror(errno));
 
       return;
    }
@@ -65,11 +65,11 @@ static void ws_send_file(struct mg_connection *c, const char *path, const char *
    fseeko(fp, 0, SEEK_SET);
 
    uint64_t id = gen_id();
-   uint32_t total = (uint32_t)( (fsize + CHUNK - 1) / CHUNK);
+   uint32_t total = (uint32_t) ((fsize + CHUNK - 1) / CHUNK);
 
    // meta (text frame)
    mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{\"type\":\"file_meta\",\"id\":\"%llx\",\"name\":\"%s\",\"mime\":\"%s\",\"size\":%llu,\"chunk\":%u,\"total\":%u}", (
-      unsigned long long) id, rr_basename(path), mime ? mime : "application/octet-stream", (unsigned long long) fsize, (unsigned) CHUNK, (unsigned) total);
+      unsigned long long)id, rr_basename(path), mime ? mime : "application/octet-stream", (unsigned long long)fsize, (unsigned)CHUNK, (unsigned)total);
 
    // chunk buffer: header(24) + payload
    uint8_t *buf = (uint8_t *) malloc(24 + CHUNK);
@@ -80,7 +80,7 @@ static void ws_send_file(struct mg_connection *c, const char *path, const char *
       return;
    }
 
-   for (uint32_t idx = 0 ; ; idx++) {
+   for (uint32_t idx = 0 ;; idx++) {
       size_t n = fread(buf + 24, 1, CHUNK, fp);
 
       if (n == 0) {
@@ -151,7 +151,7 @@ static void xf_done(uint64_t id) {
          if (g_tbl[j].xf.fp) {
             fclose(g_tbl[j].xf.fp);
          }
-         memset(&g_tbl[j], 0, sizeof(g_tbl[j]) );
+         memset(&g_tbl[j], 0, sizeof(g_tbl[j]));
 
          return;
       }
@@ -163,7 +163,7 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
    if (ev != MG_EV_WS_MSG) {
       return;
    }
-   struct mg_ws_message *m = (struct mg_ws_message *) ev_data;
+   struct mg_ws_message *m = (struct mg_ws_message *)ev_data;
 
    if (m->flags & WEBSOCKET_OP_TEXT) {
       // Parse meta
@@ -177,21 +177,23 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
       mg_free(type);
 
       char *sid = mg_json_get_str(m->data, "$.id");
-      char idbuf[32] = { 0 };
+      char idbuf[32] = {
+         0
+      };
 
       if (sid) {
          mg_snprintf(idbuf, sizeof(idbuf), "%s", sid);
          mg_free(sid);
       }
       uint64_t id = 0;
-      sscanf(idbuf, "%llx", (unsigned long long *) &id);
+      sscanf(idbuf, "%llx", (unsigned long long *)&id);
 
       struct xfer *xf = xf_get(id, true);
 
       if (!xf) {
          return;
       }
-      memset(xf, 0, sizeof(*xf) );
+      memset(xf, 0, sizeof(*xf));
 
       char *sname = mg_json_get_str(m->data, "$.name");
       char *smime = mg_json_get_str(m->data, "$.mime");
@@ -217,9 +219,7 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
       if (!xf->fp) {
          xf_done(id);
       }
-      MG_INFO( ("Start xfer id=%llx -> %s total=%u size=%llu",
-         (unsigned long long) id, out, (unsigned) xf->total,
-         (unsigned long long) xf->size) );
+      MG_INFO(("Start xfer id=%llx -> %s total=%u size=%llu", (unsigned long long)id, out, (unsigned)xf->total, (unsigned long long)xf->size));
 
       return;
    }
@@ -228,7 +228,7 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
       if (m->data.len < 24) {
          return;
       }
-      const uint8_t *p = (const uint8_t *) m->data.buf;
+      const uint8_t *p = (const uint8_t *)m->data.buf;
       uint64_t id;
       memcpy(&id, p + 0, 8);
       uint32_t idx, n;
@@ -251,8 +251,7 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
       xf->received += n;
 
       if (xf->got_chunks >= xf->total || xf->received >= xf->size) {
-         MG_INFO( ("Complete id=%llx bytes=%llu", (unsigned long long) id,
-            (unsigned long long) xf->received) );
+         MG_INFO(("Complete id=%llx bytes=%llu", (unsigned long long)id, (unsigned long long)xf->received));
          xf_done(id);
       }
    }

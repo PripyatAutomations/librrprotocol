@@ -33,7 +33,7 @@ struct rr_connection {
    char name[256];
    bool connected;
    bool ptt_active;
-   enum rr_conn_type    *conn_type;
+   enum rr_conn_type *conn_type;
 #if defined(USE_MONGOOSE)
    struct mg_connection *mg_conn;
    struct mg_connection *ws_conn;

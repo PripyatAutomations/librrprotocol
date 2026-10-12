@@ -86,19 +86,25 @@ void http_tls_init(void) {
    bool tls_error = false;
    memset(&tls_opts, 0, sizeof(tls_opts));
 
-   tls_cert = mg_file_read(&mg_fs_posix, HTTP_TLS_CERT);
+   char *cert_path = http_config_path("net.http.tls-cert", "net/http/tls-cert");
+   char *key_path = http_config_path("net.http.tls-key", "net/http/tls-key");
+   if (!cert_path) cert_path = strdup(HTTP_TLS_CERT);
+   if (!key_path) key_path = strdup(HTTP_TLS_KEY);
+   tls_cert = mg_file_read(&mg_fs_posix, cert_path);
 
    if (!tls_cert.buf) {
-      Log(LOG_CRIT, "http.tls", "Unable to load TLS cert from %s", HTTP_TLS_CERT);
+      Log(LOG_CRIT, "http.tls", "Unable to load TLS cert from %s", cert_path);
       tls_error = true;
    }
-   tls_key = mg_file_read(&mg_fs_posix, HTTP_TLS_KEY);
+   tls_key = mg_file_read(&mg_fs_posix, key_path);
 
    if (!tls_key.buf || tls_key.len <= 1) {
-      Log(LOG_CRIT, "http.tls", "Unable to load TLS key from %s", HTTP_TLS_KEY);
+      Log(LOG_CRIT, "http.tls", "Unable to load TLS key from %s", key_path);
       tls_error = true;
    }
 
+   free(cert_path);
+   free(key_path);
    if (tls_error == true) {
       Log(LOG_CRIT, "http.tls", "No cert/key, aborting TLS setup");
       Log(LOG_CRIT, "http.tls", "Either fix this or disable TLS!");
@@ -107,7 +113,7 @@ void http_tls_init(void) {
       tls_opts.cert = tls_cert;
       tls_opts.key = tls_key;
       tls_opts.skip_verification = 1;
-      Log(LOG_INFO, "http.tls", "TLS initialized succesfully, |cert: <%lu @ %p>| |key: <%lu @ %p>", tls_cert.len, tls_cert, tls_key.len, tls_key.buf);
+      Log(LOG_INFO, "http.tls", "TLS initialized successfully (certificate %zu bytes, key %zu bytes)", tls_cert.len, tls_key.len);
    }
 }
 #endif // HTTP_USE_TLS
@@ -256,7 +262,7 @@ bool http_init(struct mg_mgr *mgr) {
       prepare_msg(tls_listen_addr, sizeof(tls_listen_addr), "https://%s:%d", inet_ntoa(sa_tls_bind), tls_bind_port);
       http_tls_init();
 
-      if (!mg_http_listen(mgr, tls_listen_addr, ws_http_cb, NULL)) {
+      if (!mg_http_listen(mgr, tls_listen_addr, ws_http_cb, &tls_opts)) {
          Log(LOG_CRIT, "http", "Failed to start https listener -- is program already running or something else listening on port %d?", tls_bind_port);
 
          // If net.http.required is set, exit cleanly rather than limping along

@@ -117,6 +117,7 @@ extern rrconn_t *http_add_client(struct mg_connection *c, bool is_ws);
 #endif // defined(USE_MONGOOSE)
 
 extern void http_remove_client(struct mg_connection *c);
+extern void http_detach_client(struct mg_connection *c);
 /* Release heap-owned fields held by a connection. Safe to call repeatedly. */
 extern void http_client_free_resources(rrconn_t *cptr);
 /* Store a bounded, NUL-terminated copy of an HTTP User-Agent header. */

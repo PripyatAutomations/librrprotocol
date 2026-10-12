@@ -61,17 +61,16 @@ static ws_rig_state_t *ws_rigctl_state_diff(rr_vfo_t vfo) {
       return NULL;
    }
    // shortcut pointers
-   ws_rig_state_t *curr = &vfo_states[vfo],
-      *old = &vfo_states_last[vfo];
+   ws_rig_state_t *curr = &vfo_states[vfo], *old = &vfo_states_last[vfo];
 
    // allocate some storage for the diff values
-   ws_rig_state_t *update = malloc(sizeof(ws_rig_state_t) );
+   ws_rig_state_t *update = malloc(sizeof(ws_rig_state_t));
 
    if (!update) {
       fprintf(stderr, "OOM in ws_rigctl_state_diff!\n");
       abort();
    }
-   memset(update, 0, sizeof(ws_rig_state_t) );
+   memset(update, 0, sizeof(ws_rig_state_t));
 
    bool u_freq = false, u_mode = false, u_width = false;
 
@@ -95,7 +94,7 @@ static ws_rig_state_t *ws_rigctl_state_diff(rr_vfo_t vfo) {
       return update;
    }
    // If no changes, return NULL
-   free( (void *)update);
+   free((void *)update);
 
    return NULL;
 }
@@ -103,12 +102,11 @@ static ws_rig_state_t *ws_rigctl_state_diff(rr_vfo_t vfo) {
 // Save the old state then poll the rig
 static bool ws_rig_state_poll(rr_vfo_t vfo) {
    // shortcut pointers
-   ws_rig_state_t *curr = &vfo_states[vfo],
-      *old = &vfo_states_last[vfo];
+   ws_rig_state_t *curr = &vfo_states[vfo], *old = &vfo_states_last[vfo];
 
    // save the current values to _last
-   memset(old, 0, sizeof(ws_rig_state_t) );
-   memcpy(old, curr, sizeof(ws_rig_state_t) );
+   memset(old, 0, sizeof(ws_rig_state_t));
+   memcpy(old, curr, sizeof(ws_rig_state_t));
 
 #if     0
 
@@ -188,11 +186,10 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    if (!cptr) {
       return false;
    }
-   cptr->last_heard = now;       // avoid unneeded keep-alives
-   cptr->last_cat = now;         // last CAT message received from user
+   cptr->last_heard = now;      // avoid unneeded keep-alives
+   cptr->last_cat = now;        // last CAT message received from user
    const char *cmd = dict_get(d, "cat.cmd", NULL);
    const char *vfo = dict_get(d, "cat.vfo", NULL);
-
 
    // This can be hit before login (or by ghosted sessions); without a user
    // pointer we can't check privileges, so reject the command.
@@ -213,12 +210,10 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       }
    }
    const char *control_room = dict_get(d, "cat.room", ws_authoritative_room());
-   bool releasing = cmd && !strcasecmp(cmd, "ptt") &&
-      !dict_get_bool(d, "cat.ptt", false);
+   bool releasing = cmd && !strcasecmp(cmd, "ptt") && !dict_get_bool(d, "cat.ptt", false);
    bool own_release = releasing && cptr->is_ptt;
    rrconn_t *release_holder = releasing ? whos_talking() : NULL;
-   bool override_release = releasing && !own_release && release_holder &&
-      ws_ptt_can_override(cptr, release_holder);
+   bool override_release = releasing && !own_release && release_holder && ws_ptt_can_override(cptr, release_holder);
    char override_vfo[2] = {
       0
    };
@@ -278,7 +273,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
    // present
    // XXX: Add support for per noob Elmer (link from noob to elmer(s) who have
    // approved their use)
-   if (!own_release && !override_release && has_priv(cptr->user->uid, "noob") && !is_elmer_online() ) {
+   if (!own_release && !override_release && has_priv(cptr->user->uid, "noob") && !is_elmer_online()) {
       Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they're a noob and no elmers are online", cmd, cptr->chatname);
 
       ws_send_error(cptr, "Cannot apply %s to VFO %s in room %s: no elmer is online to supervise your account", cmd, vfo, control_room);
@@ -293,10 +288,10 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       return false;
    }
 
-   if (cmd && !strcasecmp(cmd, "freq") && !ws_room_tx_control(control_room) ) {
-      rr_vfo_t index = vfo && vfo[0] ? vfo_lookup(toupper( (unsigned char)vfo[0]) ) : VFO_NONE;
+   if (cmd && !strcasecmp(cmd, "freq") && !ws_room_tx_control(control_room)) {
+      rr_vfo_t index = vfo && vfo[0] ? vfo_lookup(toupper((unsigned char)vfo[0])) : VFO_NONE;
 
-      if (index < 0 || index >= 32 || !(ws_room_rx_tuning_mask(control_room) & (UINT32_C(1) << index) ) ) {
+      if (index < 0 || index >= 32 || !(ws_room_rx_tuning_mask(control_room) & (UINT32_C(1) << index))) {
          ws_send_error(cptr, "Cannot tune RX VFO %s in room %s without moving the shared LO; use the rig TX control room", vfo, control_room);
 
          return false;
@@ -340,8 +335,8 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
             // Noobs in cooldown may not TX
             if (has_priv(cptr->user->uid, "noob") && now < cptr->noob_cooldown) {
-               Log(LOG_AUDIT, "ptt", "Denying PTT for noob %s: cooldown active (%d sec left)", cptr->chatname, (int)(cptr->noob_cooldown - now) );
-               ws_send_error(cptr, "PTT cooldown active for VFO %s in room %s: %d seconds remaining", vfo, control_room, (int)(cptr->noob_cooldown - now) );
+               Log(LOG_AUDIT, "ptt", "Denying PTT for noob %s: cooldown active (%d sec left)", cptr->chatname, (int)(cptr->noob_cooldown - now));
+               ws_send_error(cptr, "PTT cooldown active for VFO %s in room %s: %d seconds remaining", vfo, control_room, (int)(cptr->noob_cooldown - now));
 
                return false;
             }
@@ -373,10 +368,9 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
                subject->noob_cooldown = now + (cooldown < 0 ? 30 : cooldown);
             }
          }
-
          // Update their last heard and PTT status
          cptr->last_heard = now;
-         cptr->last_cat = now;         // last CAT message received from user
+         cptr->last_cat = now;  // last CAT message received from user
 
          if (ptt_state) {
             snprintf(subject->ptt_room, sizeof(subject->ptt_room), "%s", control_room);
@@ -412,7 +406,6 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          if (already_keyed) {
             return true;
          }
-
          // NB: We can't call the backend directly from the library; send a
          // rigctl event for the server program to apply (same path as the
          // freq/mode/width commands use). Audit trail is logged by the
@@ -474,7 +467,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
          rr_vfo_t c_vfo;
          c_vfo = vfo_lookup(vfo[0]);
-         cptr->last_cat = now;         // last CAT message received from user
+         cptr->last_cat = now;  // last CAT message received from user
          cptr->last_heard = now;
 
          // tell everyone about it
@@ -520,8 +513,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          }
 
          bool named = !strcasecmp(width, "nar") || !strcasecmp(width, "narr") ||
-            !strcasecmp(width, "narrow") || !strcasecmp(width, "norm") ||
-            !strcasecmp(width, "normal") || !strcasecmp(width, "wide");
+            !strcasecmp(width, "narrow") || !strcasecmp(width, "norm") || !strcasecmp(width, "normal") || !strcasecmp(width, "wide");
 
          if (!named) {
             char *end = NULL;
@@ -534,8 +526,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
                }
             }
 
-            if (errno || end == width || hz <= 0 || hz > INT_MAX ||
-               (*end && strcasecmp(end, "Hz"))) {
+            if (errno || end == width || hz <= 0 || hz > INT_MAX || (*end && strcasecmp(end, "Hz"))) {
                ws_send_error(cptr, "Invalid passband width %s for VFO %s in room %s; use narrow, normal, wide or a positive width in "
                   "Hz", width, vfo, control_room);
 
@@ -543,7 +534,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
             }
          }
 
-         cptr->last_cat = now;         // last CAT message received from user
+         cptr->last_cat = now;  // last CAT message received from user
          cptr->last_heard = now;
 
          // Receipt acknowledgement; backend observations confirm state.
@@ -594,7 +585,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          rr_vfo_t c_vfo;
          char msgbuf[HTTP_WS_MAX_MSG + 1];
          c_vfo = vfo_lookup(vfo[0]);
-         cptr->last_cat = now;         // last CAT message received from user
+         cptr->last_cat = now;  // last CAT message received from user
          cptr->last_heard = now;
 
          // tell everyone about it

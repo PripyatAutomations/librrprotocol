@@ -53,24 +53,24 @@
 #define RR_BINFRAME_MAX_PAYLOAD (HTTP_WS_MAX_MSG - RR_BINFRAME_HDR_LEN)
 
 struct rr_binframe_hdr {
-   uint8_t magic[2];                     // 'R','R'
-   uint8_t version;                      // RR_BINFRAME_VERSION
-   uint8_t subsystem;                    // RR_BINFRAME_SUBSYS_*
-   char codec[4];                        // codec magic, e.g. "mu16" (no NUL)
-   uint8_t direction;                    // RR_BINFRAME_DIR_*
-   uint8_t vfo;                          // 0 = VFO A ... 0xFF = n/a
-   uint8_t rig;                          // rig index; 0 = default; 0xFF = n/a
-   uint8_t stream;                       // sender-assigned stream id
-   uint32_t seq;                         // wraps; big-endian on the wire
-   uint32_t payload_len;                 // big-endian on the wire
-   uint64_t ts;                          // sender monotonic usec; 0 = unset
-} __attribute__( (packed) );
+   uint8_t magic[2];            // 'R','R'
+   uint8_t version;             // RR_BINFRAME_VERSION
+   uint8_t subsystem;           // RR_BINFRAME_SUBSYS_*
+   char codec[4];               // codec magic, e.g. "mu16" (no NUL)
+   uint8_t direction;           // RR_BINFRAME_DIR_*
+   uint8_t vfo;                 // 0 = VFO A ... 0xFF = n/a
+   uint8_t rig;                 // rig index; 0 = default; 0xFF = n/a
+   uint8_t stream;              // sender-assigned stream id
+   uint32_t seq;                // wraps; big-endian on the wire
+   uint32_t payload_len;        // big-endian on the wire
+   uint64_t ts;                 // sender monotonic usec; 0 = unset
+} __attribute__((packed));
 
 // Parsed view of a frame; data points into the caller's buffer
 struct rr_binframe {
    struct rr_binframe_hdr hdr;
-   const uint8_t *data;                  // payload (not NUL terminated)
-   size_t len;                           // payload length
+   const uint8_t *data;         // payload (not NUL terminated)
+   size_t len;                  // payload length
 };
 
 // Prepare a header for wire transmission: fills magic/version and
@@ -99,11 +99,11 @@ extern bool rr_binframe_dispatch(struct rr_binframe *f, void *ctx);
 // an unmangled NUL-terminated log line; see rrserver/hostlog.c.
 // PARITY: rrclient/gtk.syslog.c host_log_frame_handler()
 struct rr_logframe {
-   uint8_t prio;                         // logpriority_t cast to uint8_t
-   char subsys[16];                      // NUL padded log subsystem
+   uint8_t prio;                // logpriority_t cast to uint8_t
+   char subsys[16];             // NUL padded log subsystem
    // payload: the log message, NUL terminated (no trailing newline)
 };
-#define RR_LOGFRAME_HDR_LEN 17     // 1 + 16
+#define RR_LOGFRAME_HDR_LEN 17  // 1 + 16
 
 // Pack a log line into a SUBSYS_LOG binframe (malloc'd, returned via
 // *out; total frame length returned, or -1). seq/ts are filled by the

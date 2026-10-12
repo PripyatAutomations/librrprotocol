@@ -27,6 +27,7 @@
 rr_vfo_data_t vfos[MAX_VFOS] = {
    0
 };
+
 rr_vfo_t active_vfo = VFO_A;
 
 // Our static strings
@@ -53,11 +54,11 @@ bool set_vfo_frequency(rr_vfo_type_t vfo_type, uint32_t input, long freq) {
 rr_vfo_t vfo_lookup(const char vfo) {
    // VFOs are simply named A-Z; anything else is VFO_NONE
    if (vfo >= 'A' && vfo <= 'Z') {
-      return (rr_vfo_t)(vfo - 'A');
+      return (rr_vfo_t) (vfo - 'A');
    }
 
    if (vfo >= 'a' && vfo <= 'z') {
-      return (rr_vfo_t)(vfo - 'a');
+      return (rr_vfo_t) (vfo - 'a');
    }
 
    return VFO_NONE;

@@ -20,7 +20,7 @@ typedef struct {
    bool tls;
    bool irc;
    bool ipv6;
-   const char *path; /* Borrowed from the input URL. */
+   const char *path;            /* Borrowed from the input URL. */
 } rr_server_url_t;
 
 /* Require a supported scheme, host; omitted ports use transport defaults. False means invalid. */

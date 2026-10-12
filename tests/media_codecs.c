@@ -43,7 +43,7 @@ int main(void) {
    assert(!ws_handle_mediachan_msg(&client, request));
    assert(!memcmp(snapshot, media_channels, sizeof(snapshot)));
    dict_add_int(request, "media.dir", RR_BINFRAME_DIR_RX);
-   dict_add_int(request, "media.subsys", 257); // cannot bypass audio checks by truncation
+   dict_add_int(request, "media.subsys", 257);  // cannot bypass audio checks by truncation
    assert(!ws_handle_mediachan_msg(&client, request));
    dict_add_int(request, "media.subsys", RR_BINFRAME_SUBSYS_AUDIO);
    dict_add(cfg, "audio.test-mode", "false");
@@ -90,7 +90,7 @@ int main(void) {
    snprintf(client.codec_tx, sizeof(client.codec_tx), "pc16");
    client.is_ptt = true;
    client.ptt_vfo = 'A';
-   client.tx_channels[0] = (uint32_t)(tx - media_channels) + 1;
+   client.tx_channels[0] = (uint32_t) (tx - media_channels) + 1;
    uint8_t *packet = NULL;
    const uint8_t pcm[2] = {
       0, 0
@@ -107,10 +107,10 @@ int main(void) {
    assert(ws_client_join_room(&client, shared->room));
    snprintf(client.ptt_room, sizeof(client.ptt_room), "%s", shared->room);
    client.ptt_vfo = 'B';
-   client.tx_channels[1] = (uint32_t)(shared - media_channels) + 1;
+   client.tx_channels[1] = (uint32_t) (shared - media_channels) + 1;
    uint8_t *shared_packet = NULL;
-   int shared_length = rr_binframe_frame(&shared_packet, RR_BINFRAME_SUBSYS_AUDIO, "pc16", RR_BINFRAME_DIR_TX, RR_BINFRAME_VFO_NA, 2, 1, 1, 0, pcm, sizeof(pcm))
-   ;
+   int shared_length =
+      rr_binframe_frame(&shared_packet, RR_BINFRAME_SUBSYS_AUDIO, "pc16", RR_BINFRAME_DIR_TX, RR_BINFRAME_VFO_NA, 2, 1, 1, 0, pcm, sizeof(pcm));
    assert(shared_length > 0);
    assert(ws_binframe_process_mg(&client, (const char *)shared_packet, shared_length));
    client.ptt_room[0] = 0;
@@ -172,7 +172,9 @@ int main(void) {
       "{\"op\":\"media.feedback\",\"stream\":%u,\"dir\":0,\"codec\":\"pc16\",\"quality\":75,\"late-us\":0,\"gaps\":0}", stream);
    struct mg_ws_message feedback_frame = {
       .flags = WEBSOCKET_OP_TEXT,
-      .data = { .buf = feedback_wire, .len = strlen(feedback_wire) }
+      .data = {
+         .buf = feedback_wire, .len = strlen(feedback_wire)
+      }
    };
    assert(ws_handle(&client, &feedback_frame));
    client.authenticated = false;

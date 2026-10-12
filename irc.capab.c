@@ -123,7 +123,7 @@ void irc_capabilities_clear(rrconn_t *c) {
 }
 void irc_capabilities_shutdown(void) {
    while (states) {
-      irc_capabilities_clear((rrconn_t *)states->connection);
+      irc_capabilities_clear((rrconn_t *) states->connection);
    }
 }
 void irc_capabilities_reset(rrconn_t *c) {

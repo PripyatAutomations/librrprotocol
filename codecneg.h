@@ -27,21 +27,21 @@ struct ws_frame {
       WS_MEDIA_FILE
    } data_type;
    struct ws_frame *next;
-} __attribute__( (packed) );
+} __attribute__((packed));
 
 // This is sent as json before any audio samples can be exchanged
 struct audio_header {
-   char codec[5];              // e.g. "mu16"
-   uint32_t sample_rate;       // sample rate in hz
-   uint8_t channel_id;         // Channel ID: 0 for RX, 1 for TX, etc
-}  __attribute__( (packed) );
+   char codec[5];               // e.g. "mu16"
+   uint32_t sample_rate;        // sample rate in hz
+   uint8_t channel_id;          // Channel ID: 0 for RX, 1 for TX, etc
+} __attribute__((packed));
 typedef struct audio_header au_header_t;
 
 typedef struct audio_frame {
    uint8_t chan_id;             // Channel ID for sample
    uint16_t data_len;           // # of bytes in the data
-   uint8_t    *data;            // raw sample data
-   struct audio_frame *next;            // next frame
+   uint8_t *data;               // raw sample data
+   struct audio_frame *next;    // next frame
 } au_frame_t;
 
 // ws_send_media_capab: Send our media.capab message. If codecs is not NULL,

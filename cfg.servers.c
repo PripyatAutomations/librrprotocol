@@ -41,7 +41,7 @@ static void parse_server_opts(server_cfg_t *cfg, const char *opts) {
       if (len > 0) {
          char buf[256];
 
-         if (len >= sizeof(buf) ) {
+         if (len >= sizeof(buf)) {
             len = sizeof(buf) - 1;
          }
          memcpy(buf, p, len);
@@ -62,7 +62,7 @@ static void parse_server_opts(server_cfg_t *cfg, const char *opts) {
                } else {
                   size_t len = strlen(cfg->autojoin);
 
-                  if (len + 1 < sizeof(cfg->autojoin) ) {
+                  if (len + 1 < sizeof(cfg->autojoin)) {
                      // +1 for comma
                      strncat(cfg->autojoin, ",", sizeof(cfg->autojoin) - len - 1);
                      strncat(cfg->autojoin, val, sizeof(cfg->autojoin) - strlen(cfg->autojoin) - 1);
@@ -85,7 +85,7 @@ bool add_server(const char *network, const char *str) {
    if (!str || !network) {
       return false;
    }
-   server_cfg_t *new_cfg = calloc(1, sizeof(*new_cfg) );
+   server_cfg_t *new_cfg = calloc(1, sizeof(*new_cfg));
 
    if (!new_cfg) {
       fprintf(stderr, "OOM in add_server\n");
@@ -105,6 +105,7 @@ bool add_server(const char *network, const char *str) {
       p += 6;
    } else {
       free(new_cfg);
+
       return false;
    }
    // Split host and options
@@ -113,8 +114,9 @@ bool add_server(const char *network, const char *str) {
 
    char hostbuf[256];
 
-   if (hostlen >= sizeof(hostbuf) ) {
+   if (hostlen >= sizeof(hostbuf)) {
       free(new_cfg);
+
       return false;
    }
    memcpy(hostbuf, p, hostlen);
@@ -129,18 +131,20 @@ bool add_server(const char *network, const char *str) {
 
       if (colon) {
          *colon = '\0';
-         strlcpy(new_cfg->nick, hostbuf, sizeof(new_cfg->nick) );
-         strlcpy(new_cfg->pass, colon + 1, sizeof(new_cfg->pass) );
+         strlcpy(new_cfg->nick, hostbuf, sizeof(new_cfg->nick));
+         strlcpy(new_cfg->pass, colon + 1, sizeof(new_cfg->pass));
       } else {
-         strlcpy(new_cfg->nick, hostbuf, sizeof(new_cfg->nick) );
+         strlcpy(new_cfg->nick, hostbuf, sizeof(new_cfg->nick));
       }
       memmove(hostbuf, at + 1, strlen(at + 1) + 1);
    }
    char endpoint[sizeof(hostbuf) + 8];
    snprintf(endpoint, sizeof(endpoint), "%s%s", new_cfg->tls ? "ircs://" : "irc://", hostbuf);
    rr_server_url_t parsed;
+
    if (!rr_server_url_parse(endpoint, &parsed)) {
       free(new_cfg);
+
       return false;
    }
    new_cfg->port = parsed.port;
@@ -161,6 +165,7 @@ bool add_server(const char *network, const char *str) {
       }
       sp->next = new_cfg;
    }
+
    return true;
 }
 
@@ -177,8 +182,10 @@ static bool config_servers_save_cb(FILE *fp, const char *path) {
       fprintf(fp, "[network:%s]\n", sp->network);
 
       fprintf(fp, "%s", sp->tls ? "ircs://" : "irc://");
+
       if (sp->nick[0]) {
          fprintf(fp, "%s", sp->nick);
+
          if (sp->pass[0]) {
             fprintf(fp, ":%s", sp->pass);
          }
@@ -197,6 +204,7 @@ static bool config_servers_save_cb(FILE *fp, const char *path) {
       fputc('\n', fp);
       fputc('\n', fp);
    }
+
    return false;
 }
 

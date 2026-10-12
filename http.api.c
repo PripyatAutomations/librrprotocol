@@ -67,7 +67,7 @@ static bool http_help(struct mg_http_message *msg, rrconn_t *cptr) {
    }
 
    // Sanity check the topic doesnt contain illegal characters like .. or /
-   if (check_url(topic) ) {
+   if (check_url(topic)) {
       Log(LOG_AUDIT, "http.api", "Topic |%s| contains sketch characters, bailing from http_help", help_path);
 
       return false;
@@ -90,18 +90,19 @@ static bool http_api_ping(struct mg_http_message *msg, rrconn_t *cptr) {
 }
 
 static bool http_api_time(struct mg_http_message *msg, rrconn_t *cptr) {
-   mg_http_reply(cptr->conn, 200, http_content_type("json"), "{%m:%lu}\n", MG_ESC("time"), time(NULL) );
+   mg_http_reply(cptr->conn, 200, http_content_type("json"), "{%m:%lu}\n", MG_ESC("time"), time(NULL));
 
    return true;
 }
 
 static bool http_api_ws(struct mg_http_message *msg, rrconn_t *cptr) {
    struct mg_str *protocol = mg_http_get_header(msg, "Sec-WebSocket-Protocol");
-   if (!protocol || protocol->len != strlen(RR_WS_SUBPROTOCOL) ||
-      memcmp(protocol->buf, RR_WS_SUBPROTOCOL, protocol->len)) {
-      mg_http_reply(cptr->conn, 426, "Connection: close\r\nSec-WebSocket-Protocol: " RR_WS_SUBPROTOCOL "\r\n",
-         "RustyRig requires WebSocket subprotocol %s\n", RR_WS_SUBPROTOCOL);
+
+   if (!protocol || protocol->len != strlen(RR_WS_SUBPROTOCOL) || memcmp(protocol->buf, RR_WS_SUBPROTOCOL, protocol->len)) {
+      mg_http_reply(cptr->conn, 426, "Connection: close\r\nSec-WebSocket-Protocol: " RR_WS_SUBPROTOCOL "\r\n", "RustyRig requires WebSocket subprotocol %s\n",
+         RR_WS_SUBPROTOCOL);
       cptr->conn->is_draining = 1;
+
       return false;
    }
    mg_ws_upgrade(cptr->conn, msg, "Sec-WebSocket-Protocol: " RR_WS_SUBPROTOCOL "\r\n");
@@ -132,7 +133,7 @@ static bool http_api_stats(struct mg_http_message *msg, rrconn_t *cptr) {
          "CONNECTED", mg_print_ip, &t->loc, mg_print_ip, &t->rem);
    }
 
-   mg_http_printf_chunk(cptr->conn, "");   // Don't forget the last empty chunk
+   mg_http_printf_chunk(cptr->conn, "");  // Don't forget the last empty chunk
 
    return true;
 }
@@ -175,7 +176,7 @@ bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr) {
 
       return true;
    }
-   int items = (sizeof(http_routes) / sizeof(http_route_t) ) - 1;
+   int items = (sizeof(http_routes) / sizeof(http_route_t)) - 1;
 
    for (int i = 0 ; i < items ; i++) {
       int rv = 0;
@@ -196,8 +197,7 @@ bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr) {
  *     }
  */
       if ((msg->uri.len == match_len ||
-         (msg->uri.len == match_len + 1 && msg->uri.buf[match_len] == '/')) &&
-         !memcmp(msg->uri.buf, http_routes[i].match, match_len)) {
+         (msg->uri.len == match_len + 1 && msg->uri.buf[match_len] == '/')) && !memcmp(msg->uri.buf, http_routes[i].match, match_len)) {
          Log(LOG_CRAZY, "http.req", "Matched %s with request URI %.*s [length: %d]", http_routes[i].match, (int)msg->uri.len, msg->uri.buf, match_len);
 
          // Strip trailing slash if it's there
@@ -212,6 +212,6 @@ bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr) {
       }
    }
 
-   return false;  // No match found, let static handler take over
+   return false;                // No match found, let static handler take over
 }
 #endif // USE_MONGOOSE

@@ -58,7 +58,7 @@ int http_getuid(const char *user) {
 static bool http_backup_authdb(void) {
    char new_path[256];
    struct tm *tm_info = localtime(&now);
-   char date_str[9];  // YYYYMMDD + null terminator
+   char date_str[9];            // YYYYMMDD + null terminator
    int index = 0;
 
    strftime(date_str, sizeof(date_str), "%Y%m%d", tm_info);
@@ -70,13 +70,13 @@ static bool http_backup_authdb(void) {
       }
       prepare_msg(new_path, sizeof(new_path), "%s.bak-%s.%d", HTTP_AUTHDB_PATH, date_str, index);
       index++;
-   } while (file_exists(new_path) );
+   } while (file_exists(new_path));
 
    // Rename the file
    if (rename(HTTP_AUTHDB_PATH, new_path) == 0) {
       Log(LOG_INFO, "http.core", "* Renamed old config (%s) to %s", HTTP_AUTHDB_PATH, new_path);
    } else {
-      Log(LOG_CRIT, "http.core", "* Error renaming old config (%s) to %s: %d:%s", HTTP_AUTHDB_PATH, new_path, errno, strerror(errno) );
+      Log(LOG_CRIT, "http.core", "* Error renaming old config (%s) to %s: %d:%s", HTTP_AUTHDB_PATH, new_path, errno, strerror(errno));
 
       return true;
    }
@@ -89,7 +89,7 @@ bool http_save_users(const char *filename) {
       return true;
    }
 
-   if (http_backup_authdb() ) {
+   if (http_backup_authdb()) {
       return true;
    }
    int users_saved = 0;
@@ -97,7 +97,7 @@ bool http_save_users(const char *filename) {
    FILE *file = fopen(filename, "w");
 
    if (!file) {
-      Log(LOG_CRIT, "auth", "Error saving user database to %s: %d:%s", filename, errno, strerror(errno) );
+      Log(LOG_CRIT, "auth", "Error saving user database to %s: %d:%s", filename, errno, strerror(errno));
 
       return true;
    }
@@ -112,7 +112,7 @@ bool http_save_users(const char *filename) {
 
       if (up->name[0] != '\0' && up->pass[0] != '\0') {
          Log(LOG_DEBUG, "auth", " => %s %sabled with privileges: %s", up->name, (up->enabled ? "en" : "dis"), up->privs);
-         fprintf(file, "%d:%s:%d:%s:%s\n", up->uid, up->name, up->enabled, up->pass, (up->privs[0] != '\0' ? up->privs : "none") );
+         fprintf(file, "%d:%s:%d:%s:%s\n", up->uid, up->name, up->enabled, up->pass, (up->privs[0] != '\0' ? up->privs : "none"));
          users_saved++;
       }
    }
@@ -136,7 +136,7 @@ int http_load_users(const char *filename) {
    }
    http_user_t previous[HTTP_MAX_USERS];
    memcpy(previous, http_users, sizeof(previous));
-   memset(http_users, 0, sizeof(http_users) );
+   memset(http_users, 0, sizeof(http_users));
    char line[HTTP_WS_MAX_MSG + 1];
    int user_count = 0;
 
@@ -149,13 +149,12 @@ int http_load_users(const char *filename) {
       }
 
       // Skip comments and empty lines
-      if (line[0] == '#' || line[0] == ';' ||
-         (strlen(line) > 1 && (line[0] == '/' && line[1] == '/') ) || line[0] == '\n') {
+      if (line[0] == '#' || line[0] == ';' || (strlen(line) > 1 && (line[0] == '/' && line[1] == '/')) || line[0] == '\n') {
          continue;
       }
       // Remove trailing \r or \n characters
       char *end = line + strlen(line) - 1;
-      while (end >= line && (*end == '\r' || *end == '\n') ) {
+      while (end >= line && (*end == '\r' || *end == '\n')) {
          *end = '\0';
          end--;
       }
@@ -191,7 +190,7 @@ int http_load_users(const char *filename) {
             }
             case 1: {
                // Username
-               strlcpy(up->name, token, sizeof(up->name) );
+               strlcpy(up->name, token, sizeof(up->name));
                break;
             }
             case 2: {
@@ -201,12 +200,12 @@ int http_load_users(const char *filename) {
             }
             case 3: {
                // Password hash
-               strlcpy(up->pass, token, sizeof(up->pass) );
+               strlcpy(up->pass, token, sizeof(up->pass));
                break;
             }
             case 4: {
                // Email
-               strlcpy(up->email, token, sizeof(up->email) );
+               strlcpy(up->email, token, sizeof(up->email));
                break;
             }
             case 5: {
@@ -221,7 +220,7 @@ int http_load_users(const char *filename) {
             }
             case 6: {
                // Privileges
-               strlcpy(up->privs, token, sizeof(up->privs) );
+               strlcpy(up->privs, token, sizeof(up->privs));
                Log(LOG_DEBUG, "auth", "load_users: uid=%d, user=%s, email=%s, enabled=%s, privs=%s, max_sessions=%d", uid, (up->name[0] != '\0' ? up->name :
                   "none"), (up->email[0] != '\0' ? up->email : "none"), (up->enabled ? "true" : "false"), (up->privs[0] != '\0' ? up->privs : "none"), up->
                   max_sessions);
@@ -308,7 +307,7 @@ int http_reload_users(void) {
    }
 
    // Let the program handle dynamic (sql) user storage if it wants to
-   if (cfg_get_bool("net.http.authdb-dynamic", true) ) {
+   if (cfg_get_bool("net.http.authdb-dynamic", true)) {
       Log(LOG_DEBUG, "auth", "authdb-dynamic: emitting authdb.load event for program");
       // NB: event_emit_dict() drops the event when data is NULL, so emit
       // directly with an empty payload; the handler doesn't read it.

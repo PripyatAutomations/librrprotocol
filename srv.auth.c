@@ -108,7 +108,7 @@ bool match_priv(const char *user_privs, const char *priv) {
 
       char token[128];
 
-      if (len >= sizeof(token) ) {
+      if (len >= sizeof(token)) {
          len = sizeof(token) - 1;
       }
       memcpy(token, start, len);
@@ -120,15 +120,14 @@ bool match_priv(const char *user_privs, const char *priv) {
 
       // Serial account flags may restrict exports by a trailing name prefix.
       // Keep this extension scoped to serial rather than broadening other roles.
-      if (len > 7 && !strncmp(token, "serial.", 7) && token[len - 1] == '*' &&
-         !strncmp(priv, token, len - 1)) {
+      if (len > 7 && !strncmp(token, "serial.", 7) && token[len - 1] == '*' && !strncmp(priv, token, len - 1)) {
          return true;
       }
 
       if (len >= 2 && token[len - 2] == '.' && token[len - 1] == '*') {
-         token[len - 2] = '\0';   // strip .*
+         token[len - 2] = '\0'; // strip .*
 
-         if (strncmp(priv, token, strlen(token) ) == 0 && priv[strlen(token)] == '.') {
+         if (strncmp(priv, token, strlen(token)) == 0 && priv[strlen(token)] == '.') {
             return true;
          }
       }
@@ -138,7 +137,7 @@ bool match_priv(const char *user_privs, const char *priv) {
 }
 
 bool has_priv(int uid, const char *priv) {
-   if (priv == NULL || uid < 0 || (uid > HTTP_MAX_USERS - 1) ) {
+   if (priv == NULL || uid < 0 || (uid > HTTP_MAX_USERS - 1)) {
       return false;
    }
    const char *p = priv;
@@ -148,7 +147,7 @@ bool has_priv(int uid, const char *priv) {
 
       char tmp[128];
 
-      if (len >= sizeof(tmp) ) {
+      if (len >= sizeof(tmp)) {
          len = sizeof(tmp) - 1;
       }
       memcpy(tmp, p, len);
@@ -158,7 +157,7 @@ bool has_priv(int uid, const char *priv) {
          return false;
       }
 
-      if (match_priv(http_users[uid].privs, tmp) ) {
+      if (match_priv(http_users[uid].privs, tmp)) {
          return true;
       }
       p = sep ? sep + 1 : NULL;
@@ -186,8 +185,7 @@ static bool auth_peer_allowed(const char *ip) {
       }
    }
 
-   if (strcmp(peers[slot].ip, ip ? ip : "unknown") || now < peers[slot].started ||
-      now - peers[slot].started >= 60) {
+   if (strcmp(peers[slot].ip, ip ? ip : "unknown") || now < peers[slot].started || now - peers[slot].started >= 60) {
       strlcpy(peers[slot].ip, ip ? ip : "unknown", sizeof(peers[slot].ip));
       peers[slot].started = now;
       peers[slot].attempts = 0;
@@ -212,7 +210,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
    char *temp_pw = NULL;
 
    // Must always send a command and username during auth
-   if (!cmd || (!user && !token) ) {
+   if (!cmd || (!user && !token)) {
       return false;
    }
 
@@ -265,8 +263,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          return false;
       }
 
-      if (strlen(cptr->user->pass) != HTTP_HASH_LEN ||
-         strspn(cptr->user->pass, "0123456789abcdefABCDEF") != HTTP_HASH_LEN) {
+      if (strlen(cptr->user->pass) != HTTP_HASH_LEN || strspn(cptr->user->pass, "0123456789abcdefABCDEF") != HTTP_HASH_LEN) {
          ws_kick_client(cptr, "Account password unavailable; ask an administrator to reset it");
 
          return false;
@@ -350,8 +347,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          return false;
       }
 
-      if (!up->enabled || (up->password_expires > 0 && up->password_expires <= now) ||
-         strcmp(token, cptr->token) || (user && strcasecmp(user, up->name))) {
+      if (!up->enabled || (up->password_expires > 0 && up->password_expires <= now) || strcmp(token, cptr->token) || (user && strcasecmp(user, up->name))) {
          ws_kick_client(cptr, "Invalid or expired login challenge");
 
          return false;
@@ -395,7 +391,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          // force rewriting if they use any nick starting with Guest.
          if (strncasecmp(up->name, "guest", 5) == 0) {
             cptr->guest_id = generate_random_guest_id(4);
-            memset(cptr->chatname, 0, sizeof(cptr->chatname) );
+            memset(cptr->chatname, 0, sizeof(cptr->chatname));
             snprintf(cptr->chatname, sizeof(cptr->chatname), "GUEST%04d", cptr->guest_id);
             guest = true;
          } else {
@@ -417,31 +413,31 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          ////////////////////
          // Set user flags //
          ////////////////////
-         if (has_priv(cptr->user->uid, "admin|owner") ) {
+         if (has_priv(cptr->user->uid, "admin|owner")) {
             client_set_flag(cptr, FLAG_SYSLOG);
          }
 
-         if (has_priv(cptr->user->uid, "admin|owner") ) {
+         if (has_priv(cptr->user->uid, "admin|owner")) {
             client_set_flag(cptr, FLAG_STAFF);
          }
 
-         if (has_priv(cptr->user->uid, "tx") ) {
+         if (has_priv(cptr->user->uid, "tx")) {
             client_set_flag(cptr, FLAG_CAN_TX);
          }
 
          // Media source connections (rrmedia, fwdsp feeds, remote relays)
          // may push binframes for the channels they subscribe to
-         if (has_priv(cptr->user->uid, "media.source") ) {
+         if (has_priv(cptr->user->uid, "media.source")) {
             client_set_flag(cptr, FLAG_MEDIA_SOURCE);
          }
 
          // client cannot transmit unless a user with elmer flag is logged in
-         if (has_priv(cptr->user->uid, "noob") ) {
+         if (has_priv(cptr->user->uid, "noob")) {
             client_set_flag(cptr, FLAG_NOOB);
          }
 
          // client is an elmer and can allow noobs to control rig
-         if (has_priv(cptr->user->uid, "elmer") ) {
+         if (has_priv(cptr->user->uid, "elmer")) {
             client_set_flag(cptr, FLAG_ELMER);
          }
          // Send a ping to the user and expect them to reply within
@@ -479,14 +475,14 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
 
          Log(LOG_AUDIT, "auth", "User %s on cptr <%p> logged in from IP %s:%d (session #%d/%d) with privs: %s (client: %s, ua: %s)", cptr->chatname, cptr, cptr
             ->user_ip, cptr->user_port, cptr->user->sessions, cptr->user->max_sessions, cptr->user->privs, (cptr->cli_version ? cptr->cli_version : "unknown"),
-            (cptr->user_agent ? cptr->user_agent : "unknown") );
+            (cptr->user_agent ? cptr->user_agent : "unknown"));
 
          // Send our capabilities
          const char *configured_codecs = cfg_get_exp("codecs.allowed");
-         char *my_codecs = codec_filter_test_mode(configured_codecs, cfg_get_bool("audio.test-mode", true) );
+         char *my_codecs = codec_filter_test_mode(configured_codecs, cfg_get_bool("audio.test-mode", true));
          dict *capab_msg = media_capab_prepare(my_codecs);
-         free( (void *)configured_codecs);
-         free( (void *)my_codecs);
+         free((void *)configured_codecs);
+         free((void *)my_codecs);
 
          if (capab_msg) {
             ws_send_dict(NULL, cptr, capab_msg, WEBSOCKET_OP_TEXT);
@@ -495,7 +491,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
             Log(LOG_CRIT, "ws.media", ">> No codecs negotiated");
          }
          // Every authenticated session joins the site lobby; rig rooms are opt-in.
-         ws_client_join_room(cptr, ws_site_room() );
+         ws_client_join_room(cptr, ws_site_room());
          // Tell the client which media channels (RX/TX audio per VFO, etc)
          // exist so it can subscribe; the event is handled by the program's
          // media module which owns the channel registry.
@@ -507,27 +503,27 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
          dict_add_ulong(talk_msg, "msg.ts", now);
          dict_add(talk_msg, "talk.cmd", "join");
          dict_add(talk_msg, "talk.ip", ip);
-         dict_add(talk_msg, "talk.muted", (cptr->user->is_muted ? "true" : "false") );
+         dict_add(talk_msg, "talk.muted", (cptr->user->is_muted ? "true" : "false"));
          dict_add(talk_msg, "talk.privs", cptr->user->privs);
-         dict_add(talk_msg, "talk.target", ws_site_room() );
-         dict_add(talk_msg, "talk.room", ws_site_room() );
+         dict_add(talk_msg, "talk.target", ws_site_room());
+         dict_add(talk_msg, "talk.room", ws_site_room());
          dict_add_bool(talk_msg, "room.site", true);
-         dict_add_bool(talk_msg, "room.has-vfos", ws_room_has_vfos(ws_site_room() ) );
-         dict_add_ulong(talk_msg, "room.vfo-mask", ws_room_vfo_mask(ws_site_room() ) );
+         dict_add_bool(talk_msg, "room.has-vfos", ws_room_has_vfos(ws_site_room()));
+         dict_add_ulong(talk_msg, "room.vfo-mask", ws_room_vfo_mask(ws_site_room()));
          dict_add(talk_msg, "talk.user", cptr->chatname);
          dict_add_int(talk_msg, "talk.sessions", cptr->user->sessions);
-         ws_broadcast_room_dict(NULL, talk_msg, ws_site_room() );
+         ws_broadcast_room_dict(NULL, talk_msg, ws_site_room());
          event_emit_dict("room.join", cptr, talk_msg);
          ws_send_users(NULL);
          dict_free(talk_msg);
          talk_msg = dict_new();
          dict_add(talk_msg, "msg.type", "talk");
          dict_add_ulong(talk_msg, "msg.ts", now);
-         dict_add(talk_msg, "talk.target", ws_site_room() );
-         dict_add(talk_msg, "talk.room", ws_site_room() );
+         dict_add(talk_msg, "talk.target", ws_site_room());
+         dict_add(talk_msg, "talk.room", ws_site_room());
          dict_add_bool(talk_msg, "room.site", true);
-         dict_add_bool(talk_msg, "room.has-vfos", ws_room_has_vfos(ws_site_room() ) );
-         dict_add_ulong(talk_msg, "room.vfo-mask", ws_room_vfo_mask(ws_site_room() ) );
+         dict_add_bool(talk_msg, "room.has-vfos", ws_room_has_vfos(ws_site_room()));
+         dict_add_ulong(talk_msg, "room.vfo-mask", ws_room_vfo_mask(ws_site_room()));
          dict_add(talk_msg, "talk.user", cptr->chatname);
          event_emit_dict("send-chat-replay", cptr, talk_msg);
          dict_free(talk_msg);
@@ -538,7 +534,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       }
 
       // AUDIT: Sanitize buffers containing sensitive data before freeing
-      explicit_bzero(temp_pw, strlen(temp_pw) );
+      explicit_bzero(temp_pw, strlen(temp_pw));
       free(temp_pw);
    }
 cleanup:

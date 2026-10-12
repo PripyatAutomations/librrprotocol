@@ -19,7 +19,7 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-extern dict *cfg;                // config.c
+extern dict *cfg;               // config.c
 extern time_t now;
 
 bool ws_handle_alert_msg(rrconn_t *cptr, dict *d) {

@@ -119,8 +119,8 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
 
    if (hashed_pw) {
       temp_pw = compute_wire_password(hashed_pw, nonce);
-      explicit_bzero(hashed_pw, strlen(hashed_pw) );
-      free( (void *)hashed_pw);
+      explicit_bzero(hashed_pw, strlen(hashed_pw));
+      free((void *)hashed_pw);
       hashed_pw = NULL;
    }
 
@@ -133,7 +133,7 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
    dict *auth_msg = dict_new();
 
    if (!auth_msg) {
-      explicit_bzero(temp_pw, strlen(temp_pw) );
+      explicit_bzero(temp_pw, strlen(temp_pw));
       free(temp_pw);
 
       return false;
@@ -145,7 +145,7 @@ bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const 
    dict_add(auth_msg, "auth.token", cptr->token);
    bool sent = ws_send_dict(NULL, cptr, auth_msg, WEBSOCKET_OP_TEXT);
    dict_free(auth_msg);
-   explicit_bzero(temp_pw, strlen(temp_pw) );
+   explicit_bzero(temp_pw, strlen(temp_pw));
    free(temp_pw);
 
    return sent;

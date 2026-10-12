@@ -28,7 +28,7 @@ ssize_t rr_test_send(int fd, const void *data, size_t length, int flags) {
    memcpy(sent + sent_length, data, amount);
    sent_length += amount;
 
-   return (ssize_t)amount;
+   return (ssize_t) amount;
 }
 int main(void) {
    rrconn_t conn = {

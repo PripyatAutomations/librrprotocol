@@ -19,6 +19,7 @@ void rr_latency_sent(rrconn_t *peer, dict *message, uint64_t sent_us) {
    }
 
    const char *id = dict_get(message, "request.id", NULL);
+
    if (!id || !*id || strlen(id) >= sizeof(peer->latency_request)) {
       return;
    }
@@ -36,6 +37,7 @@ bool rr_latency_received(rrconn_t *peer, dict *message, uint64_t received_us) {
    }
 
    const char *id = dict_get(message, "request.id", NULL);
+
    if (!id || strcmp(id, peer->latency_request)) {
       return false;
    }
@@ -44,5 +46,6 @@ bool rr_latency_received(rrconn_t *peer, dict *message, uint64_t received_us) {
    rr_media_rtt_sample(peer, peer->response_rtt_us);
    peer->latency_sent_us = 0;
    peer->latency_request[0] = 0;
+
    return true;
 }

@@ -41,10 +41,14 @@ dict *media_capab_prepare(const char *codecs) {
       return NULL;
    }
    dict *message = dict_new();
-   if (!message) return NULL;
+
+   if (!message) {
+      return NULL;
+   }
    dict_add(message, "msg.type", "media");
    dict_add(message, "media.cmd", "capab");
    dict_add(message, "media.codecs", codecs);
+
    return message;
 }
 
@@ -100,8 +104,8 @@ char *codec_filter_common(const char *preferred, const char *available) {
             res_sz += len;
             result[res_sz++] = ' ';
             result[res_sz] = '\0';
-            break;  // break out of 'available' loop, continue with next
-                    // preferred
+            break;              // break out of 'available' loop, continue with next
+            // preferred
          }
       }
    }
@@ -142,7 +146,7 @@ char *codec_filter_test_mode(const char *codecs, bool test_mode) {
       }
       size_t len = (size_t)(p - start);
 
-      if (!test_mode && len == 4 && codec_is_test_variant(start) ) {
+      if (!test_mode && len == 4 && codec_is_test_variant(start)) {
          continue;
       }
 
@@ -278,6 +282,5 @@ char *codec_filter_test_mode(const char *codecs, bool test_mode) {
 }
 
 bool codec_is_test_variant(const char codec[4]) {
-   return codec && codec[0] && codec[1] && codec[2] &&
-          (codec[3] == 'T' || codec[3] == 'P');
+   return codec && codec[0] && codec[1] && codec[2] && (codec[3] == 'T' || codec[3] == 'P');
 }
