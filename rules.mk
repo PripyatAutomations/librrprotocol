@@ -10,6 +10,7 @@ librrprotocol_objs += connman.o
 librrprotocol_objs += server.url.o
 librrprotocol_objs += objects.o
 librrprotocol_objs += wire.o
+librrprotocol_objs += link.wire.o
 librrprotocol_objs += latency.o
 librrprotocol_objs += media.health.o
 librrprotocol_objs += traffic.o
