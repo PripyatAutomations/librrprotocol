@@ -36,9 +36,9 @@ rrconn_t *http_find_client_by_token(const char *token) {
          continue;
       }
 
-      if (memcmp(cptr->token, token, strlen(cptr->token) ) == 0) {
+      if (memcmp(cptr->token, token, strlen(cptr->token)) == 0) {
          Log(LOG_CRAZY, "http.client", "find_client_by_token |%s| returning index %i: %p |%s|", token, i, cptr, (*cptr->chatname ? cptr->chatname :
-            "<UNAUTHENTICATED>") );
+            "<UNAUTHENTICATED>"));
 
          return cptr;
       }
@@ -77,7 +77,6 @@ rrconn_t *http_find_client_by_name(const char *name) {
    if (!name) {
       return NULL;
    }
-
    // Trailing spaces (e.g. from tab-completion) should never cause a
    // lookup to fail. Trim and use a local copy for the match.
    char namebuf[HTTP_USER_LEN + 1];
@@ -87,14 +86,14 @@ rrconn_t *http_find_client_by_name(const char *name) {
       nm++;
    }
    char *end = nm + strlen(nm);
-   while (end > nm && (end[-1] == ' ' || end[-1] == '\t') ) {
+   while (end > nm && (end[-1] == ' ' || end[-1] == '\t')) {
       *--end = '\0';
    }
    while (cptr) {
       Log(LOG_CRAZY, "http.client", "find client by name: i: %d user:<%p> chatname: %s", i, cptr->user, cptr->chatname);
 
       // incomplete entry
-      if (!cptr->user || (cptr->chatname[0] == '\0') ) {
+      if (!cptr->user || (cptr->chatname[0] == '\0')) {
          cptr = cptr->next;
          continue;
       }
@@ -102,7 +101,7 @@ rrconn_t *http_find_client_by_name(const char *name) {
       // match?
       if (strcasecmp(cptr->chatname, nm) == 0) {
          Log(LOG_CRAZY, "http.client", "find client by name |%s| found match at index %d: <%p> |%s|", name, i, cptr, (*cptr->chatname ? cptr->chatname :
-            "<UNAUTHENTICATED>") );
+            "<UNAUTHENTICATED>"));
 
          return cptr;
       }
@@ -156,21 +155,22 @@ void http_dump_clients(void) {
       cptr = cptr->next;
    }
 }
+
 // Add a new client to the client list (HTTP or WebSocket)
 #ifdef  USE_MONGOOSE
 rrconn_t *http_add_client(struct mg_connection *c, bool is_ws) {
-   rrconn_t *cptr = (rrconn_t *)malloc(sizeof(rrconn_t) );
+   rrconn_t *cptr = (rrconn_t *) malloc(sizeof(rrconn_t));
 
    if (!cptr) {
       fprintf(stderr, "OOM in http_add_client\n");
 
       return NULL;
    }
-   memset(cptr, 0, sizeof(rrconn_t) );
+   memset(cptr, 0, sizeof(rrconn_t));
 
    // create some randomness for login hashing and session
-   auth_generate_nonce(cptr->token, sizeof(cptr->token) );
-   auth_generate_nonce(cptr->nonce, sizeof(cptr->nonce) );
+   auth_generate_nonce(cptr->token, sizeof(cptr->token));
+   auth_generate_nonce(cptr->nonce, sizeof(cptr->nonce));
    Log(LOG_CRAZY, "http", "add_client: generated session token and nonce for cptr:<%p>", cptr);
    cptr->connected = now;
    cptr->authenticated = false;
@@ -183,9 +183,9 @@ rrconn_t *http_add_client(struct mg_connection *c, bool is_ws) {
    int port = c->rem.port;
 
    if (c->rem.is_ip6) {
-      inet_ntop(AF_INET6, c->rem.addr.ip6, ip, sizeof(ip) );
+      inet_ntop(AF_INET6, c->rem.addr.ip6, ip, sizeof(ip));
    } else {
-      inet_ntop(AF_INET, &c->rem.addr.ip4, ip, sizeof(ip) );
+      inet_ntop(AF_INET, &c->rem.addr.ip4, ip, sizeof(ip));
    }
 
    // save the user's IP
@@ -197,7 +197,7 @@ rrconn_t *http_add_client(struct mg_connection *c, bool is_ws) {
    cptr->next = http_client_list;
    http_client_list = cptr;
 
-   Log(LOG_DEBUG, "http", "Added new client at cptr:<%p> (%d clients and %d sessions total now)", cptr, http_count_connections(), http_count_clients() );
+   Log(LOG_DEBUG, "http", "Added new client at cptr:<%p> (%d clients and %d sessions total now)", cptr, http_count_connections(), http_count_clients());
 
    return cptr;
 }
@@ -263,9 +263,9 @@ void http_remove_client(struct mg_connection *c) {
             }
          }
          Log(LOG_CRAZY, "http", "Removed client at cptr:<%p> with mgconn:<%p> (%d connections / %d users remain)", current, c, conns - 1, (current->user &&
-            current->authenticated ? users - 1 : users) );
+            current->authenticated ? users - 1 : users));
          http_client_free_resources(current);
-         memset(current, 0, sizeof(rrconn_t) );
+         memset(current, 0, sizeof(rrconn_t));
          free(current);
 
          return;
