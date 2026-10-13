@@ -372,6 +372,7 @@ static const rr_wire_rule_t wire_rules[] = {
    {"talk.users", "talk", "talk.cmd", "users", wire_fields_6, sizeof(wire_fields_6) / sizeof(wire_fields_6[0])},
    {"talk.link", "talk", "talk.cmd", "link", wire_fields_6, sizeof(wire_fields_6) / sizeof(wire_fields_6[0])},
    {"talk.admin", "talk", "talk.cmd", "admin", wire_fields_6, sizeof(wire_fields_6) / sizeof(wire_fields_6[0])},
+   {"talk.supervise", "talk", "talk.cmd", "supervise", wire_fields_6, sizeof(wire_fields_6) / sizeof(wire_fields_6[0])},
    {"hello", "hello", NULL, NULL, wire_fields_7, sizeof(wire_fields_7) / sizeof(wire_fields_7[0])},
    {"ping", "ping", NULL, NULL, wire_fields_8, sizeof(wire_fields_8) / sizeof(wire_fields_8[0])},
    {"pong", "pong", NULL, NULL, wire_fields_9, sizeof(wire_fields_9) / sizeof(wire_fields_9[0])},

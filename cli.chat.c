@@ -50,6 +50,8 @@ bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_DEBUG, "ws.talk", "UserInfo: %s has privs '%s' (TX: %s, Muted: %s, sessions: %d)", user, privs, (tx ? "true" : "false"), (muted ? "true" :
          "false"), sessions);
       event_emit_dict("userinfo", cptr, d);
+   } else if (!strcasecmp(cmd, "supervise")) {
+      event_emit_dict("supervise.result", cptr, d);
    } else if (!strcasecmp(cmd, "admin")) {
       event_emit_dict("admin.result", cptr, d);
    } else if (cmd && strcasecmp(cmd, "msg") == 0) {

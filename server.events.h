@@ -9,6 +9,9 @@ typedef struct {
    bool allowed;
 } rr_server_admission_t;
 #define RR_SERVER_HTTP_EVENT "protocol.server.http"
+#define RR_SERVER_SUPERVISION_EVENT "protocol.server.supervision"
+typedef struct { const char *room; bool request, allowed; } rr_server_supervision_t;
+bool ws_supervision_allowed(rrconn_t *client, const char *room, bool request);
 #define RR_SERVER_ROUTE_EVENT "protocol.server.route"
 #define RR_SERVER_SEND_EVENT "protocol.server.send"
 #define RR_SERVER_PUBLISH_EVENT "protocol.server.publish"

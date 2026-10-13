@@ -330,3 +330,12 @@ void http_detach_client(struct mg_connection *c) {
 void http_remove_client(struct mg_connection *c) {
    http_release_client(c, true);
 }
+
+/* Applications own consent; missing policy listeners fail closed. */
+bool ws_supervision_allowed(rrconn_t *client, const char *room, bool request) {
+   if (!client || !client->authenticated || !client->user) return false;
+   if (!has_priv(client->user->uid, "noob")) return true;
+   rr_server_supervision_t query = {.room = room, .request = request};
+   event_emit_binary(RR_SERVER_SUPERVISION_EVENT, client, &query, sizeof(query));
+   return query.allowed;
+}

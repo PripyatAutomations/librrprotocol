@@ -794,7 +794,7 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    // also receives the payload on a program event so rrserver can decode it
    // into the rig TX PCM sink.
    if (is_tx_frame) {
-      if (!cptr->user || cptr->user->is_muted || !has_priv(cptr->user->uid, "admin|owner|tx|noob") || (has_priv(cptr->user->uid, "noob") && !is_elmer_online()))
+      if (!cptr->user || cptr->user->is_muted || !has_priv(cptr->user->uid, "admin|owner|tx|noob") || !ws_supervision_allowed(cptr, cptr->ptt_room, false))
       {
          return false;
       }

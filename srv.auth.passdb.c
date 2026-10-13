@@ -1,3 +1,4 @@
+#include <librrprotocol/server.events.h>
 //
 // srv.auth.passdb.c: Password file support for server authentication
 //    This is part of rustyrig-fw.
@@ -288,7 +289,7 @@ void http_reconcile_users(const http_user_t *previous) {
          ws_kick_client(session, "Account disabled, removed or password expired");
       } else {
          if (session->is_ptt && (!has_priv(account->uid, "admin|owner|tx|noob") || account->password_change_required ||
-            (has_priv(account->uid, "noob") && !is_elmer_online()))) {
+            !ws_supervision_allowed(session, session->ptt_room, false))) {
             ws_release_ptt_on_disconnect(session);
          }
 

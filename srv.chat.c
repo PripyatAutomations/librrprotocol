@@ -1815,6 +1815,8 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          event_emit_dict("quota.cmd", cptr, q);
          dict_free(q);
 
+      } else if (!strcasecmp(cmd, "supervise")) {
+         event_emit_dict("supervise.cmd", cptr, d);
       } else if (!strcasecmp(cmd, "link") || !strcasecmp(cmd, "admin")) {
          if (!has_priv(cptr->user->uid, "admin|owner")) {
             ws_chat_err_noprivs(cptr, cmd);

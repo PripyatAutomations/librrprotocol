@@ -1,3 +1,4 @@
+#include <librrprotocol/server.events.h>
 //
 // librrprotoco;/srv.rigctl.c: Rig control stuff on the server side
 //    This is part of rustyrig-fw.
@@ -269,22 +270,15 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       return false;
    }
 
-   // Support for 'noob' class users who can only control rig if an elmer is
-   // present
-   // XXX: Add support for per noob Elmer (link from noob to elmer(s) who have
-   // approved their use)
-   if (!own_release && !override_release && has_priv(cptr->user->uid, "noob") && !is_elmer_online()) {
-      Log(LOG_AUDIT, "ws.rigctl", "Ignoring %s command from %s as they're a noob and no elmers are online", cmd, cptr->chatname);
-
-      ws_send_error(cptr, "Cannot apply %s to VFO %s in room %s: no elmer is online to supervise your account", cmd, vfo, control_room);
-
-      return false;
-   }
-
    if (!own_release && !override_release && !ws_room_control_allowed(cptr, control_room, !strcasecmp(cmd, "freq"))) {
       ws_send_error(cptr, "Cannot apply %s to VFO %s in room %s: join its TX control room, or use an authorized independent RX tuning "
          "room", cmd, vfo, control_room);
 
+      return false;
+   }
+
+   if (!own_release && !override_release && !ws_supervision_allowed(cptr, control_room, !strcasecmp(cmd, "ptt") && !releasing)) {
+      ws_send_error(cptr, "Cannot control VFO %s in %s: an elmer must explicitly accept supervision", vfo, control_room);
       return false;
    }
 
