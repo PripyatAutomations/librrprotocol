@@ -24,3 +24,5 @@ extern size_t irc_line_limit(const rrconn_t *);
 extern const char *irc_server_capability(const rrconn_t *, const char *name);
 extern bool irc_capability_enabled(const rrconn_t *, const char *name);
 extern const char *irc_server_capab(const rrconn_t *, const char *name);
+
+extern void irc_capabilities_poll(rrconn_t *);

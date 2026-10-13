@@ -105,6 +105,8 @@ void irc_mongoose_handler(struct mg_connection *c, int ev, void *data) {
       return;
    }
 
+   if (ev == MG_EV_POLL) irc_capabilities_poll(cptr);
+
    if (ev == MG_EV_OPEN) {
       cptr->conn = c;
       cptr->fd = -1;

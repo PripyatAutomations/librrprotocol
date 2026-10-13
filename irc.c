@@ -181,6 +181,7 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
  * periodic timer (formerly a libev ev_io callback).
  */
 void irc_io_poll(rrconn_t *cptr) {
+   irc_capabilities_poll(cptr);
    if (!cptr || cptr->fd < 0 || !cptr->server) {
       return;
    }

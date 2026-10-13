@@ -78,7 +78,8 @@ typedef struct irc_cap_state {
    char display[32][2];
    char requests[64];
    dict *properties, *capabilities, *enabled, *capabs;
-   bool listing, listing_enabled;
+   bool listing, listing_enabled, sasl_wait, sasl_sent, sasl_requested;
+   long long sasl_deadline;
    struct irc_cap_state *next;
 } irc_cap_state_t;
 static irc_cap_state_t *states;
@@ -256,6 +257,59 @@ bool irc_mode_has_argument(const rrconn_t *c, char mode, bool adding) {
 
    return false;
 }
+static bool sasl_configured(rrconn_t *c) {
+   return c->server && (c->server->sasl_user[0] || !strcasecmp(c->server->sasl_mechanism, "EXTERNAL"));
+}
+static void sasl_finish(rrconn_t *c, irc_cap_state_t *s, const char *result) {
+   s->sasl_wait = false;
+   s->sasl_deadline = 0;
+   if (s->negotiating) {
+      irc_send(c, "CAP END");
+      s->negotiating = false;
+   }
+   if (*result) event_emit("irc.sasl", c, result);
+}
+void irc_capabilities_poll(rrconn_t *c) {
+   irc_cap_state_t *s = state(c, false);
+   if (s && s->sasl_deadline && mono_ms() >= s->sasl_deadline) {
+      if (s->sasl_wait) irc_send(c, "AUTHENTICATE *");
+      sasl_finish(c, s, "SASL authentication timed out");
+   }
+}
+static bool sasl_response(rrconn_t *c) {
+   server_cfg_t *server = c->server;
+   if (!strcasecmp(server->sasl_mechanism, "EXTERNAL")) {
+      return irc_send(c, "AUTHENTICATE +");
+   }
+   unsigned char plain[LOGINLEN + PASSLEN + 3];
+   size_t user = strlen(server->sasl_user), pass = strlen(server->sasl_pass);
+   plain[0] = 0;
+   memcpy(plain + 1, server->sasl_user, user);
+   plain[user + 1] = 0;
+   memcpy(plain + user + 2, server->sasl_pass, pass);
+   static const char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+   char encoded[4 * ((sizeof(plain) + 2) / 3) + 1];
+   size_t bytes = user + pass + 2, length = 0;
+   for (size_t i = 0 ; i < bytes ; i += 3) {
+      uint32_t value = (uint32_t)plain[i] << 16;
+      if (i + 1 < bytes) value |= (uint32_t)plain[i + 1] << 8;
+      if (i + 2 < bytes) value |= plain[i + 2];
+      encoded[length++] = alphabet[value >> 18];
+      encoded[length++] = alphabet[(value >> 12) & 63];
+      encoded[length++] = i + 1 < bytes ? alphabet[(value >> 6) & 63] : '=';
+      encoded[length++] = i + 2 < bytes ? alphabet[value & 63] : '=';
+   }
+   encoded[length] = 0;
+   memset(plain, 0, sizeof(plain));
+   bool sent = true;
+   for (size_t i = 0 ; sent && i < length ; i += 400) {
+      sent = irc_send(c, "AUTHENTICATE %.*s", (int)(length - i > 400 ? 400 : length - i), encoded + i);
+   }
+   if (sent && length % 400 == 0) sent = irc_send(c, "AUTHENTICATE +");
+   memset(encoded, 0, length);
+   return sent;
+}
+
 void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
    if (!c || c->is_ws || !m || m->argc < 2) {
       return;
@@ -267,6 +321,24 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
    }
    bool old = s->rusty;
 
+   if (s->sasl_wait && !strcasecmp(m->argv[0], "AUTHENTICATE")) {
+      if (s->sasl_sent || strcmp(m->argv[1], "+") || !sasl_response(c)) {
+         irc_send(c, "AUTHENTICATE *");
+         sasl_finish(c, s, "SASL authentication aborted");
+      } else {
+         s->sasl_sent = true;
+      }
+      return;
+   }
+   if (s->sasl_wait && (!strcmp(m->argv[0], "903") || !strcmp(m->argv[0], "907"))) {
+      sasl_finish(c, s, "SASL authentication successful");
+      return;
+   }
+   if (s->sasl_wait && (!strcmp(m->argv[0], "902") || !strcmp(m->argv[0], "904") ||
+       !strcmp(m->argv[0], "905") || !strcmp(m->argv[0], "906"))) {
+      sasl_finish(c, s, "SASL authentication failed");
+      return;
+   }
    if (!strcmp(m->argv[0], "005")) {
       /* The last parameter is the human-readable ISUPPORT explanation. */
       for (int i = 2 ; i < m->argc - 1 ; i++) {
@@ -376,7 +448,11 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
          }
 
 
-         if (!strcasecmp(command, "LS") && !remove && (rusty || multi)) {
+         if (!strcmp(key, "sasl") && listing && sasl_configured(c)) {
+            s->sasl_requested = true;
+            s->sasl_deadline = mono_ms() + 30000;
+         }
+         if (!strcasecmp(command, "LS") && !remove && (rusty || multi || (!strcmp(key, "sasl") && sasl_configured(c)))) {
             char cap[32];
             snprintf(cap, sizeof(cap), "%.*s", (int)length, name);
 
@@ -396,6 +472,9 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
       free(copy);
 
       if (s->negotiating && !strcasecmp(command, "LS") && !(m->argc >= 5 && !strcmp(m->argv[3], "*"))) {
+         if (sasl_configured(c) && !irc_server_capability(c, "sasl")) {
+            event_emit("irc.sasl", c, "Server does not advertise SASL authentication");
+         }
          if (*s->requests) {
             irc_send(c, "CAP REQ :%s", s->requests);
          } else {
@@ -403,8 +482,21 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
             s->negotiating = false;
          }
       } else if (s->negotiating && (!strcasecmp(command, "ACK") || !strcasecmp(command, "NAK"))) {
-         irc_send(c, "CAP END");
-         s->negotiating = false;
+         if (!strcasecmp(command, "ACK") && s->sasl_requested && !irc_capability_enabled(c, "sasl")) {
+            return; // Another requested capability may be acknowledged first.
+         }
+         if (s->sasl_wait) return;
+         if (!strcasecmp(command, "ACK") && sasl_configured(c) && irc_capability_enabled(c, "sasl")) {
+            const char *mechanism = !strcasecmp(c->server->sasl_mechanism, "EXTERNAL") ? "EXTERNAL" : "PLAIN";
+            if (irc_send(c, "AUTHENTICATE %s", mechanism)) {
+               s->sasl_wait = true;
+               s->sasl_deadline = mono_ms() + 30000;
+            } else {
+               sasl_finish(c, s, "Unable to start SASL authentication");
+            }
+         } else {
+            sasl_finish(c, s, sasl_configured(c) ? "SASL capability rejected" : "");
+         }
       }
    } else if (!strcasecmp(m->argv[0], "CAPAB") && m->argc >= 2) {
       for (int i = 1 ; i < m->argc ; i++) {
