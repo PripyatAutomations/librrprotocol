@@ -73,7 +73,10 @@ bool irc_builtin_notice_cb(rrconn_t *cptr, irc_message_t *mp) {
    if (!cptr || !mp || mp->argc < 3) {
       return true;
    }
-   if (irc_dcc_audio_message(cptr, mp) || irc_dcc_message(cptr, mp)) return false;
+
+   if (irc_dcc_audio_message(cptr, mp) || irc_dcc_message(cptr, mp)) {
+      return false;
+   }
    char *nick = mp->prefix;
 
    if (!nick) {
@@ -175,7 +178,10 @@ bool irc_builtin_privmsg_cb(rrconn_t *cptr, irc_message_t *mp) {
    if (!cptr || !mp || mp->argc < 3) {
       return true;
    }
-   if (irc_dcc_audio_message(cptr, mp) || irc_dcc_message(cptr, mp)) return false;
+
+   if (irc_dcc_audio_message(cptr, mp) || irc_dcc_message(cptr, mp)) {
+      return false;
+   }
    char *nick = mp->prefix;
 
    if (!nick) {

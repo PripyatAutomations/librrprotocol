@@ -1820,6 +1820,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
       } else if (!strcasecmp(cmd, "link") || !strcasecmp(cmd, "admin")) {
          if (!has_priv(cptr->user->uid, "admin|owner")) {
             ws_chat_err_noprivs(cptr, cmd);
+
             return false;
          }
          /* Applications own stored peers and database administration. */

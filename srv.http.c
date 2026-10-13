@@ -673,12 +673,17 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
    } else if (ev == MG_EV_ACCEPT) {
       char peer_ip[64];
       mg_snprintf(peer_ip, sizeof(peer_ip), "%M", mg_print_ip, &c->rem);
-      rr_server_admission_t admission = {c->fn_data ? "https" : "http", peer_ip, NULL, true};
+      rr_server_admission_t admission = {
+         c->fn_data ? "https" : "http", peer_ip, NULL, true
+      };
       event_emit_binary(RR_SERVER_ADMISSION_EVENT, cptr, &admission, sizeof(admission));
+
       if (!admission.allowed) {
          c->is_closing = 1;
+
          return;
       }
+
       if (c->is_listening) {
          // defensive: listeners never fire ACCEPT
 

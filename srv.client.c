@@ -317,8 +317,11 @@ rrconn_t *whos_talking(void) {
       }
       cptr = cptr->next;
    }
-   rr_server_talker_t query = {0};
+   rr_server_talker_t query = {
+      0
+   };
    event_emit_binary(RR_SERVER_TALKER_EVENT, NULL, &query, sizeof(query));
+
    return query.client;
 }
 
@@ -333,9 +336,17 @@ void http_remove_client(struct mg_connection *c) {
 
 /* Applications own consent; missing policy listeners fail closed. */
 bool ws_supervision_allowed(rrconn_t *client, const char *room, bool request) {
-   if (!client || !client->authenticated || !client->user) return false;
-   if (!has_priv(client->user->uid, "noob")) return true;
-   rr_server_supervision_t query = {.room = room, .request = request};
+   if (!client || !client->authenticated || !client->user) {
+      return false;
+   }
+
+   if (!has_priv(client->user->uid, "noob")) {
+      return true;
+   }
+   rr_server_supervision_t query = {
+      .room = room, .request = request
+   };
    event_emit_binary(RR_SERVER_SUPERVISION_EVENT, client, &query, sizeof(query));
+
    return query.allowed;
 }

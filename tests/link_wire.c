@@ -4,8 +4,7 @@
 #include <string.h>
 #include <librrprotocol/link.wire.h>
 int main(void) {
-   const char *hello =
-      "{\"op\":\"link.hello\",\"node\":\"uuid\",\"site\":\"site\",\"password\":\"private\"}";
+   const char *hello = "{\"op\":\"link.hello\",\"node\":\"uuid\",\"site\":\"site\",\"password\":\"private\"}";
    dict *d = rr_link_wire_decode(hello, strlen(hello));
    assert(d && !dict_get(d, "username", NULL));
    char *encoded = rr_link_wire_encode(d);

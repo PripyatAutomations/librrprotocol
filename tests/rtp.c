@@ -58,14 +58,18 @@ int main(int argc, char **argv) {
    assert(rr_rtp_send(client, source, 640, 555, capture, &c));
    assert(rr_rtp_receive(server, c.data[0], c.sizes[0], 1, &frame, &length) == 1);
    assert(length == 640 && !memcmp(source, frame, length));
+
    /* RTP sequence rollover must not interrupt authenticated microphone audio. */
-   for (unsigned i = 0; i < 66000; i++) {
+   for (unsigned i = 0 ; i < 66000 ; i++) {
       c.count = 0;
       assert(rr_rtp_send(client, source, 16, 1000 + i, capture, &c));
       assert(rr_rtp_receive(server, c.data[0], c.sizes[0], 1000 + i, &frame, &length) == 1);
       assert(length == 16 && !memcmp(source, frame, length));
    }
-   uint8_t other_key[RR_RTP_KEY_LEN] = {9};
+
+   uint8_t other_key[RR_RTP_KEY_LEN] = {
+      9
+   };
    rr_rtp_t *intruder = rr_rtp_new(other_key, 42, false, encrypted);
    c.count = 0;
    assert(rr_rtp_probe(intruder, capture, &c));

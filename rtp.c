@@ -25,6 +25,7 @@ static void write32(uint8_t *p, uint32_t n) {
 bool rr_rtp_supported(bool encrypted) {
 #ifdef RR_RTP_ENCRYPTION
    (void)encrypted;
+
    return true;
 #else
 
@@ -102,7 +103,7 @@ bool rr_rtp_probe(rr_rtp_t *peer, rr_rtp_send_fn send, void *user) {
    }
    uint8_t packet[64] = {
       0x80, 201, 0, 1
-   };                                        /* RTCP receiver report, no report blocks. */
+   };                           /* RTCP receiver report, no report blocks. */
    write32(packet + 4, peer->ssrc);
    int length = 8;
 

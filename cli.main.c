@@ -499,8 +499,10 @@ static bool ws_send_frame(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_d
       event_emit_binary(RR_MEDIA_BINARY_EVENT, cptr, &io, sizeof(io));
 
       if (io.handled) {
-         if (io.result)
+         if (io.result) {
             rr_traffic_count(cptr, true, true, msg_data->len);
+         }
+
          return io.result;
       }
    }
@@ -794,8 +796,7 @@ bool ws_binframe_process_mg(rrconn_t *cptr, const char *buf, size_t len) {
    // also receives the payload on a program event so rrserver can decode it
    // into the rig TX PCM sink.
    if (is_tx_frame) {
-      if (!cptr->user || cptr->user->is_muted || !has_priv(cptr->user->uid, "admin|owner|tx|noob") || !ws_supervision_allowed(cptr, cptr->ptt_room, false))
-      {
+      if (!cptr->user || cptr->user->is_muted || !has_priv(cptr->user->uid, "admin|owner|tx|noob") || !ws_supervision_allowed(cptr, cptr->ptt_room, false)) {
          return false;
       }
 

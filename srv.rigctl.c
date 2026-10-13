@@ -279,6 +279,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
    if (!own_release && !override_release && !ws_supervision_allowed(cptr, control_room, !strcasecmp(cmd, "ptt") && !releasing)) {
       ws_send_error(cptr, "Cannot control VFO %s in %s: an elmer must explicitly accept supervision", vfo, control_room);
+
       return false;
    }
 
