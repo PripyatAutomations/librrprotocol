@@ -284,7 +284,9 @@
         "talk.user": "user",
         "talk.userinfo": "userinfo",
         "talk.whois": "whois",
-        "talk.users": "users"
+        "talk.users": "users",
+        "talk.link": "link",
+        "talk.admin": "admin"
       },
       "fields": {
         "msg.ts": "time",

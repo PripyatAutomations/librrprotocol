@@ -1384,7 +1384,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          }
          requested = room_canonical(requested);
 
-         if (!ws_client_in_room(cptr, requested)) {
+         if (!ws_client_in_room(cptr, requested) && !has_priv(cptr->user->uid, "admin|owner")) {
             ws_send_error(cptr, "You are not joined to room %s", requested);
 
             return false;
@@ -1814,6 +1814,14 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          }
          event_emit_dict("quota.cmd", cptr, q);
          dict_free(q);
+
+      } else if (!strcasecmp(cmd, "link") || !strcasecmp(cmd, "admin")) {
+         if (!has_priv(cptr->user->uid, "admin|owner")) {
+            ws_chat_err_noprivs(cptr, cmd);
+            return false;
+         }
+         /* Applications own stored peers and database administration. */
+         event_emit_dict(!strcasecmp(cmd, "link") ? "link.cmd" : "admin.cmd", cptr, d);
 
       } else if (strcasecmp(cmd, "user") == 0) {
          /* User administration is implemented by the server because the protocol library must not know how accounts are persisted. */

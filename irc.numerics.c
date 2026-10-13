@@ -481,14 +481,8 @@ bool irc_builtin_num433(rrconn_t *cptr, irc_message_t *mp) {
       return true;
    }
 
-   if (mp->argc < 2) {
-      return true;
-   }
    Log(LOG_DEBUG, "irc", "[%s] Nickname already in use: %s", irc_name(cptr), mp->argv[2]);
-//   ui_print("status",
-//      "%s [{green}%s{reset}] *** Nickname already in use:
-// {bright-cyan}%s{reset}  ***",
-//      get_chat_ts(0), irc_name(cptr), mp->argv[2]);
+   irc_emit_message("irc.nick-in-use", cptr, mp);
 
    return false;
 }
