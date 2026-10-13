@@ -105,7 +105,9 @@ void irc_mongoose_handler(struct mg_connection *c, int ev, void *data) {
       return;
    }
 
-   if (ev == MG_EV_POLL) irc_capabilities_poll(cptr);
+   if (ev == MG_EV_POLL) {
+      irc_capabilities_poll(cptr);
+   }
 
    if (ev == MG_EV_OPEN) {
       cptr->conn = c;
@@ -182,11 +184,14 @@ static bool irc_send_chat(rrconn_t *cptr, dict *request, const char *target, con
       /* Ordinary CTCP (DCC etc.) must retain its single-message framing. */
       if (!action && strchr(text, '\001') && !strchr(text, '\r') && !strchr(text, '\n')) {
          bool sent = irc_send(cptr, "%s %s :%s", command, target, text);
+
          if (sent) {
             event_emit_dict("irc.sent", cptr, request);
          }
+
          return sent;
       }
+
       return false;
    }
    size_t remaining = strlen(text), budget = limit - overhead;
@@ -194,6 +199,7 @@ static bool irc_send_chat(rrconn_t *cptr, dict *request, const char *target, con
 
    if (!echo || dict_merge(echo, request)) {
       dict_free(echo);
+
       return false;
    }
    do {
@@ -204,10 +210,13 @@ static bool irc_send_chat(rrconn_t *cptr, dict *request, const char *target, con
          while (length && ((unsigned char)text[length] & 0xc0) == 0x80) {
             length--;
          }
+
          if (!length) {
             dict_free(echo);
+
             return false;
          }
+
          /* Prefer word boundaries, retaining every original byte. */
          for (size_t i = length ; i > 0 ; i--) {
             if (text[i - 1] == ' ') {
@@ -219,11 +228,11 @@ static bool irc_send_chat(rrconn_t *cptr, dict *request, const char *target, con
       char chunk[IRC_MSGLEN + 1];
       memcpy(chunk, text, length);
       chunk[length] = '\0';
-      bool sent = action ? irc_send(cptr, "%s %s :\001ACTION %s\001", command, target, chunk) :
-         irc_send(cptr, "%s %s :%s", command, target, chunk);
+      bool sent = action ? irc_send(cptr, "%s %s :\001ACTION %s\001", command, target, chunk) : irc_send(cptr, "%s %s :%s", command, target, chunk);
 
       if (!sent) {
          dict_free(echo);
+
          return false;
       }
       dict_add(echo, "talk.data", chunk);
@@ -232,6 +241,7 @@ static bool irc_send_chat(rrconn_t *cptr, dict *request, const char *target, con
       remaining -= length;
    } while (remaining);
    dict_free(echo);
+
    return true;
 }
 

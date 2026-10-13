@@ -109,6 +109,7 @@ static irc_cap_state_t *state(const rrconn_t *c, bool create) {
          dict_free(s->enabled);
          dict_free(s->capabs);
          free(s);
+
          return NULL;
       }
       s->connection = c;
@@ -155,6 +156,7 @@ void irc_capabilities_reset(rrconn_t *c) {
       s->negotiating = true;
    }
 }
+
 /* ISUPPORT values are connection-owned; NULL means absent, "" a flag. */
 const char *irc_server_property(const rrconn_t *c, const char *name) {
    irc_cap_state_t *s = state(c, false);
@@ -163,27 +165,33 @@ const char *irc_server_property(const rrconn_t *c, const char *name) {
    if (!s || !name || strlen(name) >= sizeof(key)) {
       return NULL;
    }
-   for (size_t i = 0 ; ; i++) {
+
+   for (size_t i = 0 ;; i++) {
       key[i] = toupper((unsigned char)name[i]);
+
       if (!name[i]) {
          break;
       }
    }
+
    return dict_get(s->properties, key, NULL);
 }
 
 const char *irc_server_capability(const rrconn_t *c, const char *name) {
    irc_cap_state_t *s = state(c, false);
+
    return s && name ? dict_get(s->capabilities, name, NULL) : NULL;
 }
 
 bool irc_capability_enabled(const rrconn_t *c, const char *name) {
    irc_cap_state_t *s = state(c, false);
+
    return s && name && dict_get(s->enabled, name, NULL) != NULL;
 }
 
 const char *irc_server_capab(const rrconn_t *c, const char *name) {
    irc_cap_state_t *s = state(c, false);
+
    return s && name ? dict_get(s->capabs, name, NULL) : NULL;
 }
 
@@ -199,14 +207,17 @@ size_t irc_line_limit(const rrconn_t *c) {
       if (!isdigit(*p)) {
          return 512;
       }
+
       /* Keep the existing transport buffer bound, without numeric overflow. */
       if (limit < IRC_MSGLEN) {
          limit = limit * 10 + (*p - '0');
+
          if (limit > IRC_MSGLEN) {
             limit = IRC_MSGLEN;
          }
       }
    }
+
    return limit >= 2 ? limit : 512;
 }
 
@@ -263,21 +274,29 @@ static bool sasl_configured(rrconn_t *c) {
 static void sasl_finish(rrconn_t *c, irc_cap_state_t *s, const char *result) {
    s->sasl_wait = false;
    s->sasl_deadline = 0;
+
    if (s->negotiating) {
       irc_send(c, "CAP END");
       s->negotiating = false;
    }
-   if (*result) event_emit("irc.sasl", c, result);
+
+   if (*result) {
+      event_emit("irc.sasl", c, result);
+   }
 }
 void irc_capabilities_poll(rrconn_t *c) {
    irc_cap_state_t *s = state(c, false);
+
    if (s && s->sasl_deadline && mono_ms() >= s->sasl_deadline) {
-      if (s->sasl_wait) irc_send(c, "AUTHENTICATE *");
+      if (s->sasl_wait) {
+         irc_send(c, "AUTHENTICATE *");
+      }
       sasl_finish(c, s, "SASL authentication timed out");
    }
 }
 static bool sasl_response(rrconn_t *c) {
    server_cfg_t *server = c->server;
+
    if (!strcasecmp(server->sasl_mechanism, "EXTERNAL")) {
       return irc_send(c, "AUTHENTICATE +");
    }
@@ -290,23 +309,36 @@ static bool sasl_response(rrconn_t *c) {
    static const char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
    char encoded[4 * ((sizeof(plain) + 2) / 3) + 1];
    size_t bytes = user + pass + 2, length = 0;
+
    for (size_t i = 0 ; i < bytes ; i += 3) {
-      uint32_t value = (uint32_t)plain[i] << 16;
-      if (i + 1 < bytes) value |= (uint32_t)plain[i + 1] << 8;
-      if (i + 2 < bytes) value |= plain[i + 2];
+      uint32_t value = (uint32_t) plain[i] << 16;
+
+      if (i + 1 < bytes) {
+         value |= (uint32_t) plain[i + 1] << 8;
+      }
+
+      if (i + 2 < bytes) {
+         value |= plain[i + 2];
+      }
       encoded[length++] = alphabet[value >> 18];
       encoded[length++] = alphabet[(value >> 12) & 63];
       encoded[length++] = i + 1 < bytes ? alphabet[(value >> 6) & 63] : '=';
       encoded[length++] = i + 2 < bytes ? alphabet[value & 63] : '=';
    }
+
    encoded[length] = 0;
    memset(plain, 0, sizeof(plain));
    bool sent = true;
+
    for (size_t i = 0 ; sent && i < length ; i += 400) {
       sent = irc_send(c, "AUTHENTICATE %.*s", (int)(length - i > 400 ? 400 : length - i), encoded + i);
    }
-   if (sent && length % 400 == 0) sent = irc_send(c, "AUTHENTICATE +");
+
+   if (sent && length % 400 == 0) {
+      sent = irc_send(c, "AUTHENTICATE +");
+   }
    memset(encoded, 0, length);
+
    return sent;
 }
 
@@ -328,17 +360,22 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
       } else {
          s->sasl_sent = true;
       }
+
       return;
    }
+
    if (s->sasl_wait && (!strcmp(m->argv[0], "903") || !strcmp(m->argv[0], "907"))) {
       sasl_finish(c, s, "SASL authentication successful");
+
       return;
    }
-   if (s->sasl_wait && (!strcmp(m->argv[0], "902") || !strcmp(m->argv[0], "904") ||
-       !strcmp(m->argv[0], "905") || !strcmp(m->argv[0], "906"))) {
+
+   if (s->sasl_wait && (!strcmp(m->argv[0], "902") || !strcmp(m->argv[0], "904") || !strcmp(m->argv[0], "905") || !strcmp(m->argv[0], "906"))) {
       sasl_finish(c, s, "SASL authentication failed");
+
       return;
    }
+
    if (!strcmp(m->argv[0], "005")) {
       /* The last parameter is the human-readable ISUPPORT explanation. */
       for (int i = 2 ; i < m->argc - 1 ; i++) {
@@ -350,10 +387,13 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
          if (!length || length >= sizeof(key)) {
             continue;
          }
+
          for (size_t j = 0 ; j < length ; j++) {
             key[j] = toupper((unsigned char)name[j]);
          }
+
          key[length] = '\0';
+
          if (*token == '-') {
             dict_del(s->properties, key);
          } else {
@@ -390,6 +430,7 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
 
       if (listing && !s->listing) {
          dict *fresh = dict_new();
+
          if (!fresh) {
             return;
          }
@@ -397,17 +438,21 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
          s->capabilities = fresh;
          s->requests[0] = '\0';
       }
+
       if (listing_enabled && !s->listing_enabled) {
          dict *fresh = dict_new();
+
          if (!fresh) {
             return;
          }
          dict_free(s->enabled);
          s->enabled = fresh;
       }
+
       if (listing) {
          s->listing = more;
       }
+
       if (listing_enabled) {
          s->listing_enabled = more;
       }
@@ -447,11 +492,11 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
             dict_del(s->enabled, key);
          }
 
-
          if (!strcmp(key, "sasl") && listing && sasl_configured(c)) {
             s->sasl_requested = true;
             s->sasl_deadline = mono_ms() + 30000;
          }
+
          if (!strcasecmp(command, "LS") && !remove && (rusty || multi || (!strcmp(key, "sasl") && sasl_configured(c)))) {
             char cap[32];
             snprintf(cap, sizeof(cap), "%.*s", (int)length, name);
@@ -475,6 +520,7 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
          if (sasl_configured(c) && !irc_server_capability(c, "sasl")) {
             event_emit("irc.sasl", c, "Server does not advertise SASL authentication");
          }
+
          if (*s->requests) {
             irc_send(c, "CAP REQ :%s", s->requests);
          } else {
@@ -483,11 +529,16 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
          }
       } else if (s->negotiating && (!strcasecmp(command, "ACK") || !strcasecmp(command, "NAK"))) {
          if (!strcasecmp(command, "ACK") && s->sasl_requested && !irc_capability_enabled(c, "sasl")) {
-            return; // Another requested capability may be acknowledged first.
+            return;             // Another requested capability may be acknowledged first.
          }
-         if (s->sasl_wait) return;
+
+         if (s->sasl_wait) {
+            return;
+         }
+
          if (!strcasecmp(command, "ACK") && sasl_configured(c) && irc_capability_enabled(c, "sasl")) {
             const char *mechanism = !strcasecmp(c->server->sasl_mechanism, "EXTERNAL") ? "EXTERNAL" : "PLAIN";
+
             if (irc_send(c, "AUTHENTICATE %s", mechanism)) {
                s->sasl_wait = true;
                s->sasl_deadline = mono_ms() + 30000;
@@ -510,6 +561,7 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
             if (value) {
                *value++ = '\0';
             }
+
             if (*name) {
                if (remove) {
                   dict_del(s->capabs, name);
@@ -518,6 +570,7 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
                }
             }
          }
+
          free(copy);
       }
    } else if (!strcmp(m->argv[0], "421") && m->argc >= 3 && !strcasecmp(m->argv[2], "CAP")) {

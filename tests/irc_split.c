@@ -24,15 +24,18 @@ bool irc_send(rrconn_t *connection, const char *format, ...) {
    assert(n >= 0 && (size_t)n + 2 <= irc_line_limit(connection));
    assert(!strchr(line, '\r') && !strchr(line, '\n'));
    sends++;
+
    if (fail_at && sends == fail_at) {
       return false;
    }
+
    if ((size_t)n + 2 > longest) {
       longest = (size_t)n + 2;
    }
    char *text = strstr(line, " :");
    assert(text);
    text += 2;
+
    if (!strcmp(kind, "action")) {
       assert(!strncmp(text, "\001ACTION ", 8));
       assert(text[strlen(text) - 1] == '\001');
@@ -42,6 +45,7 @@ bool irc_send(rrconn_t *connection, const char *format, ...) {
    /* These test inputs are valid UTF-8; chunks must not begin mid-character. */
    assert(!*text || ((unsigned char)*text & 0xc0) != 0x80);
    assert(strlcat(combined, text, sizeof(combined)) < sizeof(combined));
+
    return true;
 }
 static void observe(const char *event, const char *data, rrconn_t *connection, void *user) {
@@ -61,6 +65,7 @@ static dict *message(const char *text, const char *type) {
    dict_add(d, "talk.target", "#room");
    dict_add(d, "talk.msg_type", type);
    dict_add(d, "talk.data", text);
+
    return d;
 }
 static void reset(const char *type) {
@@ -79,7 +84,9 @@ static void check(const char *text, const char *type, unsigned minimum) {
    dict_free(d);
 }
 int main(void) {
-   rrconn_t connection = { .fd = -1 };
+   rrconn_t connection = {
+      .fd = -1
+   };
    expected = &connection;
    event_init();
    assert(!irc_init());
@@ -95,9 +102,11 @@ int main(void) {
    check(text, "action", 2);
    check(text, "notice", 2);
    char unicode[601];
+
    for (unsigned i = 0 ; i < 200 ; i++) {
       memcpy(unicode + i * 3, "\xe2\x82\xac", 3);
    }
+
    unicode[600] = '\0';
    check(unicode, "pub", 2);
    reset("pub");
@@ -117,5 +126,6 @@ int main(void) {
    irc_shutdown();
    event_shutdown();
    puts("PASS: IRC advertised/default limits, lossless word/UTF-8 splitting, actions/notices, echoes and partial failures");
+
    return 0;
 }

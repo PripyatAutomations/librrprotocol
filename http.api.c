@@ -105,7 +105,8 @@ static bool http_api_ws(struct mg_http_message *msg, rrconn_t *cptr) {
 
       return false;
    }
-   mg_ws_upgrade(cptr->conn, msg, "Sec-WebSocket-Protocol: " RR_WS_SUBPROTOCOL "\r\n");
+   /* Mongoose echoes the validated protocol; adding it here duplicates the header. */
+   mg_ws_upgrade(cptr->conn, msg, NULL);
    cptr->conn->data[0] = 'W';
 
    return true;

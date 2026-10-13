@@ -8,7 +8,9 @@ time_t now = 100;
 bool dying, restarting;
 static unsigned changes;
 static long long clock_ms;
-long long mono_ms(void) { return clock_ms; }
+long long mono_ms(void) {
+   return clock_ms;
+}
 static void changed(const char *event, const char *data, rrconn_t *c, void *user) {
    (void)event;
    (void)data;
@@ -110,13 +112,15 @@ int main(void) {
    irc_capabilities_clear(&a);
    assert(!irc_server_capability(&a, "sasl") && !irc_server_capab(&a, "CUSTOM"));
    assert(!irc_server_property(&a, "PREFIX") && irc_line_limit(&a) == 512);
-   server_cfg_t sasl = {.sasl_user = "account", .sasl_pass = "password", .sasl_mechanism = "PLAIN"};
+   server_cfg_t sasl = {
+      .sasl_user = "account", .sasl_pass = "password", .sasl_mechanism = "PLAIN"
+   };
    a.server = &sasl;
    irc_capabilities_reset(&a);
    irc_process_message(&a, ":server CAP * LS :multi-prefix sasl=PLAIN,EXTERNAL");
    wire(&c, "CAP REQ :multi-prefix sasl\r\n");
    irc_process_message(&a, ":server CAP * ACK :multi-prefix");
-   assert(!c.send.len); // Split ACK must not end CAP before SASL starts.
+   assert(!c.send.len);         // Split ACK must not end CAP before SASL starts.
    irc_process_message(&a, ":server CAP * ACK :sasl");
    wire(&c, "AUTHENTICATE PLAIN\r\n");
    irc_process_message(&a, "AUTHENTICATE +");
@@ -142,8 +146,10 @@ int main(void) {
    wire(&c, "CAP END\r\n");
    // Exact 400-byte responses require the final '+' delimiter.
    strcpy(sasl.sasl_mechanism, "PLAIN");
-   memset(sasl.sasl_user, 'a', 170); sasl.sasl_user[170] = 0;
-   memset(sasl.sasl_pass, 'b', 128); sasl.sasl_pass[128] = 0;
+   memset(sasl.sasl_user, 'a', 170);
+   sasl.sasl_user[170] = 0;
+   memset(sasl.sasl_pass, 'b', 128);
+   sasl.sasl_pass[128] = 0;
    irc_capabilities_reset(&a);
    irc_process_message(&a, ":server CAP * LS :sasl");
    wire(&c, "CAP REQ :sasl\r\n");

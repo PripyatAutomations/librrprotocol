@@ -1,3 +1,9 @@
+//      This is part of rustyrig-fw. https://github.com/pripyatautomations/rustyrig-fw
+//
+// Do not pay money for this, except donations to the project, if you wish to.
+// The software is not for sale. It is freely available, always.
+//
+// Licensed under MIT license, if built without mongoose or GPL if built with.
 #include <librrprotocol/irc.dcc.h>
 /* IRC peer microphone RTP sessions. Application controls acceptance and audio devices. */
 #include <librrprotocol/irc.audio.session.h>
@@ -300,8 +306,9 @@ void irc_audio_send_pcm(rrconn_t *control, const void *pcm, size_t length) {
       for (size_t offset = 0 ; offset < length ; offset += 640) {
          size_t amount = length - offset < 640 ? length - offset : 640;
          uint8_t *frame = NULL;
-         int bytes = rr_binframe_frame(&frame, RR_BINFRAME_SUBSYS_AUDIO, "s16l", dict_get_uint(peer->offer, "media.dir", 2), 255, 0, 1, peer->sequence++, now, (
-            const uint8_t *)pcm + offset, amount);
+         int bytes =
+            rr_binframe_frame(&frame, RR_BINFRAME_SUBSYS_AUDIO, "s16l", dict_get_uint(peer->offer, "media.dir", 2), 255, 0, 1, peer->sequence++, now, (const
+               uint8_t *)pcm + offset, amount);
 
          if (bytes > 0) {
             rr_rtp_socket_send(peer->attachment, frame, bytes, now);
