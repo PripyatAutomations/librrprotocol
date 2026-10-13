@@ -14,3 +14,13 @@ extern bool irc_supports_rustyrig(const rrconn_t *);
 extern char irc_prefix_mode(const rrconn_t *, char symbol);
 extern const char *irc_modes_symbol(const rrconn_t *, const char *modes);
 extern bool irc_mode_has_argument(const rrconn_t *, char mode, bool adding);
+
+/* Borrowed ISUPPORT value until update/reset/disconnect; NULL means absent. */
+extern const char *irc_server_property(const rrconn_t *, const char *name);
+/* Includes CRLF, bounded by the transport's IRC_MSGLEN buffer. */
+extern size_t irc_line_limit(const rrconn_t *);
+
+/* CAP names are case-sensitive. Values are borrowed like ISUPPORT values. */
+extern const char *irc_server_capability(const rrconn_t *, const char *name);
+extern bool irc_capability_enabled(const rrconn_t *, const char *name);
+extern const char *irc_server_capab(const rrconn_t *, const char *name);

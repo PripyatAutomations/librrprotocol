@@ -77,6 +77,8 @@ typedef struct irc_cap_state {
    char modes[32], symbols[32], chanmodes[128];
    char display[32][2];
    char requests[64];
+   dict *properties, *capabilities, *enabled, *capabs;
+   bool listing, listing_enabled;
    struct irc_cap_state *next;
 } irc_cap_state_t;
 static irc_cap_state_t *states;
@@ -94,6 +96,20 @@ static irc_cap_state_t *state(const rrconn_t *c, bool create) {
    irc_cap_state_t *s = calloc(1, sizeof(*s));
 
    if (s) {
+      s->properties = dict_new();
+
+      s->capabilities = dict_new();
+      s->enabled = dict_new();
+      s->capabs = dict_new();
+
+      if (!s->properties || !s->capabilities || !s->enabled || !s->capabs) {
+         dict_free(s->properties);
+         dict_free(s->capabilities);
+         dict_free(s->enabled);
+         dict_free(s->capabs);
+         free(s);
+         return NULL;
+      }
       s->connection = c;
       strcpy(s->modes, "qaohv");
       strcpy(s->symbols, "~&@%+");
@@ -115,6 +131,10 @@ void irc_capabilities_clear(rrconn_t *c) {
       if ((*p)->connection == c) {
          irc_cap_state_t *s = *p;
          *p = s->next;
+         dict_free(s->properties);
+         dict_free(s->capabilities);
+         dict_free(s->enabled);
+         dict_free(s->capabs);
          free(s);
 
          return;
@@ -134,6 +154,61 @@ void irc_capabilities_reset(rrconn_t *c) {
       s->negotiating = true;
    }
 }
+/* ISUPPORT values are connection-owned; NULL means absent, "" a flag. */
+const char *irc_server_property(const rrconn_t *c, const char *name) {
+   irc_cap_state_t *s = state(c, false);
+   char key[IRC_MSGLEN + 1];
+
+   if (!s || !name || strlen(name) >= sizeof(key)) {
+      return NULL;
+   }
+   for (size_t i = 0 ; ; i++) {
+      key[i] = toupper((unsigned char)name[i]);
+      if (!name[i]) {
+         break;
+      }
+   }
+   return dict_get(s->properties, key, NULL);
+}
+
+const char *irc_server_capability(const rrconn_t *c, const char *name) {
+   irc_cap_state_t *s = state(c, false);
+   return s && name ? dict_get(s->capabilities, name, NULL) : NULL;
+}
+
+bool irc_capability_enabled(const rrconn_t *c, const char *name) {
+   irc_cap_state_t *s = state(c, false);
+   return s && name && dict_get(s->enabled, name, NULL) != NULL;
+}
+
+const char *irc_server_capab(const rrconn_t *c, const char *name) {
+   irc_cap_state_t *s = state(c, false);
+   return s && name ? dict_get(s->capabs, name, NULL) : NULL;
+}
+
+size_t irc_line_limit(const rrconn_t *c) {
+   const char *value = irc_server_property(c, "LINELEN");
+
+   if (!value || !*value) {
+      return 512;
+   }
+   size_t limit = 0;
+
+   for (const unsigned char *p = (const unsigned char *)value ; *p ; p++) {
+      if (!isdigit(*p)) {
+         return 512;
+      }
+      /* Keep the existing transport buffer bound, without numeric overflow. */
+      if (limit < IRC_MSGLEN) {
+         limit = limit * 10 + (*p - '0');
+         if (limit > IRC_MSGLEN) {
+            limit = IRC_MSGLEN;
+         }
+      }
+   }
+   return limit >= 2 ? limit : 512;
+}
+
 bool irc_supports_rustyrig(const rrconn_t *c) {
    irc_cap_state_t *s = state(c, false);
 
@@ -193,8 +268,25 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
    bool old = s->rusty;
 
    if (!strcmp(m->argv[0], "005")) {
-      for (int i = 2 ; i < m->argc ; i++) {
+      /* The last parameter is the human-readable ISUPPORT explanation. */
+      for (int i = 2 ; i < m->argc - 1 ; i++) {
          const char *token = m->argv[i];
+         char key[IRC_MSGLEN + 1];
+         const char *name = token + (*token == '-');
+         size_t length = strcspn(name, "=");
+
+         if (!length || length >= sizeof(key)) {
+            continue;
+         }
+         for (size_t j = 0 ; j < length ; j++) {
+            key[j] = toupper((unsigned char)name[j]);
+         }
+         key[length] = '\0';
+         if (*token == '-') {
+            dict_del(s->properties, key);
+         } else {
+            dict_add(s->properties, key, name[length] == '=' ? name + length + 1 : "");
+         }
 
          if (!strcasecmp(token, "RUSTYRIG") || !strncasecmp(token, "RUSTYRIG=", 9)) {
             s->rusty = true;
@@ -220,6 +312,33 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
       }
    } else if (!strcasecmp(m->argv[0], "CAP") && m->argc >= 4) {
       const char *command = m->argv[2];
+      bool listing = !strcasecmp(command, "LS");
+      bool listing_enabled = !strcasecmp(command, "LIST");
+      bool more = m->argc >= 5 && !strcmp(m->argv[3], "*");
+
+      if (listing && !s->listing) {
+         dict *fresh = dict_new();
+         if (!fresh) {
+            return;
+         }
+         dict_free(s->capabilities);
+         s->capabilities = fresh;
+         s->requests[0] = '\0';
+      }
+      if (listing_enabled && !s->listing_enabled) {
+         dict *fresh = dict_new();
+         if (!fresh) {
+            return;
+         }
+         dict_free(s->enabled);
+         s->enabled = fresh;
+      }
+      if (listing) {
+         s->listing = more;
+      }
+      if (listing_enabled) {
+         s->listing_enabled = more;
+      }
       char *copy = strdup(m->argv[m->argc - 1]), *save = NULL;
 
       for (char *token = copy ? strtok_r(copy, " ", &save) : NULL ; token ; token = strtok_r(NULL, " ", &save)) {
@@ -228,6 +347,34 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
          size_t length = strcspn(name, "=");
          bool rusty = length == 8 && !strncasecmp(name, "RUSTYRIG", length);
          bool multi = length == 12 && !strncasecmp(name, "multi-prefix", length);
+         char key[IRC_MSGLEN + 1];
+
+         if (!length || length >= sizeof(key)) {
+            continue;
+         }
+         memcpy(key, name, length);
+         key[length] = '\0';
+         const char *value = name[length] == '=' ? name + length + 1 : "";
+
+         if (listing || !strcasecmp(command, "NEW")) {
+            if (remove) {
+               dict_del(s->capabilities, key);
+            } else {
+               dict_add(s->capabilities, key, value);
+            }
+         } else if (!strcasecmp(command, "DEL")) {
+            dict_del(s->capabilities, key);
+            dict_del(s->enabled, key);
+         } else if (!strcasecmp(command, "ACK") || listing_enabled) {
+            if (remove) {
+               dict_del(s->enabled, key);
+            } else {
+               dict_add(s->enabled, key, value);
+            }
+         } else if (!strcasecmp(command, "NAK")) {
+            dict_del(s->enabled, key);
+         }
+
 
          if (!strcasecmp(command, "LS") && !remove && (rusty || multi)) {
             char cap[32];
@@ -258,6 +405,28 @@ void irc_capabilities_message(rrconn_t *c, const irc_message_t *m) {
       } else if (s->negotiating && (!strcasecmp(command, "ACK") || !strcasecmp(command, "NAK"))) {
          irc_send(c, "CAP END");
          s->negotiating = false;
+      }
+   } else if (!strcasecmp(m->argv[0], "CAPAB") && m->argc >= 2) {
+      for (int i = 1 ; i < m->argc ; i++) {
+         char *copy = strdup(m->argv[i]), *save = NULL;
+
+         for (char *token = copy ? strtok_r(copy, " ", &save) : NULL ; token ; token = strtok_r(NULL, " ", &save)) {
+            bool remove = *token == '-';
+            char *name = token + remove;
+            char *value = strchr(name, '=');
+
+            if (value) {
+               *value++ = '\0';
+            }
+            if (*name) {
+               if (remove) {
+                  dict_del(s->capabs, name);
+               } else {
+                  dict_add(s->capabs, name, value ? value : "");
+               }
+            }
+         }
+         free(copy);
       }
    } else if (!strcmp(m->argv[0], "421") && m->argc >= 3 && !strcasecmp(m->argv[2], "CAP")) {
       s->negotiating = false;

@@ -168,6 +168,71 @@ static bool irc_target_valid(const char *target) {
    return true;
 }
 
+/* Split only chat text, never arbitrary commands or CTCP requests. */
+static bool irc_send_chat(rrconn_t *cptr, dict *request, const char *target, const char *text) {
+   const char *kind = dict_get(request, "talk.msg_type", "pub");
+   bool action = !strcmp(kind, "action");
+   const char *command = !strcmp(kind, "notice") ? "NOTICE" : "PRIVMSG";
+   size_t overhead = strlen(command) + strlen(target) + 5 + (action ? 9 : 0);
+   size_t limit = irc_line_limit(cptr);
+
+   if (overhead >= limit || strchr(text, '\r') || strchr(text, '\n') || (!action && strchr(text, '\001'))) {
+      /* Ordinary CTCP (DCC etc.) must retain its single-message framing. */
+      if (!action && strchr(text, '\001') && !strchr(text, '\r') && !strchr(text, '\n')) {
+         bool sent = irc_send(cptr, "%s %s :%s", command, target, text);
+         if (sent) {
+            event_emit_dict("irc.sent", cptr, request);
+         }
+         return sent;
+      }
+      return false;
+   }
+   size_t remaining = strlen(text), budget = limit - overhead;
+   dict *echo = dict_new();
+
+   if (!echo || dict_merge(echo, request)) {
+      dict_free(echo);
+      return false;
+   }
+   do {
+      size_t length = remaining < budget ? remaining : budget;
+
+      if (length < remaining) {
+         /* A continuation byte belongs to the preceding UTF-8 character. */
+         while (length && ((unsigned char)text[length] & 0xc0) == 0x80) {
+            length--;
+         }
+         if (!length) {
+            dict_free(echo);
+            return false;
+         }
+         /* Prefer word boundaries, retaining every original byte. */
+         for (size_t i = length ; i > 0 ; i--) {
+            if (text[i - 1] == ' ') {
+               length = i;
+               break;
+            }
+         }
+      }
+      char chunk[IRC_MSGLEN + 1];
+      memcpy(chunk, text, length);
+      chunk[length] = '\0';
+      bool sent = action ? irc_send(cptr, "%s %s :\001ACTION %s\001", command, target, chunk) :
+         irc_send(cptr, "%s %s :%s", command, target, chunk);
+
+      if (!sent) {
+         dict_free(echo);
+         return false;
+      }
+      dict_add(echo, "talk.data", chunk);
+      event_emit_dict("irc.sent", cptr, echo);
+      text += length;
+      remaining -= length;
+   } while (remaining);
+   dict_free(echo);
+   return true;
+}
+
 /* Serialize common client chat requests using IRC wire semantics. */
 bool irc_send_dict(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
@@ -206,22 +271,7 @@ bool irc_send_dict(rrconn_t *cptr, dict *d) {
       }
 
       if (!strcmp(cmd, "msg") && irc_target_valid(target)) {
-         const char *kind = dict_get(d, "talk.msg_type", "pub");
-         bool sent;
-
-         if (!strcmp(kind, "notice")) {
-            sent = irc_send(cptr, "NOTICE %s :%s", target, text);
-         } else if (!strcmp(kind, "action")) {
-            sent = irc_send(cptr, "PRIVMSG %s :\001ACTION %s\001", target, text);
-         } else {
-            sent = irc_send(cptr, "PRIVMSG %s :%s", target, text);
-         }
-
-         if (sent) {
-            event_emit_dict("irc.sent", cptr, d);
-         }
-
-         return sent;
+         return irc_send_chat(cptr, d, target, text);
       }
    }
    event_emit_dict("irc.command.unsupported", cptr, d);

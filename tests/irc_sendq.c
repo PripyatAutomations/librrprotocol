@@ -55,6 +55,13 @@ int main(void) {
    oversized[sizeof(oversized) - 1] = '\0';
    assert(!irc_send(&conn, "%s", oversized));
    assert(!irc_send(&conn, "PING\nQUIT"));
+   assert(irc_send(&conn, "%.*s", 510, oversized));
+   assert(!irc_send(&conn, "%.*s", 511, oversized));
+   assert(!irc_init());
+   irc_process_message(&conn, ":server 005 nick LINELEN=80 :supported");
+   assert(irc_send(&conn, "%.*s", 78, oversized));
+   assert(!irc_send(&conn, "%.*s", 79, oversized));
+   irc_shutdown();
    assert(!conn.sendq[0]);
    puts("PASS: IRC partial send preservation, EINTR/EAGAIN, fd zero and output validation");
 

@@ -124,7 +124,7 @@ bool irc_send(rrconn_t *cptr, const char *fmt, ...) {
    int written = vsnprintf(msg, sizeof(msg), fmt, ap);
    va_end(ap);
 
-   if (written < 0 || written > IRC_MSGLEN - 2 || strchr(msg, '\r') || strchr(msg, '\n')) {
+   if (written < 0 || (size_t)written > irc_line_limit(cptr) - 2 || strchr(msg, '\r') || strchr(msg, '\n')) {
       return false;
    }
    size_t msglen = (size_t)written;
