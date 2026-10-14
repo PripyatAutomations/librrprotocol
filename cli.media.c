@@ -89,7 +89,7 @@ bool media_send_codec_select(rrconn_t *cptr, const char *codec, const char *chan
       return false;
    }
 
-   Log(LOG_INFO, "ws.media", "Selected codec %s for media channel %s", codec, channel_uuid);
+   Log(LOG_DEBUG, "ws.media", "Selected codec %s for media channel %s", codec, channel_uuid);
 
    return true;
 }
@@ -297,7 +297,7 @@ bool media_send_subscribe(rrconn_t *cptr, const char *uuid) {
 
       return false;
    }
-   Log(LOG_INFO, "ws.media", "Subscribing to media channel |%s|", uuid);
+   Log(LOG_DEBUG, "ws.media", "Subscribing to media channel |%s|", uuid);
 
    return true;
 }

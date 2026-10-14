@@ -797,6 +797,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          // Already removed (or never added) - nothing to clean up
          return;
       }
+      const bool refresh_media = cptr->is_ws && cptr->authenticated;
       event_emit("serial.session.closed", cptr, NULL);
       char resp_buf[HTTP_WS_MAX_MSG + 1];
       const char *ip = cptr ? cptr->user_ip : "(unknown)";
@@ -855,7 +856,9 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       // The departing client's TX subscription/capability no longer
       // constrains shared channel codec selection. Re-announce channel state
       // to the remaining clients after it has been removed from the list.
-      media_send_available_all(NULL);
+      if (refresh_media) {
+         media_send_available_all(NULL);
+      }
    }
 }
 #endif // USE_MONGOOSE

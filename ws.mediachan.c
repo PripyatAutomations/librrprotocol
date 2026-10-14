@@ -392,7 +392,9 @@ void media_send_chan_removed_all(struct rr_mediachan *cp) {
    rrconn_t *cur = http_client_list;
 
    while (cur) {
-      media_send_chan_removed(cur, cp);
+      if (cur->is_ws && cur->authenticated) {
+         media_send_chan_removed(cur, cp);
+      }
       cur = cur->next;
    }
 }
@@ -452,7 +454,11 @@ bool media_send_available_all(rrconn_t *cptr) {
       event_emit_binary(RR_MEDIA_CATALOG_EVENT, NULL, &change, sizeof(change));
       rrconn_t *cur = http_client_list;
       while (cur) {
-         media_send_available_all(cur);
+         // PARITY: srv.send.c ws_broadcast_dict recipient filtering.
+         // HTTP page/asset connections must never receive WebSocket frames.
+         if (cur->is_ws && cur->authenticated) {
+            media_send_available_all(cur);
+         }
          cur = cur->next;
       }
       return false;
