@@ -195,6 +195,10 @@ int main(void) {
    snprintf(channel->room, sizeof(channel->room), "#foreign");
    assert(!ws_handle_mediachan_msg(&client, request));
    dict_free(request);
+   char description[512];
+   snprintf(channel->name, sizeof(channel->name), "rig0.vfo_a.rx");
+   media_chan_description(channel, "rplywv00", description, sizeof(description));
+   assert(strstr(description, "rplywv00.rig0.vfo_a.rx") && strstr(description, "codec=") && strstr(description, channel->uuid));
    dict_free(cfg);
    cfg = NULL;
    puts("PASS: subscribe-create and codec-select reject invalid/unnegotiated codecs without mutation");

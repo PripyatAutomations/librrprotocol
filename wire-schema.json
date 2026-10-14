@@ -287,7 +287,8 @@
         "talk.users": "users",
         "talk.link": "link",
         "talk.admin": "admin",
-        "talk.supervise": "supervise"
+        "talk.supervise": "supervise",
+        "talk.room-state": "room-state"
       },
       "fields": {
         "msg.ts": "time",

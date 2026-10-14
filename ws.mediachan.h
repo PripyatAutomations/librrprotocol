@@ -56,6 +56,8 @@ extern struct rr_mediachan media_channels[MAX_MEDIA_CHANNELS];
 extern struct rr_mediachan *media_chan_add(uint8_t subsystem, uint8_t direction, uint8_t vfo, uint8_t rig, const char *codec, const char *descr);
 // Find by exact match on the routing quadruple
 extern struct rr_mediachan *media_chan_find(uint8_t subsystem, uint8_t direction, uint8_t vfo, uint8_t rig);
+// Format a readable channel label; station may be NULL. UUID remains its wire address.
+extern const char *media_chan_description(const struct rr_mediachan *channel, const char *station, char *out, size_t capacity);
 // Find by uuid
 extern struct rr_mediachan *media_chan_find_uuid(const char *uuid);
 // Remove a channel by uuid. Returns false on OK. Does not notify clients -
