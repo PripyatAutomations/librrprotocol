@@ -1,6 +1,3 @@
-#include <librrprotocol/server.events.h>
-#include <librrprotocol/wire.h>
-#include <librrprotocol/latency.h>
 //
 // ws.bcast.c
 //    This is part of rustyrig-fw.
@@ -22,6 +19,9 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/irc.h>
+#include <librrprotocol/server.events.h>
+#include <librrprotocol/wire.h>
+#include <librrprotocol/latency.h>
 
 extern time_t now;
 

@@ -1,8 +1,3 @@
-#include <librrprotocol/server.events.h>
-#include <librrprotocol/traffic.h>
-#include <librrprotocol/wire.h>
-#include <librrprotocol/latency.h>
-#include <librrprotocol/media.health.h>
 //
 // rrgtk/cli.main.c: Client stuff
 //    This is part of rustyrig-fw.
@@ -24,6 +19,11 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/ws.serial.h>
+#include <librrprotocol/server.events.h>
+#include <librrprotocol/traffic.h>
+#include <librrprotocol/wire.h>
+#include <librrprotocol/latency.h>
+#include <librrprotocol/media.health.h>
 
 extern const char *get_server_property(const char *server, const char *prop);
 extern time_t now;

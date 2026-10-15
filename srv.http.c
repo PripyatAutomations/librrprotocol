@@ -1,7 +1,3 @@
-#include <librrprotocol/server.events.h>
-#include <librrprotocol/traffic.h>
-#include <librrprotocol/media.health.h>
-#include <librrprotocol/wire.h>
 // librrprotocol/srv.http.c
 //    This is part of rustyrig-fw.
 // https://github.com/pripyatautomations/rustyrig-fw
@@ -25,6 +21,10 @@
 #include <time.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librrprotocol/server.events.h>
+#include <librrprotocol/traffic.h>
+#include <librrprotocol/media.health.h>
+#include <librrprotocol/wire.h>
 
 extern time_t now;
 

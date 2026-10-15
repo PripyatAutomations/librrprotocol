@@ -1,4 +1,3 @@
-#include <librrprotocol/irc.dcc.h>
 //
 // irc.parser.c: handle IRC messages and dispatch them to the registered callback
 //
@@ -23,6 +22,7 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/irc.h>
+#include <librrprotocol/irc.dcc.h>
 #include <librrprotocol/irc.audio.session.h>
 
 extern const rr_irc_command_t irc_commands[];

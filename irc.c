@@ -1,4 +1,3 @@
-#include <librrprotocol/traffic.h>
 //
 // irc.c
 //    This is part of rustyrig-fw.
@@ -21,6 +20,7 @@
 #include <errno.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librrprotocol/traffic.h>
 #include <librrprotocol/irc.h>
 #include <poll.h>
 

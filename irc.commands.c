@@ -1,4 +1,3 @@
-#include <librrprotocol/irc.dcc.h>
 //      This is part of rustyrig-fw. https://github.com/pripyatautomations/rustyrig-fw
 //
 // Do not pay money for this, except donations to the project, if you wish to.
@@ -13,6 +12,7 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/irc.h>
+#include <librrprotocol/irc.dcc.h>
 
 bool irc_builtin_error_cb(rrconn_t *cptr, irc_message_t *mp) {
    if (!cptr || !mp || mp->argc < 2) {

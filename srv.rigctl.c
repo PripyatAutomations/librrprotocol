@@ -1,4 +1,3 @@
-#include <librrprotocol/server.events.h>
 //
 // librrprotoco;/srv.rigctl.c: Rig control stuff on the server side
 //    This is part of rustyrig-fw.
@@ -23,6 +22,7 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/objects.h>
+#include <librrprotocol/server.events.h>
 #include <rrserver/backend.h>
 
 bool rr_set_width(rr_vfo_t vfo, const char *width) {

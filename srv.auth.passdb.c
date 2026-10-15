@@ -1,4 +1,3 @@
-#include <librrprotocol/server.events.h>
 //
 // srv.auth.passdb.c: Password file support for server authentication
 //    This is part of rustyrig-fw.
@@ -21,6 +20,7 @@
 #include <arpa/inet.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librrprotocol/server.events.h>
 
 // This defines a hard-coded fallback path for httpd root, if not set in config
 extern bool dying;

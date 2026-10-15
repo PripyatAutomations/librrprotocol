@@ -1,4 +1,3 @@
-#include <librrprotocol/media.health.h>
 //
 // rrclient/ws.ping.c
 //    This is part of rustyrig-fw.
@@ -19,6 +18,7 @@
 #include <time.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librrprotocol/media.health.h>
 
 extern dict *cfg;               // config.c
 extern bool cfg_show_pings;

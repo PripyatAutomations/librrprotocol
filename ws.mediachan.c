@@ -1,5 +1,3 @@
-#include <librrprotocol/media.health.h>
-#include <librrprotocol/server.events.h>
 //
 // librrprotocol/ws.mediachan.c: media channel registry, subscribe protocol
 //    This is part of rustyrig-fw.
@@ -31,6 +29,8 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/codecneg.h>
+#include <librrprotocol/media.health.h>
+#include <librrprotocol/server.events.h>
 #include <librrprotocol/ws.mediachan.h>
 
 extern time_t now;

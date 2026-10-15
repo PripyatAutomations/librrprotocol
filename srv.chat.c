@@ -1,4 +1,3 @@
-#include <librrprotocol/server.events.h>
 //
 // ws.chat.c
 //    This is part of rustyrig-fw.
@@ -25,6 +24,7 @@
 #include <sys/wait.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librrprotocol/server.events.h>
 #include <rrserver/backend.h>
 
 // minimum reason length for kick/ban/etc
