@@ -1,11 +1,31 @@
 #include <librrprotocol/bridge.ipc.h>
+#include <librrprotocol/bridge.media.h>
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
+static void media_frames(void) {
+   int fd[2];
+   assert(!socketpair(AF_UNIX, SOCK_SEQPACKET, 0, fd));
+   int16_t pcm[RRP_BRIDGE_MEDIA_SAMPLES] = {-32768, 32767, -1, 0};
+   struct rrp_bridge_pcm decoded;
+   assert(rrp_bridge_media_send(fd[0], pcm, 4, 12000) == 1);
+   assert(rrp_bridge_media_recv(fd[1], &decoded) == 1);
+   assert(decoded.rate == 12000 && decoded.count == 4 && !memcmp(decoded.samples, pcm, 8));
+   assert(rrp_bridge_media_recv(fd[1], &decoded) == 0);
+   assert(rrp_bridge_media_send(fd[0], pcm, 4, 0) == -1);
+   assert(rrp_bridge_media_send(fd[0], pcm, RRP_BRIDGE_MEDIA_SAMPLES+1, 12000) == -1);
+   assert(send(fd[0], "bad", 3, 0) == 3);
+   assert(rrp_bridge_media_recv(fd[1], &decoded) == -1);
+   int sent = 0;
+   while (sent < 512 && rrp_bridge_media_send(fd[0], pcm, RRP_BRIDGE_MEDIA_SAMPLES, 12000) == 1) sent++;
+   assert(sent && sent < 512); // Full audio queues drop complete records without blocking.
+   close(fd[0]); close(fd[1]);
+}
 int main(void) {
+   media_frames();
    int fd[2];
    assert(!socketpair(AF_UNIX, SOCK_SEQPACKET, 0, fd));
    rrp_bridge_ipc_message_t m, got;

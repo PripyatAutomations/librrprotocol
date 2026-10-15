@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #define RRP_BRIDGE_IPC_MAGIC 0x52524231u
-#define RRP_BRIDGE_IPC_VERSION 2u
+#define RRP_BRIDGE_IPC_VERSION 3u
 #define RRP_BRIDGE_IPC_FD 3
 #define RRP_BRIDGE_IPC_HELLO 1u
 #define RRP_BRIDGE_IPC_CAPABILITIES 2u

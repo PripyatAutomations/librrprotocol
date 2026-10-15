@@ -48,10 +48,10 @@ typedef struct rrp_sdr_driver {
    // start/poll must not block; state reports connection readiness separately.
    bool (*start)(void *instance);
    void (*poll)(void *instance);
-   // true accepts a request; complete must follow, after actual hardware apply.
+   // true accepts a request; complete must follow, after device confirmation.
    // false rejects immediately. Only one request is outstanding per instance.
    bool (*set_receiver)(void *instance, uint64_t request, uint64_t hz, const char *mode);
-   // Legacy Kiwi formatter, pending its live transport implementation.
+   // Optional formatter and transport-payload hooks, also useful to driver tests.
    bool (*tune)(void *instance, uint64_t hz, const char *mode,
                 char *command, size_t capacity);
    // Incoming WebSocket payload, NOT a raw TCP stream.
