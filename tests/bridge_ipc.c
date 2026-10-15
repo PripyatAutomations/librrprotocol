@@ -9,20 +9,25 @@
 static void media_frames(void) {
    int fd[2];
    assert(!socketpair(AF_UNIX, SOCK_SEQPACKET, 0, fd));
-   int16_t pcm[RRP_BRIDGE_MEDIA_SAMPLES] = {-32768, 32767, -1, 0};
+   int16_t pcm[RRP_BRIDGE_MEDIA_SAMPLES] = {
+      -32768, 32767, -1, 0
+   };
    struct rrp_bridge_pcm decoded;
    assert(rrp_bridge_media_send(fd[0], pcm, 4, 12000) == 1);
    assert(rrp_bridge_media_recv(fd[1], &decoded) == 1);
    assert(decoded.rate == 12000 && decoded.count == 4 && !memcmp(decoded.samples, pcm, 8));
    assert(rrp_bridge_media_recv(fd[1], &decoded) == 0);
    assert(rrp_bridge_media_send(fd[0], pcm, 4, 0) == -1);
-   assert(rrp_bridge_media_send(fd[0], pcm, RRP_BRIDGE_MEDIA_SAMPLES+1, 12000) == -1);
+   assert(rrp_bridge_media_send(fd[0], pcm, RRP_BRIDGE_MEDIA_SAMPLES + 1, 12000) == -1);
    assert(send(fd[0], "bad", 3, 0) == 3);
    assert(rrp_bridge_media_recv(fd[1], &decoded) == -1);
    int sent = 0;
-   while (sent < 512 && rrp_bridge_media_send(fd[0], pcm, RRP_BRIDGE_MEDIA_SAMPLES, 12000) == 1) sent++;
-   assert(sent && sent < 512); // Full audio queues drop complete records without blocking.
-   close(fd[0]); close(fd[1]);
+   while (sent < 512 && rrp_bridge_media_send(fd[0], pcm, RRP_BRIDGE_MEDIA_SAMPLES, 12000) == 1) {
+      sent++;
+   }
+   assert(sent && sent < 512);  // Full audio queues drop complete records without blocking.
+   close(fd[0]);
+   close(fd[1]);
 }
 int main(void) {
    media_frames();
@@ -38,7 +43,8 @@ int main(void) {
    assert(!memcmp(&got, &m, sizeof(m)));
    m.type = RRP_BRIDGE_IPC_CAPABILITIES;
    m.flags = RRP_BRIDGE_RX;
-   m.rx_min_hz = 100000; m.rx_max_hz = 30000000;
+   m.rx_min_hz = 100000;
+   m.rx_max_hz = 30000000;
    strcpy(m.rx_modes, "USB AM CW");
    assert(rrp_bridge_ipc_valid(&m));
    assert(rrp_bridge_mode_valid(m.rx_modes, "USB"));
@@ -57,13 +63,16 @@ int main(void) {
    strcpy(m.name, "east");
    m.type = RRP_BRIDGE_IPC_SET;
    assert(!rrp_bridge_ipc_valid(&m));
-   m.request = 1; strcpy(m.mode, "USB");
+   m.request = 1;
+   strcpy(m.mode, "USB");
    assert(rrp_bridge_ipc_valid(&m));
    m.version++;
    assert(send(fd[0], &m, sizeof(m), 0) == sizeof(m));
    assert(rrp_bridge_ipc_recv(fd[1], &got) == -1);
    m.version--;
-   char oversize[RRP_BRIDGE_IPC_MAX + 1] = {0};
+   char oversize[RRP_BRIDGE_IPC_MAX + 1] = {
+      0
+   };
    memcpy(oversize, &m, sizeof(m));
    assert(send(fd[0], oversize, sizeof(oversize), 0) == sizeof(oversize));
    assert(rrp_bridge_ipc_recv(fd[1], &got) == -1);
@@ -75,5 +84,6 @@ int main(void) {
    assert(rrp_bridge_ipc_recv(fd[1], &got) == -1);
    close(fd[1]);
    puts("PASS: bridge IPC records, bounds, truncation, versions and validation");
+
    return 0;
 }
