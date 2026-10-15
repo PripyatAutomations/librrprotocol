@@ -6,10 +6,27 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/ws.mediachan.h>
+#include <librrprotocol/server.events.h>
 
 time_t now;
 bool dying, restarting;
 extern bool ws_binframe_process_mg(rrconn_t *, const char *, size_t);
+
+static unsigned access_checks, demand_queries;
+static bool deny_access, relay_interested;
+static void count_access(const char *event, const void *data, size_t len, rrconn_t *client, void *user) {
+   assert(len == sizeof(rr_media_access_t));
+   access_checks++;
+
+   if (deny_access) {
+      ((rr_media_access_t *) data)->allowed = false;
+   }
+}
+static void count_demand(const char *event, const void *data, size_t len, rrconn_t *client, void *user) {
+   assert(len == sizeof(rr_media_demand_t));
+   demand_queries++;
+   ((rr_media_demand_t *) data)->interested = relay_interested;
+}
 
 int main(void) {
    cfg = dict_new();
@@ -199,6 +216,48 @@ int main(void) {
    snprintf(channel->name, sizeof(channel->name), "rig0.vfo_a.rx");
    media_chan_description(channel, "rplywv00", description, sizeof(description));
    assert(strstr(description, "rplywv00.rig0.vfo_a.rx") && strstr(description, "codec=") && strstr(description, channel->uuid));
+   event_init();
+   event_on_binary(RR_MEDIA_ACCESS_EVENT, count_access, NULL);
+   event_on_binary(RR_MEDIA_DEMAND_EVENT, count_demand, NULL);
+   struct mg_connection socket = {
+      0
+   };
+   rrconn_t bystander = {
+      .is_ws = true, .authenticated = true, .conn = &socket, .next = &client
+   };
+   client.is_ws = true;
+   client.conn = &socket;
+   client.next = NULL;
+   http_client_list = &bystander;
+   strcpy(channel->room, "#feedback");
+   client.rx_channels[0] = stream;
+
+   for (unsigned i = 0 ; i < 1000 ; i++) {
+      assert(ws_media_channel_has_subscribers(channel));
+   }
+
+   assert(access_checks == 1000 && !demand_queries);
+   /* Revocation is immediate, including delivery; non-subscribers never trigger application policy even when they share the same room. */
+   strcpy(bystander.rooms, client.rooms);
+   deny_access = true;
+   access_checks = 0;
+   const uint8_t payload[2] = {
+      0
+   };
+   assert(!ws_media_broadcast_subscribed(channel, payload, sizeof(payload), "pc16"));
+   assert(access_checks == 1);
+   assert(!ws_media_channel_has_subscribers(channel));
+   assert(demand_queries == 1);
+   relay_interested = true;
+   assert(ws_media_channel_has_subscribers(channel));
+   assert(demand_queries == 2);
+   client.rx_channels[0] = 0;
+   access_checks = 0;
+   assert(ws_media_channel_has_subscribers(channel));
+   assert(!access_checks && demand_queries == 3);
+   http_client_list = NULL;
+   event_off_binary(RR_MEDIA_ACCESS_EVENT, count_access, NULL);
+   event_off_binary(RR_MEDIA_DEMAND_EVENT, count_demand, NULL);
    dict_free(cfg);
    cfg = NULL;
    puts("PASS: subscribe-create and codec-select reject invalid/unnegotiated codecs without mutation");

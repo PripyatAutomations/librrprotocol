@@ -166,9 +166,14 @@ static const char *media_client_channel_room(const rrconn_t *client, const struc
 }
 
 bool media_client_in_channel_room(const rrconn_t *cptr, const struct rr_mediachan *cp) {
-   if (!media_client_channel_room(cptr, cp)) return false;
-   rr_media_access_t access = { .channel = cp, .allowed = true };
-   event_emit_binary(RR_MEDIA_ACCESS_EVENT, (rrconn_t *)cptr, &access, sizeof(access));
+   if (!media_client_channel_room(cptr, cp)) {
+      return false;
+   }
+   rr_media_access_t access = {
+      .channel = cp, .allowed = true
+   };
+   event_emit_binary(RR_MEDIA_ACCESS_EVENT, (rrconn_t *) cptr, &access, sizeof(access));
+
    return access.allowed;
 }
 
@@ -573,14 +578,6 @@ bool ws_media_channel_has_subscribers(const struct rr_mediachan *cp) {
    if (!cp || cp->uuid[0] == '\0') {
       return false;
    }
-   rr_media_demand_t query = {
-      .channel = cp
-   };
-   event_emit_binary(RR_MEDIA_DEMAND_EVENT, NULL, &query, sizeof(query));
-
-   if (query.interested) {
-      return true;
-   }
    u_int32_t chan_id = (u_int32_t) (cp - media_channels) + 1;
    rrconn_t *cur = http_client_list;
    while (cur) {
@@ -592,7 +589,12 @@ bool ws_media_channel_has_subscribers(const struct rr_mediachan *cp) {
       }
       cur = cur->next;
    }
-   return false;
+   rr_media_demand_t query = {
+      .channel = cp
+   };
+   event_emit_binary(RR_MEDIA_DEMAND_EVENT, NULL, &query, sizeof(query));
+
+   return query.interested;
 }
 
 bool ws_media_broadcast_subscribed(struct rr_mediachan *cp, const uint8_t *payload, size_t len, const char codec[4]) {
@@ -630,10 +632,10 @@ static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *targ
    rrconn_t *cur = http_client_list;
    while (cur) {
       if ((!target || cur == target) && cur != exclude && cur->is_ws &&
-         cur->authenticated && cur->conn && media_client_in_channel_room(cur, cp) &&
+         cur->authenticated && cur->conn &&
          ((cp->direction == RR_BINFRAME_DIR_TX &&
          chan_id_in_array(cur->tx_channels, MAX_TX_CHANNELS, chan_id)) ||
-         (cp->direction == RR_BINFRAME_DIR_RX && chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id)))) {
+         (cp->direction == RR_BINFRAME_DIR_RX && chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id))) && media_client_in_channel_room(cur, cp)) {
          struct rr_binframe parsed;
          rr_binframe_parse(frame, flen, &parsed);
          uint32_t sequence = rr_media_next_sequence(cur, &parsed.hdr);

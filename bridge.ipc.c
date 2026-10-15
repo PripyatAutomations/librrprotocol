@@ -65,7 +65,9 @@ bool rrp_bridge_ipc_valid(const rrp_bridge_ipc_message_t *m) {
 
    if (m->type == RRP_BRIDGE_IPC_METADATA &&
       (!memchr(m->metadata_key, 0, sizeof(m->metadata_key)) || !memchr(m->metadata_value, 0, sizeof(m->metadata_value)) ||
-      !token(m->metadata_key) || !m->metadata_value[0])) return false;
+      !token(m->metadata_key) || !m->metadata_value[0])) {
+      return false;
+   }
 
    if (m->type == RRP_BRIDGE_IPC_CAPABILITIES) {
       if ((m->flags & ~63u) || !modes_valid(m->rx_modes) || !modes_valid(m->tx_modes) ||
