@@ -853,6 +853,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       if (cptr->conn) {
          http_remove_client(cptr->conn);
       }
+
       // The departing client's TX subscription/capability no longer
       // constrains shared channel codec selection. Re-announce channel state
       // to the remaining clients after it has been removed from the list.

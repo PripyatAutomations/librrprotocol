@@ -38,15 +38,19 @@ extern time_t now;
 const char *media_chan_description(const struct rr_mediachan *channel, const char *station, char *out, size_t capacity) {
    if (!channel) {
       snprintf(out, capacity, "unknown channel");
+
       return out;
    }
    char fallback[64], vfo[16] = "";
-   if (channel->vfo < 26) snprintf(vfo, sizeof(vfo), ".vfo-%c", 'a' + channel->vfo);
-   snprintf(fallback, sizeof(fallback), "rig%u%s.%s", channel->rig, vfo,
-      channel->direction == RR_BINFRAME_DIR_TX ? "tx" : "rx");
-   snprintf(out, capacity, "%s%s%s (room=%s codec=%s uuid=%s)", station && *station ? station : "", station && *station ? "." : "",
-      channel->name[0] ? channel->name : fallback, channel->room[0] ? channel->room : "unassigned",
-      channel->codec[0] ? channel->codec : "unknown", channel->uuid);
+
+   if (channel->vfo < 26) {
+      snprintf(vfo, sizeof(vfo), ".vfo-%c", 'a' + channel->vfo);
+   }
+   snprintf(fallback, sizeof(fallback), "rig%u%s.%s", channel->rig, vfo, channel->direction == RR_BINFRAME_DIR_TX ? "tx" : "rx");
+   snprintf(out, capacity, "%s%s%s (room=%s codec=%s uuid=%s)", station && *station ? station : "", station
+      && *station ? "." : "", channel->name[0] ? channel->name : fallback, channel->room[0] ? channel->room : "unassigned", channel->codec[0] ? channel->codec :
+      "unknown", channel->uuid);
+
    return out;
 }
 
@@ -232,8 +236,8 @@ static bool media_init_channel_codec(rrconn_t *cptr, struct rr_mediachan *cp) {
    }
    snprintf(cp->codec, sizeof(cp->codec), "%s", codec);
    char description[512];
-   Log(LOG_INFO, "ws.media", "Selected initial codec %s for channel %s from %s's negotiated capabilities", cp->codec, media_chan_description(cp, NULL, description, sizeof(description)), cptr->chatname[0] ? cptr->
-      chatname : "client");
+   Log(LOG_INFO, "ws.media", "Selected initial codec %s for channel %s from %s's negotiated capabilities", cp->codec, media_chan_description(cp, NULL,
+      description, sizeof(description)), cptr->chatname[0] ? cptr->chatname : "client");
 
    return true;
 }
@@ -303,8 +307,8 @@ struct rr_mediachan *media_chan_add(uint8_t subsystem, uint8_t direction, uint8_
          snprintf(cp->descr, sizeof(cp->descr), "%s", descr);
       }
       char description[512];
-      Log(LOG_DEBUG, "ws.media", "Added media channel %s: subsys 0x%02X dir %s vfo %u rig %u (%s)", media_chan_description(cp, NULL, description, sizeof(description)), subsystem, (direction == RR_BINFRAME_DIR_TX ?
-         "tx" : "rx"), vfo, rig, (descr ? descr : "-"));
+      Log(LOG_DEBUG, "ws.media", "Added media channel %s: subsys 0x%02X dir %s vfo %u rig %u (%s)", media_chan_description(cp, NULL, description, sizeof(
+         description)), subsystem, (direction == RR_BINFRAME_DIR_TX ? "tx" : "rx"), vfo, rig, (descr ? descr : "-"));
 
       return cp;
    }
@@ -357,8 +361,8 @@ bool media_chan_remove(const char *uuid) {
       return true;
    }
    char description[512];
-   Log(LOG_INFO, "ws.media", "Removed media channel %s (subsys 0x%02X dir %s vfo %u rig %u)", media_chan_description(cp, NULL, description, sizeof(description)), cp->subsystem, (cp->direction == RR_BINFRAME_DIR_TX ?
-      "tx" : "rx"), cp->vfo, cp->rig);
+   Log(LOG_INFO, "ws.media", "Removed media channel %s (subsys 0x%02X dir %s vfo %u rig %u)", media_chan_description(cp, NULL, description, sizeof(description))
+      , cp->subsystem, (cp->direction == RR_BINFRAME_DIR_TX ? "tx" : "rx"), cp->vfo, cp->rig);
    memset(cp, 0, sizeof(*cp));
 
    return false;
@@ -878,9 +882,10 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
 
       if (oom) {
          char description[512];
-         Log(LOG_WARN, "ws.media", "No free channel slots for %s subscribing to %s", cptr->chatname, media_chan_description(cp, NULL, description, sizeof(description)));
-         ws_send_error(cptr, "media.%s: subscription limit reached for channel %s; unsubscribe another channel "
-            "first", media_cmd, uuid ? uuid : "(requested routing)");
+         Log(LOG_WARN, "ws.media", "No free channel slots for %s subscribing to %s", cptr->chatname, media_chan_description(cp, NULL, description, sizeof(
+            description)));
+         ws_send_error(cptr, "media.%s: subscription limit reached for channel %s; unsubscribe another channel " "first", media_cmd, uuid ? uuid :
+            "(requested routing)");
 
          return false;
       }
@@ -909,7 +914,8 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       }
       dict_free(sub);
       char description[512];
-      Log(LOG_DEBUG, "ws.media", "Subscribed %s to channel %s (stream %u)", cptr->chatname, media_chan_description(cp, NULL, description, sizeof(description)), chan_id);
+      Log(LOG_DEBUG, "ws.media", "Subscribed %s to channel %s (stream %u)", cptr->chatname, media_chan_description(cp, NULL, description, sizeof(description)),
+         chan_id);
       // A new subscriber may change the set of codecs that can safely be
       // used for a shared TX stream. Re-announce the channel state so every
       // client refreshes its capability view.
