@@ -43,6 +43,7 @@ typedef struct rrp_sdr_driver {
    // Each opened receiver has independent state; opaque instance belongs to driver.
    void *(*create)(const rrp_sdr_host_t *host);
    void (*destroy)(void *instance);
+   // Queried again before online state: may reflect newly learned device limits.
    bool (*capabilities)(void *instance, rrp_sdr_capabilities_t *out);
    // Called on the host thread. Drivers own external transport/protocol details.
    // start/poll must not block; state reports connection readiness separately.

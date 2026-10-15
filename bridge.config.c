@@ -36,7 +36,11 @@ static bool section_cb(const char *path, int line, const char *section, const ch
    bool key_valid = *key && strlen(key) <= 63;
    for (const char *c = key; *c; c++)
       if (!isalnum((unsigned char)*c) && *c != '_' && *c != '-' && *c != '.') key_valid = false;
-   if (!key_valid || (!name && strcmp(key, "instances") && strcmp(key, "path") && strcmp(key, "modules") && strcmp(key, "frequency") && strcmp(key, "mode") && strcmp(key, "host") && strcmp(key, "port") && strcmp(key, "password"))) {
+   const char *hint_keys[] = {"rx-min-hz", "rx-max-hz", "rx-modes", "rx-audio", "rx-iq", "rx-waterfall",
+      "tx-supported", "tx-min-hz", "tx-max-hz", "tx-modes", "tx-audio"};
+   bool hint = false;
+   for (unsigned i = 0; i < sizeof(hint_keys) / sizeof(hint_keys[0]); i++) if (!strcmp(key, hint_keys[i])) hint = true;
+   if (!key_valid || (!name && !hint && strcmp(key, "instances") && strcmp(key, "path") && strcmp(key, "modules") && strcmp(key, "frequency") && strcmp(key, "mode") && strcmp(key, "host") && strcmp(key, "port") && strcmp(key, "password"))) {
       Log(LOG_CRIT, "cfg.bridge", "Invalid key in [%s] at %s:%d", section, path, line);
       free(copy);
       return true;
