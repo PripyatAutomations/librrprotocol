@@ -49,6 +49,13 @@ typedef struct {
 #define RR_MEDIA_INBOUND_EVENT "protocol.media.receive"
 #define RR_MEDIA_FANOUT_EVENT "protocol.media.fanout"
 #define RR_MEDIA_CATALOG_EVENT "protocol.media.catalog"
+/* Synchronous application policy, evaluated for subscribe, codec and fanout.
+ * Listeners may deny; clients/protocol library do not own bridge permissions. */
+#define RR_MEDIA_ACCESS_EVENT "protocol.media.access"
+typedef struct {
+   const struct rr_mediachan *channel;
+   bool allowed;
+} rr_media_access_t;
 #define RR_MEDIA_DEMAND_EVENT "protocol.media.demand"
 struct rr_mediachan;
 typedef struct {

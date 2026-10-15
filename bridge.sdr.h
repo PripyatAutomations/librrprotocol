@@ -1,3 +1,9 @@
+//      This is part of rustyrig-fw. https://github.com/pripyatautomations/rustyrig-fw
+//
+// Do not pay money for this, except donations to the project, if you wish to.
+// The software is not for sale. It is freely available, always.
+//
+// Licensed under MIT license, if built without mongoose or GPL if built with.
 // Shared receiver-driver ABI. Drivers run inside an isolated rrbridge process.
 #ifndef RRPROTOCOL_BRIDGE_SDR_H
 #define RRPROTOCOL_BRIDGE_SDR_H
@@ -5,24 +11,22 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define RRP_SDR_ABI_VERSION 3u
+#define RRP_SDR_ABI_VERSION 4u
 
 typedef struct rrp_sdr_host {
-   void (*audio_pcm16)(void *user, const int16_t *samples, size_t count,
-                       unsigned sample_rate);
+   void (*audio_pcm16)(void *user, const int16_t *samples, size_t count, unsigned sample_rate);
    void (*status)(void *user, const char *message);
    // Actual hardware state, independent of command acceptance and module load.
    void (*state)(void *user, bool available, uint64_t hz, const char *mode);
    void (*complete)(void *user, uint64_t request, bool success);
    const char *(*setting)(void *user, const char *key);
    void *user;
+   void (*metadata)(void *user, const char *key, const char *value);
 } rrp_sdr_host_t;
 
-/* Hardware capabilities, not authorization or instantaneous availability.
- * RX/TX must be checked independently. A bridge may report TX even when
- * rrserver policy forbids it; neither implies permission to transmit.
- * mode strings use the same space-separated spelling as property.enum.
- * The caller must not free strings; they remain owned by the driver.
+/* Hardware capabilities, not authorization or instantaneous availability. RX/TX must be checked independently. A bridge may report TX even when rrserver policy
+ * forbids it; neither implies permission to transmit.
+ * mode strings use the same space-separated spelling as property.enum. The caller must not free strings; they remain owned by the driver.
  */
 typedef struct rrp_sdr_capabilities {
    bool rx;
@@ -53,8 +57,7 @@ typedef struct rrp_sdr_driver {
    // false rejects immediately. Only one request is outstanding per instance.
    bool (*set_receiver)(void *instance, uint64_t request, uint64_t hz, const char *mode);
    // Optional formatter and transport-payload hooks, also useful to driver tests.
-   bool (*tune)(void *instance, uint64_t hz, const char *mode,
-                char *command, size_t capacity);
+   bool (*tune)(void *instance, uint64_t hz, const char *mode, char *command, size_t capacity);
    // Incoming WebSocket payload, NOT a raw TCP stream.
    bool (*receive)(void *instance, const void *frame, size_t length);
 } rrp_sdr_driver_t;

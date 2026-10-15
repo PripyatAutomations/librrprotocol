@@ -166,7 +166,10 @@ static const char *media_client_channel_room(const rrconn_t *client, const struc
 }
 
 bool media_client_in_channel_room(const rrconn_t *cptr, const struct rr_mediachan *cp) {
-   return media_client_channel_room(cptr, cp) != NULL;
+   if (!media_client_channel_room(cptr, cp)) return false;
+   rr_media_access_t access = { .channel = cp, .allowed = true };
+   event_emit_binary(RR_MEDIA_ACCESS_EVENT, (rrconn_t *)cptr, &access, sizeof(access));
+   return access.allowed;
 }
 
 // Pick the channel format when its first subscriber arrives. The channel's
