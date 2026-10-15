@@ -7,7 +7,8 @@ static const rrp_sdr_driver_t *registered_driver;
 bool rrp_sdr_register(const rrp_sdr_driver_t *driver) {
    if (!driver || driver->abi_version != RRP_SDR_ABI_VERSION ||
        !driver->name || !driver->create || !driver->destroy ||
-       !driver->capabilities || !driver->tune || !driver->receive || registered_driver)
+       !driver->capabilities || !driver->start || !driver->poll ||
+       !driver->set_receiver || registered_driver)
       return true;
    registered_driver = driver;
    return false;

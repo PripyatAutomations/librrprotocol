@@ -5,12 +5,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define RRP_SDR_ABI_VERSION 2u
+#define RRP_SDR_ABI_VERSION 3u
 
 typedef struct rrp_sdr_host {
    void (*audio_pcm16)(void *user, const int16_t *samples, size_t count,
                        unsigned sample_rate);
    void (*status)(void *user, const char *message);
+   // Actual hardware state, independent of command acceptance and module load.
+   void (*state)(void *user, bool available, uint64_t hz, const char *mode);
+   void (*complete)(void *user, uint64_t request, bool success);
+   const char *(*setting)(void *user, const char *key);
    void *user;
 } rrp_sdr_host_t;
 
@@ -40,7 +44,14 @@ typedef struct rrp_sdr_driver {
    void *(*create)(const rrp_sdr_host_t *host);
    void (*destroy)(void *instance);
    bool (*capabilities)(void *instance, rrp_sdr_capabilities_t *out);
-   // Transport-independent commands; the host owns socket and framing.
+   // Called on the host thread. Drivers own external transport/protocol details.
+   // start/poll must not block; state reports connection readiness separately.
+   bool (*start)(void *instance);
+   void (*poll)(void *instance);
+   // true accepts a request; complete must follow, after actual hardware apply.
+   // false rejects immediately. Only one request is outstanding per instance.
+   bool (*set_receiver)(void *instance, uint64_t request, uint64_t hz, const char *mode);
+   // Legacy Kiwi formatter, pending its live transport implementation.
    bool (*tune)(void *instance, uint64_t hz, const char *mode,
                 char *command, size_t capacity);
    // Incoming WebSocket payload, NOT a raw TCP stream.

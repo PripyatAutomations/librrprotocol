@@ -4,11 +4,21 @@
 #include <stdbool.h>
 #include <stdint.h>
 #define RRP_BRIDGE_IPC_MAGIC 0x52524231u
-#define RRP_BRIDGE_IPC_VERSION 1u
+#define RRP_BRIDGE_IPC_VERSION 2u
 #define RRP_BRIDGE_IPC_FD 3
 #define RRP_BRIDGE_IPC_HELLO 1u
 #define RRP_BRIDGE_IPC_CAPABILITIES 2u
 #define RRP_BRIDGE_IPC_SHUTDOWN 3u
+#define RRP_BRIDGE_IPC_SET 4u
+#define RRP_BRIDGE_IPC_STATE 5u
+#define RRP_BRIDGE_IPC_RESULT 6u
+#define RRP_BRIDGE_IPC_HEARTBEAT 7u
+#define RRP_BRIDGE_RX 1u
+#define RRP_BRIDGE_TX 2u
+#define RRP_BRIDGE_RX_AUDIO 4u
+#define RRP_BRIDGE_RX_IQ 8u
+#define RRP_BRIDGE_WATERFALL 16u
+#define RRP_BRIDGE_TX_AUDIO 32u
 #define RRP_BRIDGE_IPC_MAX 512u
 /* Fixed layout intentionally versioned; local, same-build bridge only. */
 typedef struct rrp_bridge_ipc_message {
@@ -19,9 +29,14 @@ typedef struct rrp_bridge_ipc_message {
    uint32_t reserved2;
    uint64_t rx_min_hz, rx_max_hz, tx_min_hz, tx_max_hz;
    char rx_modes[96], tx_modes[96];
+   uint64_t request, frequency_hz;
+   uint32_t available, success;
+   char mode[16];
 } rrp_bridge_ipc_message_t;
 /* Nonblocking receive returns 1=message, 0=no message, -1=error/EOF. */
 int rrp_bridge_ipc_recv(int fd, rrp_bridge_ipc_message_t *msg);
 bool rrp_bridge_ipc_send(int fd, const rrp_bridge_ipc_message_t *msg);
+bool rrp_bridge_ipc_valid(const rrp_bridge_ipc_message_t *msg);
+bool rrp_bridge_mode_valid(const char *modes, const char *mode);
 void rrp_bridge_ipc_init(rrp_bridge_ipc_message_t *msg, uint32_t type);
 #endif
