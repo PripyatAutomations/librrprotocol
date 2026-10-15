@@ -8,6 +8,7 @@ librrprotocol_objs += binframe.o
 librrprotocol_objs += rtp.o
 librrprotocol_objs += rtp.socket.o
 librrprotocol_objs += codecneg.o
+librrprotocol_objs += bridge.sdr.o bridge.ipc.o
 librrprotocol_objs += connman.o
 librrprotocol_objs += server.url.o
 librrprotocol_objs += objects.o
