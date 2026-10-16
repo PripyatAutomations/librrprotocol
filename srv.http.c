@@ -391,6 +391,9 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
    if (!strcmp(msg_type, "object") || !strcmp(msg_type, "property")) {
       extern bool rr_object_server_request(rrconn_t *, dict *);
       result = rr_object_server_request(cptr, d);
+   } else if (!strcmp(msg_type, "file")) {
+      event_emit_dict("file.request", cptr, d);
+      result = true;
    } else if (strcasecmp(msg_type, "serial") == 0) {
       event_emit_dict("serial.request", cptr, d);
       result = true;

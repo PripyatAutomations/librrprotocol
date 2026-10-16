@@ -155,6 +155,7 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
    memset(evname, 0, sizeof(evname));
    snprintf(evname, sizeof(evname), "ws.msg.%s", (msg_type ? msg_type : "unknown"));
    event_emit_dict(evname, cptr, d);
+   if (msg_type && !strcmp(msg_type,"file")) return true; /* Application-owned file operations. */
 
    // Walk the table of handlers
    int i = 0;

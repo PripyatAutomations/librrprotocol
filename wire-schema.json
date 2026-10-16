@@ -490,6 +490,40 @@
         "ptt.tot.vfo": "vfo",
         "ptt.tot.width": "width"
       }
+    },
+    {
+      "type": "file",
+      "command_key": "file.cmd",
+      "operations": {
+        "file.list": "list",
+        "file.entry": "entry",
+        "file.end": "end",
+        "file.read": "read",
+        "file.data": "data",
+        "file.begin": "begin",
+        "file.chunk": "chunk",
+        "file.commit": "commit",
+        "file.cancel": "cancel",
+        "file.rename": "rename",
+        "file.delete": "delete",
+        "file.mkdir": "mkdir",
+        "file.result": "result"
+      },
+      "fields": {
+        "request.id": "request.id",
+        "file.path": "path",
+        "file.dest": "dest",
+        "file.name": "name",
+        "file.kind": "kind",
+        "file.size": "size",
+        "file.offset": "offset",
+        "file.data": "data",
+        "file.eof": "eof",
+        "file.overwrite": "overwrite",
+        "file.readable": "readable",
+        "file.writable": "writable",
+        "file.error": "error"
+      }
     }
   ]
 }
