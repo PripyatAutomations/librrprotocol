@@ -26,7 +26,7 @@ static bool valid(dict *d) {
    } else if (!strcmp(op, "link.ready")) {
       required = 1;
    } else if (!strcmp(op, "link.introduce")) {
-      required = 1 | (1 << 1) | (1 << 6);
+      required = 1 | (1 << 1) | (1 << 2) | (1 << 6);
    } else if (!strcmp(op, "link.withdraw")) {
       required = 1 | (1 << 1);
    } else if (!strcmp(op, "link.application")) {
