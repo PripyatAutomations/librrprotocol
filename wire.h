@@ -14,4 +14,7 @@
  * input, unsupported operation, exceeded limits or allocation failure. PARITY: rustyrig-www/js/webui.wire.js */
 char *rr_wire_encode(dict *message);
 dict *rr_wire_decode(const char *json);
+/* Top incoming JSON operations, bytes/rejections/parser time; five-minute limit.
+ * Compiles to a no-op without USE_PROFILING. Does not include handler or binary media time. */
+void rr_wire_profile_dump(void);
 #endif

@@ -149,8 +149,9 @@ static bool copy_value(dict *out, const char *key, dict *in, const char *source,
    return error == 0;
 }
 
-static dict *transform(dict *in, bool encode) {
+static dict *transform(dict *in, bool encode, const rr_wire_rule_t **selected) {
    const rr_wire_rule_t *rule = rule_for(in, encode);
+   if (selected) *selected = rule;
 
    if (!rule) {
       if (encode) {
@@ -196,7 +197,7 @@ invalid:
 static bool literal_keys(const char *json);
 
 char *rr_wire_encode(dict *message) {
-   dict *wire = transform(message, true);
+   dict *wire = transform(message, true, NULL);
 
    if (!wire) {
       return NULL;
@@ -275,8 +276,8 @@ static bool literal_keys(const char *json) {
    return true;
 }
 
-dict *rr_wire_decode(const char *json) {
-   if (!json || strlen(json) > HTTP_WS_MAX_MSG) {
+static dict *wire_decode(const char *json, size_t length, const rr_wire_rule_t **selected) {
+   if (!json || length > HTTP_WS_MAX_MSG) {
       return NULL;
    }
    const char *root = json;
@@ -288,8 +289,88 @@ dict *rr_wire_decode(const char *json) {
       return NULL;
    }
    dict *wire = json2dict(json);
-   dict *message = wire ? transform(wire, false) : NULL;
+   dict *message = wire ? transform(wire, false, selected) : NULL;
    dict_free(wire);
 
    return message;
+}
+
+#ifdef USE_PROFILING
+#include <pthread.h>
+#define WIRE_PROFILE_INVALID (sizeof(wire_rules) / sizeof(wire_rules[0]))
+#define WIRE_PROFILE_ROWS (WIRE_PROFILE_INVALID + 1)
+typedef struct {
+   uint64_t count, rejected, bytes, parse_us;
+} wire_profile_count_t;
+typedef struct {
+   const char *operation;
+   wire_profile_count_t counts;
+} wire_profile_row_t;
+static wire_profile_count_t wire_profile_counts[WIRE_PROFILE_ROWS];
+static pthread_mutex_t wire_profile_lock = PTHREAD_MUTEX_INITIALIZER;
+static uint64_t wire_profile_started, wire_profile_last_dump;
+static bool wire_profile_has_dumped;
+
+static int wire_profile_compare(const void *a, const void *b) {
+   const wire_profile_row_t *left = a, *right = b;
+   if (left->counts.count != right->counts.count) return left->counts.count < right->counts.count ? 1 : -1;
+   return strcmp(left->operation, right->operation);
+}
+#endif
+
+/* Process-local parser instrumentation: fixed registry rows, no payload data or
+ * attacker-controlled labels. Snapshot before logging so log forwarding/re-entry
+ * cannot deadlock or change the rows being printed. */
+void rr_wire_profile_dump(void) {
+#ifdef USE_PROFILING
+   wire_profile_row_t rows[WIRE_PROFILE_ROWS];
+   size_t used = 0;
+   uint64_t current = mono_us();
+   pthread_mutex_lock(&wire_profile_lock);
+   if (!wire_profile_started || (wire_profile_has_dumped && current - wire_profile_last_dump < UINT64_C(300000000))) {
+      pthread_mutex_unlock(&wire_profile_lock);
+      return;
+   }
+   wire_profile_last_dump = current;
+   wire_profile_has_dumped = true;
+   uint64_t elapsed = current - wire_profile_started;
+   for (size_t i = 0; i < WIRE_PROFILE_ROWS; i++) if (wire_profile_counts[i].count) {
+      rows[used].operation = i == WIRE_PROFILE_INVALID ? "<invalid/unknown>" : wire_rules[i].operation;
+      rows[used++].counts = wire_profile_counts[i];
+   }
+   pthread_mutex_unlock(&wire_profile_lock);
+   qsort(rows, used, sizeof(*rows), wire_profile_compare);
+   char *duration = time_t2dhms(elapsed / 1000000);
+   Log(LOG_INFO, "profile", "WebSocket JSON parser counts (cumulative, sampling=%s):", duration ? duration : "unknown");
+   free(duration);
+   for (size_t i = 0; i < used && i < 32; i++) {
+      const wire_profile_count_t *c = &rows[i].counts;
+      Log(LOG_INFO, "profile", "  %s: %llu messages, %llu bytes, %llu rejected, %llu parse us (%llu avg us)", rows[i].operation,
+         (unsigned long long)c->count, (unsigned long long)c->bytes, (unsigned long long)c->rejected,
+         (unsigned long long)c->parse_us, (unsigned long long)(c->parse_us / c->count));
+   }
+#endif
+}
+
+dict *rr_wire_decode(const char *json) {
+#ifdef USE_PROFILING
+   uint64_t start = mono_us();
+   const rr_wire_rule_t *rule = NULL;
+   size_t length = json ? strlen(json) : 0;
+   dict *message = wire_decode(json, length, &rule);
+   uint64_t elapsed = mono_us() - start;
+   size_t row = rule ? (size_t)(rule - wire_rules) : WIRE_PROFILE_INVALID;
+   pthread_mutex_lock(&wire_profile_lock);
+   if (!wire_profile_started) wire_profile_started = start;
+   wire_profile_count_t *counts = &wire_profile_counts[row];
+   counts->count++;
+   counts->rejected += message == NULL;
+   counts->bytes += length;
+   counts->parse_us += elapsed;
+   pthread_mutex_unlock(&wire_profile_lock);
+   rr_wire_profile_dump();
+   return message;
+#else
+   return wire_decode(json, json ? strlen(json) : 0, NULL);
+#endif
 }
