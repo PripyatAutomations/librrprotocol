@@ -310,7 +310,9 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       dict_free(auth_msg);
    } else if (strcasecmp(cmd, "logout") == 0 || strcasecmp(cmd, "quit") == 0) {
       Log(LOG_DEBUG, "auth", "Logout request from %s cptr:<%p>", (cptr && cptr->chatname[0] != '\0' ? cptr->chatname : ""), cptr);
-      ws_kick_client(cptr, "Logged out. 73!");
+      /* PARITY: rrclient/cmd.misc.c cmd_quit and rustyrig-www/js/webui.auth.js logout. */
+      const char *reason = !strcasecmp(cmd, "quit") ? dict_get(d, "auth.msg", "Logged out. 73!") : "Logged out. 73!";
+      ws_kick_client(cptr, reason && *reason ? reason : "Logged out. 73!");
    } else if (strcasecmp(cmd, "pass") == 0) {
       bool guest = false;
 
