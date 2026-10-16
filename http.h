@@ -74,6 +74,7 @@ struct rr_user {
    char ptt_vfo;
    char ptt_room[128];
    bool is_muted;
+   bool irc_oper;              // learned IRC operator status, independent of channel modes
    bool in_store;               // <-- whether `iter` is valid
    struct rr_user *next;
 };

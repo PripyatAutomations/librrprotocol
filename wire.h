@@ -17,4 +17,6 @@ dict *rr_wire_decode(const char *json);
 /* Top incoming JSON operations, bytes/rejections/parser time; five-minute limit.
  * Compiles to a no-op without USE_PROFILING. Does not include handler or binary media time. */
 void rr_wire_profile_dump(void);
+/* Incoming server binary frames; elapsed includes routing/handler work. */
+void rr_wire_profile_binary(const void *data, size_t length, bool accepted, uint64_t elapsed_us);
 #endif

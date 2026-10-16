@@ -548,7 +548,14 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
    if ((msg->flags & 0x0F) == WEBSOCKET_OP_BINARY) {
       Log(LOG_CRAZY, "ws.frame.bin", "Incoming Binary frame: %zu bytes", msg->data.len);
 
+#ifdef USE_PROFILING
+      uint64_t started = mono_us();
+      bool accepted = ws_binframe_process_mg(cptr, msg->data.buf, msg->data.len);
+      rr_wire_profile_binary(msg->data.buf, msg->data.len, accepted, mono_us() - started);
+      return accepted;
+#else
       return ws_binframe_process_mg(cptr, msg->data.buf, msg->data.len);
+#endif
    } else if ((msg->flags & 0x0F) == WEBSOCKET_OP_TEXT) {
       // Text (mostly json) frames
       Log(LOG_CRAZY, "ws.frame.txt", "Incoming Text frame: %zu bytes", msg->data.len);

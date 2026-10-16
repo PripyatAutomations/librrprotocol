@@ -298,7 +298,12 @@ static dict *wire_decode(const char *json, size_t length, const rr_wire_rule_t *
 #ifdef USE_PROFILING
 #include <pthread.h>
 #define WIRE_PROFILE_INVALID (sizeof(wire_rules) / sizeof(wire_rules[0]))
-#define WIRE_PROFILE_ROWS (WIRE_PROFILE_INVALID + 1)
+#define WIRE_PROFILE_JSON_ROWS (WIRE_PROFILE_INVALID + 1)
+#define WIRE_PROFILE_ROWS (WIRE_PROFILE_JSON_ROWS + 9)
+static const char *binary_labels[] = {
+   "binary/unknown", "binary/audio", "binary/video", "binary/waterfall", "binary/modem",
+   "binary/file", "binary/control", "binary/log", "binary/keepalive"
+};
 typedef struct {
    uint64_t count, rejected, bytes, parse_us;
 } wire_profile_count_t;
@@ -335,20 +340,46 @@ void rr_wire_profile_dump(void) {
    wire_profile_has_dumped = true;
    uint64_t elapsed = current - wire_profile_started;
    for (size_t i = 0; i < WIRE_PROFILE_ROWS; i++) if (wire_profile_counts[i].count) {
-      rows[used].operation = i == WIRE_PROFILE_INVALID ? "<invalid/unknown>" : wire_rules[i].operation;
+      rows[used].operation = i >= WIRE_PROFILE_JSON_ROWS ? binary_labels[i - WIRE_PROFILE_JSON_ROWS] :
+         i == WIRE_PROFILE_INVALID ? "<invalid/unknown>" : wire_rules[i].operation;
       rows[used++].counts = wire_profile_counts[i];
    }
    pthread_mutex_unlock(&wire_profile_lock);
    qsort(rows, used, sizeof(*rows), wire_profile_compare);
    char *duration = time_t2dhms(elapsed / 1000000);
-   Log(LOG_INFO, "profile", "WebSocket JSON parser counts (cumulative, sampling=%s):", duration ? duration : "unknown");
+   Log(LOG_INFO, "profile", "WebSocket JSON parser / binary dispatch counts (cumulative, sampling=%s):", duration ? duration : "unknown");
    free(duration);
-   for (size_t i = 0; i < used && i < 32; i++) {
+   size_t json_rows = 0;
+   for (size_t i = 0; i < used; i++) {
+      if (strncmp(rows[i].operation, "binary/", 7) && json_rows++ >= 32) continue;
       const wire_profile_count_t *c = &rows[i].counts;
-      Log(LOG_INFO, "profile", "  %s: %llu messages, %llu bytes, %llu rejected, %llu parse us (%llu avg us)", rows[i].operation,
+      Log(LOG_INFO, "profile", "  %s: %llu messages, %llu bytes, %llu rejected, %llu processing us (%llu avg us)", rows[i].operation,
          (unsigned long long)c->count, (unsigned long long)c->bytes, (unsigned long long)c->rejected,
          (unsigned long long)c->parse_us, (unsigned long long)(c->parse_us / c->count));
    }
+#endif
+}
+
+void rr_wire_profile_binary(const void *data, size_t length, bool accepted, uint64_t elapsed_us) {
+#ifdef USE_PROFILING
+   const unsigned char *frame = data;
+   unsigned subsystem = length >= 4 && frame && frame[0] == 'R' && frame[1] == 'R' ? frame[3] : 0;
+   unsigned bucket = subsystem == 255 ? 8 : subsystem <= 7 ? subsystem : 0;
+   uint64_t current = mono_us();
+   pthread_mutex_lock(&wire_profile_lock);
+   if (!wire_profile_started) wire_profile_started = current;
+   wire_profile_count_t *counts = &wire_profile_counts[WIRE_PROFILE_JSON_ROWS + bucket];
+   counts->count++;
+   counts->bytes += length;
+   counts->rejected += !accepted;
+   counts->parse_us += elapsed_us;
+   pthread_mutex_unlock(&wire_profile_lock);
+   rr_wire_profile_dump();
+#else
+   (void)data;
+   (void)length;
+   (void)accepted;
+   (void)elapsed_us;
 #endif
 }
 
