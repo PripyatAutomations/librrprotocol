@@ -23,7 +23,7 @@ void Log(logpriority_t priority, const char *subsys, const char *format, ...) {
    va_start(args, format);
    vsnprintf(text, sizeof(text), format, args);
    va_end(args);
-   if (strstr(text, "WebSocket JSON parser counts")) { dumps++; rows = 0; }
+   if (strstr(text, "WebSocket JSON parser / binary dispatch counts")) { dumps++; rows = 0; }
    else if (!strncmp(text, "  ", 2) && rows++ == 0) snprintf(first_row, sizeof(first_row), "%s", text);
    rr_wire_profile_dump(); /* Logging can forward messages or re-enter profiling. */
 }
