@@ -153,6 +153,8 @@ static const rr_wire_field_t wire_fields_4[] = {
    {"media.total", "total"},
    {"media.frame-seq", "frame-seq"},
    {"media.setup", "setup"},
+   {"media.profile", "profile"},
+   {"media.profiles", "profiles"},
 };
 static const rr_wire_field_t wire_fields_5[] = {
    {"msg.ts", "time"},
@@ -334,6 +336,7 @@ static const rr_wire_rule_t wire_rules[] = {
    {"media.unsubscribed", "media", "media.cmd", "unsubscribed", wire_fields_4, sizeof(wire_fields_4) / sizeof(wire_fields_4[0])},
    {"media.feedback", "media", "media.cmd", "feedback", wire_fields_4, sizeof(wire_fields_4) / sizeof(wire_fields_4[0])},
    {"media.frame", "media", "media.cmd", "frame", wire_fields_4, sizeof(wire_fields_4) / sizeof(wire_fields_4[0])},
+   {"media.profile", "media", "media.cmd", "profile", wire_fields_4, sizeof(wire_fields_4) / sizeof(wire_fields_4[0])},
    {"serial.available", "serial", "serial.cmd", "available", wire_fields_5, sizeof(wire_fields_5) / sizeof(wire_fields_5[0])},
    {"serial.close", "serial", "serial.cmd", "close", wire_fields_5, sizeof(wire_fields_5) / sizeof(wire_fields_5[0])},
    {"serial.closed", "serial", "serial.cmd", "closed", wire_fields_5, sizeof(wire_fields_5) / sizeof(wire_fields_5[0])},

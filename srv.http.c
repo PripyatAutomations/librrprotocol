@@ -447,7 +447,7 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
       if (strcasecmp(media_cmd, "capab") == 0 || strcasecmp(media_cmd, "list") == 0 ||
          strcasecmp(media_cmd, "subscribe") == 0 ||
          strcasecmp(media_cmd, "unsubscribe") == 0 ||
-         strcasecmp(media_cmd, "source") == 0 || strcasecmp(media_cmd, "feedback") == 0 || strcasecmp(media_cmd, "codec") == 0) {
+         strcasecmp(media_cmd, "source") == 0 || strcasecmp(media_cmd, "profile") == 0 || strcasecmp(media_cmd, "feedback") == 0 || strcasecmp(media_cmd, "codec") == 0) {
          result = ws_handle_mediachan_msg(cptr, d);
          goto cleanup;
       }

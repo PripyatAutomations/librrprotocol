@@ -43,6 +43,7 @@
 // frames carry the stream id and codec in the header; consumers route by
 // those fields instead of trusting mutable channel-table state.
 #define RR_AUDIO_FRAME_EVENT "media.frame.audio.full"
+#define RR_VIDEO_FRAME_EVENT "media.frame.video.packet"
 
 #define RR_BINFRAME_VFO_NA 0xFF
 #define RR_BINFRAME_RIG_NA 0xFF

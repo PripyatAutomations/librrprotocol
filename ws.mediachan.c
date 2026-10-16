@@ -449,6 +449,7 @@ bool media_send_available(rrconn_t *cptr, struct rr_mediachan *cp) {
       dict_add(d, "media.codec", cp->codec);
    }
 
+   if (cp->profiles && cp->profiles[0]) dict_add(d, "media.profiles", cp->profiles);
    if (cp->descr[0] != '\0') {
       dict_add(d, "media.descr", cp->descr);
    }
@@ -629,7 +630,7 @@ static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *targ
       .target = target, .exclude = exclude, .setup = setup
    };
    event_emit_binary(RR_MEDIA_FANOUT_EVENT, NULL, &fanout, sizeof(fanout));
-   rrconn_t *cur = http_client_list;
+   rrconn_t *cur = target ? target : http_client_list;
    while (cur) {
       if ((!target || cur == target) && cur != exclude && cur->is_ws &&
          cur->authenticated && cur->conn &&
@@ -650,7 +651,7 @@ static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *targ
             ws_send_to_cptr(NULL, cur, &payload, WEBSOCKET_OP_BINARY);
          }
       }
-      cur = cur->next;
+      cur = target ? NULL : cur->next;
    }
    free(frame);
 
@@ -692,6 +693,17 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       Log(LOG_DEBUG, "ws.media", "media message without media.cmd");
 
       return false;
+   }
+
+   if (!strcasecmp(media_cmd, "profile")) {
+      struct rr_mediachan *cp = uuid ? media_chan_find_uuid(uuid) : NULL;
+      if (!cptr->authenticated || !cp || cp->subsystem != RR_BINFRAME_SUBSYS_VIDEO ||
+         !media_client_in_channel_room(cptr, cp)) return false;
+      if (!chan_id_in_array(cptr->rx_channels, MAX_RX_CHANNELS, cp - media_channels + 1)) return false;
+      rr_media_profile_request_t request = {.message = d};
+      event_emit_binary("media.profile.request", cptr, &request, sizeof(request));
+      if (!request.handled) ws_send_error(cptr, "Video profile selection is unavailable");
+      return request.handled && request.result;
    }
 
    if (!strcasecmp(media_cmd, "feedback")) {
@@ -984,6 +996,11 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       if (!cp) {
          ws_send_error(cptr, "media.codec select: unknown or missing channel UUID %s; use /media list", uuid ? uuid : "(missing)");
 
+         return false;
+      }
+
+      if (cp->subsystem == RR_BINFRAME_SUBSYS_VIDEO) {
+         ws_send_error(cptr, "Use video profile selection for this channel");
          return false;
       }
 

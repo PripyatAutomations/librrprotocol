@@ -241,8 +241,11 @@ bool ws_binframe_process_client(rrconn_t *client, const char *data, size_t len) 
       event_emit_binary(RR_AUDIO_FRAME_EVENT, client, data, len);
    }
 
+   if (f.hdr.subsystem == RR_BINFRAME_SUBSYS_VIDEO && f.hdr.direction == RR_BINFRAME_DIR_RX && len == RR_BINFRAME_HDR_LEN + f.len) {
+      event_emit_binary(RR_VIDEO_FRAME_EVENT, client, data, len);
+   }
    // Dispatch by subsystem; fires media.frame.* binary events
-   return rr_binframe_dispatch(&f, NULL);
+   return rr_binframe_dispatch(&f, client);
 }
 
 bool ws_binframe_process(const char *data, size_t len) {
