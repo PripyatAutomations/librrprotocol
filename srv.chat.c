@@ -25,6 +25,7 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/server.events.h>
+#include <librrprotocol/srv.chat.internal.h>
 #include <rrserver/backend.h>
 
 // minimum reason length for kick/ban/etc
@@ -1764,6 +1765,15 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          // Flat whois reply, keyed off talk.<field> - shared by webui and
          // rrclient (chat.whois.c). Sessions is just the count (also in userinfo).
          dict *wi = dict_new();
+         char *rooms = ws_chat_whois_rooms(acptr);
+         if (!wi || !rooms) {
+            dict_free(wi);
+            free(rooms);
+            ws_send_error(cptr, "WHOIS: unable to collect room membership");
+            return false;
+         }
+         dict_add(wi, "talk.rooms", rooms);
+         free(rooms);
 
          dict_add(wi, "msg.type", "talk");
          dict_add(wi, "talk.cmd", "whois");
