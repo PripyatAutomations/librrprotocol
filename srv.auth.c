@@ -196,12 +196,23 @@ static bool auth_peer_allowed(const char *ip) {
 }
 
 ///////////////////////////////////////
+/* Persistence belongs to the application; absent listeners retain file-db behavior. */
+bool ws_auth_refresh(rrconn_t *client) {
+   rr_server_auth_refresh_t refresh = { .allowed = true };
+   event_emit_binary(RR_SERVER_AUTH_REFRESH_EVENT, client, &refresh, sizeof(refresh));
+   return refresh.allowed;
+}
+
 bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
    bool rv = true;
 
    if (!cptr || !d) {
       Log(LOG_WARN, "http.ws", "auth_msg: got cptr:<%p> d:<%p>", cptr, d);
 
+      return false;
+   }
+   if (!ws_auth_refresh(cptr)) {
+      ws_send_error(cptr, "Account database unavailable; try again later");
       return false;
    }
    const char *cmd = dict_get(d, "auth.cmd", NULL);

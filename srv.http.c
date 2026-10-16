@@ -328,6 +328,11 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
       return false;
    }
 
+   if (!ws_auth_refresh(cptr)) {
+      ws_send_error(cptr, "Account database unavailable; try again later");
+      return false;
+   }
+
    if (cptr->authenticated && cptr->user && cptr->user->password_expires > 0 && cptr->user->password_expires <= now) {
       ws_kick_client(cptr, "Password expired; ask an administrator to reset it");
 

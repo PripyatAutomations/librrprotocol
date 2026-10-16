@@ -8,6 +8,12 @@
 #ifndef RR_SERVER_EVENTS_H
 #define RR_SERVER_EVENTS_H
 #include <librustyaxe/core.h>
+/* Synchronous application refresh before credentials or commands use accounts. */
+#define RR_SERVER_AUTH_REFRESH_EVENT "protocol.server.auth-refresh"
+typedef struct {
+   bool allowed;
+} rr_server_auth_refresh_t;
+bool ws_auth_refresh(rrconn_t *client);
 #define RR_SERVER_ADMISSION_EVENT "protocol.server.admission"
 typedef struct {
    const char *listener, *ip;
