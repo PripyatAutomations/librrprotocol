@@ -13,6 +13,7 @@
 // Sections other than [general] and [server:*] are dropped by cfg_load()
 // unless a callback is registered for them (see cfg_add_callback()).
 //
+#include <stdio.h>
 #include <string.h>
 #include <strings.h>
 #include <stdlib.h>
@@ -78,12 +79,8 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
    }
    char fullkey[128];
 
-   if (strncmp(tmpbuf, "fwdsp:", 6) == 0) {
-      snprintf(fullkey, sizeof(fullkey), "%s", tmpbuf);
-   } else {
-      snprintf(fullkey, sizeof(fullkey), "fwdsp:%s", tmpbuf);
-   }
-   bool stored = dict_add(cfg, fullkey, val) == 0;
+   int n = strncmp(tmpbuf, "fwdsp:", 6) == 0 ? snprintf(fullkey, sizeof(fullkey), "%s", tmpbuf) : snprintf(fullkey, sizeof(fullkey), "fwdsp:%s", tmpbuf);
+   bool stored = n > 0 && (size_t)n < sizeof(fullkey) && dict_add(cfg, fullkey, val) == 0;
    Log(LOG_CRAZY, "cfg.fwdsp", "Loaded %s=%s from %s:%d", fullkey, val, path, line);
    free(tmpbuf);
 
@@ -137,8 +134,8 @@ bool config_pipeline_section_cb(const char *path, int line, const char *section,
    }
    char fullkey[128];
 
-   snprintf(fullkey, sizeof(fullkey), "pipeline:%s", id);
-   bool stored = dict_add(cfg, fullkey, val) == 0;
+   int n = snprintf(fullkey, sizeof(fullkey), "pipeline:%s", id);
+   bool stored = n > 0 && (size_t)n < sizeof(fullkey) && dict_add(cfg, fullkey, val) == 0;
    Log(LOG_CRAZY, "cfg.fwdsp", "Loaded %s=%s from config", fullkey, val);
    free(tmpbuf);
 
