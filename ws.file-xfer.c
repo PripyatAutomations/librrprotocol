@@ -1,5 +1,5 @@
 //
-// rrclient/ws.file-xfer.c: Support for sending files such as screen shots or
+// librrprotocl/ws.file-xfer.c: Support for sending files such as screen shots or
 // audio recordings.
 //
 //    This is part of rustyrig-fw.
@@ -19,14 +19,14 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-#define	CHUNK 32768
+#define CHUNK 32768
 
 #ifdef  USE_MONGOOSE
 static uint64_t gen_id(void) {
    uint64_t x = (uint64_t) mg_millis();
    uint8_t rnd[8];
-   mg_random( rnd, sizeof(rnd) );
-   memcpy( &x, rnd, sizeof(x) );
+   mg_random(rnd, sizeof(rnd));
+   memcpy(&x, rnd, sizeof(x));
    x ^= (uint64_t) mg_millis();
 
    return x ? x : 1;
@@ -56,7 +56,7 @@ static void ws_send_file(struct mg_connection *c, const char *path, const char *
    FILE *fp = fopen(path, "rb");
 
    if (!fp) {
-      Log( LOG_CRIT, "ws.file-xfer", "Failed opening file %s - %d:%s", path, errno, strerror(errno) );
+      Log(LOG_CRIT, "ws.file-xfer", "Failed opening file %s - %d:%s", path, errno, strerror(errno));
 
       return;
    }
@@ -65,13 +65,11 @@ static void ws_send_file(struct mg_connection *c, const char *path, const char *
    fseeko(fp, 0, SEEK_SET);
 
    uint64_t id = gen_id();
-   uint32_t total = (uint32_t)( (fsize + CHUNK - 1) / CHUNK);
+   uint32_t total = (uint32_t) ((fsize + CHUNK - 1) / CHUNK);
 
    // meta (text frame)
-   mg_ws_printf(c, WEBSOCKET_OP_TEXT,
-      "{\"type\":\"file_meta\",\"id\":\"%llx\",\"name\":\"%s\",\"mime\":\"%s\",\"size\":%llu,\"chunk\":%u,\"total\":%u}",
-      (unsigned long long) id, rr_basename(path), mime ? mime : "application/octet-stream", (unsigned long long) fsize,
-      (unsigned) CHUNK, (unsigned) total);
+   mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{\"type\":\"file_meta\",\"id\":\"%llx\",\"name\":\"%s\",\"mime\":\"%s\",\"size\":%llu,\"chunk\":%u,\"total\":%u}", (
+      unsigned long long)id, rr_basename(path), mime ? mime : "application/octet-stream", (unsigned long long)fsize, (unsigned)CHUNK, (unsigned)total);
 
    // chunk buffer: header(24) + payload
    uint8_t *buf = (uint8_t *) malloc(24 + CHUNK);
@@ -82,7 +80,7 @@ static void ws_send_file(struct mg_connection *c, const char *path, const char *
       return;
    }
 
-   for (uint32_t idx = 0 ; ; idx++) {
+   for (uint32_t idx = 0 ;; idx++) {
       size_t n = fread(buf + 24, 1, CHUNK, fp);
 
       if (n == 0) {
@@ -120,7 +118,8 @@ static struct mg_str k_meta = {
 
 // Simple open-addressing table; replace with your own map if you have one
 struct slot {
-   uint64_t id; struct xfer xf;
+   uint64_t id;
+   struct xfer xf;
 };
 static struct slot g_tbl[64];
 
@@ -135,7 +134,9 @@ static struct xfer *xf_get(uint64_t id, bool create) {
       }
 
       if (create && g_tbl[j].id == 0) {
-         g_tbl[j].id = id; return &g_tbl[j].xf;
+         g_tbl[j].id = id;
+
+         return &g_tbl[j].xf;
       }
    }
 
@@ -150,7 +151,7 @@ static void xf_done(uint64_t id) {
          if (g_tbl[j].xf.fp) {
             fclose(g_tbl[j].xf.fp);
          }
-         memset( &g_tbl[j], 0, sizeof(g_tbl[j]) );
+         memset(&g_tbl[j], 0, sizeof(g_tbl[j]));
 
          return;
       }
@@ -162,7 +163,7 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
    if (ev != MG_EV_WS_MSG) {
       return;
    }
-   struct mg_ws_message *m = (struct mg_ws_message *) ev_data;
+   struct mg_ws_message *m = (struct mg_ws_message *)ev_data;
 
    if (m->flags & WEBSOCKET_OP_TEXT) {
       // Parse meta
@@ -185,14 +186,14 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
          mg_free(sid);
       }
       uint64_t id = 0;
-      sscanf(idbuf, "%llx", (unsigned long long *) &id);
+      sscanf(idbuf, "%llx", (unsigned long long *)&id);
 
       struct xfer *xf = xf_get(id, true);
 
       if (!xf) {
          return;
       }
-      memset( xf, 0, sizeof(*xf) );
+      memset(xf, 0, sizeof(*xf));
 
       char *sname = mg_json_get_str(m->data, "$.name");
       char *smime = mg_json_get_str(m->data, "$.mime");
@@ -218,9 +219,7 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
       if (!xf->fp) {
          xf_done(id);
       }
-      MG_INFO( ("Start xfer id=%llx -> %s total=%u size=%llu",
-                (unsigned long long) id, out, (unsigned) xf->total,
-                (unsigned long long) xf->size) );
+      MG_INFO(("Start xfer id=%llx -> %s total=%u size=%llu", (unsigned long long)id, out, (unsigned)xf->total, (unsigned long long)xf->size));
 
       return;
    }
@@ -229,9 +228,12 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
       if (m->data.len < 24) {
          return;
       }
-      const uint8_t *p = (const uint8_t *) m->data.buf;
-      uint64_t id; memcpy(&id, p + 0, 8);
-      uint32_t idx, n; memcpy(&idx, p + 8, 4); memcpy(&n, p + 12, 4);
+      const uint8_t *p = (const uint8_t *)m->data.buf;
+      uint64_t id;
+      memcpy(&id, p + 0, 8);
+      uint32_t idx, n;
+      memcpy(&idx, p + 8, 4);
+      memcpy(&n, p + 12, 4);
 
       struct xfer *xf = xf_get(id, false);
 
@@ -249,23 +251,9 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
       xf->received += n;
 
       if (xf->got_chunks >= xf->total || xf->received >= xf->size) {
-         MG_INFO( ("Complete id=%llx bytes=%llu", (unsigned long long) id,
-                   (unsigned long long) xf->received) );
+         MG_INFO(("Complete id=%llx bytes=%llu", (unsigned long long)id, (unsigned long long)xf->received));
          xf_done(id);
       }
    }
 }
 #endif // USE_MONGOOSE
-/*
- *  static void fn(struct mg_connection *c, int ev, void *ev_data, void fn_data)
- * {
- *  switch (ev) {
- *     case MG_EV_WS_OPEN: MG_INFO(("WS open")); break;
- *     case MG_EV_WS_MSG:  on_ws_msg(c, ev, ev_data); break;
- *     default: break;
- *  }
- *  (void) fn_data;
- *  }
- *
- *  // Example: call ws_send_file(c, "/path/to/file.png", "image/png") after WS is open
- */

@@ -22,8 +22,8 @@
 extern const char *get_server_property(const char *server, const char *prop);
 extern bool cfg_http_debug;
 extern time_t now;
-extern dict *cfg;                                // config.c
-bool cfg_show_pings = true;          // cfg:ui.show-pings=false in rrserver.cfg
+extern dict *cfg;               // config.c
+bool cfg_show_pings = true;     // cfg:ui.show-pings=false in rrserver.cfg
 
 // Global last measured ping RTT in ms, updated by ws_handle_pong() in srv.http.c
 long long last_ping_rtt_ms = -1;
@@ -36,17 +36,17 @@ bool ws_send_ping(rrconn_t *cptr) {
 
    if (!cptr) {
       Log(LOG_DEBUG, "auth", "ws_send_ping for null cptr!");
+
       return false;
    }
+#ifdef  USE_MONGOOSE
 
-#ifdef	USE_MONGOOSE
    if (!cptr->conn) {
-      Log( LOG_DEBUG, "auth", "ws_send_ping for cptr:<%p> has mg_conn:<%p> and is invalid", cptr,
-         (cptr ? cptr->conn : NULL) );
+      Log(LOG_DEBUG, "auth", "ws_send_ping for cptr:<%p> has mg_conn:<%p> and is invalid", cptr, (cptr ? cptr->conn : NULL));
 
       return false;
    }
-#endif	// USE_MONGOOSE
+#endif // USE_MONGOOSE
 
    // Make sure that timeout will happen if no response
    cptr->last_ping = now;
@@ -55,13 +55,12 @@ bool ws_send_ping(rrconn_t *cptr) {
    // only bother making noise if the first attempt failed, send the first ping
    // to crazy level log
    if (cptr->ping_attempts > 1) {
-      Log(LOG_DEBUG, "ping", "sending ping to user %s on cptr:<%p> with ts:[%li] attempt %d", cptr->chatname, cptr, now,
-         cptr->ping_attempts);
+      Log(LOG_DEBUG, "ping", "sending ping to user %s on cptr:<%p> with ts:[%li] attempt %d", cptr->chatname, cptr, now, cptr->ping_attempts);
    } else {
-      Log(LOG_CRAZY, "ping", "sending ping to user %s on cptr:<%p> with ts:[%li] attempt %d", cptr->chatname, cptr, now,
-         cptr->ping_attempts);
+      Log(LOG_CRAZY, "ping", "sending ping to user %s on cptr:<%p> with ts:[%li] attempt %d", cptr->chatname, cptr, now, cptr->ping_attempts);
    }
    dict *d = dict_new();
+
    if (!d) {
       return false;
    }
@@ -71,5 +70,6 @@ bool ws_send_ping(rrconn_t *cptr) {
    dict_add_llong(d, "ping.ts", mono_us());
    bool sent = ws_send_dict(NULL, cptr, d, WEBSOCKET_OP_TEXT);
    dict_free(d);
+
    return sent;
 }

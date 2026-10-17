@@ -13,20 +13,20 @@
 // Storage and interface for Variable Frequency Oscillator objecs
 //
 #if     !defined(__rr_vfo_h)
-#define	__rr_vfo_h
+#define __rr_vfo_h
 #include <stdint.h>
 #include <stdbool.h>
 
-#define	MAX_VFOS 26                      // maximum VFOs (A-Z); most rigs
-                                         // will use 2-3, backends pick the
-                                         // subset the rig supports
-#define	DEFAULT_TOT_TIME 300             // TOT time, if not set
+#define MAX_VFOS 26             // maximum VFOs (A-Z); most rigs
+                                // will use 2-3, backends pick the
+                                // subset the rig supports
+#define DEFAULT_TOT_TIME 300    // TOT time, if not set
 
 typedef enum rr_vfo_type {
-   VFO_INVALID = 0,     // Not present
-   VFO_DDS,             // Direct Digital Synthesizer
-   VFO_INTERNAL,	// Internal (other) reference
-   VFO_EXTERNAL         // External frequency reference
+   VFO_INVALID = 0,             // Not present
+   VFO_DDS,                     // Direct Digital Synthesizer
+   VFO_INTERNAL,                // Internal (other) reference
+   VFO_EXTERNAL                 // External frequency reference
 } rr_vfo_type_t;
 
 enum rr_vfo {
@@ -82,14 +82,14 @@ typedef enum rr_mode rr_mode_t;
 struct rr_vfo_data {
    rr_vfo_t id;
    rr_vfo_type_t type;
-   uint32_t input;               // input #
-   int width;                    // width in hz
-   long freq;                    // dial frequency
-   rr_mode_t mode;               // Mode we're TXing
-   float power;                  // power in watts
+   uint32_t input;              // input #
+   int width;                   // width in hz
+   long freq;                   // dial frequency
+   rr_mode_t mode;              // Mode we're TXing
+   float power;                 // power in watts
    time_t tx_started;
-   time_t tot_time;              // TOT time length configured (defaults to
-                                 // DEFAULT_TOT_TIME)
+   time_t tot_time;             // TOT time length configured (defaults to
+   // DEFAULT_TOT_TIME)
 };
 typedef struct rr_vfo_data rr_vfo_data_t;
 extern bool set_vfo_frequency(rr_vfo_type_t vfo_type, uint32_t input, long freq);

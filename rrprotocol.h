@@ -6,7 +6,7 @@
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #if     !defined(__rrprotocol_h)
-#define	__rrprotocol_h
+#define __rrprotocol_h
 
 #include "build_config.h"
 #if     defined(USE_MONGOOSE)
@@ -22,6 +22,7 @@
 #include <librrprotocol/state.h>
 #include <librrprotocol/client-flags.h>
 #include <librrprotocol/connman.h>
+#include <librrprotocol/server.url.h>
 #include <librrprotocol/cfg.fwdsp.h>
 extern const char *server_name;
 
@@ -44,10 +45,17 @@ bool ws_send_mode_cmd_in_room(rrconn_t *, const char *vfo, const char *mode, con
 bool ws_send_width_cmd_in_room(rrconn_t *, const char *vfo, const char *width, const char *room);
 
 extern bool ws_room_name_valid(const char *room);
+extern bool ws_room_station_scoped(const char *room);
 extern bool ws_room_set_vfo_mask(const char *room, uint32_t mask);
 /* Client-side room identity learned from the server's authenticated room event. */
 extern void ws_set_authoritative_room(const char *room);
 extern bool ws_client_in_room(const rrconn_t *cptr, const char *room);
+// Synchronous server policy check; a binary listener may set allowed=false.
+#define RR_ROOM_JOIN_CHECK_EVENT "protocol.room.join.check"
+typedef struct rr_room_join_check {
+   const char *room;
+   bool allowed;
+} rr_room_join_check_t;
 extern bool ws_client_join_room(rrconn_t *cptr, const char *room);
 extern bool ws_client_part_room(rrconn_t *cptr, const char *room);
 extern void ws_broadcast_room_dict(rrconn_t *sender, dict *d, const char *room);

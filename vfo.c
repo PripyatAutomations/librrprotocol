@@ -18,10 +18,16 @@
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
+#include <math.h>
+#include <errno.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-rr_vfo_data_t vfos[MAX_VFOS] = { 0};
+rr_vfo_data_t vfos[MAX_VFOS] = {
+   0
+};
+
 rr_vfo_t active_vfo = VFO_A;
 
 // Our static strings
@@ -48,10 +54,11 @@ bool set_vfo_frequency(rr_vfo_type_t vfo_type, uint32_t input, long freq) {
 rr_vfo_t vfo_lookup(const char vfo) {
    // VFOs are simply named A-Z; anything else is VFO_NONE
    if (vfo >= 'A' && vfo <= 'Z') {
-      return (rr_vfo_t)(vfo - 'A');
+      return (rr_vfo_t) (vfo - 'A');
    }
+
    if (vfo >= 'a' && vfo <= 'z') {
-      return (rr_vfo_t)(vfo - 'a');
+      return (rr_vfo_t) (vfo - 'a');
    }
 
    return VFO_NONE;
@@ -66,6 +73,7 @@ const char *vfo_name(rr_vfo_t vfo) {
 
    name[0] = 'A' + vfo;
    name[1] = '\0';
+
    return name;
 }
 
@@ -153,34 +161,45 @@ const char *vfo_mode_name(rr_mode_t mode) {
 }
 
 long parse_freq(const char *str) {
-   while (isspace(*str) ) {
+   if (!str) {
+      return -1;
+   }
+
+   while (isspace((unsigned char)*str)) {
       str++;
    }
    char *end = NULL;
+   errno = 0;
    double val = strtod(str, &end);
 
-   while (isspace(*end) ) {
+   if (errno || end == str || !isfinite(val) || val <= 0) {
+      return -1;
+   }
+
+   while (isspace((unsigned char)*end)) {
       end++;
    }
 
-   // If no suffix provided, guess unit
-   if (*end == '\0') {
-      // Count digits before any decimal point
+   if (!*end) {
       const char *dot = strchr(str, '.');
-      int digits = dot ? (dot - str) : strlen(str);
+      size_t digits = dot ? (size_t)(dot - str) : strlen(str);
 
       if (digits >= 3 && digits <= 5) {
-         return (long)(val * 1e3);  // assume kHz
-      } else {
-         return (long)val;          // assume Hz
+         val *= 1e3;
       }
-   } else if (*end == 'k' || *end == 'K') {
-      return (long)(val * 1e3);
-   } else if (*end == 'm' || *end == 'M') {
-      return (long)(val * 1e6);
+   } else if (!strcasecmp(end, "k") || !strcasecmp(end, "kHz")) {
+      val *= 1e3;
+   } else if (!strcasecmp(end, "m") || !strcasecmp(end, "MHz")) {
+      val *= 1e6;
+   } else if (strcasecmp(end, "Hz")) {
+      return -1;
    }
 
-   return -1;  // invalid format
+   if (!isfinite(val) || val >= -(double)LONG_MIN || val < 1) {
+      return -1;
+   }
+
+   return (long)val;
 }
 
 const char *format_freq(long hz, char *buf, size_t len) {

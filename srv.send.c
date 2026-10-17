@@ -18,10 +18,14 @@
 #include <time.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librrprotocol/irc.h>
+#include <librrprotocol/server.events.h>
+#include <librrprotocol/wire.h>
+#include <librrprotocol/latency.h>
 
 extern time_t now;
 
-#ifdef	USE_MONGOOSE
+#ifdef  USE_MONGOOSE
 // Broadcast a message to all WebSocket clients (using http_client_list)
 void ws_broadcast(rrconn_t *sender, struct mg_str *msg_data, int data_type) {
    if (!msg_data) {
@@ -30,8 +34,8 @@ void ws_broadcast(rrconn_t *sender, struct mg_str *msg_data, int data_type) {
    rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
-      if ( (current->is_ws && current->authenticated) && (current != sender) ) {
-         mg_ws_send(current->conn, msg_data->buf, msg_data->len, data_type);
+      if ((current->is_ws && current->authenticated) && (current != sender)) {
+         ws_send_to_cptr(sender, current, msg_data, data_type);
       }
       current = current->next;
    }
@@ -46,9 +50,9 @@ void ws_broadcast_with_flags(u_int32_t flags, rrconn_t *sender, struct mg_str *m
    rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
-      if (current && (current->is_ws && current->authenticated) && (current != sender) ) {
-         if (client_has_flag(current, flags) ) {
-            mg_ws_send(current->conn, msg_data->buf, msg_data->len, data_type);
+      if (current && (current->is_ws && current->authenticated) && (current != sender)) {
+         if (((flags & FLAG_STAFF) && current->user && has_priv(current->user->uid, "admin|owner")) || client_has_flag(current, flags & ~FLAG_STAFF)) {
+            ws_send_to_cptr(sender, current, msg_data, data_type);
          }
       }
       current = current->next;
@@ -62,7 +66,7 @@ void ws_broadcast_audio(rrconn_t *sender, struct mg_str *msg_data, int data_type
    rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
-      if ( (current->is_ws && current->authenticated) && (current != sender) ) {
+      if ((current->is_ws && current->authenticated) && (current != sender)) {
          // XXX: Compare the connection's codec
 //         if (current->rx_codecs[
 //         mg_ws_send(current->conn, msg_data->buf, msg_data->len, data_type);
@@ -79,57 +83,84 @@ bool send_global_alert(const char *sender, const char *data) {
    const char *escaped_msg = escape_html(data);
 
    dict *alert_msg = dict_new();
+   dict_add(alert_msg, "msg.type", "alert");
    dict_add(alert_msg, "alert.from", sender);
    dict_add(alert_msg, "alert.msg", escaped_msg);
    dict_add_ulong(alert_msg, "alert.ts", now);
 
    ws_broadcast_dict(NULL, alert_msg, WEBSOCKET_OP_TEXT);
-   free( (char *)escaped_msg );
+   free((char *)escaped_msg);
    dict_free(alert_msg);
 
    return true;
 }
 
 bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
-   (void)sender;
+   if (d && dest && data_type == WEBSOCKET_OP_TEXT) {
+      rr_server_io_t send = {
+         .message = d
+      };
+      event_emit_binary(RR_SERVER_SEND_EVENT, dest, &send, sizeof(send));
 
-   if (!d || !dest || !dest->conn) {
-      Log(LOG_WARN, "rrproto.srv", "Unable to send msg dict:<%p> to conn:<%p> - invalid destination", d, dest);
+      if (send.handled) {
+         return send.result;
+      }
+   }
+
+   if (!d || !dest || !dest->conn || data_type != WEBSOCKET_OP_TEXT) {
+      Log(LOG_WARN, "rrproto.srv", "Unable to send msg dict:<%p> to conn:<%p> - invalid dictionary, destination or frame type", d, dest);
+
       return false;
    }
 
-   const char *jp = dict2json(d);
+   if (dest->server && !dest->is_ws) {
+      return data_type == WEBSOCKET_OP_TEXT && irc_send_dict(dest, d);
+   }
+   const char *jp = rr_wire_encode(d);
 
    if (!jp) {
       Log(LOG_WARN, "rrproto.srv", "Unable to serialize msg dict:<%p> to conn:<%p>", d, dest);
+
       return false;
    }
 
-   Log(LOG_CRAZY, "ws.proto", "Sending dict <%p> to conn <%p>: %s", (void *)d, (void *)dest, jp);
+   Log(LOG_CRAZY, "ws.proto", "Sending dict <%p> to conn <%p> (%zu bytes)", (void *)d, (void *)dest, strlen(jp));
 
-   mg_ws_send(dest->conn, jp, strlen(jp), data_type);
+   struct mg_str payload = mg_str(jp);
+   bool sent = ws_send_to_cptr(sender, dest, &payload, WEBSOCKET_OP_TEXT);
 
+   if (sent && dest->server) {
+      rr_latency_sent(dest, d, mono_us());
+   }
    free((void *)jp);
 
-   return true;
+   return sent;
 }
 
 // Broadcast a message to all WebSocket clients (using http_client_list)
 void ws_broadcast_dict(rrconn_t *sender, dict *d, int data_type) {
+   if (d && data_type == WEBSOCKET_OP_TEXT) {
+      rr_server_publish_t publish = {
+         .message = d
+      };
+      event_emit_binary(RR_SERVER_PUBLISH_EVENT, sender, &publish, sizeof(publish));
+   }
+
    if (!d) {
       return;
    }
    rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
-      if ( (current->is_ws && current->authenticated) && (current != sender) ) {
+      if ((current->is_ws && current->authenticated) && (current != sender)) {
          ws_send_dict(NULL, current, d, data_type);
       }
       current = current->next;
    }
 }
 
-// Broadcast a message to all WebSocket clients with matching flags (using http_client_list)
+// Broadcast a message to all WebSocket clients with matching flags (using
+// http_client_list)
 void ws_broadcast_dict_with_flags(u_int32_t flags, rrconn_t *sender, dict *d, int data_type) {
    if (!d) {
       return;
@@ -137,8 +168,8 @@ void ws_broadcast_dict_with_flags(u_int32_t flags, rrconn_t *sender, dict *d, in
    rrconn_t *current = http_client_list;
    while (current) {
       // NULL sender means it came from the server itself
-      if (current && (current->is_ws && current->authenticated) && (current != sender) ) {
-         if (client_has_flag(current, flags) ) {
+      if (current && (current->is_ws && current->authenticated) && (current != sender)) {
+         if (((flags & FLAG_STAFF) && current->user && has_priv(current->user->uid, "admin|owner")) || client_has_flag(current, flags & ~FLAG_STAFF)) {
             ws_send_dict(NULL, current, d, data_type);
          }
       }

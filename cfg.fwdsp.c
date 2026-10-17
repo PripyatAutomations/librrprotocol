@@ -1,3 +1,4 @@
+// librrprotocol/cfg.fwdsp.c: Config section [fwdsp]
 //      This is part of rustyrig-fw. https://github.com/pripyatautomations/rustyrig-fw
 //
 // Do not pay money for this, except donations to the project, if you wish to.
@@ -34,6 +35,7 @@ bool config_fwdsp_init(void) {
    }
 
    initialized = true;
+
    return true;
 }
 
@@ -46,6 +48,7 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
 
    if (!tmpbuf) {
       Log(LOG_CRIT, "cfg.fwdsp", "OOM in config_fwdsp_section_cb!");
+
       return true;
    }
    char *val = strchr(tmpbuf, '=');
@@ -53,9 +56,10 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
    if (!val || !val[1]) {
       Log(LOG_CRIT, "cfg.fwdsp", "config error at %s:%d: missing value: %s", path, line, buf);
       free(tmpbuf);
+
       return true;
    }
-   *val++ = '\0';   // split at '='
+   *val++ = '\0';               // split at '='
 
    while (*val == ' ' || *val == '\t') {
       val++;
@@ -73,6 +77,7 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
       *kend-- = '\0';
    }
    char fullkey[128];
+
    if (strncmp(tmpbuf, "fwdsp:", 6) == 0) {
       snprintf(fullkey, sizeof(fullkey), "%s", tmpbuf);
    } else {
@@ -88,9 +93,6 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
 // [pipelines] keys are stored as pipeline:<codec>.<dir> -- the format bin/fwdsp
 // looks up with cfg_get() (see fwdsp/fwdsp.c)
 bool config_pipeline_section_cb(const char *path, int line, const char *section, const char *buf) {
-   (void)line;
-   (void)path;
-
    if (!buf || section == NULL || strncasecmp(section, "pipeline", 8) != 0) {
       return true;
    }
@@ -98,13 +100,16 @@ bool config_pipeline_section_cb(const char *path, int line, const char *section,
 
    if (!tmpbuf) {
       Log(LOG_CRIT, "cfg.fwdsp", "OOM in config_pipeline_section_cb!");
+
       return true;
    }
+
    char *val = strchr(tmpbuf, '=');
 
    if (!val || !val[1]) {
       Log(LOG_CRIT, "cfg.fwdsp", "config error: pipeline entry missing value: %s", buf);
       free(tmpbuf);
+
       return true;
    }
    *val++ = '\0';

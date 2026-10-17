@@ -5,16 +5,25 @@ libs += ${librrprotocol}
 #librrprotocol_objs += au_gst.o
 librrprotocol_objs += auth.hash.o
 librrprotocol_objs += binframe.o
+librrprotocol_objs += rtp.o
+librrprotocol_objs += rtp.socket.o
 librrprotocol_objs += codecneg.o
+librrprotocol_objs += bridge.sdr.o bridge.ipc.o bridge.config.o bridge.media.o
 librrprotocol_objs += connman.o
+librrprotocol_objs += server.url.o
 librrprotocol_objs += objects.o
+librrprotocol_objs += wire.o
+librrprotocol_objs += link.wire.o
+librrprotocol_objs += latency.o
+librrprotocol_objs += media.health.o
+librrprotocol_objs += traffic.o
 librrprotocol_objs += ws.serial.o
 librrprotocol_objs += cfg.fwdsp.o		# config section callbacks for [fwdsp]/[pipeline]
 librrprotocol_objs += cfg.servers.o
 librrprotocol_objs += cli.alert.o
 librrprotocol_objs += cli.chat.o
 librrprotocol_objs += cli.error.o
-#librrprotocol_objs += cli.irc.o
+librrprotocol_objs += cli.irc.o
 librrprotocol_objs += cli.main.o
 librrprotocol_objs += cli.media.o
 librrprotocol_objs += cli.notice.o
@@ -23,22 +32,23 @@ librrprotocol_objs += cli.rigctl.o
 librrprotocol_objs += cli.syslog.o
 librrprotocol_objs += http.api.o
 librrprotocol_objs += http.bans.o
-# XXX: This needs updated to use *either* ev or mongoose as configured.
-#librrprotocol_objs += irc.o
-#librrprotocol_objs += irc.capab.o
-#librrprotocol_objs += irc.channel.o
+# IRC uses nonblocking sockets; applications drive irc_io_poll().
+librrprotocol_objs += irc.o irc.audio.o irc.audio.session.o irc.dcc.o
+librrprotocol_objs += irc.capab.o
+librrprotocol_objs += irc.channel.o
 #librrprotocol_objs += irc.client.o
-#librrprotocol_objs += irc.commands.o
-#librrprotocol_objs += irc.event.o
-#librrprotocol_objs += irc.modes.o
-#librrprotocol_objs += irc.numerics.o
-#librrprotocol_objs += irc.parser.o
+librrprotocol_objs += irc.commands.o
+librrprotocol_objs += irc.event.o
+librrprotocol_objs += irc.modes.o
+librrprotocol_objs += irc.numerics.o
+librrprotocol_objs += irc.parser.o
 #librrprotocol_objs += irc.server.o
-#librrprotocol_objs += irc.user.o
+librrprotocol_objs += irc.user.o
 librrprotocol_objs += is.o
 librrprotocol_objs += srv.auth.o
 librrprotocol_objs += srv.auth.passdb.o
 librrprotocol_objs += srv.chat.o
+librrprotocol_objs += srv.chat.whois.o
 librrprotocol_objs += srv.chat.error.o
 librrprotocol_objs += srv.http.o
 librrprotocol_objs += srv.http.listeners.o
@@ -58,7 +68,24 @@ librrprotocol_objs += ws.auth.o
 #librrprotocol_objs += ws.media.o
 #librrprotocol_objs += ws.mediachan.o
 
-librrprotocol_cflags := ${CFLAGS} -I./modsrc/ -I./ -I./inc
+# SRTP belongs to the protocol transport library, never to fwdsp or global flags.
+ifeq (${WITH_RTP},true)
+librrprotocol_rtp_cflags := -DRR_HAVE_SRTP=1 ${SRTP_CFLAGS}
+librrprotocol_ldlibs += ${SRTP_LIBS}
+ifeq (${WITH_RTP_ENCRYPTION},true)
+librrprotocol_rtp_cflags += -DRR_RTP_ENCRYPTION=1
+endif
+endif
+librrprotocol_cflags := ${CFLAGS} ${librrprotocol_rtp_cflags} -I./modsrc/ -I./ -I./inc
+
+# Switching optional protection features must not reuse objects from another build.
+.PHONY: rrprotocol-rtp-config-force
+${BUILD_DIR}/librrprotocol/.rtp-config: rrprotocol-rtp-config-force
+	@mkdir -p $(dir $@)
+	@printf '%s\n' '${WITH_RTP} ${WITH_RTP_ENCRYPTION} ${SRTP_CFLAGS} ${SRTP_LIBS}' > $@.new
+	@cmp -s $@.new $@ || cp $@.new $@
+	@rm -f $@.new
+${BUILD_DIR}/librrprotocol/rtp.o ${BUILD_DIR}/librrprotocol/rtp.socket.o: ${BUILD_DIR}/librrprotocol/.rtp-config
 
 extra_clean += ${librustyaxe_objs} ${librustyaxe} librrprotocol.so.0
 # librrprotocol headers include librustyaxe's public structs.  Make those
@@ -76,10 +103,12 @@ ${BUILD_DIR}/librrprotocol/.stamp:
 
 ${librrprotocol}: ${BUILD_DIR}/librrprotocol/.stamp ${real_librrprotocol_objs} ${librrprotocol_headers} GNUmakefile librrprotocol/rules.mk
 	@echo "[link] $@ from $(words ${real_librrprotocol_objs}) objects"
-	@${CC} ${LDFLAGS} ${LIB_LDFLAGS} -Wl,-soname,librrprotocol.so.0 -lm -o $@ ${real_librrprotocol_objs} -lrustyaxe || exit 2
+	@${CC} ${LDFLAGS} ${LIB_LDFLAGS} -Wl,-soname,librrprotocol.so.0 -lm -o $@ ${real_librrprotocol_objs} -lrustyaxe ${librrprotocol_ldlibs} || exit 2
 	@ln -sf librrprotocol.so librrprotocol.so.0
 
-${BUILD_DIR}/librrprotocol/%.o:librrprotocol/%.c GNUmakefile ${librrprotocol_headers} ${librustyaxe} ${librustyaxe_headers}
+# Objects include build_config.h via the protocol/rustyaxe headers; wait for
+# pack-eeprom before compiling them.
+${BUILD_DIR}/librrprotocol/%.o:librrprotocol/%.c GNUmakefile ${librrprotocol_headers} ${librustyaxe} ${librustyaxe_headers} ${OBJECT_ORDER_ONLY}
 	@echo "[compile] $< => $@"
 	@${RM} $@
 	@${CC} ${librrprotocol_cflags} -o $@ -c $< || exit 2

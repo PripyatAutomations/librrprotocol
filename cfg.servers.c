@@ -1,3 +1,4 @@
+// librrprocol/cfg.servers.c: [server] block parsing
 //      This is part of rustyrig-fw. https://github.com/pripyatautomations/rustyrig-fw
 //
 // Do not pay money for this, except donations to the project, if you wish to.
@@ -20,6 +21,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <librustyaxe/core.h>
+#include <librrprotocol/server.url.h>
 extern bool dying;
 extern time_t now;
 
@@ -39,7 +41,7 @@ static void parse_server_opts(server_cfg_t *cfg, const char *opts) {
       if (len > 0) {
          char buf[256];
 
-         if ( len >= sizeof(buf) ) {
+         if (len >= sizeof(buf)) {
             len = sizeof(buf) - 1;
          }
          memcpy(buf, p, len);
@@ -60,7 +62,7 @@ static void parse_server_opts(server_cfg_t *cfg, const char *opts) {
                } else {
                   size_t len = strlen(cfg->autojoin);
 
-                  if ( len + 1 < sizeof(cfg->autojoin) ) {
+                  if (len + 1 < sizeof(cfg->autojoin)) {
                      // +1 for comma
                      strncat(cfg->autojoin, ",", sizeof(cfg->autojoin) - len - 1);
                      strncat(cfg->autojoin, val, sizeof(cfg->autojoin) - strlen(cfg->autojoin) - 1);
@@ -83,7 +85,7 @@ bool add_server(const char *network, const char *str) {
    if (!str || !network) {
       return false;
    }
-   server_cfg_t *new_cfg = calloc( 1, sizeof(*new_cfg) );
+   server_cfg_t *new_cfg = calloc(1, sizeof(*new_cfg));
 
    if (!new_cfg) {
       fprintf(stderr, "OOM in add_server\n");
@@ -101,11 +103,10 @@ bool add_server(const char *network, const char *str) {
       new_cfg->tls = true;
    } else if (strncasecmp(p, "irc://", 6) == 0) {
       p += 6;
-   } else if (strncasecmp(p, "wss://", 6) == 0) {
-      new_cfg->tls = true;
-      p += 6;
-   } else if (strncasecmp(p, "ws://", 5) == 0) {
-      p += 5;
+   } else {
+      free(new_cfg);
+
+      return false;
    }
    // Split host and options
    const char *opts = strchr(p, '|');
@@ -113,8 +114,10 @@ bool add_server(const char *network, const char *str) {
 
    char hostbuf[256];
 
-   if ( hostlen >= sizeof(hostbuf) ) {
-      hostlen = sizeof(hostbuf) - 1;
+   if (hostlen >= sizeof(hostbuf)) {
+      free(new_cfg);
+
+      return false;
    }
    memcpy(hostbuf, p, hostlen);
    hostbuf[hostlen] = '\0';
@@ -135,16 +138,17 @@ bool add_server(const char *network, const char *str) {
       }
       memmove(hostbuf, at + 1, strlen(at + 1) + 1);
    }
-   // Parse host[:port]
-   char *colon = strchr(hostbuf, ':');
+   char endpoint[sizeof(hostbuf) + 8];
+   snprintf(endpoint, sizeof(endpoint), "%s%s", new_cfg->tls ? "ircs://" : "irc://", hostbuf);
+   rr_server_url_t parsed;
 
-   if (colon) {
-      *colon = '\0';
-      new_cfg->port = atoi(colon + 1);
-   } else {
-      new_cfg->port = new_cfg->tls ? 6697 : 6667;
+   if (!rr_server_url_parse(endpoint, &parsed)) {
+      free(new_cfg);
+
+      return false;
    }
-   snprintf(new_cfg->host, sizeof(new_cfg->host), "%s", hostbuf);
+   new_cfg->port = parsed.port;
+   snprintf(new_cfg->host, sizeof(new_cfg->host), "%s", parsed.host);
 
    // Parse options if present
    if (opts) {
@@ -174,24 +178,21 @@ static bool config_servers_save_cb(FILE *fp, const char *path) {
       return false;
    }
 
-   for (server_cfg_t *sp = server_list; sp; sp = sp->next) {
+   for (server_cfg_t *sp = server_list ; sp ; sp = sp->next) {
       fprintf(fp, "[network:%s]\n", sp->network);
 
-      // Rebuild the URL: [irc[s]://][nick[:pass]@]host:port[|opts]
-      if (sp->nick[0]) {
-         if (sp->pass[0]) {
-            fprintf(fp, "%s%s:%s@%s", sp->tls ? "ircs://" : "irc://", sp->nick, sp->pass, sp->host);
-         } else {
-            fprintf(fp, "%s%s@%s", sp->tls ? "ircs://" : "irc://", sp->nick, sp->host);
-         }
-      } else {
-         fprintf(fp, "%s%s", sp->tls ? "ircs://" : "irc://", sp->host);
-      }
+      fprintf(fp, "%s", sp->tls ? "ircs://" : "irc://");
 
-      // Default ports don't need to be written
-      if (sp->port && sp->port != (sp->tls ? 6697 : 6667) ) {
-         fprintf(fp, ":%d", sp->port);
+      if (sp->nick[0]) {
+         fprintf(fp, "%s", sp->nick);
+
+         if (sp->pass[0]) {
+            fprintf(fp, ":%s", sp->pass);
+         }
+         fputc('@', fp);
       }
+      bool ipv6 = strchr(sp->host, ':') != NULL;
+      fprintf(fp, "%s%s%s:%d", ipv6 ? "[" : "", sp->host, ipv6 ? "]" : "", sp->port);
 
       if (sp->priority != 0) {
          fprintf(fp, "|priority=%d", sp->priority);
@@ -211,96 +212,3 @@ static bool config_servers_save_cb(FILE *fp, const char *path) {
 bool cfg_servers_init(void) {
    return cfg_add_save_callback("cfg.servers", config_servers_save_cb);
 }
-
-// XXX: Re-enable this and make use of it
-#if	0
-///////////////
-// XXX: upgrade this to be able to be called by a timer
-// XXX: It should check for an existing connection to each network
-// XXX: Need to add support for ws/wss connections
-bool check_server_autoconnects(void) {
-   // Handle connecting to servers in networks.auto
-   const char *networks = cfg_get_exp("networks.auto");
-
-   if (networks) {
-      char *tv = strdup(networks);
-      // Split this on ',' and connect to allow configured networks
-      char *sp = strtok(tv, ", ");
-
-      // use a dictionary to store this stuff
-      dict *newsrv = dict_new();
-
-      while (sp) {
-         char this_network[256];
-         memset( this_network, 0, sizeof(this_network) );
-         snprintf(this_network, sizeof(this_network), "%s", sp);
-         dict_add(newsrv, "autoconnect.network", this_network);
-         rrlist_t *temp_list = NULL;   // head of temporary list
-
-         server_cfg_t *srvp = server_list;
-         while (srvp) {
-            if (strcasecmp(srvp->network, this_network) == 0) {
-               // Wrap server pointer in a list node
-               rrlist_t *node = malloc( sizeof(rrlist_t) );
-
-               if (!node) {
-                  // OOM
-                  abort();
-               }
-
-               node->ptr = srvp;
-               node->prev = node->next = NULL;
-
-               // Insert into temp_list sorted by priority (descending)
-               rrlist_t *cur = temp_list;
-               rrlist_t *prev = NULL;
-               while (cur && ( (server_cfg_t *)cur->ptr )->priority >= srvp->priority) {
-                  prev = cur;
-                  cur = cur->next;
-               }
-
-               if (!prev) {
-                  // insert at head
-                  node->next = temp_list;
-
-                  if (temp_list) {
-                     temp_list->prev = node;
-                  }
-                  temp_list = node;
-               } else {
-                  // insert after prev
-                  node->next = prev->next;
-                  node->prev = prev;
-
-                  if (prev->next) {
-                     prev->next->prev = node;
-                  }
-                  prev->next = node;
-               }
-            }
-            srvp = srvp->next;
-         }
-         rrlist_t *node = temp_list;
-         while (node) {
-            server_cfg_t *srv = node->ptr;
-#if     0
-            rrconn_t *cli;
-
-            if ( ( cli = irc_cli_connect(srv) ) ) {
-               // Add to the connection list
-               rrlist_add(&client_conns, cli, LIST_TAIL);
-            }
-#endif
-            event_emit_dict("connecting", NULL, newsrv);
-            node = node->next;
-         }
-         sp = strtok(NULL, " ,");
-      }
-      free(tv);
-      free( (void *)networks );
-      networks = NULL;
-      dict_free(newsrv);
-   }
-   return false;
-}
-#endif

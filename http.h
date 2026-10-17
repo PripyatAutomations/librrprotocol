@@ -8,7 +8,7 @@
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #if     !defined(__http_h)
-#define	__http_h
+#define __http_h
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -21,31 +21,31 @@
 // many of these need moved to config; decide if runtime or build? (prob build)
 // Limit to 10 backups of authdb retained, this should be sane; we delete older
 // backups
-#define	MAX_AUTHDB_BK_INDEX 10
+#define MAX_AUTHDB_BK_INDEX 10
 #undef HTTP_DEBUG_CRAZY
-#define	HTTP_MAX_SESSIONS 32             // max sessions total
-#define	HTTP_WS_MAX_MSG 65535            // 64kbytes should be enough per
-                                          // message, even with audio
-                                          // frames
-#define	HTTP_SESSION_LIFETIME 12 * 60 * 60 // Require a re-login every 12
-                                            // hours, if still connected
-#define	HTTP_SESSION_REAP_TIME 30        // Every 30 seconds, kill
-                                          // expired sessions
-#define	HTTP_AUTH_TIMEOUT 20             // Allow 20 seconds from
-                                          // connection to send login
-                                          // command
-#define	HTTP_PING_TIME 60                // If we haven't heard from the
-                                          // client in this long, send a
-                                          // ping
+#define HTTP_MAX_SESSIONS 32    // max sessions total
+#define HTTP_WS_MAX_MSG 65535   // 64kbytes should be enough per
+                                // message, even with audio
+                                // frames
+#define HTTP_SESSION_LIFETIME 12 * 60 * 60   // Require a re-login every 12
+                                             // hours, if still connected
+#define HTTP_SESSION_REAP_TIME 30   // Every 30 seconds, kill
+                                    // expired sessions
+#define HTTP_AUTH_TIMEOUT 20    // Allow 20 seconds from
+                                // connection to send login
+                                // command
+#define HTTP_PING_TIME 60       // If we haven't heard from the
+                                // client in this long, send a
+                                // ping
 #if     (HTTP_PING_TIME / 4) >= 10
-#define	HTTP_PING_TIMEOUT (HTTP_PING_TIME / 4)   // And give them this
-                                                  // long to respond
+#define HTTP_PING_TIMEOUT (HTTP_PING_TIME / 4)  // And give them this
+                                                // long to respond
 #else
-#define	HTTP_PING_TIMEOUT 10             // Ensure a minimum of 10
-                                          // seconds wait for a reply
+#define HTTP_PING_TIMEOUT 10    // Ensure a minimum of 10
+                                // seconds wait for a reply
 #endif // (HTTP_PING_TIME / 4)
-#define	HTTP_PING_TRIES 3                // We'll try this many times
-                                          // before kicking the client
+#define HTTP_PING_TRIES 3       // We'll try this many times
+                                // before kicking the client
 
 #if defined(USE_MONGOOSE)
 /* The public prototypes below only need incomplete Mongoose types. */
@@ -55,9 +55,9 @@ struct mg_http_message;
 #endif // defined(USE_MONGOOSE)
 
 // ws.cat protocol
-#define	HTTP_API_RIGPOLL_PAUSE 2         // time to delay polling the rig
-                                          // after a freq message on
-                                          // ws.cat
+#define HTTP_API_RIGPOLL_PAUSE 2 // time to delay polling the rig
+                                 // after a freq message on
+                                 // ws.cat
 
 // WF (waterfall) protocol
 
@@ -74,16 +74,17 @@ struct rr_user {
    char ptt_vfo;
    char ptt_room[128];
    bool is_muted;
-   bool in_store;       // <-- whether `iter` is valid
+   bool irc_oper;              // learned IRC operator status, independent of channel modes
+   bool in_store;               // <-- whether `iter` is valid
    struct rr_user *next;
 };
 
 extern http_user_t http_users[HTTP_MAX_USERS];
 
 struct http_route {
-   char         *match;                          // match expression
-   bool (*cb)();                                 // callback to invoke
-   bool auth_reqd;                               // Is authentication required?
+   char *match;                 // match expression
+   bool (*cb)();                // callback to invoke
+   bool auth_reqd;              // Is authentication required?
 };
 typedef struct http_route http_route_t;
 
@@ -117,6 +118,7 @@ extern rrconn_t *http_add_client(struct mg_connection *c, bool is_ws);
 #endif // defined(USE_MONGOOSE)
 
 extern void http_remove_client(struct mg_connection *c);
+extern void http_detach_client(struct mg_connection *c);
 /* Release heap-owned fields held by a connection. Safe to call repeatedly. */
 extern void http_client_free_resources(rrconn_t *cptr);
 /* Store a bounded, NUL-terminated copy of an HTTP User-Agent header. */
@@ -134,7 +136,7 @@ extern void http_dump_clients(void);
 // Save active users to config file (NYI)
 extern bool http_save_users(const char *filename);
 extern char *escape_html(const char *input);
-extern bool prepare_msg(char *buf, size_t len, const char *fmt, ...);
+extern bool prepare_msg(char *buf, size_t len, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
 extern const char *http_content_type(const char *type);
 extern bool check_url(const char *path);
 extern rrconn_t *http_client_list;

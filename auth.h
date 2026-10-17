@@ -1,5 +1,5 @@
 //
-// auth.h: This stuff is in cli.auth.c, srv.auth.c and srv.auth.*.c
+// librrprotocol/auth.h: This stuff is in cli.auth.c, srv.auth.c and srv.auth.*.c
 //
 //    This is part of rustyrig-fw.
 // https://github.com/pripyatautomations/rustyrig-fw
@@ -9,7 +9,7 @@
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #if     !defined(__rr_auth_h)
-#define	__rr_auth_h
+#define __rr_auth_h
 #include <librrprotocol/http.h>
 #include <librrprotocol/codecneg.h>
 
@@ -42,5 +42,8 @@ extern bool ws_send_login(rrconn_t *cptr, const char *login_user);
 extern bool ws_send_passwd(rrconn_t *cptr, const char *user, const char *passwd, const char *nonce);
 extern bool ws_send_logout(rrconn_t *cptr, const char *user, const char *token);
 extern bool ws_send_hello(rrconn_t *cptr);
+
+/* Reconcile live sessions after account records are reloaded in place. */
+extern void http_reconcile_users(const http_user_t *previous);
 
 #endif // !defined(__rr_auth_h)

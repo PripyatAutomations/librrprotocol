@@ -22,29 +22,30 @@
 // PARITY: rustyrig-www/js/webui.media.js (media channel handling)
 //
 #if     !defined(_ws_mediachan_h)
-#define	_ws_mediachan_h
+#define _ws_mediachan_h
 #include <stdbool.h>
 #include <stddef.h>
 #include <librustyaxe/core.h>
 
-#ifndef	MAX_MEDIA_CHANNELS
-#define	MAX_MEDIA_CHANNELS 64            // max channels in the registry
+#ifndef MAX_MEDIA_CHANNELS
+#define MAX_MEDIA_CHANNELS 64   // max channels in the registry
 #endif
 
 // media channel: one streamable direction of a binframe subsystem
 struct rr_mediachan {
-   char uuid[64];                    // server-assigned channel uuid
-   uint8_t subsystem;                // RR_BINFRAME_SUBSYS_* (ws.binframe.h)
-   uint8_t direction;                // RR_BINFRAME_DIR_RX or RR_BINFRAME_DIR_TX
-   uint8_t vfo;                      // rr_vfo_t (0 = VFO A; 0xFF = n/a)
-   uint8_t rig;                      // rig index; 0 = default; 0xFF = n/a
-   char name[64];                     // stable endpoint name, e.g. rig0.vfo_a.rx
-   char room[128];                   // joined room required for this channel
+   char uuid[64];               // server-assigned channel uuid
+   uint8_t subsystem;           // RR_BINFRAME_SUBSYS_* (ws.binframe.h)
+   uint8_t direction;           // RR_BINFRAME_DIR_RX or RR_BINFRAME_DIR_TX
+   uint8_t vfo;                 // rr_vfo_t (0 = VFO A; 0xFF = n/a)
+   uint8_t rig;                 // rig index; 0 = default; 0xFF = n/a
+   char name[64];               // stable endpoint name, e.g. rig0.vfo_a.rx
+   char room[128];              // joined room required for this channel
    char rig_uuid[64];
    char vfo_uuid[64];
-   char codec[5];                    // negotiated codec magic, or "" when unset
-   char descr[128];                  // human-readable description
-   bool active;                      // is this channel actually streaming?
+   char codec[5];               // negotiated codec magic, or "" when unset
+   char descr[128];             // human-readable description
+   const char *profiles;       // Borrowed configured video profile list; owner keeps it alive.
+   bool active;                 // is this channel actually streaming?
 };
 
 // Server-side channel registry (rrserver owns the instances)
@@ -53,11 +54,11 @@ extern struct rr_mediachan media_channels[MAX_MEDIA_CHANNELS];
 // ---------- server side ----------
 // Create (or find) a channel; returns NULL on failure/full table. When
 // found, the descr/codec fields are NOT overwritten.
-extern struct rr_mediachan *media_chan_add(uint8_t subsystem, uint8_t direction,
-   uint8_t vfo, uint8_t rig, const char *codec, const char *descr);
+extern struct rr_mediachan *media_chan_add(uint8_t subsystem, uint8_t direction, uint8_t vfo, uint8_t rig, const char *codec, const char *descr);
 // Find by exact match on the routing quadruple
-extern struct rr_mediachan *media_chan_find(uint8_t subsystem, uint8_t direction,
-   uint8_t vfo, uint8_t rig);
+extern struct rr_mediachan *media_chan_find(uint8_t subsystem, uint8_t direction, uint8_t vfo, uint8_t rig);
+// Format a readable channel label; station may be NULL. UUID remains its wire address.
+extern const char *media_chan_description(const struct rr_mediachan *channel, const char *station, char *out, size_t capacity);
 // Find by uuid
 extern struct rr_mediachan *media_chan_find_uuid(const char *uuid);
 // Remove a channel by uuid. Returns false on OK. Does not notify clients -
@@ -76,6 +77,8 @@ extern bool media_send_available_all(rrconn_t *cptr);
 // Remove all channels (rehash/restart)
 extern void media_channels_free(void);
 
+typedef struct { dict *message; bool handled, result; } rr_media_profile_request_t;
+
 // Server-side handler for media.* text frames with media.cmd
 // `list`/`subscribe`/`unsubscribe`/`source`. Returns false if handled.
 extern bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d);
@@ -85,14 +88,12 @@ extern bool media_source_authorized(rrconn_t *cptr);
 // Fan one media payload out to every connection subscribed to channel `cp`;
 // builds a binframe with server-owned header fields. Returns false on OK.
 extern bool ws_media_channel_has_subscribers(const struct rr_mediachan *cp);
-extern bool ws_media_broadcast_subscribed(struct rr_mediachan *cp,
-   const uint8_t *payload, size_t len, const char codec[4]);
+extern bool ws_media_broadcast_subscribed(struct rr_mediachan *cp, const uint8_t *payload, size_t len, const char codec[4]);
 /* Broadcast to subscribers while excluding the originating connection. */
-extern bool ws_media_broadcast_subscribed_except(struct rr_mediachan *cp,
-   rrconn_t *exclude, const uint8_t *payload, size_t len, const char codec[4]);
+extern bool ws_media_broadcast_subscribed_except(struct rr_mediachan *cp, rrconn_t *exclude, const uint8_t *payload, size_t len, const char codec[4]);
 // Send to one subscribed connection, or all subscribers when cptr is NULL.
-extern bool ws_media_send_frame(struct rr_mediachan *cp, rrconn_t *cptr,
-   const uint8_t *payload, size_t len, const char codec[4]);
+extern bool ws_media_send_setup_frame(struct rr_mediachan *cp, rrconn_t *cptr, const uint8_t *payload, size_t len, const char codec[4]);
+extern bool ws_media_send_frame(struct rr_mediachan *cp, rrconn_t *cptr, const uint8_t *payload, size_t len, const char codec[4]);
 // Is chan_id present in a rx_channels[]/tx_channels[] style array?
 extern bool chan_id_in_array(u_int32_t *arr, int max, u_int32_t chan_id);
 

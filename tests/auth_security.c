@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
@@ -20,6 +21,12 @@ static void test_privileges(void) {
    assert(match_priv("admin,radio,media.*", "media.source"));
    assert(!match_priv("admin,radio,media.*", "mediasource"));
    assert(!match_priv("admin,radio,media.*", "media"));
+   assert(match_priv("serial.ttyGPS*", "serial.ttyGPS0"));
+   assert(match_priv("serial.ttyGPS*", "serial.ttyGPSraw"));
+   assert(!match_priv("serial.ttyGPS*", "serial.ttyHOST0"));
+   assert(!match_priv("serial.ttyGPS0", "serial.ttyGPS01"));
+   assert(!match_priv("serial.ttyGPS*", "serial"));
+   assert(!match_priv("admin*", "administrator"));
    assert(!match_priv(NULL, "admin"));
    assert(!match_priv("admin", NULL));
 
@@ -76,7 +83,9 @@ static void test_media_source_authorization(void) {
    user->uid = 4;
    snprintf(user->privs, sizeof(user->privs), "%s", "rx");
 
-   rrconn_t source = {0};
+   rrconn_t source = {
+      0
+   };
    source.authenticated = true;
    source.user = user;
    client_set_flag(&source, FLAG_VIDEO_SOURCE);
@@ -88,16 +97,24 @@ static void test_media_source_authorization(void) {
    assert(!media_source_authorized(&source));
 
    client_set_flag(&source, FLAG_MEDIA_SOURCE);
+   assert(!media_source_authorized(&source));
+   snprintf(user->privs, sizeof(user->privs), "%s", "media.source");
    assert(media_source_authorized(&source));
+   snprintf(user->privs, sizeof(user->privs), "%s", "rx");
+   assert(!media_source_authorized(&source));
+   snprintf(user->privs, sizeof(user->privs), "%s", "media.source");
    source.authenticated = false;
    assert(!media_source_authorized(&source));
 }
 
 static void test_http_client_owned_resources(void) {
-   rrconn_t client = {0};
-   const char unterminated_ua[] = { 'R', 'u', 's', 't', 'y' };
-   assert(http_client_set_user_agent(&client, unterminated_ua,
-      sizeof(unterminated_ua)));
+   rrconn_t client = {
+      0
+   };
+   const char unterminated_ua[] = {
+      'R', 'u', 's', 't', 'y'
+   };
+   assert(http_client_set_user_agent(&client, unterminated_ua, sizeof(unterminated_ua)));
    assert(strcmp(client.user_agent, "Rusty") == 0);
    client.cli_version = strdup("audit-client");
    assert(client.cli_version);
@@ -113,27 +130,83 @@ static void test_nonce_generation(void) {
    int generated = auth_generate_nonce(nonce, sizeof(nonce));
    assert(generated == HTTP_TOKEN_LEN);
    assert(strlen(nonce) == HTTP_TOKEN_LEN);
-   for (size_t i = 0; i < strlen(nonce); i++) {
+
+   for (size_t i = 0 ; i < strlen(nonce) ; i++) {
       assert((nonce[i] >= 'A' && nonce[i] <= 'Z') ||
-             (nonce[i] >= 'a' && nonce[i] <= 'z') ||
-             (nonce[i] >= '0' && nonce[i] <= '9') ||
-             nonce[i] == '+' || nonce[i] == '/');
+         (nonce[i] >= 'a' && nonce[i] <= 'z') || (nonce[i] >= '0' && nonce[i] <= '9') || nonce[i] == '+' || nonce[i] == '/');
    }
 
-   char tiny[2] = { 'x', 'x' };
+   char tiny[2] = {
+      'x', 'x'
+   };
    assert(auth_generate_nonce(tiny, sizeof(tiny)) == 1);
    assert(tiny[1] == '\0');
    assert(auth_generate_nonce(NULL, sizeof(tiny)) == -1);
    assert(auth_generate_nonce(tiny, 1) == -1);
 }
 
+static void test_elmer_account_changes(void) {
+   http_user_t *account = &http_users[5];
+   account->uid = 5;
+   rrconn_t unauthenticated = {
+      0
+   };
+   rrconn_t elmer = {
+      .is_ws = true, .authenticated = true, .user = account
+   };
+   rrconn_t *saved = http_client_list;
+   unauthenticated.next = &elmer;
+   http_client_list = &unauthenticated;
+   snprintf(account->privs, sizeof(account->privs), "elmer");
+   assert(is_elmer_online());
+   client_set_flag(&elmer, FLAG_ELMER);
+   snprintf(account->privs, sizeof(account->privs), "view");
+   assert(!is_elmer_online());
+   http_client_list = saved;
+}
+
+static void test_static_account_reload(void) {
+   char path[] = "/tmp/rr-static-users-XXXXXX";
+   int fd = mkstemp(path);
+   assert(fd >= 0);
+   FILE *file = fdopen(fd, "w");
+   assert(file);
+   fputs("-1:bad:1:hash:email:1:owner\n999999999:bad:1:hash:email:1:owner\nnot-a-uid:bad:1:hash:email:1:owner\n1:normal:1:hash:email:2:view,chat\n", file);
+   assert(!fclose(file));
+   memset(http_users, 0, sizeof(http_users));
+   snprintf(http_users[1].name, sizeof(http_users[1].name), "normal");
+   http_users[1].sessions = 2;
+   http_users[1].is_muted = true;
+   assert(http_load_users(path) == 0);
+   assert(http_users[1].uid == 1 && http_users[1].enabled);
+   assert(!strcmp(http_users[1].name, "normal"));
+   assert(http_users[1].sessions == 2 && http_users[1].is_muted);
+   assert(!http_users[0].name[0]);
+   unlink(path);
+
+   http_user_t previous[HTTP_MAX_USERS];
+   memcpy(previous, http_users, sizeof(previous));
+   snprintf(previous[1].privs, sizeof(previous[1].privs), "tx");
+   rrconn_t session = {
+      .user = &http_users[1], .authenticated = true, .is_ptt = true
+   };
+   rrconn_t *saved = http_client_list;
+   http_client_list = &session;
+   http_reconcile_users(previous);
+   assert(!session.is_ptt);
+   http_client_list = saved;
+}
+
 int main(void) {
    test_privileges();
+   test_elmer_account_changes();
+   test_static_account_reload();
    test_wire_password();
    test_wire_password_full_inputs();
    test_media_source_authorization();
    test_http_client_owned_resources();
    test_nonce_generation();
    puts("PASS: authentication hashes, nonce bounds, privilege matching, and invalid inputs");
+
    return 0;
 }

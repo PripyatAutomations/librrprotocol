@@ -19,12 +19,13 @@
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 
-extern dict *cfg;                // config.c
+extern dict *cfg;               // config.c
 extern time_t now;
 
 bool ws_handle_alert_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       Log(LOG_WARN, "http.ws", "alert_msg: got cptr:<%p> d:<%p>", cptr, d);
+
       return false;
    }
    bool rv = true;
@@ -48,6 +49,7 @@ bool ws_handle_alert_msg(rrconn_t *cptr, dict *d) {
       dict_add_ulong(d, "alert.ts", now);
    }
 
-   event_emit_dict("alert", NULL, d);
+   event_emit_dict("alert", cptr, d);
+
    return true;
 }

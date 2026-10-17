@@ -20,11 +20,14 @@
 #include <librrprotocol/connman.h>
 
 #if defined(USE_MONGOOSE)
-extern struct mg_mgr mgr;  // provided by the application that uses mongoose
+extern struct mg_mgr mgr;       // provided by the application that uses mongoose
 #endif
 
 // Shared state
-char active_server[SERVERLEN] = { 0 };
+char active_server[SERVERLEN] = {
+   0
+};
+
 rr_connection_t *active_connections = NULL;
 int ws_connected = 0;
 
@@ -34,8 +37,8 @@ rr_connection_t *connection_find(const char *server) {
 
       return NULL;
    }
-   rr_connection_t *cptr = active_connections;
 
+   rr_connection_t *cptr = active_connections;
    while (cptr) {
       if (strcasecmp(cptr->name, server) == 0) {
          Log(LOG_CRAZY, "connman", "Found server |%s| at <%p>", server, cptr);
@@ -53,6 +56,7 @@ bool connection_create(const char *server) {
 
       return true;
    }
+
    rr_connection_t *cptr = connection_find(server);
 
    if (cptr) {
@@ -61,7 +65,7 @@ bool connection_create(const char *server) {
       return true;
    }
    // Create a basic connection object and add it to the list
-   rr_connection_t *new_conn = calloc( 1, sizeof(rr_connection_t) );
+   rr_connection_t *new_conn = calloc(1, sizeof(rr_connection_t));
 
    if (!new_conn) {
       return true;
@@ -98,10 +102,11 @@ bool connection_remove(rr_connection_t *conn) {
 const char *get_server_property(const char *server, const char *prop) {
    if (!server || !prop) {
       Log(LOG_CRIT, "ws", "get_server_prop with null server or prop");
+
       return NULL;
    }
    char fullkey[KEYLEN];
-   memset( fullkey, 0, sizeof(fullkey) );
+   memset(fullkey, 0, sizeof(fullkey));
    snprintf(fullkey, sizeof(fullkey), "server:%s.%s", server, prop);
 
    // Use the configuration accessor so user values and built-in defaults are

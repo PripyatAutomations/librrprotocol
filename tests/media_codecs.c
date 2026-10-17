@@ -2,36 +2,65 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/ws.mediachan.h>
+#include <librrprotocol/server.events.h>
 
 time_t now;
 bool dying, restarting;
+extern bool ws_binframe_process_mg(rrconn_t *, const char *, size_t);
+
+static unsigned access_checks, demand_queries;
+static bool deny_access, relay_interested;
+static void count_access(const char *event, const void *data, size_t len, rrconn_t *client, void *user) {
+   assert(len == sizeof(rr_media_access_t));
+   access_checks++;
+
+   if (deny_access) {
+      ((rr_media_access_t *) data)->allowed = false;
+   }
+}
+static void count_demand(const char *event, const void *data, size_t len, rrconn_t *client, void *user) {
+   assert(len == sizeof(rr_media_demand_t));
+   demand_queries++;
+   ((rr_media_demand_t *) data)->interested = relay_interested;
+}
 
 int main(void) {
    cfg = dict_new();
+   dict_add(cfg, "station.name", "shared");
    dict_add(cfg, "codecs.allowed", "pc16 mu08 opuT ---- none");
    dict_add(cfg, "audio.test-mode", "true");
-   rrconn_t client = { .authenticated = true };
+   http_user_t *account = &http_users[1];
+   account->uid = 1;
+   snprintf(account->privs, sizeof(account->privs), "admin,rx,tx");
+   rrconn_t client = {
+      .authenticated = true, .user = account
+   };
    snprintf(client.media_codecs, sizeof(client.media_codecs), "pc16 opuT ---- none");
    dict *request = dict_new();
    dict_add(request, "media.cmd", "subscribe");
-   const char *invalid[] = { "----", "none", "NONE", "", "pcm16", "xxxx", "mu08" };
+   const char *invalid[] = {
+      "----", "none", "NONE", "", "pcm16", "xxxx", "mu08"
+   };
    struct rr_mediachan snapshot[MAX_MEDIA_CHANNELS];
    memcpy(snapshot, media_channels, sizeof(snapshot));
-   for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
+
+   for (size_t i = 0 ; i < sizeof(invalid) / sizeof(invalid[0]) ; i++) {
       dict_add(request, "media.codec", invalid[i]);
       assert(!ws_handle_mediachan_msg(&client, request));
       assert(!memcmp(snapshot, media_channels, sizeof(snapshot)));
       assert(!client.rx_channels[0]);
    }
+
    dict_add(request, "media.codec", "opuT");
    dict_add_int(request, "media.dir", RR_BINFRAME_DIR_TX);
    assert(!ws_handle_mediachan_msg(&client, request));
    assert(!memcmp(snapshot, media_channels, sizeof(snapshot)));
    dict_add_int(request, "media.dir", RR_BINFRAME_DIR_RX);
-   dict_add_int(request, "media.subsys", 257); // cannot bypass audio checks by truncation
+   dict_add_int(request, "media.subsys", 257);  // cannot bypass audio checks by truncation
    assert(!ws_handle_mediachan_msg(&client, request));
    dict_add_int(request, "media.subsys", RR_BINFRAME_SUBSYS_AUDIO);
    dict_add(cfg, "audio.test-mode", "false");
@@ -39,20 +68,199 @@ int main(void) {
    assert(!memcmp(snapshot, media_channels, sizeof(snapshot)));
    dict_add(request, "media.codec", "pc16");
    assert(ws_handle_mediachan_msg(&client, request));
-   struct rr_mediachan *channel = media_chan_find(RR_BINFRAME_SUBSYS_AUDIO,
-      RR_BINFRAME_DIR_RX, 0, 0);
+   struct rr_mediachan *channel = media_chan_find(RR_BINFRAME_SUBSYS_AUDIO, RR_BINFRAME_DIR_RX, 0, 0);
    assert(channel && !strcmp(channel->codec, "pc16") && client.rx_channels[0]);
    memcpy(snapshot, media_channels, sizeof(snapshot));
    dict_add(request, "media.cmd", "codec");
    dict_add(request, "media.chan-uuid", channel->uuid);
-   for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
+
+   for (size_t i = 0 ; i < sizeof(invalid) / sizeof(invalid[0]) ; i++) {
       dict_add(request, "media.codec", invalid[i]);
       assert(!ws_handle_mediachan_msg(&client, request));
       assert(!memcmp(snapshot, media_channels, sizeof(snapshot)));
    }
+
+   // Direction-specific account privileges apply even to no-op codec selections.
+   dict_add(request, "media.codec", "pc16");
+   snprintf(account->privs, sizeof(account->privs), "tx");
+   assert(!ws_handle_mediachan_msg(&client, request));
+   snprintf(account->privs, sizeof(account->privs), "rx");
+   assert(ws_handle_mediachan_msg(&client, request));
+   struct rr_mediachan *tx = media_chan_add(RR_BINFRAME_SUBSYS_AUDIO, RR_BINFRAME_DIR_TX, 0, 0, "pc16", "TX");
+   assert(tx);
+   dict_add(request, "media.chan-uuid", tx->uuid);
+   assert(!ws_handle_mediachan_msg(&client, request));
+   snprintf(account->privs, sizeof(account->privs), "tx");
+   assert(ws_handle_mediachan_msg(&client, request));
+   snprintf(account->privs, sizeof(account->privs), "admin");
+   assert(!ws_handle_mediachan_msg(&client, request));
+   snprintf(account->privs, sizeof(account->privs), "view,chat");
+   memcpy(snapshot, media_channels, sizeof(snapshot));
+   dict_add(request, "media.cmd", "subscribe");
+   dict_add(request, "media.chan-uuid", "unknown");
+   dict_add_int(request, "media.vfo", 240);
+   assert(!ws_handle_mediachan_msg(&client, request));
+   assert(!memcmp(snapshot, media_channels, sizeof(snapshot)));
+   dict_add(request, "media.cmd", "codec");
+   snprintf(account->privs, sizeof(account->privs), "rx,tx");
+   // Already keyed sessions must lose audio authority when their account changes.
+   snprintf(client.codec_tx, sizeof(client.codec_tx), "pc16");
+   client.is_ptt = true;
+   client.ptt_vfo = 'A';
+   client.tx_channels[0] = (uint32_t) (tx - media_channels) + 1;
+   uint8_t *packet = NULL;
+   const uint8_t pcm[2] = {
+      0, 0
+   };
+   int length = rr_binframe_frame(&packet, RR_BINFRAME_SUBSYS_AUDIO, "pc16", RR_BINFRAME_DIR_TX, 0, 0, 1, 1, 0, pcm, sizeof(pcm));
+   assert(length > 0);
+   assert(ws_binframe_process_mg(&client, (const char *)packet, length));
+   // Shared rig audio can transmit while controlling B, but only through
+   // the held rig room and an explicitly subscribed channel.
+   struct rr_mediachan *shared = media_chan_add(RR_BINFRAME_SUBSYS_AUDIO, RR_BINFRAME_DIR_TX, RR_BINFRAME_VFO_NA, 2, "pc16", "shared TX");
+   assert(shared);
+   snprintf(shared->room, sizeof(shared->room), "#shared-rig2");
+   assert(ws_room_set_vfo_mask(shared->room, 3));
+   assert(ws_client_join_room(&client, shared->room));
+   snprintf(client.ptt_room, sizeof(client.ptt_room), "%s", shared->room);
+   client.ptt_vfo = 'B';
+   client.tx_channels[1] = (uint32_t) (shared - media_channels) + 1;
+   uint8_t *shared_packet = NULL;
+   int shared_length =
+      rr_binframe_frame(&shared_packet, RR_BINFRAME_SUBSYS_AUDIO, "pc16", RR_BINFRAME_DIR_TX, RR_BINFRAME_VFO_NA, 2, 1, 1, 0, pcm, sizeof(pcm));
+   assert(shared_length > 0);
+   assert(ws_binframe_process_mg(&client, (const char *)shared_packet, shared_length));
+   client.ptt_room[0] = 0;
+   client.is_ptt = false;
+   assert(!ws_binframe_process_mg(&client, (const char *)shared_packet, shared_length));
+   client.is_ptt = true;
+   snprintf(client.ptt_room, sizeof(client.ptt_room), "#wrong");
+   assert(!ws_binframe_process_mg(&client, (const char *)shared_packet, shared_length));
+   free(shared_packet);
+   client.ptt_room[0] = 0;
+   client.ptt_vfo = 'A';
+   snprintf(account->privs, sizeof(account->privs), "view,chat");
+   client_set_flag(&client, FLAG_MEDIA_SOURCE);
+   assert(!ws_binframe_process_mg(&client, (const char *)packet, length));
+   snprintf(account->privs, sizeof(account->privs), "rx,video-src");
+   client_set_flag(&client, FLAG_VIDEO_SOURCE);
+   assert(!ws_binframe_process_mg(&client, (const char *)packet, length));
+   snprintf(account->privs, sizeof(account->privs), "tx");
+   account->is_muted = true;
+   assert(!ws_binframe_process_mg(&client, (const char *)packet, length));
+   account->is_muted = false;
+   snprintf(account->privs, sizeof(account->privs), "noob");
+   assert(!ws_binframe_process_mg(&client, (const char *)packet, length));
+   snprintf(account->privs, sizeof(account->privs), "rx,tx");
+   account->password_change_required = true;
+   assert(!ws_binframe_process_mg(&client, (const char *)packet, length));
+   account->password_change_required = false;
+   free(packet);
+   length = rr_binframe_frame(&packet, RR_BINFRAME_SUBSYS_AUDIO, "pc16", RR_BINFRAME_DIR_RX, 0, 0, 1, 1, 0, pcm, sizeof(pcm));
+   assert(length > 0);
+   assert(!ws_binframe_process_mg(&client, (const char *)packet, length));
+   free(packet);
+   struct rr_mediachan *gps = media_chan_add(RR_BINFRAME_SUBSYS_MODEM, RR_BINFRAME_DIR_RX, RR_BINFRAME_VFO_NA, 0, "gpsp", "position");
+   struct rr_mediachan *nmea = media_chan_add(RR_BINFRAME_SUBSYS_MODEM, RR_BINFRAME_DIR_RX, RR_BINFRAME_VFO_NA, 0, "nmea", "receiver");
+   assert(gps && nmea && gps != nmea && strcmp(gps->uuid, nmea->uuid));
+   assert(media_chan_add(RR_BINFRAME_SUBSYS_MODEM, RR_BINFRAME_DIR_RX, RR_BINFRAME_VFO_NA, 0, "nmea", NULL) == nmea);
+   dict_add(request, "media.chan-uuid", gps->uuid);
+   dict_add(request, "media.codec", "pc16");
+   assert(!ws_handle_mediachan_msg(&client, request));
+   assert(!strcmp(gps->codec, "gpsp"));
+   dict_add(request, "media.chan-uuid", nmea->uuid);
+   assert(!ws_handle_mediachan_msg(&client, request));
+   assert(!strcmp(nmea->codec, "nmea"));
+   // Feedback can influence only an authenticated subscriber's current room/codec.
+   snprintf(channel->room, sizeof(channel->room), "#feedback");
+   assert(ws_client_join_room(&client, channel->room));
+   unsigned stream = (unsigned)(channel - media_channels) + 1;
+   client.rx_channels[0] = stream;
+   dict_add(request, "media.cmd", "feedback");
+   dict_add_int(request, "media.stream", stream);
+   dict_add_int(request, "media.dir", RR_BINFRAME_DIR_RX);
+   dict_add(request, "media.codec", "pc16");
+   dict_add_int(request, "media.quality", 50);
+   assert(ws_handle_mediachan_msg(&client, request));
+   // Exercise compact wire decoding and the real server dispatcher too.
+   // Testing only ws_handle_mediachan_msg missed its missing dispatch entry.
+   char feedback_wire[256];
+   snprintf(feedback_wire, sizeof(feedback_wire),
+      "{\"op\":\"media.feedback\",\"stream\":%u,\"dir\":0,\"codec\":\"pc16\",\"quality\":75,\"late-us\":0,\"gaps\":0}", stream);
+   struct mg_ws_message feedback_frame = {
+      .flags = WEBSOCKET_OP_TEXT,
+      .data = {
+         .buf = feedback_wire, .len = strlen(feedback_wire)
+      }
+   };
+   assert(ws_handle(&client, &feedback_frame));
+   client.authenticated = false;
+   assert(!ws_handle_mediachan_msg(&client, request));
+   client.authenticated = true;
+   client.rx_channels[0] = 0;
+   assert(!ws_handle_mediachan_msg(&client, request));
+   client.rx_channels[0] = stream;
+   dict_add_int(request, "media.dir", RR_BINFRAME_DIR_TX);
+   assert(!ws_handle_mediachan_msg(&client, request));
+   dict_add_int(request, "media.dir", RR_BINFRAME_DIR_RX);
+   dict_add(request, "media.codec", "opus");
+   assert(!ws_handle_mediachan_msg(&client, request));
+   dict_add(request, "media.codec", "pc16");
+   dict_add_int(request, "media.quality", 1);
+   assert(!ws_handle_mediachan_msg(&client, request));
+   dict_add_int(request, "media.quality", 50);
+   snprintf(channel->room, sizeof(channel->room), "#foreign");
+   assert(!ws_handle_mediachan_msg(&client, request));
    dict_free(request);
+   char description[512];
+   snprintf(channel->name, sizeof(channel->name), "rig0.vfo_a.rx");
+   media_chan_description(channel, "rplywv00", description, sizeof(description));
+   assert(strstr(description, "rplywv00.rig0.vfo_a.rx") && strstr(description, "codec=") && strstr(description, channel->uuid));
+   event_init();
+   event_on_binary(RR_MEDIA_ACCESS_EVENT, count_access, NULL);
+   event_on_binary(RR_MEDIA_DEMAND_EVENT, count_demand, NULL);
+   struct mg_connection socket = {
+      0
+   };
+   rrconn_t bystander = {
+      .is_ws = true, .authenticated = true, .conn = &socket, .next = &client
+   };
+   client.is_ws = true;
+   client.conn = &socket;
+   client.next = NULL;
+   http_client_list = &bystander;
+   strcpy(channel->room, "#feedback");
+   client.rx_channels[0] = stream;
+
+   for (unsigned i = 0 ; i < 1000 ; i++) {
+      assert(ws_media_channel_has_subscribers(channel));
+   }
+
+   assert(access_checks == 1000 && !demand_queries);
+   /* Revocation is immediate, including delivery; non-subscribers never trigger application policy even when they share the same room. */
+   strcpy(bystander.rooms, client.rooms);
+   deny_access = true;
+   access_checks = 0;
+   const uint8_t payload[2] = {
+      0
+   };
+   assert(!ws_media_broadcast_subscribed(channel, payload, sizeof(payload), "pc16"));
+   assert(access_checks == 1);
+   assert(!ws_media_channel_has_subscribers(channel));
+   assert(demand_queries == 1);
+   relay_interested = true;
+   assert(ws_media_channel_has_subscribers(channel));
+   assert(demand_queries == 2);
+   client.rx_channels[0] = 0;
+   access_checks = 0;
+   assert(ws_media_channel_has_subscribers(channel));
+   assert(!access_checks && demand_queries == 3);
+   http_client_list = NULL;
+   event_off_binary(RR_MEDIA_ACCESS_EVENT, count_access, NULL);
+   event_off_binary(RR_MEDIA_DEMAND_EVENT, count_demand, NULL);
    dict_free(cfg);
    cfg = NULL;
    puts("PASS: subscribe-create and codec-select reject invalid/unnegotiated codecs without mutation");
+
    return 0;
 }
