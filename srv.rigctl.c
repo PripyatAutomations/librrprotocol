@@ -492,6 +492,26 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_add(cmd_d, "rigctl.vfo", vfo);
          event_emit_dict("rigctl", NULL, cmd_d);
          dict_free(cmd_d);
+      } else if (strcasecmp(cmd, "split") == 0) {
+         dict_value_t split_value;
+         if (!rr_object_value_get(d, "cat.split", VAL_BOOL, &split_value)) {
+            ws_send_error(cptr, "Split requires a boolean cat.split");
+            return false;
+         }
+         if (cptr->is_ptt) {
+            ws_send_error(cptr, "Cannot change split while transmitting");
+            return false;
+         }
+         dict *cmd_d = dict_new();
+         if (!cmd_d) return false;
+         dict_add(cmd_d, "msg.type", "rigctl");
+         dict_add(cmd_d, "rigctl.room", control_room);
+         dict_add(cmd_d, "rigctl.cmd", "split");
+         dict_add_bool(cmd_d, "rigctl.split", split_value.i != 0);
+         dict_add(cmd_d, "rigctl.from", cptr->chatname);
+         dict_add(cmd_d, "rigctl.vfo", vfo);
+         event_emit_dict("rigctl", cptr, cmd_d);
+         dict_free(cmd_d);
       } else if (strcasecmp(cmd, "width") == 0) {
          const char *width = dict_get(d, "cat.width", NULL);
 
