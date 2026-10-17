@@ -1653,12 +1653,13 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            ws_send_notice(cptr, "Selected VFO %s in room %s", vfo_name(new_vfo), channel);
                            /* Room-scoped hardware selection, not just the UI session VFO. */
                            dict *request = dict_new();
-                           if (request) {
+                           if (request && ws_room_control_allowed(cptr, channel, false) &&
+                               ws_supervision_allowed(cptr, channel, false)) {
                               dict_add(request, "rig.room", channel);
                               dict_add(request, "rig.vfo", vfo_name(new_vfo));
                               event_emit_dict("be.vfo.select", cptr, request);
-                              dict_free(request);
                            }
+                           if (request) dict_free(request);
                            dict *selected = dict_new();
                            dict_add(selected, "msg.type", "cat");
                            dict_add(selected, "cat.room", channel);
