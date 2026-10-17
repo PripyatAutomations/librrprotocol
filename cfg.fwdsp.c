@@ -13,6 +13,7 @@
 // Sections other than [general] and [server:*] are dropped by cfg_load()
 // unless a callback is registered for them (see cfg_add_callback()).
 //
+#include <stdio.h>
 #include <string.h>
 #include <strings.h>
 #include <stdlib.h>
@@ -42,14 +43,14 @@ bool config_fwdsp_init(void) {
 // [fwdsp] keys are stored as fwdsp:<key>.
 bool config_fwdsp_section_cb(const char *path, int line, const char *section, const char *buf) {
    if (!buf || section == NULL || strncasecmp(section, "fwdsp", 5) != 0) {
-      return true;
+      return false;
    }
    char *tmpbuf = strdup(buf);
 
    if (!tmpbuf) {
       Log(LOG_CRIT, "cfg.fwdsp", "OOM in config_fwdsp_section_cb!");
 
-      return true;
+      return false;
    }
    char *val = strchr(tmpbuf, '=');
 
@@ -57,7 +58,7 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
       Log(LOG_CRIT, "cfg.fwdsp", "config error at %s:%d: missing value: %s", path, line, buf);
       free(tmpbuf);
 
-      return true;
+      return false;
    }
    *val++ = '\0';               // split at '='
 
@@ -78,30 +79,26 @@ bool config_fwdsp_section_cb(const char *path, int line, const char *section, co
    }
    char fullkey[128];
 
-   if (strncmp(tmpbuf, "fwdsp:", 6) == 0) {
-      snprintf(fullkey, sizeof(fullkey), "%s", tmpbuf);
-   } else {
-      snprintf(fullkey, sizeof(fullkey), "fwdsp:%s", tmpbuf);
-   }
-   dict_add(cfg, fullkey, val);
+   int n = strncmp(tmpbuf, "fwdsp:", 6) == 0 ? snprintf(fullkey, sizeof(fullkey), "%s", tmpbuf) : snprintf(fullkey, sizeof(fullkey), "fwdsp:%s", tmpbuf);
+   bool stored = n > 0 && (size_t)n < sizeof(fullkey) && dict_add(cfg, fullkey, val) == 0;
    Log(LOG_CRAZY, "cfg.fwdsp", "Loaded %s=%s from %s:%d", fullkey, val, path, line);
    free(tmpbuf);
 
-   return false;
+   return stored;
 }
 
 // [pipelines] keys are stored as pipeline:<codec>.<dir> -- the format bin/fwdsp
 // looks up with cfg_get() (see fwdsp/fwdsp.c)
 bool config_pipeline_section_cb(const char *path, int line, const char *section, const char *buf) {
    if (!buf || section == NULL || strncasecmp(section, "pipeline", 8) != 0) {
-      return true;
+      return false;
    }
    char *tmpbuf = strdup(buf);
 
    if (!tmpbuf) {
       Log(LOG_CRIT, "cfg.fwdsp", "OOM in config_pipeline_section_cb!");
 
-      return true;
+      return false;
    }
 
    char *val = strchr(tmpbuf, '=');
@@ -110,7 +107,7 @@ bool config_pipeline_section_cb(const char *path, int line, const char *section,
       Log(LOG_CRIT, "cfg.fwdsp", "config error: pipeline entry missing value: %s", buf);
       free(tmpbuf);
 
-      return true;
+      return false;
    }
    *val++ = '\0';
 
@@ -137,10 +134,10 @@ bool config_pipeline_section_cb(const char *path, int line, const char *section,
    }
    char fullkey[128];
 
-   snprintf(fullkey, sizeof(fullkey), "pipeline:%s", id);
-   dict_add(cfg, fullkey, val);
+   int n = snprintf(fullkey, sizeof(fullkey), "pipeline:%s", id);
+   bool stored = n > 0 && (size_t)n < sizeof(fullkey) && dict_add(cfg, fullkey, val) == 0;
    Log(LOG_CRAZY, "cfg.fwdsp", "Loaded %s=%s from config", fullkey, val);
    free(tmpbuf);
 
-   return false;
+   return stored;
 }
