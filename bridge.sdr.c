@@ -14,11 +14,11 @@ bool rrp_sdr_register(const rrp_sdr_driver_t *driver) {
    if (!driver || driver->abi_version != RRP_SDR_ABI_VERSION ||
       !driver->name || !driver->create || !driver->destroy ||
       !driver->capabilities || !driver->start || !driver->poll || !driver->set_receiver || registered_driver) {
-      return true;
+      return false;
    }
    registered_driver = driver;
 
-   return false;
+   return true;
 }
 
 void rrp_sdr_unregister(const rrp_sdr_driver_t *driver) {
