@@ -4,7 +4,7 @@
 // The software is not for sale. It is freely available, always.
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
-// Named SDR subprocess configuration sections.
+// cfg.bridge.c: Named SDR subprocess configuration sections.
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
