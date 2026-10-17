@@ -28,7 +28,7 @@ static bool valid_name(const char *s) {
 
 static bool section_cb(const char *path, int line, const char *section, const char *buf) {
    if (!section || !buf) {
-      return true;
+      return false;
    }
    const char *name = NULL;
 
@@ -37,19 +37,19 @@ static bool section_cb(const char *path, int line, const char *section, const ch
    } else if (!strncmp(section, "bridge:", 7) && valid_name(section + 7)) {
       name = section + 7;
    } else {
-      return true;
+      return false;
    }
    char *copy = strdup(buf);
 
    if (!copy) {
-      return true;
+      return false;
    }
    char *value = strchr(copy, '=');
 
    if (!value) {
       free(copy);
 
-      return true;
+      return false;
    }
    *value++ = '\0';
    char *key = copy;
@@ -94,7 +94,7 @@ static bool section_cb(const char *path, int line, const char *section, const ch
       Log(LOG_CRIT, "cfg.bridge", "Invalid key in [%s] at %s:%d", section, path, line);
       free(copy);
 
-      return true;
+      return false;
    }
    char fullkey[256];
    int n = name ? snprintf(fullkey, sizeof(fullkey), "bridge:%s.%s", name, key)
@@ -102,7 +102,7 @@ static bool section_cb(const char *path, int line, const char *section, const ch
    bool ok = n > 0 && (size_t)n < sizeof(fullkey) && dict_add(cfg, fullkey, value) == 0;
    free(copy);
 
-   return !ok;
+   return ok;
 }
 
 bool rrp_bridge_config_init(void) {
