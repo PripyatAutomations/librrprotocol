@@ -174,9 +174,8 @@ bool add_server(const char *network, const char *str) {
 // can't serialize them itself).  Reconstructed in the same format that
 // add_server() parses on load.
 static bool config_servers_save_cb(FILE *fp, const char *path) {
-   if (!fp || !server_list) {
-      return false;
-   }
+   if (!fp) return false;
+   if (!server_list) return true;
 
    for (server_cfg_t *sp = server_list ; sp ; sp = sp->next) {
       fprintf(fp, "[network:%s]\n", sp->network);
@@ -205,7 +204,7 @@ static bool config_servers_save_cb(FILE *fp, const char *path) {
       fputc('\n', fp);
    }
 
-   return false;
+   return ferror(fp) == 0;
 }
 
 // Called once at startup to register our save callback
