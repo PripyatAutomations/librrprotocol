@@ -49,7 +49,12 @@
         "object.room": "room",
         "object.type": "type",
         "object.uuid": "uuid",
-        "inventory.uuid": "inventory.uuid"
+        "inventory.uuid": "inventory.uuid",
+        "inventory.parent": "inventory.parent",
+        "inventory.description": "inventory.description",
+        "inventory.location": "inventory.location",
+        "object.description": "description",
+        "object.location": "location"
       }
     },
     {
@@ -358,7 +363,9 @@
         "talk.usage.tx-enforced": "usage.tx-enforced",
         "talk.usage.bandwidth-status": "usage.bandwidth-status",
         "talk.remote-rooms": "remote-rooms",
-        "talk.servers": "servers"
+        "talk.servers": "servers",
+        "talk.site-description": "talk.site-description",
+        "talk.site-location": "talk.site-location"
       }
     },
     {
@@ -522,7 +529,8 @@
         "file.overwrite": "overwrite",
         "file.readable": "readable",
         "file.writable": "writable",
-        "file.error": "error"
+        "file.error": "error",
+        "file.site-name": "file.site-name"
       }
     }
   ]
