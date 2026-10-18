@@ -37,6 +37,11 @@ static const rr_wire_field_t wire_fields_0[] = {
    {"object.type", "type"},
    {"object.uuid", "uuid"},
    {"inventory.uuid", "inventory.uuid"},
+   {"inventory.parent", "inventory.parent"},
+   {"inventory.description", "inventory.description"},
+   {"inventory.location", "inventory.location"},
+   {"object.description", "description"},
+   {"object.location", "location"},
 };
 static const rr_wire_field_t wire_fields_1[] = {
    {"msg.ts", "time"},
@@ -232,6 +237,8 @@ static const rr_wire_field_t wire_fields_6[] = {
    {"talk.usage.bandwidth-status", "usage.bandwidth-status"},
    {"talk.remote-rooms", "remote-rooms"},
    {"talk.servers", "servers"},
+   {"talk.site-description", "talk.site-description"},
+   {"talk.site-location", "talk.site-location"},
 };
 static const rr_wire_field_t wire_fields_7[] = {
    {"msg.ts", "time"},
@@ -307,6 +314,7 @@ static const rr_wire_field_t wire_fields_17[] = {
    {"file.readable", "readable"},
    {"file.writable", "writable"},
    {"file.error", "error"},
+   {"file.site-name", "file.site-name"},
 };
 static const rr_wire_rule_t wire_rules[] = {
    {"object.snapshot", "object", "object.cmd", "snapshot", wire_fields_0, sizeof(wire_fields_0) / sizeof(wire_fields_0[0])},
