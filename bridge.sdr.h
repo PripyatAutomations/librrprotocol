@@ -62,7 +62,7 @@ typedef struct rrp_sdr_driver {
    bool (*receive)(void *instance, const void *frame, size_t length);
 } rrp_sdr_driver_t;
 
-// false = success, matching librustyaxe's module convention.
+// true = success, false = failure.
 bool rrp_sdr_register(const rrp_sdr_driver_t *driver);
 void rrp_sdr_unregister(const rrp_sdr_driver_t *driver);
 const rrp_sdr_driver_t *rrp_sdr_find(const char *name);

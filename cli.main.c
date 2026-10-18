@@ -65,7 +65,7 @@ extern bool rr_object_client_message(rrconn_t *cptr, dict *d);
 struct ws_msg_routes {
    const char *type;            // auth|ping|talk|cat|alert|error|hello etc
    bool auth_reqd;              // Is this only for authenticated users?
-   bool (*cb)(/*rrconn_t *cptr, dict *d */);
+   bool (*cb)(rrconn_t *cptr, dict *d);
 };
 
 struct ws_msg_routes ws_routes_cli[] = {

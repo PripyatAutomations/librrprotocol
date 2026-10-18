@@ -83,7 +83,7 @@ extern http_user_t http_users[HTTP_MAX_USERS];
 
 struct http_route {
    char *match;                 // match expression
-   bool (*cb)();                // callback to invoke
+   bool (*cb)(struct mg_http_message *msg, rrconn_t *cptr); // true on success
    bool auth_reqd;              // Is authentication required?
 };
 typedef struct http_route http_route_t;
