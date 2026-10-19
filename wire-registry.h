@@ -209,6 +209,7 @@ static const rr_wire_field_t wire_fields_6[] = {
    {"talk.username", "username"},
    {"talk.vfo", "vfo"},
    {"talk.vfos", "vfos"},
+   {"room.uuid", "room-info.uuid"},
    {"room.vfo-mask", "room-info.vfo-mask"},
    {"room.tx-control", "room-info.tx-control"},
    {"room.rx-tuning-mask", "room-info.rx-tuning-mask"},
