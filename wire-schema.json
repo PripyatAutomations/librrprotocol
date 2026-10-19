@@ -365,7 +365,8 @@
         "talk.remote-rooms": "remote-rooms",
         "talk.servers": "servers",
         "talk.site-description": "talk.site-description",
-        "talk.site-location": "talk.site-location"
+        "talk.site-location": "talk.site-location",
+        "room.uuid": "room-info.uuid"
       }
     },
     {
