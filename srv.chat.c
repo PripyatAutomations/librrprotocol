@@ -83,9 +83,17 @@ static bool callsign_lookup_wait_ready(int timeout_ms) {
       }
       line[strcspn(line, "\r\n")] = '\0';
 
-      if (*line) {
-         Log(LOG_WARN, "callsign", "lookup startup: %s", line);
+      /* The helper may load the shared server configuration without
+       * implementing every section. Do not promote routine parser output or
+       * its protocol banner into rrserver warnings. */
+      if (*line && (strstr(line, "<cfg@debug>") || strstr(line, "<cfg@info>") ||
+           strstr(line, "[Debug] config ") || !strncmp(line, "+NOTICE", 7) ||
+           !strncmp(line, "+PROTO", 6) || strstr(line, "---- Log Filters ----") ||
+           !strcmp(line, "---------------------") ||
+           strstr(line, " = 3 (info)") || strstr(line, " = 4 (debug)"))) {
+         continue;
       }
+      if (*line) Log(LOG_WARN, "callsign", "lookup startup: %s", line);
    }
 
    /* A zero-time probe is used from the WebSocket event loop.  No data yet means only that startup is still in progress; preserve the helper and let a later
