@@ -74,7 +74,7 @@ struct rr_user {
    char ptt_vfo;
    char ptt_room[128];
    bool is_muted;
-   bool irc_oper;              // learned IRC operator status, independent of channel modes
+   bool irc_oper;               // learned IRC operator status, independent of channel modes
    bool in_store;               // <-- whether `iter` is valid
    struct rr_user *next;
 };
@@ -83,7 +83,7 @@ extern http_user_t http_users[HTTP_MAX_USERS];
 
 struct http_route {
    char *match;                 // match expression
-   bool (*cb)(struct mg_http_message *msg, rrconn_t *cptr); // true on success
+   bool (*cb)(struct mg_http_message *msg, rrconn_t *cptr);    // true on success
    bool auth_reqd;              // Is authentication required?
 };
 typedef struct http_route http_route_t;

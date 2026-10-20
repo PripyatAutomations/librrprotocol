@@ -449,7 +449,10 @@ bool media_send_available(rrconn_t *cptr, struct rr_mediachan *cp) {
       dict_add(d, "media.codec", cp->codec);
    }
 
-   if (cp->profiles && cp->profiles[0]) dict_add(d, "media.profiles", cp->profiles);
+   if (cp->profiles && cp->profiles[0]) {
+      dict_add(d, "media.profiles", cp->profiles);
+   }
+
    if (cp->descr[0] != '\0') {
       dict_add(d, "media.descr", cp->descr);
    }
@@ -697,12 +700,23 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
 
    if (!strcasecmp(media_cmd, "profile")) {
       struct rr_mediachan *cp = uuid ? media_chan_find_uuid(uuid) : NULL;
-      if (!cptr->authenticated || !cp || cp->subsystem != RR_BINFRAME_SUBSYS_VIDEO ||
-         !media_client_in_channel_room(cptr, cp)) return false;
-      if (!chan_id_in_array(cptr->rx_channels, MAX_RX_CHANNELS, cp - media_channels + 1)) return false;
-      rr_media_profile_request_t request = {.message = d};
+
+      if (!cptr->authenticated || !cp || cp->subsystem != RR_BINFRAME_SUBSYS_VIDEO || !media_client_in_channel_room(cptr, cp)) {
+         return false;
+      }
+
+      if (!chan_id_in_array(cptr->rx_channels, MAX_RX_CHANNELS, cp - media_channels + 1)) {
+         return false;
+      }
+      rr_media_profile_request_t request = {
+         .message = d
+      };
       event_emit_binary("media.profile.request", cptr, &request, sizeof(request));
-      if (!request.handled) ws_send_error(cptr, "Video profile selection is unavailable");
+
+      if (!request.handled) {
+         ws_send_error(cptr, "Video profile selection is unavailable");
+      }
+
       return request.handled && request.result;
    }
 
@@ -1001,6 +1015,7 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
 
       if (cp->subsystem == RR_BINFRAME_SUBSYS_VIDEO) {
          ws_send_error(cptr, "Use video profile selection for this channel");
+
          return false;
       }
 

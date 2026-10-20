@@ -330,6 +330,7 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
 
    if (!ws_auth_refresh(cptr)) {
       ws_send_error(cptr, "Account database unavailable; try again later");
+
       return false;
    }
 
@@ -455,7 +456,8 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
       if (strcasecmp(media_cmd, "capab") == 0 || strcasecmp(media_cmd, "list") == 0 ||
          strcasecmp(media_cmd, "subscribe") == 0 ||
          strcasecmp(media_cmd, "unsubscribe") == 0 ||
-         strcasecmp(media_cmd, "source") == 0 || strcasecmp(media_cmd, "profile") == 0 || strcasecmp(media_cmd, "feedback") == 0 || strcasecmp(media_cmd, "codec") == 0) {
+         strcasecmp(media_cmd, "source") == 0 || strcasecmp(media_cmd, "profile") == 0 || strcasecmp(media_cmd, "feedback") == 0
+         || strcasecmp(media_cmd, "codec") == 0) {
          result = ws_handle_mediachan_msg(cptr, d);
          goto cleanup;
       }
@@ -560,8 +562,10 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
       uint64_t started = mono_us();
       bool accepted = ws_binframe_process_mg(cptr, msg->data.buf, msg->data.len);
       rr_wire_profile_binary(msg->data.buf, msg->data.len, accepted, mono_us() - started);
+
       return accepted;
 #else
+
       return ws_binframe_process_mg(cptr, msg->data.buf, msg->data.len);
 #endif
    } else if ((msg->flags & 0x0F) == WEBSOCKET_OP_TEXT) {

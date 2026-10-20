@@ -44,7 +44,7 @@ struct rr_mediachan {
    char vfo_uuid[64];
    char codec[5];               // negotiated codec magic, or "" when unset
    char descr[128];             // human-readable description
-   const char *profiles;       // Borrowed configured video profile list; owner keeps it alive.
+   const char *profiles;        // Borrowed configured video profile list; owner keeps it alive.
    bool active;                 // is this channel actually streaming?
 };
 
@@ -77,7 +77,10 @@ extern bool media_send_available_all(rrconn_t *cptr);
 // Remove all channels (rehash/restart)
 extern void media_channels_free(void);
 
-typedef struct { dict *message; bool handled, result; } rr_media_profile_request_t;
+typedef struct {
+   dict *message;
+   bool handled, result;
+} rr_media_profile_request_t;
 
 // Server-side handler for media.* text frames with media.cmd
 // `list`/`subscribe`/`unsubscribe`/`source`. Returns false if handled.

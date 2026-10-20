@@ -83,17 +83,18 @@ static bool callsign_lookup_wait_ready(int timeout_ms) {
       }
       line[strcspn(line, "\r\n")] = '\0';
 
-      /* The helper may load the shared server configuration without
-       * implementing every section. Do not promote routine parser output or
-       * its protocol banner into rrserver warnings. */
+      /* The helper may load the shared server configuration without implementing every section. Do not promote routine parser output or its protocol banner
+       * into rrserver warnings. */
       if (*line && (strstr(line, "<cfg@debug>") || strstr(line, "<cfg@info>") ||
-           strstr(line, "[Debug] config ") || !strncmp(line, "+NOTICE", 7) ||
-           !strncmp(line, "+PROTO", 6) || strstr(line, "---- Log Filters ----") ||
-           !strcmp(line, "---------------------") ||
-           strstr(line, " = 3 (info)") || strstr(line, " = 4 (debug)"))) {
+         strstr(line, "[Debug] config ") || !strncmp(line, "+NOTICE", 7) ||
+         !strncmp(line, "+PROTO", 6) || strstr(line, "---- Log Filters ----") ||
+         !strcmp(line, "---------------------") || strstr(line, " = 3 (info)") || strstr(line, " = 4 (debug)"))) {
          continue;
       }
-      if (*line) Log(LOG_WARN, "callsign", "lookup startup: %s", line);
+
+      if (*line) {
+         Log(LOG_WARN, "callsign", "lookup startup: %s", line);
+      }
    }
 
    /* A zero-time probe is used from the WebSocket event loop.  No data yet means only that startup is still in progress; preserve the helper and let a later
@@ -1661,13 +1662,16 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
                            ws_send_notice(cptr, "Selected VFO %s in room %s", vfo_name(new_vfo), channel);
                            /* Room-scoped hardware selection, not just the UI session VFO. */
                            dict *request = dict_new();
-                           if (request && ws_room_control_allowed(cptr, channel, false) &&
-                               ws_supervision_allowed(cptr, channel, false)) {
+
+                           if (request && ws_room_control_allowed(cptr, channel, false) && ws_supervision_allowed(cptr, channel, false)) {
                               dict_add(request, "rig.room", channel);
                               dict_add(request, "rig.vfo", vfo_name(new_vfo));
                               event_emit_dict("be.vfo.select", cptr, request);
                            }
-                           if (request) dict_free(request);
+
+                           if (request) {
+                              dict_free(request);
+                           }
                            dict *selected = dict_new();
                            dict_add(selected, "msg.type", "cat");
                            dict_add(selected, "cat.room", channel);
@@ -1783,10 +1787,12 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          // rrclient (chat.whois.c). Sessions is just the count (also in userinfo).
          dict *wi = dict_new();
          char *rooms = ws_chat_whois_rooms(acptr);
+
          if (!wi || !rooms) {
             dict_free(wi);
             free(rooms);
             ws_send_error(cptr, "WHOIS: unable to collect room membership");
+
             return false;
          }
          dict_add(wi, "talk.rooms", rooms);
