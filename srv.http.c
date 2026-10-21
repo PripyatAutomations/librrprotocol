@@ -648,10 +648,10 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
       while (*root == ' ' || *root == '\t' || *root == '\r' || *root == '\n') {
          root++;
       }
-      dict *d = *root == '{' ? rr_wire_decode(buf) : NULL;
+      dict *d = rr_wire_decode(buf);
 
       if (!d) {
-         Log(LOG_WARN, "http.ws", "Rejected invalid RustyRig message");
+         /* Decoder logs the safe operation/field/reason; do not duplicate warnings. */
          ws_send_error(cptr, "Invalid RustyRig wire message");
 
          return false;
