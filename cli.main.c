@@ -157,6 +157,27 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
    snprintf(evname, sizeof(evname), "ws.msg.%s", (msg_type ? msg_type : "unknown"));
    event_emit_dict(evname, cptr, d);
 
+   if (msg_type && !strcmp(msg_type, "cap")) {
+      const char *cmd = dict_get(d, "cap.cmd", "");
+      const char *features = dict_get(d, "cap.features", "");
+      bool agreed = !strcmp(cmd, "ack") &&
+         dict_get_int(d, "cap.version", 0) == RR_PROTOCOL_VERSION &&
+         strstr(features, "wire.json-v2") &&
+         strstr(features, "binframe.v2");
+      if (!agreed) {
+         Log(LOG_WARN, "ws.cap", "Server rejected required v2 capabilities (%s)", cmd);
+         if (cptr->conn) cptr->conn->is_closing = 1;
+         return false;
+      }
+      const char *profile = cptr->server ? cptr->server->network : server_name;
+      const char *login_user = cptr->server && cptr->server->nick[0] ?
+         cptr->server->nick : get_server_property(profile, "server.user");
+      if (!login_user) return false;
+      Log(LOG_INFO, "ws.cap", "Negotiated capabilities: %s", features);
+      ws_send_hello(cptr);
+      ws_send_login(cptr, login_user);
+      return true;
+   }
    if (msg_type && !strcmp(msg_type, "file")) {
       return true;              /* Application-owned file operations. */
 
@@ -346,8 +367,6 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
          ws_send_dict(NULL,cptr,cap,WEBSOCKET_OP_TEXT);
          dict_free(cap);
       }
-      ws_send_hello(cptr);
-      ws_send_login(cptr, login_user);
       dict_free(d);
    } else if (ev == MG_EV_WS_MSG) {
       struct mg_ws_message *wm = (struct mg_ws_message *)ev_data;
