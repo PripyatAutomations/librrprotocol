@@ -65,7 +65,9 @@
         "property.descriptor": "descriptor",
         "property.state": "state",
         "property.changed": "changed",
-        "property.result": "result"
+        "property.result": "result",
+        "property.read": "read",
+        "property.menu-set": "menu-set"
       },
       "fields": {
         "msg.ts": "time",
