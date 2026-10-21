@@ -1105,6 +1105,17 @@ static bool ws_chat_cmd_syslog(rrconn_t *cptr, const char *state) {
    return false;
 }
 
+/* The owning application may authorize authenticated remote room chat through
+ * destination-side grants. Never infer authority from the origin account. */
+static bool (*chat_resource_authorizer)(rrconn_t *, const char *, const char *);
+void ws_chat_set_resource_authorizer(bool (*authorize)(rrconn_t *, const char *, const char *)) {
+   chat_resource_authorizer = authorize;
+}
+static bool ws_chat_has_authority(rrconn_t *client, const char *room, const char *command) {
+   return has_priv(client->user->uid, "admin|owner|chat") ||
+      (chat_resource_authorizer && chat_resource_authorizer(client, room, command));
+}
+
 bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
    if (!cptr || !d) {
       return false;
@@ -1416,7 +1427,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             return false;
          }
 
-         if (*data && !has_priv(cptr->user->uid, "admin|owner|chat")) {
+         if (*data && !ws_chat_has_authority(cptr, requested, cmd)) {
             ws_send_error(cptr, "You do not have CHAT privilege.");
 
             return false;
@@ -1502,7 +1513,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             return true;
          }
 
-         if (!has_priv(cptr->user->uid, "admin|owner|chat")) {
+         if (!ws_chat_has_authority(cptr, requested, cmd)) {
             Log(LOG_CRAZY, "chat", "user %s doesn't have chat privileges but tried to send a message", user);
 
             // XXX: Alert the user that their message was NOT delivered
