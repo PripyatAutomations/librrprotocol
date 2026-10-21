@@ -76,7 +76,10 @@ enum rr_mode {
    MODE_DSTAR,
    MODE_FT4,                    // ft8lib?
    MODE_FT8,                    // ft8lib?
-   MODE_DFM                     // Digital FM / packet
+   MODE_DFM,                    // Digital FM / packet processed client-side
+   MODE_MU,                     // Server-side modem with USB RF modulation
+   MODE_ML,                     // Server-side modem with LSB RF modulation
+   MODE_MFM                     // Server-side modem with FM RF modulation
 };
 typedef enum rr_mode rr_mode_t;
 
