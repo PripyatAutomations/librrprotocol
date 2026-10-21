@@ -40,6 +40,7 @@ static const char vfo_mode_dsb[] = "DSB";
 static const char vfo_mode_fm[] = "FM";
 static const char vfo_mode_dl[] = "D-L";
 static const char vfo_mode_du[] = "D-U";
+static const char vfo_mode_dfm[] = "DFM";
 static const char vfo_mode_ft4[] = "FT4";
 static const char vfo_mode_ft8[] = "FT8";
 
@@ -96,6 +97,8 @@ rr_mode_t vfo_parse_mode(const char *mode) {
       return MODE_DL;
    } else if (strcasecmp(mode, vfo_mode_du) == 0 || strcasecmp(mode, "du") == 0 || strcasecmp(mode, "PKTUSB") == 0) {
       return MODE_DU;
+   } else if (strcasecmp(mode, vfo_mode_dfm) == 0) {
+      return MODE_DFM;
    } else if (strcasecmp(mode, vfo_mode_ft4) == 0) {
       return MODE_FT4;
    } else if (strcasecmp(mode, vfo_mode_ft8) == 0) {
@@ -140,6 +143,10 @@ const char *vfo_mode_name(rr_mode_t mode) {
       }
       case MODE_DU: {
          rv = vfo_mode_du;
+         break;
+      }
+      case MODE_DFM: {
+         rv = vfo_mode_dfm;
          break;
       }
       case MODE_FT4: {
