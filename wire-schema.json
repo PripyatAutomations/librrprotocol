@@ -62,12 +62,12 @@
       "command_key": "property.cmd",
       "operations": {
         "property.set": "set",
+        "property.read": "read",
+        "property.menu-set": "menu-set",
         "property.descriptor": "descriptor",
         "property.state": "state",
         "property.changed": "changed",
-        "property.result": "result",
-        "property.read": "read",
-        "property.menu-set": "menu-set"
+        "property.result": "result"
       },
       "fields": {
         "msg.ts": "time",
