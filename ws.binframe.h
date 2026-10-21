@@ -21,7 +21,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define RR_BINFRAME_VERSION 0x01
+#define RR_BINFRAME_VERSION 0x02
 
 // Subsystem byte (hdr.subsystem)
 #define RR_BINFRAME_SUBSYS_NONE 0x00
