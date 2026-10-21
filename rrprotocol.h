@@ -41,6 +41,7 @@ uint32_t ws_room_rx_tuning_mask(const char *room);
 bool ws_room_control_allowed(rrconn_t *client, const char *room, bool frequency);
 /* Optional destination-side resource authorization for authenticated relay CAT. */
 void ws_rigctl_set_resource_authorizer(bool (*authorize)(rrconn_t *, const char *, const char *));
+void ws_chat_set_resource_authorizer(bool (*authorize)(rrconn_t *, const char *, const char *));
 bool ws_send_ptt_cmd_in_room(rrconn_t *, const char *vfo, bool ptt, const char *room);
 bool ws_send_freq_cmd_in_room(rrconn_t *, const char *vfo, long freq, const char *room);
 bool ws_send_mode_cmd_in_room(rrconn_t *, const char *vfo, const char *mode, const char *room);
