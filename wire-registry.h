@@ -16,6 +16,8 @@ static const rr_wire_field_t wire_fields_0[] = {
    {"inventory.access", "inventory.access"},
    {"inventory.action", "inventory.action"},
    {"inventory.backend", "inventory.backend"},
+   {"inventory.manufacturer", "inventory.manufacturer"},
+   {"inventory.model", "inventory.model"},
    {"inventory.codec", "inventory.codec"},
    {"inventory.coordinates", "inventory.coordinates"},
    {"inventory.depth", "inventory.depth"},
