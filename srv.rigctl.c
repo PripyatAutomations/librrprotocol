@@ -154,6 +154,16 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
    return false;
 }
 
+/* Destination-authorized remote CAT operations must not inherit origin roles. */
+static bool (*rigctl_resource_authorizer)(rrconn_t *, const char *, const char *);
+void ws_rigctl_set_resource_authorizer(bool (*authorize)(rrconn_t *, const char *, const char *)) {
+   rigctl_resource_authorizer = authorize;
+}
+static bool ws_rigctl_has_tx_authority(rrconn_t *client, const char *room, const char *command) {
+   return has_priv(client->user->uid, "admin|owner|tx|noob") ||
+      (rigctl_resource_authorizer && rigctl_resource_authorizer(client, room, command));
+}
+
 // Account flags determine authority; connection/channel hints are not privileges.
 static bool ws_ptt_can_override(rrconn_t *requester, rrconn_t *holder) {
    if (!requester || !requester->authenticated || !requester->user || !holder || !holder->user) {
@@ -295,7 +305,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
    if (cmd) {
       if (strcasecmp(cmd, "ptt") == 0) {
-         if (!own_release && !override_release && (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted)) {
+         if (!own_release && !override_release && (!ws_rigctl_has_tx_authority(cptr, control_room, cmd) || cptr->user->is_muted)) {
             ws_send_error(cptr, "Cannot start PTT on VFO %s in room %s: TX account privilege is required", vfo, control_room);
 
             return false;
@@ -421,7 +431,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
             return false;
          }
       } else if (!strcasecmp(cmd, "power")) {
-         if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || !vfo || !*vfo) {
+         if (!ws_rigctl_has_tx_authority(cptr, control_room, cmd) || !vfo || !*vfo) {
             ws_send_error(cptr, "Cannot set power on VFO %s in room %s: TX account privilege is required", vfo, control_room);
 
             return false;
@@ -446,7 +456,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          event_emit_dict("rigctl", cptr, command);
          dict_free(command);
       } else if (strcasecmp(cmd, "freq") == 0) {
-         if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
+         if (!ws_rigctl_has_tx_authority(cptr, control_room, cmd) || cptr->user->is_muted) {
             ws_send_error(cptr, "Cannot apply %s to VFO %s in room %s: TX account privilege is required", cmd, vfo, control_room);
 
             return false;
@@ -495,14 +505,10 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       } else if (strcasecmp(cmd, "swap") == 0) {
          if (cptr->is_ptt) {
             ws_send_error(cptr, "Cannot exchange VFO settings while transmitting");
-
             return false;
          }
          dict *cmd_d = dict_new();
-
-         if (!cmd_d) {
-            return false;
-         }
+         if (!cmd_d) return false;
          dict_add(cmd_d, "msg.type", "rigctl");
          dict_add(cmd_d, "rigctl.room", control_room);
          dict_add(cmd_d, "rigctl.cmd", "swap");
@@ -512,23 +518,16 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_free(cmd_d);
       } else if (strcasecmp(cmd, "split") == 0) {
          dict_value_t split_value;
-
          if (!rr_object_value_get(d, "cat.split", VAL_BOOL, &split_value)) {
             ws_send_error(cptr, "Split requires a boolean cat.split");
-
             return false;
          }
-
          if (cptr->is_ptt) {
             ws_send_error(cptr, "Cannot change split while transmitting");
-
             return false;
          }
          dict *cmd_d = dict_new();
-
-         if (!cmd_d) {
-            return false;
-         }
+         if (!cmd_d) return false;
          dict_add(cmd_d, "msg.type", "rigctl");
          dict_add(cmd_d, "rigctl.room", control_room);
          dict_add(cmd_d, "rigctl.cmd", "split");
@@ -540,7 +539,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       } else if (strcasecmp(cmd, "width") == 0) {
          const char *width = dict_get(d, "cat.width", NULL);
 
-         if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
+         if (!ws_rigctl_has_tx_authority(cptr, control_room, cmd) || cptr->user->is_muted) {
             ws_send_error(cptr, "Cannot apply %s to VFO %s in room %s: TX account privilege is required", cmd, vfo, control_room);
 
             return false;
@@ -605,7 +604,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       } else if (strcasecmp(cmd, "mode") == 0) {
          const char *mode = dict_get(d, "cat.mode", NULL);
 
-         if (!has_priv(cptr->user->uid, "admin|owner|tx|noob") || cptr->user->is_muted) {
+         if (!ws_rigctl_has_tx_authority(cptr, control_room, cmd) || cptr->user->is_muted) {
             ws_send_error(cptr, "Cannot apply %s to VFO %s in room %s: TX account privilege is required", cmd, vfo, control_room);
 
             return false;
