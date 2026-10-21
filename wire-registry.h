@@ -342,6 +342,8 @@ static const rr_wire_rule_t wire_rules[] = {
    {"object.inventory-entry", "object", "object.cmd", "inventory-entry", wire_fields_1, sizeof(wire_fields_1) / sizeof(wire_fields_1[0])},
    {"object.inventory-end", "object", "object.cmd", "inventory-end", wire_fields_1, sizeof(wire_fields_1) / sizeof(wire_fields_1[0])},
    {"property.set", "property", "property.cmd", "set", wire_fields_2, sizeof(wire_fields_2) / sizeof(wire_fields_2[0])},
+   {"property.read", "property", "property.cmd", "read", wire_fields_2, sizeof(wire_fields_2) / sizeof(wire_fields_2[0])},
+   {"property.menu-set", "property", "property.cmd", "menu-set", wire_fields_2, sizeof(wire_fields_2) / sizeof(wire_fields_2[0])},
    {"property.descriptor", "property", "property.cmd", "descriptor", wire_fields_2, sizeof(wire_fields_2) / sizeof(wire_fields_2[0])},
    {"property.state", "property", "property.cmd", "state", wire_fields_2, sizeof(wire_fields_2) / sizeof(wire_fields_2[0])},
    {"property.changed", "property", "property.cmd", "changed", wire_fields_2, sizeof(wire_fields_2) / sizeof(wire_fields_2[0])},
