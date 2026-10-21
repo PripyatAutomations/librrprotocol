@@ -404,7 +404,7 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
          /* v2 baseline features can be negotiated individually. Unknown
           * names are rejected, never silently treated as supported. */
          const char *supported[] = {"wire.json-v2","binframe.v2","object.inventory-v2"};
-         bool valid = true;
+         bool valid = dict_get_int(d, "cap.version", 0) == RR_PROTOCOL_VERSION;
          char *copy = strdup(requested), *save = NULL;
          if (!copy) {dict_free(answer);goto cleanup;}
          for (char *item = strtok_r(copy," ",&save); item;
