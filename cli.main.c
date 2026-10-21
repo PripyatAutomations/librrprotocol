@@ -22,6 +22,7 @@
 #include <librrprotocol/server.events.h>
 #include <librrprotocol/traffic.h>
 #include <librrprotocol/wire.h>
+#include <librrprotocol/wire-version.h>
 #include <librrprotocol/latency.h>
 #include <librrprotocol/media.health.h>
 
@@ -334,6 +335,17 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       dict_add(d, "auth.user", (char *)login_user);
       dict_add(d, "auth.server", (char *)(cptr->server ? cptr->server->network : server_name));
       event_emit_dict("connected", cptr, d);
+      /* CAP starts after the WebSocket major-version gate. Optional features
+       * are requested explicitly instead of inferred from a release number. */
+      dict *cap = dict_new();
+      if (cap) {
+         dict_add(cap,"msg.type","cap");
+         dict_add(cap,"cap.cmd","req");
+         dict_add_int(cap,"cap.version",RR_PROTOCOL_VERSION);
+         dict_add(cap,"cap.features","wire.json-v2 binframe.v2 object.inventory-v2");
+         ws_send_dict(NULL,cptr,cap,WEBSOCKET_OP_TEXT);
+         dict_free(cap);
+      }
       ws_send_hello(cptr);
       ws_send_login(cptr, login_user);
       dict_free(d);
