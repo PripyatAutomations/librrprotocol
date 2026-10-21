@@ -149,6 +149,21 @@ static bool copy_value(dict *out, const char *key, dict *in, const char *source,
    return error == 0;
 }
 
+/* Logs schema metadata only: never serialize rejected payloads or credentials. */
+static const char *wire_safe_label(const char *src, char *dst, size_t size) {
+   if (!src || !*src) return "(missing)";
+   size_t i = 0;
+   for (; src[i] && i + 1 < size; i++) {
+      unsigned char c = (unsigned char)src[i];
+      if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+            (c >= '0' && c <= '9') || c == '.' || c == '-' || c == '_'))
+         return "(invalid)";
+      dst[i] = (char)c;
+   }
+   if (src[i]) return "(too-long)";
+   dst[i] = '\\0';
+   return dst;
+}
 static dict *transform(dict *in, bool encode, const rr_wire_rule_t **selected) {
    const rr_wire_rule_t *rule = rule_for(in, encode);
 
@@ -159,8 +174,11 @@ static dict *transform(dict *in, bool encode, const rr_wire_rule_t **selected) {
    if (!rule) {
       if (encode) {
          Log(LOG_WARN, "wire", "Unsupported outgoing operation: %s", dict_get(in, "msg.type", "missing"));
+      } else {
+         char op[72];
+         Log(LOG_WARN, "wire", "Rejected incoming message: unsupported op=%s",
+             wire_safe_label(dict_get(in, "op", NULL), op, sizeof(op)));
       }
-
       return NULL;
    }
    dict *out = dict_new();
@@ -186,6 +204,10 @@ static dict *transform(dict *in, bool encode, const rr_wire_rule_t **selected) {
       if (!field_path(rule, key, encode, path, sizeof(path)) || !copy_value(out, path, in, key, type, &value)) {
          if (encode) {
             Log(LOG_WARN, "wire", "Invalid outgoing field %s for %s", key, rule->operation);
+         } else {
+            char field[72];
+            Log(LOG_WARN, "wire", "Rejected incoming %s: unmapped or invalid field=%s (type/schema mismatch)",
+                rule->operation, wire_safe_label(key, field, sizeof(field)));
          }
          goto invalid;
       }
@@ -281,6 +303,8 @@ static bool literal_keys(const char *json) {
 
 static dict *wire_decode(const char *json, size_t length, const rr_wire_rule_t **selected) {
    if (!json || length > HTTP_WS_MAX_MSG) {
+      Log(LOG_WARN, "wire", "Rejected incoming message: %s (bytes=%zu, maximum=%u)",
+          !json ? "null frame" : "frame too large", length, (unsigned)HTTP_WS_MAX_MSG);
       return NULL;
    }
    const char *root = json;
@@ -288,10 +312,17 @@ static dict *wire_decode(const char *json, size_t length, const rr_wire_rule_t *
       root++;
    }
 
-   if (*root != '{' || !literal_keys(root)) {
+   if (*root != '{') {
+      Log(LOG_WARN, "wire", "Rejected incoming message: expected JSON object");
+      return NULL;
+   }
+   if (!literal_keys(root)) {
+      Log(LOG_WARN, "wire", "Rejected incoming message: invalid JSON key, container, or reserved field");
       return NULL;
    }
    dict *wire = json2dict(json);
+   if (!wire)
+      Log(LOG_WARN, "wire", "Rejected incoming message: malformed JSON or duplicate/invalid fields");
    dict *message = wire ? transform(wire, false, selected) : NULL;
    dict_free(wire);
 
