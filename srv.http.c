@@ -369,7 +369,7 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
    // version negotiation on connect). Everything else - including client
    // pings, which are an easy DoS/amplification vector - is denied.
    // PARITY: rustyrig-www/js/webui.js (send_ping / webui.auth.js login flow)
-   if (!cptr->authenticated && strcasecmp(msg_type, "auth") != 0 && strcasecmp(msg_type, "pong") != 0 && strcasecmp(msg_type, "hello") != 0) {
+   if (!cptr->authenticated && strcasecmp(msg_type, "auth") != 0 && strcasecmp(msg_type, "pong") != 0 && strcasecmp(msg_type, "hello") != 0 && strcasecmp(msg_type, "cap") != 0) {
       Log(LOG_AUDIT, "auth", "Denied %s from unauthenticated client %s on cptr:<%p> from %s:%d", msg_type, (cptr->chatname[0] != '\0' ? cptr->chatname :
          "(unknown)"), cptr, cptr->user_ip, cptr->user_port);
 
