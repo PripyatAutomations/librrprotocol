@@ -5,5 +5,5 @@
 //
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 /* Generated from wire-schema.json. */
-#define RR_PROTOCOL_VERSION 1
-#define RR_WS_SUBPROTOCOL "rustyrig.v1"
+#define RR_PROTOCOL_VERSION 2
+#define RR_WS_SUBPROTOCOL "rustyrig.v2"
