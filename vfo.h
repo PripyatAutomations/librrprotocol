@@ -75,7 +75,8 @@ enum rr_mode {
    MODE_NXDN,
    MODE_DSTAR,
    MODE_FT4,                    // ft8lib?
-   MODE_FT8                     // ft8lib?
+   MODE_FT8,                    // ft8lib?
+   MODE_DFM                     // Digital FM / packet
 };
 typedef enum rr_mode rr_mode_t;
 
