@@ -1879,11 +1879,14 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          /* Optional account profile for the server-owned user creation path.
           * The server validates fields and persists them with bound SQL. */
          const char *profile_keys[] = {"email","real_name","phone"};
-         for (unsigned pi=0;pi<sizeof(profile_keys)/sizeof(profile_keys[0]);pi++) {
+         for (size_t profile_index = 0; profile_index < sizeof(profile_keys) / sizeof(profile_keys[0]); profile_index++) {
             char key[48];
-            snprintf(key,sizeof(key),"user.%s",profile_keys[pi]);
-            const char *value=dict_get(d,key,NULL);
-            if (value) dict_add(u,key,value);
+            snprintf(key, sizeof(key), "user.%s", profile_keys[profile_index]);
+            const char *value = dict_get(d, key, NULL);
+
+            if (value) {
+               dict_add(u, key, value);
+            }
          }
          event_emit_dict("user.cmd", cptr, u);
          dict_free(u);
