@@ -1513,7 +1513,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             return true;
          }
 
-         if (!ws_chat_has_authority(cptr, requested, cmd)) {
+         if (!ws_chat_has_authority(cptr, channel, cmd)) {
             Log(LOG_CRAZY, "chat", "user %s doesn't have chat privileges but tried to send a message", user);
 
             // XXX: Alert the user that their message was NOT delivered
