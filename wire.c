@@ -161,7 +161,7 @@ static const char *wire_safe_label(const char *src, char *dst, size_t size) {
       dst[i] = (char)c;
    }
    if (src[i]) return "(too-long)";
-   dst[i] = '\\0';
+   dst[i] = '\0';
    return dst;
 }
 static dict *transform(dict *in, bool encode, const rr_wire_rule_t **selected) {
