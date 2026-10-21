@@ -1,7 +1,24 @@
 {
-  "version": 1,
-  "websocket_subprotocol": "rustyrig.v1",
+  "version": 2,
+  "websocket_subprotocol": "rustyrig.v2",
   "groups": [
+    {
+      "type": "cap",
+      "command_key": "cap.cmd",
+      "operations": {
+        "cap.ls": "ls",
+        "cap.req": "req",
+        "cap.ack": "ack",
+        "cap.nak": "nak",
+        "cap.end": "end"
+      },
+      "fields": {
+        "request.id": "request.id",
+        "cap.version": "version",
+        "cap.features": "features",
+        "cap.reason": "reason"
+      }
+    },
     {
       "type": "object",
       "command_key": "object.cmd",
