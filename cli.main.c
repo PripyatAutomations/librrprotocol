@@ -161,23 +161,30 @@ static bool ws_txtframe_dispatch(rrconn_t *cptr, dict *d) {
       const char *cmd = dict_get(d, "cap.cmd", "");
       const char *features = dict_get(d, "cap.features", "");
       bool agreed = !strcmp(cmd, "ack") &&
-         dict_get_int(d, "cap.version", 0) == RR_PROTOCOL_VERSION &&
-         strstr(features, "wire.json-v2") &&
-         strstr(features, "binframe.v2");
+         dict_get_int(d, "cap.version", 0) == RR_PROTOCOL_VERSION && strstr(features, "wire.json-v2") && strstr(features, "binframe.v2");
+
       if (!agreed) {
          Log(LOG_WARN, "ws.cap", "Server rejected required v2 capabilities (%s)", cmd);
-         if (cptr->conn) cptr->conn->is_closing = 1;
+
+         if (cptr->conn) {
+            cptr->conn->is_closing = 1;
+         }
+
          return false;
       }
       const char *profile = cptr->server ? cptr->server->network : server_name;
-      const char *login_user = cptr->server && cptr->server->nick[0] ?
-         cptr->server->nick : get_server_property(profile, "server.user");
-      if (!login_user) return false;
+      const char *login_user = cptr->server && cptr->server->nick[0] ? cptr->server->nick : get_server_property(profile, "server.user");
+
+      if (!login_user) {
+         return false;
+      }
       Log(LOG_INFO, "ws.cap", "Negotiated capabilities: %s", features);
       ws_send_hello(cptr);
       ws_send_login(cptr, login_user);
+
       return true;
    }
+
    if (msg_type && !strcmp(msg_type, "file")) {
       return true;              /* Application-owned file operations. */
 
@@ -356,15 +363,15 @@ void http_handler(struct mg_connection *c, int ev, void *ev_data) {
       dict_add(d, "auth.user", (char *)login_user);
       dict_add(d, "auth.server", (char *)(cptr->server ? cptr->server->network : server_name));
       event_emit_dict("connected", cptr, d);
-      /* CAP starts after the WebSocket major-version gate. Optional features
-       * are requested explicitly instead of inferred from a release number. */
+      /* CAP starts after the WebSocket major-version gate. Optional features are requested explicitly instead of inferred from a release number. */
       dict *cap = dict_new();
+
       if (cap) {
-         dict_add(cap,"msg.type","cap");
-         dict_add(cap,"cap.cmd","req");
-         dict_add_int(cap,"cap.version",RR_PROTOCOL_VERSION);
-         dict_add(cap,"cap.features","wire.json-v2 binframe.v2 object.inventory-v2");
-         ws_send_dict(NULL,cptr,cap,WEBSOCKET_OP_TEXT);
+         dict_add(cap, "msg.type", "cap");
+         dict_add(cap, "cap.cmd", "req");
+         dict_add_int(cap, "cap.version", RR_PROTOCOL_VERSION);
+         dict_add(cap, "cap.features", "wire.json-v2 binframe.v2 object.inventory-v2");
+         ws_send_dict(NULL, cptr, cap, WEBSOCKET_OP_TEXT);
          dict_free(cap);
       }
       dict_free(d);

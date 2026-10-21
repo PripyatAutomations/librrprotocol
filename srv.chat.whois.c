@@ -15,7 +15,7 @@
 #include <librrprotocol/srv.chat.internal.h>
 
 /* WHOIS is account-scoped: union the joined rooms of authenticated sessions. Use the membership strings rather than the optional room metadata cache. PARITY:
-* rrclient/events.c and rustyrig-www/js/webui.chat.js WHOIS Rooms. */
+ * rrclient/events.c and rustyrig-www/js/webui.chat.js WHOIS Rooms. */
 char *ws_chat_whois_rooms(const rrconn_t *target) {
    const size_t capacity = HTTP_MAX_SESSIONS * AUTOJOIN_LEN + 1;
    char *rooms = calloc(capacity, 1);

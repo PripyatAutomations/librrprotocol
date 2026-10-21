@@ -369,7 +369,8 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
    // version negotiation on connect). Everything else - including client
    // pings, which are an easy DoS/amplification vector - is denied.
    // PARITY: rustyrig-www/js/webui.js (send_ping / webui.auth.js login flow)
-   if (!cptr->authenticated && strcasecmp(msg_type, "auth") != 0 && strcasecmp(msg_type, "pong") != 0 && strcasecmp(msg_type, "hello") != 0 && strcasecmp(msg_type, "cap") != 0) {
+   if (!cptr->authenticated && strcasecmp(msg_type, "auth") != 0 && strcasecmp(msg_type, "pong") != 0 && strcasecmp(msg_type, "hello") != 0
+      && strcasecmp(msg_type, "cap") != 0) {
       Log(LOG_AUDIT, "auth", "Denied %s from unauthenticated client %s on cptr:<%p> from %s:%d", msg_type, (cptr->chatname[0] != '\0' ? cptr->chatname :
          "(unknown)"), cptr, cptr->user_ip, cptr->user_port);
 
@@ -394,33 +395,56 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
       const char *cmd = dict_get(d, "cap.cmd", "");
       const char *requested = dict_get(d, "cap.features", "");
       dict *answer = dict_new();
-      if (!answer) goto cleanup;
+
+      if (!answer) {
+         goto cleanup;
+      }
       dict_add(answer, "msg.type", "cap");
       dict_add_int(answer, "cap.version", RR_PROTOCOL_VERSION);
+
       if (!strcmp(cmd, "ls")) {
          dict_add(answer, "cap.cmd", "ls");
          dict_add(answer, "cap.features", "wire.json-v2 binframe.v2 object.inventory-v2");
       } else if (!strcmp(cmd, "req")) {
-         /* v2 baseline features can be negotiated individually. Unknown
-          * names are rejected, never silently treated as supported. */
-         const char *supported[] = {"wire.json-v2","binframe.v2","object.inventory-v2"};
+         /* v2 baseline features can be negotiated individually. Unknown names are rejected, never silently treated as supported. */
+         const char *supported[] = {
+            "wire.json-v2", "binframe.v2", "object.inventory-v2"
+         };
          bool valid = dict_get_int(d, "cap.version", 0) == RR_PROTOCOL_VERSION;
          char *copy = strdup(requested), *save = NULL;
-         if (!copy) {dict_free(answer);goto cleanup;}
-         for (char *item = strtok_r(copy," ",&save); item;
-              item = strtok_r(NULL," ",&save)) {
-            bool known = false;
-            for (unsigned i=0;i<sizeof(supported)/sizeof(supported[0]);i++)
-               if (!strcmp(item,supported[i])) {known=true;break;}
-            if (!known) valid=false;
+
+         if (!copy) {
+            dict_free(answer);
+            goto cleanup;
          }
+
+         for (char *item = strtok_r(copy, " ", &save) ; item ; item = strtok_r(NULL, " ", &save)) {
+            bool known = false;
+
+            for (unsigned i = 0 ; i < sizeof(supported) / sizeof(supported[0]) ; i++) {
+               if (!strcmp(item, supported[i])) {
+                  known = true;
+                  break;
+               }
+            }
+
+            if (!known) {
+               valid = false;
+            }
+         }
+
          free(copy);
          dict_add(answer, "cap.cmd", valid && *requested ? "ack" : "nak");
          dict_add(answer, "cap.features", requested);
-         if (!valid || !*requested)
+
+         if (!valid || !*requested) {
             dict_add(answer, "cap.reason", "unsupported-feature");
-      } else {dict_free(answer);goto cleanup;}
-      result = ws_send_dict(NULL,cptr,answer,WEBSOCKET_OP_TEXT);
+         }
+      } else {
+         dict_free(answer);
+         goto cleanup;
+      }
+      result = ws_send_dict(NULL, cptr, answer, WEBSOCKET_OP_TEXT);
       dict_free(answer);
    } else if (!strcmp(msg_type, "object") || !strcmp(msg_type, "property")) {
       extern bool rr_object_server_request(rrconn_t *, dict *);
