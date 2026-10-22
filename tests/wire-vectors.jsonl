@@ -93,6 +93,7 @@
 {"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"die\"}}", "wire": "{\"op\":\"talk.die\"}"}
 {"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"grid\"}}", "wire": "{\"op\":\"talk.grid\"}"}
 {"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"help\"}}", "wire": "{\"op\":\"talk.help\"}"}
+{"internal":"{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"typing\",\"target\":\"#rig0\",\"room\":\"#rig0\",\"from\":\"W8ABC\",\"typing\":\"active\",\"epoch\":\"00000000-0000-4000-8000-000000000001\",\"seq\":\"42\",\"ttl\":\"10\"}}","wire":"{\"op\":\"talk.typing\",\"target\":\"#rig0\",\"room\":\"#rig0\",\"from\":\"W8ABC\",\"typing\":\"active\",\"epoch\":\"00000000-0000-4000-8000-000000000001\",\"seq\":\"42\",\"ttl\":\"10\"}"}
 {"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"join\"}}", "wire": "{\"op\":\"talk.join\"}"}
 {"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"kick\"}}", "wire": "{\"op\":\"talk.kick\"}"}
 {"internal": "{\"msg\":{\"type\":\"talk\"},\"talk\":{\"cmd\":\"list\"}}", "wire": "{\"op\":\"talk.list\"}"}
