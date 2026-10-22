@@ -34,7 +34,7 @@ static bool valid(dict *d) {
    } else if (!strcmp(op, "link.application")) {
       const char *kind = dict_get(d, "kind", "");
       const char *kinds[] = {
-         "catalog", "catalog-remove", "users", "request", "reply", "state", "subscribe", "unsubscribe", "close"
+         "catalog", "catalog-remove", "catalog-begin", "catalog-end", "catalog-ack", "users", "request", "reply", "state", "subscribe", "unsubscribe", "close"
       };
       bool known = false;
 
