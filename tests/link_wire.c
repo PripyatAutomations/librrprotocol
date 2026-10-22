@@ -21,6 +21,17 @@ int main(void) {
    assert(encoded);
    free(encoded);
    dict_free(d);
+   dict *caps = dict_new();
+   dict_add(caps, "op", "link.capabilities");
+   dict_add(caps, "version", "2.1");
+   dict_add(caps, "features", "rig.menu,object.model");
+   encoded = rr_link_wire_encode(caps);
+   assert(encoded);
+   copy = rr_link_wire_decode(encoded, strlen(encoded));
+   assert(copy && !strcmp(dict_get(copy, "version", ""), "2.1"));
+   free(encoded);
+   dict_free(copy);
+   dict_free(caps);
    dict *app = dict_new();
    dict_add(app, "op", "link.application");
    dict_add(app, "node", "owner");
