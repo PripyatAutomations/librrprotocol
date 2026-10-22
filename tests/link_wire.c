@@ -55,8 +55,11 @@ int main(void) {
    free(encoded);
    dict_free(copy);
    /* Sync control messages must round-trip through the strict wire codec. */
-   const char *sync_kinds[] = {"catalog-begin", "catalog", "catalog-end", "catalog-ack"};
-   for (size_t i = 0; i < sizeof(sync_kinds) / sizeof(sync_kinds[0]); i++) {
+   const char *sync_kinds[] = {
+      "catalog-begin", "catalog", "catalog-end", "catalog-ack"
+   };
+
+   for (size_t i = 0 ; i < sizeof(sync_kinds) / sizeof(sync_kinds[0]) ; i++) {
       dict_add(app, "kind", sync_kinds[i]);
       dict_add(app, "session", "0c930d3c-3f88-4cf9-bc6c-a89ccc25f762");
       dict_add(app, "username", "");
@@ -68,6 +71,7 @@ int main(void) {
       free(encoded);
       dict_free(copy);
    }
+
    dict_add(app, "kind", "media");
    assert(!rr_link_wire_encode(app));
    dict_add(app, "kind", "request");

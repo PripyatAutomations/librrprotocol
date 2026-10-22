@@ -68,16 +68,23 @@ static bool valid(dict *d) {
       {
          return false;
       }
+
       if (i == 11) {
-         if (strcmp(op, "link.hello") || strlen(value) != 10)
+         if (strcmp(op, "link.hello") || strlen(value) != 10) {
             return false;
-         for (const char *p = value; *p; p++)
-            if (*p < '0' || *p > '9') return false;
+         }
+
+         for (const char *p = value ; *p ; p++) {
+            if (*p < '0' || *p > '9') {
+               return false;
+            }
+         }
       }
       seen |= 1U << i;
    }
    /* The clock sample is an optional hello extension; old hellos remain valid. */
    unsigned optional = !strcmp(op, "link.hello") ? (1U << 11) : 0;
+
    return (seen & ~optional) == required;
 }
 

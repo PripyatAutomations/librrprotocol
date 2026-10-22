@@ -1105,15 +1105,13 @@ static bool ws_chat_cmd_syslog(rrconn_t *cptr, const char *state) {
    return false;
 }
 
-/* The owning application may authorize authenticated remote room chat through
- * destination-side grants. Never infer authority from the origin account. */
+/* The owning application may authorize authenticated remote room chat through destination-side grants. Never infer authority from the origin account. */
 static bool (*chat_resource_authorizer)(rrconn_t *, const char *, const char *);
-void ws_chat_set_resource_authorizer(bool (*authorize)(rrconn_t *, const char *, const char *)) {
+void ws_chat_set_resource_authorizer(bool (*authorize) (rrconn_t *, const char *, const char *)) {
    chat_resource_authorizer = authorize;
 }
 static bool ws_chat_has_authority(rrconn_t *client, const char *room, const char *command) {
-   return has_priv(client->user->uid, "admin|owner|chat") ||
-      (chat_resource_authorizer && chat_resource_authorizer(client, room, command));
+   return has_priv(client->user->uid, "admin|owner|chat") || (chat_resource_authorizer && chat_resource_authorizer(client, room, command));
 }
 
 bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
@@ -1494,32 +1492,43 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
          return true;
       } else if (strcasecmp(cmd, "typing") == 0) {
-         /* Ephemeral room presence: never trust sender identity, sequence or
-          * lease supplied by the client. The room owner authorizes it. */
+         /* Ephemeral room presence: never trust sender identity, sequence or lease supplied by the client. The room owner authorizes it. */
          const char *state = dict_get(d, "talk.typing", "");
+
          if (!target || (*target != '#' && *target != '&') || !ws_room_name_valid(target)) {
             ws_send_error(cptr, "Cannot update typing status: specify a valid chat room (talk.target)");
+
             return false;
          }
+
          if (!ws_client_in_room(cptr, target)) {
             ws_send_error(cptr, "Cannot update typing status in %s: join the room first", target);
+
             return false;
          }
+
          if (!ws_chat_has_authority(cptr, target, "typing")) {
             ws_send_error(cptr, "Cannot update typing status in %s: chat permission is required", target);
+
             return false;
          }
+
          if (strcmp(state, "started") && strcmp(state, "active") && strcmp(state, "paused") && strcmp(state, "idle")) {
             ws_send_error(cptr, "Invalid typing status for %s: expected started, active, paused or idle", target);
+
             return false;
          }
+
          if (cptr->user->is_muted && strcmp(state, "idle")) {
             ws_send_error(cptr, "Cannot show typing status in %s: your account is muted", target);
+
             return false;
          }
          dict *presence = dict_new();
+
          if (!presence) {
             ws_send_error(cptr, "Cannot update typing status in %s: server is out of memory", target);
+
             return false;
          }
          dict_add(presence, "msg.type", "talk");
@@ -1530,6 +1539,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          dict_add(presence, "talk.from", cptr->chatname);
          event_emit_dict("talk.typing", cptr, presence);
          dict_free(presence);
+
          return true;
       } else if (strcasecmp(cmd, "msg") == 0) {
          if (cptr->user->is_muted) {

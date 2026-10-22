@@ -156,12 +156,11 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
 
 /* Destination-authorized remote CAT operations must not inherit origin roles. */
 static bool (*rigctl_resource_authorizer)(rrconn_t *, const char *, const char *);
-void ws_rigctl_set_resource_authorizer(bool (*authorize)(rrconn_t *, const char *, const char *)) {
+void ws_rigctl_set_resource_authorizer(bool (*authorize) (rrconn_t *, const char *, const char *)) {
    rigctl_resource_authorizer = authorize;
 }
 static bool ws_rigctl_has_tx_authority(rrconn_t *client, const char *room, const char *command) {
-   return has_priv(client->user->uid, "admin|owner|tx|noob") ||
-      (rigctl_resource_authorizer && rigctl_resource_authorizer(client, room, command));
+   return has_priv(client->user->uid, "admin|owner|tx|noob") || (rigctl_resource_authorizer && rigctl_resource_authorizer(client, room, command));
 }
 
 // Account flags determine authority; connection/channel hints are not privileges.
@@ -505,10 +504,14 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       } else if (strcasecmp(cmd, "swap") == 0) {
          if (cptr->is_ptt) {
             ws_send_error(cptr, "Cannot exchange VFO settings while transmitting");
+
             return false;
          }
          dict *cmd_d = dict_new();
-         if (!cmd_d) return false;
+
+         if (!cmd_d) {
+            return false;
+         }
          dict_add(cmd_d, "msg.type", "rigctl");
          dict_add(cmd_d, "rigctl.room", control_room);
          dict_add(cmd_d, "rigctl.cmd", "swap");
@@ -518,16 +521,23 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_free(cmd_d);
       } else if (strcasecmp(cmd, "split") == 0) {
          dict_value_t split_value;
+
          if (!rr_object_value_get(d, "cat.split", VAL_BOOL, &split_value)) {
             ws_send_error(cptr, "Split requires a boolean cat.split");
+
             return false;
          }
+
          if (cptr->is_ptt) {
             ws_send_error(cptr, "Cannot change split while transmitting");
+
             return false;
          }
          dict *cmd_d = dict_new();
-         if (!cmd_d) return false;
+
+         if (!cmd_d) {
+            return false;
+         }
          dict_add(cmd_d, "msg.type", "rigctl");
          dict_add(cmd_d, "rigctl.room", control_room);
          dict_add(cmd_d, "rigctl.cmd", "split");

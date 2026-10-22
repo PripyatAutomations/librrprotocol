@@ -158,9 +158,18 @@ const char *vfo_mode_name(rr_mode_t mode) {
          rv = vfo_mode_dfm;
          break;
       }
-      case MODE_MU: { rv = vfo_mode_mu; break; }
-      case MODE_ML: { rv = vfo_mode_ml; break; }
-      case MODE_MFM: { rv = vfo_mode_mfm; break; }
+      case MODE_MU: {
+         rv = vfo_mode_mu;
+         break;
+      }
+      case MODE_ML: {
+         rv = vfo_mode_ml;
+         break;
+      }
+      case MODE_MFM: {
+         rv = vfo_mode_mfm;
+         break;
+      }
       case MODE_FT4: {
          rv = vfo_mode_ft4;
          break;
