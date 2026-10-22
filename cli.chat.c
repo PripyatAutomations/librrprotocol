@@ -64,6 +64,10 @@ bool ws_handle_talk_msg(rrconn_t *cptr, dict *d) {
       if (from) {
          event_emit_dict("talk.msg", cptr, d);
       }
+   } else if (cmd && strcasecmp(cmd, "typing") == 0) {
+      /* Cluster presence is a semantic event, not a chat transcript. */
+      if (dict_get(d, "talk.from", NULL) && dict_get(d, "talk.room", NULL))
+         event_emit_dict("talk.typing", cptr, d);
    } else if (cmd && strcasecmp(cmd, "join") == 0) {
       if (!user) {
          return false;
