@@ -318,7 +318,8 @@
         "talk.link": "link",
         "talk.admin": "admin",
         "talk.supervise": "supervise",
-        "talk.room-state": "room-state"
+        "talk.room-state": "room-state",
+        "talk.typing": "typing"
       },
       "fields": {
         "msg.ts": "time",
@@ -387,7 +388,11 @@
         "talk.remote-rooms": "remote-rooms",
         "talk.servers": "servers",
         "talk.site-description": "talk.site-description",
-        "talk.site-location": "talk.site-location"
+        "talk.site-location": "talk.site-location",
+        "talk.typing": "typing",
+        "talk.epoch": "epoch",
+        "talk.seq": "seq",
+        "talk.ttl": "ttl"
       }
     },
     {
