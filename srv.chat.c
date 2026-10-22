@@ -1509,8 +1509,8 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
             ws_send_error(cptr, "Cannot update typing status in %s: chat permission is required", target);
             return false;
          }
-         if (strcmp(state, "active") && strcmp(state, "paused") && strcmp(state, "idle")) {
-            ws_send_error(cptr, "Invalid typing status for %s: expected active, paused or idle", target);
+         if (strcmp(state, "started") && strcmp(state, "active") && strcmp(state, "paused") && strcmp(state, "idle")) {
+            ws_send_error(cptr, "Invalid typing status for %s: expected started, active, paused or idle", target);
             return false;
          }
          if (cptr->user->is_muted && strcmp(state, "idle")) {
