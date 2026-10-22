@@ -40,6 +40,7 @@ static const rr_wire_field_t wire_fields_1[] = {
    {"object.backend", "backend"},
    {"object.lifecycle", "lifecycle"},
    {"object.name", "name"},
+   {"object.model", "model"},
    {"object.owner", "owner"},
    {"object.room", "room"},
    {"object.type", "type"},
