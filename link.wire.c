@@ -13,7 +13,7 @@
 #include <librrprotocol/link.wire.h>
 
 static const char *fields[] = {
-   "op", "node", "site", "username", "password", "nodes", "parent", "dest", "kind", "session", "payload"
+   "op", "node", "site", "username", "password", "nodes", "parent", "dest", "kind", "session", "payload", "clock.unix"
 };
 static bool valid(dict *d) {
    const char *op = dict_get(d, "op", "");
@@ -66,9 +66,17 @@ static bool valid(dict *d) {
       {
          return false;
       }
+      if (i == 11) {
+         if (strcmp(op, "link.hello") || strlen(value) != 10)
+            return false;
+         for (const char *p = value; *p; p++)
+            if (*p < '0' || *p > '9') return false;
+      }
       seen |= 1U << i;
    }
-   return seen == required;
+   /* The clock sample is an optional hello extension; old hellos remain valid. */
+   unsigned optional = !strcmp(op, "link.hello") ? (1U << 11) : 0;
+   return (seen & ~optional) == required;
 }
 
 dict *rr_link_wire_decode(const char *data, size_t length) {
