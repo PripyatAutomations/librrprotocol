@@ -421,6 +421,27 @@ void rr_wire_profile_dump(void) {
 #endif
 }
 
+bool rr_wire_profile_summary(rr_wire_profile_summary_t *out) {
+   if (!out) return false;
+   memset(out, 0, sizeof(*out));
+#ifdef USE_PROFILING
+   pthread_mutex_lock(&wire_profile_lock);
+   for (size_t i = 0; i < WIRE_PROFILE_ROWS; i++) {
+      const wire_profile_count_t *p = &wire_profile_counts[i];
+      out->messages += p->count;
+      out->bytes += p->bytes;
+      out->rejected += p->rejected;
+      out->processing_us += p->parse_us;
+      if (i >= WIRE_PROFILE_JSON_ROWS) out->binary_messages += p->count;
+      else out->json_messages += p->count;
+   }
+   pthread_mutex_unlock(&wire_profile_lock);
+   return true;
+#else
+   return false;
+#endif
+}
+
 void rr_wire_profile_binary(const void *data, size_t length, bool accepted, uint64_t elapsed_us) {
 #ifdef USE_PROFILING
    const unsigned char *frame = data;
