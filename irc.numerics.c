@@ -618,6 +618,23 @@ const rr_irc_numeric_t irc_numerics[] = {
       .code = 366, .name = "RPL_ENDOFNAMES", .desc = "End of NAMES list", .cb = irc_builtin_num366
    },
 
+   /* Common WHOIS extensions across Solanum/Charybdis, InspIRCd,
+    * UnrealIRCd and Ergo. Keep callbacks NULL: the client renders them
+    * through irc.message and retains unknown numeric fallback. */
+   { .code = 301, .name = "RPL_AWAY", .desc = "Away message" },
+   { .code = 307, .name = "RPL_WHOISREGNICK", .desc = "Registered nickname" },
+   { .code = 310, .name = "RPL_WHOISHELPOP", .desc = "Network help operator (daemon-specific)" },
+   { .code = 314, .name = "RPL_WHOWASUSER", .desc = "WHOWAS user information" },
+   { .code = 316, .name = "RPL_WHOISCHANOP", .desc = "WHOIS channel operator (daemon-specific)" },
+   { .code = 320, .name = "RPL_WHOISSPECIAL", .desc = "Network-specific WHOIS text" },
+   { .code = 330, .name = "RPL_WHOISACCOUNT", .desc = "Authenticated account" },
+   { .code = 335, .name = "RPL_WHOISBOT", .desc = "Bot status (daemon-specific)" },
+   { .code = 338, .name = "RPL_WHOISACTUALLY", .desc = "Actual host or IP (daemon-specific)" },
+   { .code = 276, .name = "RPL_WHOISCERTFP", .desc = "Client TLS certificate fingerprint" },
+   { .code = 671, .name = "RPL_WHOISSECURE", .desc = "Secure connection" },
+   { .code = 670, .name = "RPL_WHOISSECUREALT", .desc = "Secure connection (daemon-specific)" },
+   { .code = 275, .name = "RPL_WHOISSSL", .desc = "TLS connection (daemon-specific)" },
+   { .code = 406, .name = "ERR_WASNOSUCHNICK", .desc = "No such nickname in WHOWAS" },
    // --- WHO / WHOIS ---
    {
       .code = 311, .name = "RPL_WHOISUSER", .desc = "WHOIS: user info", .cb = irc_builtin_num311
