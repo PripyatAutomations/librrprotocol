@@ -1493,6 +1493,44 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          dict_free(room_msg);
 
          return true;
+      } else if (strcasecmp(cmd, "typing") == 0) {
+         /* Ephemeral room presence: never trust sender identity, sequence or
+          * lease supplied by the client. The room owner authorizes it. */
+         const char *state = dict_get(d, "talk.typing", "");
+         if (!target || (*target != '#' && *target != '&') || !ws_room_name_valid(target)) {
+            ws_send_error(cptr, "Cannot update typing status: specify a valid chat room (talk.target)");
+            return false;
+         }
+         if (!ws_client_in_room(cptr, target)) {
+            ws_send_error(cptr, "Cannot update typing status in %s: join the room first", target);
+            return false;
+         }
+         if (!ws_chat_has_authority(cptr, target, "typing")) {
+            ws_send_error(cptr, "Cannot update typing status in %s: chat permission is required", target);
+            return false;
+         }
+         if (strcmp(state, "active") && strcmp(state, "paused") && strcmp(state, "idle")) {
+            ws_send_error(cptr, "Invalid typing status for %s: expected active, paused or idle", target);
+            return false;
+         }
+         if (cptr->user->is_muted && strcmp(state, "idle")) {
+            ws_send_error(cptr, "Cannot show typing status in %s: your account is muted", target);
+            return false;
+         }
+         dict *presence = dict_new();
+         if (!presence) {
+            ws_send_error(cptr, "Cannot update typing status in %s: server is out of memory", target);
+            return false;
+         }
+         dict_add(presence, "msg.type", "talk");
+         dict_add(presence, "talk.cmd", "typing");
+         dict_add(presence, "talk.target", target);
+         dict_add(presence, "talk.room", target);
+         dict_add(presence, "talk.typing", state);
+         dict_add(presence, "talk.from", cptr->chatname);
+         event_emit_dict("talk.typing", cptr, presence);
+         dict_free(presence);
+         return true;
       } else if (strcasecmp(cmd, "msg") == 0) {
          if (cptr->user->is_muted) {
             ws_send_error(cptr, "You are muted and cannot send messages");
