@@ -14,6 +14,13 @@ int main(void) {
    free(encoded);
    dict_free(copy);
    dict_free(d);
+   const char *timed_hello = "{\\"op\\":\\"link.hello\\",\\"node\\":\\"uuid\\",\\"site\\":\\"site\\",\\"password\\":\\"private\\",\\"clock.unix\\":\\"1792624453\\"}";
+   d = rr_link_wire_decode(timed_hello, strlen(timed_hello));
+   assert(d && !strcmp(dict_get(d, "clock.unix", ""), "1792624453"));
+   encoded = rr_link_wire_encode(d);
+   assert(encoded);
+   free(encoded);
+   dict_free(d);
    dict *app = dict_new();
    dict_add(app, "op", "link.application");
    dict_add(app, "node", "owner");
