@@ -60,8 +60,7 @@ int main(void) {
       dict_add(app, "kind", sync_kinds[i]);
       dict_add(app, "session", "0c930d3c-3f88-4cf9-bc6c-a89ccc25f762");
       dict_add(app, "username", "");
-      dict_add(app, "payload", i == 0 ? "{\\"catalog.expected\\":25}" :
-                                    i == 3 ? "{\\"catalog.received\\":25}" : "{}");
+      dict_add(app, "payload", "{}");
       encoded = rr_link_wire_encode(app);
       assert(encoded);
       copy = rr_link_wire_decode(encoded, strlen(encoded));
