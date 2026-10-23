@@ -18,7 +18,6 @@
 #include <time.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
-#include <librrprotocol/irc.h>
 #include <librrprotocol/server.events.h>
 #include <librrprotocol/wire.h>
 #include <librrprotocol/latency.h>
@@ -114,7 +113,8 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
    }
 
    if (dest->server && !dest->is_ws) {
-      return data_type == WEBSOCKET_OP_TEXT && irc_send_dict(dest, d);
+      /* Non-WebSocket transports must be handled by the embedding app above. */
+      return false;
    }
    const char *jp = rr_wire_encode(d);
 
