@@ -34,7 +34,6 @@ static rr_irc_callback_t *owned_callbacks[256];
 static size_t owned_count;
 
 void irc_shutdown(void) {
-   irc_audio_sessions_shutdown();
    irc_dcc_shutdown();
    irc_capabilities_shutdown();
 
