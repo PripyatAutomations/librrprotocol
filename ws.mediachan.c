@@ -994,10 +994,19 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          return false;
       }
 
-      if (cp && (!cptr->authenticated || !cptr->user || !has_priv(cptr->user->uid, cp->direction == RR_BINFRAME_DIR_TX ? "tx" : "rx"))) {
-         ws_send_error(cptr, "Codec selection for media channel %s (%s) in room %s requires %s account "
-            "privilege", cp->name, cp->uuid, cp->room, cp->direction == RR_BINFRAME_DIR_TX ? "TX" : "RX");
-
+      bool codec_authorized = cptr->authenticated && cptr->user &&
+         has_priv(cptr->user->uid, cp && cp->direction == RR_BINFRAME_DIR_TX ? "tx" : "rx");
+      if (cp && !codec_authorized && cptr->authenticated && cptr->user) {
+         /* The application owns remote-resource authorization. The protocol
+          * asks through the synchronous event boundary; default deny. */
+         rr_media_access_t request = { .channel = cp, .allowed = false };
+         event_emit_binary(RR_MEDIA_CODEC_PRIVILEGE_EVENT, cptr, &request, sizeof(request));
+         codec_authorized = request.allowed;
+      }
+      if (cp && !codec_authorized) {
+         ws_send_error(cptr, "Codec selection denied: channel %s (%s), room %s, direction %s; requires a local %s account privilege or a destination-side resource grant",
+            cp->name, cp->uuid, cp->room, cp->direction == RR_BINFRAME_DIR_TX ? "TX" : "RX",
+            cp->direction == RR_BINFRAME_DIR_TX ? "tx" : "rx");
          return false;
       }
 
