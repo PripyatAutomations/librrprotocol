@@ -57,6 +57,10 @@ typedef struct {
 #define RR_MEDIA_CATALOG_EVENT "protocol.media.catalog"
 /* Synchronous application policy, evaluated for subscribe, codec and fanout. Listeners may deny; clients/protocol library do not own bridge permissions. */
 #define RR_MEDIA_ACCESS_EVENT "protocol.media.access"
+/* Application-side supplemental account authorization for codec selection.
+ * Start denied; the server may allow a verified remote principal using
+ * destination-side resource grants. This never bypasses room/media checks. */
+#define RR_MEDIA_CODEC_PRIVILEGE_EVENT "protocol.media.codec.privilege"
 typedef struct {
    const struct rr_mediachan *channel;
    bool allowed;
