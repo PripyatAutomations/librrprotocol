@@ -142,7 +142,10 @@ bool irc_builtin_num311(rrconn_t *cptr, irc_message_t *mp) {
       return true;
    }
 
-   if (!mp || mp->argc < 7) {
+   /* RPL_WHOISUSER: 311 <recipient> <target> <user> <host> * :<realname>
+    * argv[5] is the mandatory literal asterisk, not part of the name. */
+   if (!mp->argv[2] || !mp->argv[3] || !mp->argv[4] ||
+       !mp->argv[5] || strcmp(mp->argv[5], "*") || !mp->argv[6]) {
       return true;
    }
    char *nick = mp->argv[2];
