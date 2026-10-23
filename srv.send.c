@@ -106,9 +106,24 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
       }
    }
 
-   if (!d || !dest || !dest->conn || data_type != WEBSOCKET_OP_TEXT) {
-      Log(LOG_WARN, "rrproto.srv", "Unable to send msg dict:<%p> to conn:<%p> - invalid dictionary, destination or frame type", d, dest);
-
+   /* Only validate and log transport facts here. Higher-level applications
+    * own presentation of errors through the server send event boundary. */
+   if (!d) {
+      Log(LOG_WARN, "rrproto.srv", "Send rejected: NULL message dictionary (destination=%p, frame=%d)", (void *)dest, data_type);
+      return false;
+   }
+   if (!dest) {
+      Log(LOG_WARN, "rrproto.srv", "Send rejected: no destination for message type=%s (frame=%d)", dict_get(d, "msg.type", "(missing)"), data_type);
+      return false;
+   }
+   if (!dest->conn) {
+      Log(LOG_WARN, "rrproto.srv", "Send rejected: destination has no active transport (destination=%p, type=%s, frame=%d)",
+          (void *)dest, dict_get(d, "msg.type", "(missing)"), data_type);
+      return false;
+   }
+   if (data_type != WEBSOCKET_OP_TEXT) {
+      Log(LOG_WARN, "rrproto.srv", "Send rejected: dictionary requires TEXT frame (destination=%p, type=%s, frame=%d, expected=%d)",
+          (void *)dest, dict_get(d, "msg.type", "(missing)"), data_type, WEBSOCKET_OP_TEXT);
       return false;
    }
 
@@ -119,7 +134,7 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
    const char *jp = rr_wire_encode(d);
 
    if (!jp) {
-      Log(LOG_WARN, "rrproto.srv", "Unable to serialize msg dict:<%p> to conn:<%p>", d, dest);
+      Log(LOG_WARN, "rrproto.srv", "Send rejected: wire serialization failed (destination=%p, type=%s)", (void *)dest, dict_get(d, "msg.type", "(missing)"));
 
       return false;
    }
