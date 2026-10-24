@@ -1718,7 +1718,6 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
 
                            cptr->chat_vfo = (char)('A' + new_vfo);
                            strlcpy(cptr->chat_vfo_room, channel, sizeof(cptr->chat_vfo_room));
-                           ws_send_notice(cptr, "Selected VFO %s in room %s", vfo_name(new_vfo), channel);
                            /* Room-scoped hardware selection, not just the UI session VFO. */
                            dict *request = dict_new();
 
