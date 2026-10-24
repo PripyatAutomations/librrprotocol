@@ -443,7 +443,10 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          float power = argument ? strtof(argument, &end) : 0;
 
          if (!argument || end == argument || *end || errno || !isfinite(power) || power <= 0 || (percentage && power > 100)) {
-            ws_send_error(cptr, "Invalid power for VFO %s in room %s: expected positive %s%s", vfo, control_room, percentage ? "percent (1-100)" : "watts", "");
+            Log(LOG_WARN, "ws.rigctl", "Rejected CAT power for VFO %s room %s: value='%s', unit='%s' (parse_error=%d)",
+               vfo, control_room, argument ? argument : "(missing)", dict_get(d, "cat.power-unit", "(missing)"), errno);
+            ws_send_error(cptr, "Invalid power '%s' for VFO %s in room %s: expected positive %s",
+               argument ? argument : "(missing)", vfo, control_room, percentage ? "percent (1-100)" : "watts");
 
             return false;
          }
