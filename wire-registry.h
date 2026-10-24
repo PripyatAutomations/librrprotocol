@@ -158,6 +158,7 @@ static const rr_wire_field_t wire_fields_5[] = {
    {"media.gaps", "gaps"},
    {"media.transport", "transport"},
    {"media.direct", "direct"},
+   {"media.direct-candidates", "direct-candidates"},
    {"media.direct-key", "direct-key"},
    {"media.direct-ssrc", "direct-ssrc"},
    {"media.direct-security", "direct-security"},
