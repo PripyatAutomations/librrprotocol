@@ -437,16 +437,15 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          }
          /* cat.power is watts unless the sender explicitly requests percent. */
          bool percentage = !strcmp(dict_get(d, "cat.power-unit", ""), "percent");
-         const char *argument = dict_get(d, "cat.power", NULL);
-         char *end = NULL;
-         errno = 0;
-         float power = argument ? strtof(argument, &end) : 0;
+         /* CAT power is a typed numeric dictionary field, not a string. */
+         bool supplied = dict_get_type(d, "cat.power") != VAL_END;
+         float power = percentage ? (float)dict_get_int(d, "cat.power", 0) : dict_get_float(d, "cat.power", 0);
 
-         if (!argument || end == argument || *end || errno || !isfinite(power) || power <= 0 || (percentage && power > 100)) {
-            Log(LOG_WARN, "ws.rigctl", "Rejected CAT power for VFO %s room %s: value='%s', unit='%s' (parse_error=%d)",
-               vfo, control_room, argument ? argument : "(missing)", dict_get(d, "cat.power-unit", "(missing)"), errno);
-            ws_send_error(cptr, "Invalid power '%s' for VFO %s in room %s: expected positive %s",
-               argument ? argument : "(missing)", vfo, control_room, percentage ? "percent (1-100)" : "watts");
+         if (!supplied || !isfinite(power) || power <= 0 || (percentage && power > 100)) {
+            Log(LOG_WARN, "ws.rigctl", "Rejected CAT power for VFO %s room %s: value=%.3f, supplied=%d, unit=%s",
+               vfo, control_room, (double)power, supplied, percentage ? "percent" : "watts");
+            ws_send_error(cptr, "Invalid power %.3f for VFO %s in room %s: expected positive %s",
+               (double)power, vfo, control_room, percentage ? "percent (1-100)" : "watts");
 
             return false;
          }
