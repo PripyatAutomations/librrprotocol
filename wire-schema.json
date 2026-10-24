@@ -165,6 +165,7 @@
         "cat.freq": "freq",
         "cat.mode": "mode",
         "cat.power": "power",
+        "cat.power-unit": "power-unit",
         "cat.ptt": "ptt",
         "cat.width": "width",
         "cat.state": null
