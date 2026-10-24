@@ -441,10 +441,10 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          char *end = NULL;
          errno = 0;
          float power = argument ? strtof(argument, &end) : 0;
-         if (!argument || end == argument || *end || errno || !isfinite(power) ||
-             power <= 0 || (percentage && power > 100)) {
-            ws_send_error(cptr, "Invalid power for VFO %s in room %s: expected positive %s%s",
-               vfo, control_room, percentage ? "percent (1-100)" : "watts", "");
+
+         if (!argument || end == argument || *end || errno || !isfinite(power) || power <= 0 || (percentage && power > 100)) {
+            ws_send_error(cptr, "Invalid power for VFO %s in room %s: expected positive %s%s", vfo, control_room, percentage ? "percent (1-100)" : "watts", "");
+
             return false;
          }
          dict *command = dict_new();
@@ -454,7 +454,10 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          dict_add(command, "rigctl.from", cptr->chatname);
          dict_add(command, "rigctl.vfo", vfo);
          dict_add_float(command, "rigctl.power", power);
-         if (percentage) dict_add(command, "rigctl.power-unit", "percent");
+
+         if (percentage) {
+            dict_add(command, "rigctl.power-unit", "percent");
+         }
          event_emit_dict("rigctl", cptr, command);
          dict_free(command);
       } else if (strcasecmp(cmd, "freq") == 0) {
