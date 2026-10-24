@@ -113,6 +113,7 @@ static const rr_wire_field_t wire_fields_4[] = {
    {"cat.freq", "freq"},
    {"cat.mode", "mode"},
    {"cat.power", "power"},
+   {"cat.power-unit", "power-unit"},
    {"cat.ptt", "ptt"},
    {"cat.room", "room"},
    {"cat.state.active", "state.active"},
