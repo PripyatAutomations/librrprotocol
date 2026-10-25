@@ -1069,6 +1069,26 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          return true;
       }
 
+      /* The encoder belongs to the shared channel, not the requesting client.
+       * Never change its wire format while another listener is attached. */
+      if (cp->subsystem == RR_BINFRAME_SUBSYS_AUDIO && old_codec[0]) {
+         u_int32_t chan_id = (u_int32_t) (cp - media_channels) + 1;
+         for (rrconn_t *peer = http_client_list; peer; peer = peer->next) {
+            if (peer == cptr || !media_client_in_channel_room(peer, cp)) {
+               continue;
+            }
+            bool subscribed = cp->direction == RR_BINFRAME_DIR_TX ?
+               chan_id_in_array(peer->tx_channels, MAX_TX_CHANNELS, chan_id) :
+               chan_id_in_array(peer->rx_channels, MAX_RX_CHANNELS, chan_id);
+            if (subscribed) {
+               ws_send_error(cptr,
+                  "Codec %s is already shared by other listeners on channel %s (%s); cannot switch to %s while they are subscribed",
+                  old_codec, cp->name, cp->uuid, codec);
+               return false;
+            }
+         }
+      }
+
       dict *sel = dict_new();
 
       if (sel) {
