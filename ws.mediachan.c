@@ -326,6 +326,42 @@ struct rr_mediachan *media_chan_add(uint8_t subsystem, uint8_t direction, uint8_
    return NULL;
 }
 
+/* Additional RX codec rendition of one rig/VFO PCM source.
+ * Distinct stream IDs and UUIDs reuse an existing rendition of the
+ * same source/codec; never overwrite the original channel. */
+struct rr_mediachan *media_chan_rx_variant(const struct rr_mediachan *source, const char *codec) {
+   if (!source || source->subsystem != RR_BINFRAME_SUBSYS_AUDIO ||
+      source->direction != RR_BINFRAME_DIR_RX || !codec || strlen(codec) != 4 ||
+      !source->uuid[0]) {
+      return NULL;
+   }
+   for (int i = 0; i < MAX_MEDIA_CHANNELS; i++) {
+      struct rr_mediachan *cp = &media_channels[i];
+      if (cp->uuid[0] && cp->subsystem == source->subsystem &&
+         cp->direction == source->direction && cp->rig == source->rig &&
+         cp->vfo == source->vfo && !strncmp(cp->codec, codec, 4) &&
+         !strcmp(cp->rig_uuid, source->rig_uuid) &&
+         !strcmp(cp->vfo_uuid, source->vfo_uuid)) {
+         return cp;
+      }
+   }
+   for (int i = 0; i < MAX_MEDIA_CHANNELS; i++) {
+      struct rr_mediachan *cp = &media_channels[i];
+      if (cp->uuid[0]) {
+         continue;
+      }
+      /* source points into the same registry; copying precedes filling. */
+      *cp = *source;
+      media_gen_uuid(cp->uuid, sizeof(cp->uuid));
+      snprintf(cp->codec, sizeof(cp->codec), "%s", codec);
+      snprintf(cp->name, sizeof(cp->name), "%.*s.%s",
+         (int)(sizeof(cp->name) - 6), source->name, codec);
+      cp->active = false;
+      return cp;
+   }
+   return NULL;
+}
+
 struct rr_mediachan *media_chan_find(uint8_t subsystem, uint8_t direction, uint8_t vfo, uint8_t rig) {
    for (int i = 0 ; i < MAX_MEDIA_CHANNELS ; i++) {
       struct rr_mediachan *cp = &media_channels[i];
