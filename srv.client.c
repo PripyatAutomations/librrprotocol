@@ -340,7 +340,7 @@ bool ws_supervision_allowed(rrconn_t *client, const char *room, bool request) {
       return false;
    }
 
-   Log(LOG_INFO, "auth", "Supervision check: user=%s uid=%d room=%s noob=%d", client->user->name, client->user->uid, room ? room : "-", has_priv(client->user->
+   Log(LOG_DEBUG, "auth", "Supervision check: user=%s uid=%d room=%s noob=%d", client->user->name, client->user->uid, room ? room : "-", has_priv(client->user->
       uid, "noob"));
 
    if (!has_priv(client->user->uid, "noob")) {
