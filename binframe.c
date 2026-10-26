@@ -211,10 +211,13 @@ int rr_logframe_frame(uint8_t **out, logpriority_t priority, const char *subsys,
    size_t plen = RR_LOGFRAME_HDR_LEN + msg_len + 1;
 
    if (plen > RR_BINFRAME_MAX_PAYLOAD) {
-      // Truncate over-long log lines rather than dropping them; a log
-      // viewer losing a tail is better than losing the line entirely.
+      /* The v2 WebSocket message limit is a transport bound, not a logger
+       * buffer limit. Never silently present a truncated report as complete. */
+      static const char notice[] = "\\n[Host Log transport limit reached: remainder omitted]";
+      const size_t available = RR_BINFRAME_MAX_PAYLOAD - RR_LOGFRAME_HDR_LEN - 1;
+      const size_t notice_len = sizeof(notice) - 1;
+      msg_len = available > notice_len ? available - notice_len : 0;
       plen = RR_BINFRAME_MAX_PAYLOAD;
-      msg_len = plen - RR_LOGFRAME_HDR_LEN - 1;
    }
    uint8_t *payload = malloc(plen);
 
@@ -227,7 +230,11 @@ int rr_logframe_frame(uint8_t **out, logpriority_t priority, const char *subsys,
    payload[0] = (uint8_t) priority;
    snprintf((char *)payload + 1, sizeof(struct rr_logframe) - 1, "%s", subsys);
    memcpy(payload + RR_LOGFRAME_HDR_LEN, msg, msg_len);
-   // payload[RR_LOGFRAME_HDR_LEN + msg_len] is already NUL
+   if (plen > RR_LOGFRAME_HDR_LEN + msg_len + 1) {
+      static const char notice[] = "\\n[Host Log transport limit reached: remainder omitted]";
+      memcpy(payload + RR_LOGFRAME_HDR_LEN + msg_len, notice, sizeof(notice) - 1);
+   }
+   // payload was zero-initialized, including the final NUL
 
    int flen = rr_binframe_frame(out, RR_BINFRAME_SUBSYS_LOG, "text", RR_BINFRAME_DIR_RX, RR_BINFRAME_VFO_NA, RR_BINFRAME_RIG_NA, RR_BINFRAME_STREAM_NONE, seq,
       ts, payload, plen);
