@@ -521,6 +521,9 @@ uint32_t ws_room_rx_tuning_mask(const char *room) {
    return 0;
 }
 bool ws_room_rx_tunable(const char *room) {
+   /* SDR rooms expose a single attached RX-only VFO, not a rig TX room. */
+   if (room && strlen(room) == 13 && !strncasecmp(room, "#sdr-", 5))
+      return (ws_room_vfo_mask(room) & UINT32_C(1)) != 0;
    return ws_room_rx_tuning_mask(room) != 0;
 }
 bool ws_room_set_rx_tuning_mask(const char *room, uint32_t mask) {
@@ -540,7 +543,8 @@ bool ws_room_control_allowed(rrconn_t *client, const char *room, bool frequency)
 }
 
 bool ws_room_set_vfo_mask(const char *room, uint32_t mask) {
-   if (!ws_room_name_valid(room) || (mask && !ws_room_rig_namespace(room))) {
+   if (!ws_room_name_valid(room) || (mask && !ws_room_rig_namespace(room) &&
+      !(strlen(room) == 13 && !strncasecmp(room, "#sdr-", 5) && mask == UINT32_C(1)))) {
       return false;
    }
    ws_room_meta_t *meta = room_meta_find(room, true);
