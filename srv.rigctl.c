@@ -279,7 +279,14 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       return false;
    }
 
-   if (!own_release && !override_release && !ws_room_control_allowed(cptr, control_room, !strcasecmp(cmd, "freq"))) {
+   bool sdr_tuning = control_room && strlen(control_room) == 13 && !strncasecmp(control_room, "#sdr-", 5);
+   bool rx_tune_cmd = !strcasecmp(cmd, "freq") || !strcasecmp(cmd, "mode") || !strcasecmp(cmd, "width");
+   if (sdr_tuning && rx_tune_cmd && !ws_room_sdr_tuning_owner(cptr, control_room)) {
+      ws_send_error(cptr, "Cannot tune SDR room %s: only the longest-present room member controls this receiver", control_room);
+      return false;
+   }
+
+   if (!own_release && !override_release && !ws_room_control_allowed(cptr, control_room, rx_tune_cmd)) {
       ws_send_error(cptr, "Cannot apply %s to VFO %s in room %s: join its TX control room, or use an authorized independent RX tuning "
          "room", cmd, vfo, control_room);
 
@@ -292,7 +299,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       return false;
    }
 
-   if (cmd && !strcasecmp(cmd, "freq") && !ws_room_tx_control(control_room)) {
+   if (cmd && !strcasecmp(cmd, "freq") && !sdr_tuning && !ws_room_tx_control(control_room)) {
       rr_vfo_t index = vfo && vfo[0] ? vfo_lookup(toupper((unsigned char)vfo[0])) : VFO_NONE;
 
       if (index < 0 || index >= 32 || !(ws_room_rx_tuning_mask(control_room) & (UINT32_C(1) << index))) {
