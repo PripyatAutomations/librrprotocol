@@ -642,6 +642,53 @@ bool ws_client_in_room(const rrconn_t *cptr, const char *room) {
    return false;
 }
 
+/* SDR receiver tuning belongs to the first still-present room member.
+ * Keep JOIN order separate from connection age; PART and reconnect relinquish it. */
+typedef struct sdr_member {
+   struct sdr_member *next;
+   rrconn_t *client;
+   char room[64];
+} sdr_member_t;
+static sdr_member_t *sdr_members, **sdr_members_tail = &sdr_members;
+static bool sdr_room(const char *room) {
+   return room && strlen(room) == 13 && !strncasecmp(room, "#sdr-", 5);
+}
+static void sdr_member_remove(rrconn_t *client, const char *room) {
+   sdr_member_t **slot = &sdr_members;
+   while (*slot) {
+      sdr_member_t *member = *slot;
+      if (member->client == client && (!room || !strcasecmp(member->room, room))) {
+         *slot = member->next;
+         if (!*slot) sdr_members_tail = slot;
+         free(member);
+      } else {
+         slot = &member->next;
+      }
+   }
+}
+bool ws_room_sdr_tuning_owner(rrconn_t *client, const char *room) {
+   if (!client || !sdr_room(room) || !ws_client_in_room(client, room)) return false;
+   sdr_member_t **slot = &sdr_members;
+   while (*slot) {
+      sdr_member_t *member = *slot;
+      bool live = false;
+      for (rrconn_t *c = http_client_list; c; c = c->next) {
+         if (c == member->client && ws_client_in_room(c, member->room)) {
+            live = true;
+            break;
+         }
+      }
+      if (!live) {
+         *slot = member->next;
+         if (!*slot) sdr_members_tail = slot;
+         free(member);
+         continue;
+      }
+      if (!strcasecmp(member->room, room)) return member->client == client;
+      slot = &member->next;
+   }
+   return false;
+}
 bool ws_client_join_room(rrconn_t *cptr, const char *room) {
    if (!cptr || !ws_room_name_valid(room)) {
       return false;
@@ -678,6 +725,15 @@ bool ws_client_join_room(rrconn_t *cptr, const char *room) {
       strlcat(cptr->rooms, ",", sizeof(cptr->rooms));
    }
    strlcat(cptr->rooms, canonical, sizeof(cptr->rooms));
+   if (sdr_room(canonical)) {
+      sdr_member_t *member = calloc(1, sizeof(*member));
+      if (member) {
+         member->client = cptr;
+         snprintf(member->room, sizeof(member->room), "%s", canonical);
+         *sdr_members_tail = member;
+         sdr_members_tail = &member->next;
+      }
+   }
 
    return true;
 }
@@ -703,6 +759,7 @@ bool ws_client_part_room(rrconn_t *cptr, const char *room) {
    }
 
    snprintf(cptr->rooms, sizeof(cptr->rooms), "%s", out);
+   if (sdr_room(want)) sdr_member_remove(cptr, want);
    media_part_room(cptr, room);
    event_emit("room.part", cptr, room);
    media_send_available_all(cptr);
