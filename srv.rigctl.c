@@ -286,7 +286,7 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
       return false;
    }
 
-   if (!own_release && !override_release && !ws_room_control_allowed(cptr, control_room, rx_tune_cmd)) {
+   if (!own_release && !override_release && !ws_room_control_allowed(cptr, control_room, !strcasecmp(cmd, "freq") || (sdr_tuning && rx_tune_cmd))) {
       ws_send_error(cptr, "Cannot apply %s to VFO %s in room %s: join its TX control room, or use an authorized independent RX tuning "
          "room", cmd, vfo, control_room);
 
