@@ -38,6 +38,8 @@ bool ws_room_set_rx_tuning(const char *room, bool enabled);
 bool ws_room_set_rx_tuning_mask(const char *room, uint32_t mask);
 uint32_t ws_room_rx_tuning_mask(const char *room);
 bool ws_room_control_allowed(rrconn_t *client, const char *room, bool frequency);
+/* First currently joined member controls a temporary SDR receiver. */
+bool ws_room_sdr_tuning_owner(rrconn_t *client, const char *room);
 /* Optional destination-side resource authorization for authenticated relay CAT. */
 void ws_rigctl_set_resource_authorizer(bool (*authorize) (rrconn_t *, const char *, const char *));
 void ws_chat_set_resource_authorizer(bool (*authorize) (rrconn_t *, const char *, const char *));
