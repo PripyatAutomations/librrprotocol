@@ -213,7 +213,7 @@ int rr_logframe_frame(uint8_t **out, logpriority_t priority, const char *subsys,
    if (plen > RR_BINFRAME_MAX_PAYLOAD) {
       /* The v2 WebSocket message limit is a transport bound, not a logger
        * buffer limit. Never silently present a truncated report as complete. */
-      static const char notice[] = "\\n[Host Log transport limit reached: remainder omitted]";
+      static const char notice[] = "\n[Host Log transport limit reached: remainder omitted]";
       const size_t available = RR_BINFRAME_MAX_PAYLOAD - RR_LOGFRAME_HDR_LEN - 1;
       const size_t notice_len = sizeof(notice) - 1;
       msg_len = available > notice_len ? available - notice_len : 0;
@@ -231,7 +231,7 @@ int rr_logframe_frame(uint8_t **out, logpriority_t priority, const char *subsys,
    snprintf((char *)payload + 1, sizeof(struct rr_logframe) - 1, "%s", subsys);
    memcpy(payload + RR_LOGFRAME_HDR_LEN, msg, msg_len);
    if (plen > RR_LOGFRAME_HDR_LEN + msg_len + 1) {
-      static const char notice[] = "\\n[Host Log transport limit reached: remainder omitted]";
+      static const char notice[] = "\n[Host Log transport limit reached: remainder omitted]";
       memcpy(payload + RR_LOGFRAME_HDR_LEN + msg_len, notice, sizeof(notice) - 1);
    }
    // payload was zero-initialized, including the final NUL
