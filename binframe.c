@@ -15,6 +15,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <inttypes.h>
@@ -148,6 +149,79 @@ int rr_binframe_frame(uint8_t **out, uint8_t subsystem, const char codec[4], uin
 // layer. The event data is the raw payload of the frame; recipients
 // must not free it or retain the pointer beyond the callback. Use
 // event_on_binary("media.frame.<subsystem>", cb, user) to subscribe.
+/* Chunked Host Log payloads use codec "lgch": normal 17-byte log header,
+ * followed by network-order (message ID, total bytes, offset), then bytes.
+ * Reassembly is per connection, bounded and rejects gaps/overlaps. */
+#define RR_LOG_CHUNK_MAX (64u * 1024u * 1024u)
+typedef struct rr_log_chunk_pending {
+   void *connection;
+   uint32_t id, total, received;
+   uint64_t last_seen;
+   uint8_t prefix[RR_LOGFRAME_HDR_LEN];
+   uint8_t *text;
+   struct rr_log_chunk_pending *next;
+} rr_log_chunk_pending_t;
+static rr_log_chunk_pending_t *log_pending;
+static uint32_t rr_log_chunk_u32(const uint8_t *p) {
+   return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | p[3];
+}
+static void rr_log_chunk_remove(rr_log_chunk_pending_t **slot) {
+   rr_log_chunk_pending_t *entry = *slot;
+   *slot = entry->next;
+   free(entry->text);
+   free(entry);
+}
+static bool rr_log_chunk_dispatch(const struct rr_binframe *f, void *ctx) {
+   if (f->len < RR_LOGFRAME_HDR_LEN + 12) return false;
+   const uint8_t *p = f->data + RR_LOGFRAME_HDR_LEN;
+   uint32_t id = rr_log_chunk_u32(p), total = rr_log_chunk_u32(p + 4);
+   uint32_t offset = rr_log_chunk_u32(p + 8);
+   size_t n = f->len - RR_LOGFRAME_HDR_LEN - 12;
+   rr_log_chunk_pending_t **slot = &log_pending;
+   /* Purge stale or interrupted transfers. The sender sends in order. */
+   uint64_t timestamp = (uint64_t)time(NULL);
+   while (*slot) {
+      rr_log_chunk_pending_t *e = *slot;
+      if ((timestamp > e->last_seen && timestamp - e->last_seen > 60) ||
+          (e->connection == ctx && (e->id != id || (offset == 0 && e->received)))) {
+         rr_log_chunk_remove(slot);
+      } else slot = &e->next;
+   }
+   if (!total || total > RR_LOG_CHUNK_MAX || offset > total || n > total - offset) return false;
+   slot = &log_pending;
+   while (*slot && !((*slot)->connection == ctx && (*slot)->id == id)) slot = &(*slot)->next;
+   if (!*slot) {
+      if (offset != 0) return false;
+      rr_log_chunk_pending_t *e = calloc(1, sizeof(*e));
+      if (!e) return false;
+      e->text = malloc((size_t)total + RR_LOGFRAME_HDR_LEN + 1);
+      if (!e->text) { free(e); return false; }
+      e->connection = ctx;
+      e->id = id;
+      e->total = total;
+      memcpy(e->prefix, f->data, RR_LOGFRAME_HDR_LEN);
+      e->next = log_pending;
+      log_pending = e;
+      slot = &log_pending;
+   }
+   rr_log_chunk_pending_t *e = *slot;
+   if (offset != e->received || memcmp(e->prefix, f->data, RR_LOGFRAME_HDR_LEN)) {
+      rr_log_chunk_remove(slot);
+      return false;
+   }
+   memcpy(e->text + RR_LOGFRAME_HDR_LEN + offset, p + 12, n);
+   e->received += (uint32_t)n;
+   e->last_seen = timestamp;
+   if (e->received == e->total) {
+      memcpy(e->text, e->prefix, RR_LOGFRAME_HDR_LEN);
+      e->text[RR_LOGFRAME_HDR_LEN + e->total] = 0;
+      event_emit_binary("media.frame.log", (rrconn_t *)ctx, e->text,
+         RR_LOGFRAME_HDR_LEN + (size_t)e->total + 1);
+      rr_log_chunk_remove(slot);
+   }
+   return true;
+}
+
 bool rr_binframe_dispatch(struct rr_binframe *f, void *ctx) {
    if (!f) {
       return false;
@@ -180,6 +254,8 @@ bool rr_binframe_dispatch(struct rr_binframe *f, void *ctx) {
          break;
       }
       case RR_BINFRAME_SUBSYS_LOG: {
+         if (!memcmp(f->hdr.codec, "lgch", 4))
+            return rr_log_chunk_dispatch(f, ctx);
          evname = "media.frame.log";
          break;
       }
