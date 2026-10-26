@@ -1105,6 +1105,41 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          return true;
       }
 
+      /* A different RX codec is another rendition of the same PCM source,
+       * not a change to its existing shared encoder. Subscribe before
+       * releasing the previous rendition so failure preserves playback. */
+      if (cp->subsystem == RR_BINFRAME_SUBSYS_AUDIO &&
+         cp->direction == RR_BINFRAME_DIR_RX && old_codec[0]) {
+         struct rr_mediachan *variant = media_chan_rx_variant(cp, codec);
+         if (!variant) {
+            ws_send_error(cptr, "No free RX stream for codec %s on %s", codec, cp->name);
+            return false;
+         }
+         if (variant == cp) {
+            return true;
+         }
+         media_send_available(cptr, variant);
+         dict *request = dict_new();
+         if (!request) {
+            return false;
+         }
+         dict_add(request, "media.cmd", "subscribe");
+         dict_add(request, "media.chan-uuid", variant->uuid);
+         bool subscribed = ws_handle_mediachan_msg(cptr, request);
+         dict_free(request);
+         if (!subscribed) {
+            return false;
+         }
+         request = dict_new();
+         if (request) {
+            dict_add(request, "media.cmd", "unsubscribe");
+            dict_add(request, "media.chan-uuid", cp->uuid);
+            ws_handle_mediachan_msg(cptr, request);
+            dict_free(request);
+         }
+         return true;
+      }
+
       /* The encoder belongs to the shared channel, not the requesting client.
        * Never change its wire format while another listener is attached. */
       if (cp->subsystem == RR_BINFRAME_SUBSYS_AUDIO && old_codec[0]) {
