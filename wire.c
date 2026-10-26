@@ -405,7 +405,10 @@ void rr_wire_profile_dump(void) {
    pthread_mutex_unlock(&wire_profile_lock);
    qsort(rows, used, sizeof(*rows), wire_profile_compare);
    char *duration = time_t2dhms(elapsed / 1000000);
-   Log(LOG_INFO, "profile", "WebSocket JSON parser / binary dispatch counts (cumulative, sampling=%s):", duration ? duration : "unknown");
+   char report[16384];
+   size_t offset = 0;
+   int n = snprintf(report, sizeof(report), "WebSocket JSON parser / binary dispatch counts (cumulative, sampling=%s):", duration ? duration : "unknown");
+   if (n > 0) offset = (size_t)n < sizeof(report) ? (size_t)n : sizeof(report) - 1;
    free(duration);
    size_t json_rows = 0;
 
@@ -414,9 +417,11 @@ void rr_wire_profile_dump(void) {
          continue;
       }
       const wire_profile_count_t *c = &rows[i].counts;
-      Log(LOG_INFO, "profile", "  %s: %llu messages, %llu bytes, %llu rejected, %llu processing us (%llu avg us)", rows[i].operation, (unsigned long long)c->
+      n = snprintf(report + offset, sizeof(report) - offset, "\n  %s: %llu messages, %llu bytes, %llu rejected, %llu processing us (%llu avg us)", rows[i].operation, (unsigned long long)c->
          count, (unsigned long long)c->bytes, (unsigned long long)c->rejected, (unsigned long long)c->parse_us, (unsigned long long)(c->parse_us / c->count));
+      if (n > 0) offset += (size_t)n < sizeof(report) - offset ? (size_t)n : sizeof(report) - offset - 1;
    }
+   Log(LOG_INFO, "profile", "%s", report);
 
 #endif
 }
