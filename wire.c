@@ -8,6 +8,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <librrprotocol/http.h>
@@ -378,6 +379,35 @@ static int wire_profile_compare(const void *a, const void *b) {
 
 /* Process-local parser instrumentation: fixed registry rows, no payload data or attacker-controlled labels. Snapshot before logging so log forwarding/re-entry
  * cannot deadlock or change the rows being printed. */
+/* Dynamically grow profiling reports so one Log() call owns each dump. */
+static bool profile_report_append(char **text, size_t *used, size_t *capacity, const char *format, ...) {
+   va_list args, measure;
+   va_start(args, format);
+   va_copy(measure, args);
+   int needed = vsnprintf(NULL, 0, format, measure);
+   va_end(measure);
+   if (needed < 0 || (size_t)needed > SIZE_MAX - *used - 1) {
+      va_end(args);
+      return false;
+   }
+   size_t required = *used + (size_t)needed + 1;
+   if (required > *capacity) {
+      size_t grown = *capacity ? *capacity : 512;
+      while (grown < required) {
+         if (grown > SIZE_MAX / 2) { grown = required; break; }
+         grown *= 2;
+      }
+      char *replacement = realloc(*text, grown);
+      if (!replacement) { va_end(args); return false; }
+      *text = replacement;
+      *capacity = grown;
+   }
+   vsnprintf(*text + *used, *capacity - *used, format, args);
+   *used += (size_t)needed;
+   va_end(args);
+   return true;
+}
+
 void rr_wire_profile_dump(void) {
 #ifdef USE_PROFILING
    wire_profile_row_t rows[WIRE_PROFILE_ROWS];
@@ -405,10 +435,10 @@ void rr_wire_profile_dump(void) {
    pthread_mutex_unlock(&wire_profile_lock);
    qsort(rows, used, sizeof(*rows), wire_profile_compare);
    char *duration = time_t2dhms(elapsed / 1000000);
-   char report[16384];
-   size_t offset = 0;
-   int n = snprintf(report, sizeof(report), "WebSocket JSON parser / binary dispatch counts (cumulative, sampling=%s):", duration ? duration : "unknown");
-   if (n > 0) offset = (size_t)n < sizeof(report) ? (size_t)n : sizeof(report) - 1;
+   char *report = NULL;
+   size_t report_len = 0, report_capacity = 0;
+   bool report_ok = profile_report_append(&report, &report_len, &report_capacity,
+      "WebSocket JSON parser / binary dispatch counts (cumulative, sampling=%s):", duration ? duration : "unknown");
    free(duration);
    size_t json_rows = 0;
 
@@ -417,11 +447,11 @@ void rr_wire_profile_dump(void) {
          continue;
       }
       const wire_profile_count_t *c = &rows[i].counts;
-      n = snprintf(report + offset, sizeof(report) - offset, "\n  %s: %llu messages, %llu bytes, %llu rejected, %llu processing us (%llu avg us)", rows[i].operation, (unsigned long long)c->
+      report_ok = report_ok && profile_report_append(&report, &report_len, &report_capacity, "\n  %s: %llu messages, %llu bytes, %llu rejected, %llu processing us (%llu avg us)", rows[i].operation, (unsigned long long)c->
          count, (unsigned long long)c->bytes, (unsigned long long)c->rejected, (unsigned long long)c->parse_us, (unsigned long long)(c->parse_us / c->count));
-      if (n > 0) offset += (size_t)n < sizeof(report) - offset ? (size_t)n : sizeof(report) - offset - 1;
    }
-   Log(LOG_INFO, "profile", "%s", report);
+   if (report_ok) Log(LOG_INFO, "profile", "%s", report ? report : "");
+   free(report);
 
 #endif
 }
