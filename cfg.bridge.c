@@ -90,7 +90,7 @@ static bool section_cb(const char *path, int line, const char *section, const ch
    }
 
    if (!key_valid || (!name && !hint && strcmp(key, "instances") && strcmp(key, "path") && strcmp(key, "modules") && strcmp(key, "frequency")
-      && strcmp(key, "mode") && strcmp(key, "host") && strcmp(key, "port") && strcmp(key, "password"))) {
+      && strcmp(key, "mode") && strcmp(key, "host") && strcmp(key, "port") && strcmp(key, "password") && strcmp(key, "user-agent"))) {
       Log(LOG_CRIT, "cfg.bridge", "Invalid key in [%s] at %s:%d", section, path, line);
       free(copy);
 
