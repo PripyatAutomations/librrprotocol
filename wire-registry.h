@@ -166,6 +166,7 @@ static const rr_wire_field_t wire_fields_5[] = {
    {"media.direct-key", "direct-key"},
    {"media.direct-ssrc", "direct-ssrc"},
    {"media.direct-security", "direct-security"},
+   {"media.direct-lease-seconds", "direct-lease-seconds"},
    {"media.owner-stream", "owner-stream"},
    {"media.data", "data"},
    {"media.fragment", "fragment"},
