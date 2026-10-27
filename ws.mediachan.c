@@ -326,42 +326,6 @@ struct rr_mediachan *media_chan_add(uint8_t subsystem, uint8_t direction, uint8_
    return NULL;
 }
 
-/* Additional RX codec rendition of one rig/VFO PCM source.
- * Distinct stream IDs and UUIDs reuse an existing rendition of the
- * same source/codec; never overwrite the original channel. */
-struct rr_mediachan *media_chan_rx_variant(const struct rr_mediachan *source, const char *codec) {
-   if (!source || source->subsystem != RR_BINFRAME_SUBSYS_AUDIO ||
-      source->direction != RR_BINFRAME_DIR_RX || !codec || strlen(codec) != 4 ||
-      !source->uuid[0]) {
-      return NULL;
-   }
-   for (int i = 0; i < MAX_MEDIA_CHANNELS; i++) {
-      struct rr_mediachan *cp = &media_channels[i];
-      if (cp->uuid[0] && cp->subsystem == source->subsystem &&
-         cp->direction == source->direction && cp->rig == source->rig &&
-         cp->vfo == source->vfo && !strncmp(cp->codec, codec, 4) &&
-         !strcmp(cp->rig_uuid, source->rig_uuid) &&
-         !strcmp(cp->vfo_uuid, source->vfo_uuid)) {
-         return cp;
-      }
-   }
-   for (int i = 0; i < MAX_MEDIA_CHANNELS; i++) {
-      struct rr_mediachan *cp = &media_channels[i];
-      if (cp->uuid[0]) {
-         continue;
-      }
-      /* source points into the same registry; copying precedes filling. */
-      *cp = *source;
-      media_gen_uuid(cp->uuid, sizeof(cp->uuid));
-      snprintf(cp->codec, sizeof(cp->codec), "%s", codec);
-      snprintf(cp->name, sizeof(cp->name), "%.*s.%s",
-         (int)(sizeof(cp->name) - 6), source->name, codec);
-      cp->active = false;
-      return cp;
-   }
-   return NULL;
-}
-
 struct rr_mediachan *media_chan_find(uint8_t subsystem, uint8_t direction, uint8_t vfo, uint8_t rig) {
    for (int i = 0 ; i < MAX_MEDIA_CHANNELS ; i++) {
       struct rr_mediachan *cp = &media_channels[i];
@@ -1102,41 +1066,6 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
       if (old_codec[0] && memcmp(old_codec, codec, 4) == 0) {
          media_send_available(cptr, cp);
 
-         return true;
-      }
-
-      /* A different RX codec is another rendition of the same PCM source,
-       * not a change to its existing shared encoder. Subscribe before
-       * releasing the previous rendition so failure preserves playback. */
-      if (cp->subsystem == RR_BINFRAME_SUBSYS_AUDIO &&
-         cp->direction == RR_BINFRAME_DIR_RX && old_codec[0]) {
-         struct rr_mediachan *variant = media_chan_rx_variant(cp, codec);
-         if (!variant) {
-            ws_send_error(cptr, "No free RX stream for codec %s on %s", codec, cp->name);
-            return false;
-         }
-         if (variant == cp) {
-            return true;
-         }
-         media_send_available(cptr, variant);
-         dict *request = dict_new();
-         if (!request) {
-            return false;
-         }
-         dict_add(request, "media.cmd", "subscribe");
-         dict_add(request, "media.chan-uuid", variant->uuid);
-         bool subscribed = ws_handle_mediachan_msg(cptr, request);
-         dict_free(request);
-         if (!subscribed) {
-            return false;
-         }
-         request = dict_new();
-         if (request) {
-            dict_add(request, "media.cmd", "unsubscribe");
-            dict_add(request, "media.chan-uuid", cp->uuid);
-            ws_handle_mediachan_msg(cptr, request);
-            dict_free(request);
-         }
          return true;
       }
 
