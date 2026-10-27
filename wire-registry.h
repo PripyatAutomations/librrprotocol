@@ -334,6 +334,20 @@ static const rr_wire_field_t wire_fields_18[] = {
    {"file.error", "error"},
    {"file.site-name", "file.site-name"},
 };
+static const rr_wire_field_t wire_fields_19[] = {
+   {"directory.request", "request"},
+   {"directory.page", "page"},
+   {"directory.digest", "digest"},
+   {"directory.source", "source"},
+   {"directory.generation", "generation"},
+   {"directory.fetched", "fetched"},
+   {"directory.next-refresh", "next-refresh"},
+   {"directory.fetching", "fetching"},
+   {"directory.sequence", "sequence"},
+   {"directory.total", "total"},
+   {"directory.encoding", "encoding"},
+   {"directory.data", "data"},
+};
 static const rr_wire_rule_t wire_rules[] = {
    {"cap.ls", "cap", "cap.cmd", "ls", wire_fields_0, sizeof(wire_fields_0) / sizeof(wire_fields_0[0])},
    {"cap.req", "cap", "cap.cmd", "req", wire_fields_0, sizeof(wire_fields_0) / sizeof(wire_fields_0[0])},
@@ -455,4 +469,8 @@ static const rr_wire_rule_t wire_rules[] = {
    {"file.delete", "file", "file.cmd", "delete", wire_fields_18, sizeof(wire_fields_18) / sizeof(wire_fields_18[0])},
    {"file.mkdir", "file", "file.cmd", "mkdir", wire_fields_18, sizeof(wire_fields_18) / sizeof(wire_fields_18[0])},
    {"file.result", "file", "file.cmd", "result", wire_fields_18, sizeof(wire_fields_18) / sizeof(wire_fields_18[0])},
+   {"receiver-directory.status", "receiver-directory", "directory.cmd", "status", wire_fields_19, sizeof(wire_fields_19) / sizeof(wire_fields_19[0])},
+   {"receiver-directory.list", "receiver-directory", "directory.cmd", "list", wire_fields_19, sizeof(wire_fields_19) / sizeof(wire_fields_19[0])},
+   {"receiver-directory.refresh", "receiver-directory", "directory.cmd", "refresh", wire_fields_19, sizeof(wire_fields_19) / sizeof(wire_fields_19[0])},
+   {"receiver-directory.chunk", "receiver-directory", "directory.cmd", "chunk", wire_fields_19, sizeof(wire_fields_19) / sizeof(wire_fields_19[0])},
 };
