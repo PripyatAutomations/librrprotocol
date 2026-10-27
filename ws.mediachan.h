@@ -58,7 +58,6 @@ extern struct rr_mediachan *media_chan_add(uint8_t subsystem, uint8_t direction,
 // Find by exact match on the routing quadruple
 extern struct rr_mediachan *media_chan_find(uint8_t subsystem, uint8_t direction, uint8_t vfo, uint8_t rig);
 /* Find or allocate another codec rendition of an existing RX audio source. */
-extern struct rr_mediachan *media_chan_rx_variant(const struct rr_mediachan *source, const char *codec);
 // Format a readable channel label; station may be NULL. UUID remains its wire address.
 extern const char *media_chan_description(const struct rr_mediachan *channel, const char *station, char *out, size_t capacity);
 // Find by uuid
