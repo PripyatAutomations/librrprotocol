@@ -564,6 +564,30 @@
         "file.error": "error",
         "file.site-name": "file.site-name"
       }
+    },
+    {
+      "type": "receiver-directory",
+      "command_key": "directory.cmd",
+      "operations": {
+        "receiver-directory.status": "status",
+        "receiver-directory.list": "list",
+        "receiver-directory.refresh": "refresh",
+        "receiver-directory.chunk": "chunk"
+      },
+      "fields": {
+        "directory.request": "request",
+        "directory.page": "page",
+        "directory.digest": "digest",
+        "directory.source": "source",
+        "directory.generation": "generation",
+        "directory.fetched": "fetched",
+        "directory.next-refresh": "next-refresh",
+        "directory.fetching": "fetching",
+        "directory.sequence": "sequence",
+        "directory.total": "total",
+        "directory.encoding": "encoding",
+        "directory.data": "data"
+      }
     }
   ]
 }
