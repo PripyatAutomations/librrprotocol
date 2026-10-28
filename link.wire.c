@@ -13,14 +13,14 @@
 #include <librrprotocol/link.wire.h>
 
 static const char *fields[] = {
-   "op", "node", "site", "username", "password", "nodes", "parent", "dest", "kind", "session", "payload", "clock.unix", "version", "features"
+   "op", "node", "site", "username", "password", "nodes", "parent", "dest", "kind", "session", "payload", "clock.unix", "version", "features", "domain"
 };
 static bool valid(dict *d) {
    const char *op = dict_get(d, "op", "");
    unsigned required;
 
    if (!strcmp(op, "link.hello")) {
-      required = 1 | (1 << 1) | (1 << 2) | (1 << 4);
+      required = 1 | (1 << 1) | (1 << 2) | (1 << 4) | (1 << 14);
    } else if (!strcmp(op, "link.snapshot")) {
       required = 1 | (1 << 5);
    } else if (!strcmp(op, "link.capabilities")) {
