@@ -19,5 +19,9 @@ bool rr_crypto_ed25519_verify(const rr_crypto_key_t *key, const void *data, size
 bool rr_crypto_sha256(const void *data, size_t len, uint8_t digest[32]);
 bool rr_crypto_random(void *data, size_t len);
 void rr_crypto_key_free(rr_crypto_key_t *key);
+/* Create a self-signed P-256 TLS identity only if neither file exists. */
+bool rr_crypto_tls_identity_ensure(const char *cert_path, const char *key_path, const char *dns_name);
+/* SPKI SHA256 of certificate public key, encoded as base64. Caller frees. */
+char *rr_crypto_cert_spki_sha256(const char *cert_path);
 const char *rr_crypto_provider(void);
 #endif
