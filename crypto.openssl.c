@@ -2,7 +2,6 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
-#include <openssl/sha.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -63,7 +62,8 @@ bool rr_crypto_ed25519_verify(const rr_crypto_key_t *k,const void *data,size_t l
    EVP_MD_CTX_free(ctx); return ok;
 }
 bool rr_crypto_sha256(const void *data,size_t len,uint8_t out[32]) {
-   return data && out && SHA256(data,len,out)!=NULL;
+   unsigned int digest_len=0;
+   return data && out && EVP_Digest(data,len,out,&digest_len,EVP_sha256(),NULL)==1 && digest_len==32;
 }
 bool rr_crypto_random(void *data,size_t len) {
    return data && len<=INT_MAX && RAND_bytes(data,(int)len)==1;
