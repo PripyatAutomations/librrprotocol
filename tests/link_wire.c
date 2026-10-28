@@ -4,7 +4,7 @@
 #include <string.h>
 #include <librrprotocol/link.wire.h>
 int main(void) {
-   const char *hello = "{\"op\":\"link.hello\",\"node\":\"uuid\",\"site\":\"site\",\"password\":\"private\"}";
+   const char *hello = "{\"op\":\"link.hello\",\"node\":\"uuid\",\"site\":\"site\",\"domain\":\"test\",\"password\":\"private\"}";
    dict *d = rr_link_wire_decode(hello, strlen(hello));
    assert(d && !dict_get(d, "username", NULL));
    char *encoded = rr_link_wire_encode(d);
@@ -14,7 +14,7 @@ int main(void) {
    free(encoded);
    dict_free(copy);
    dict_free(d);
-   const char *timed_hello = "{\"op\":\"link.hello\",\"node\":\"uuid\",\"site\":\"site\",\"password\":\"private\",\"clock.unix\":\"1792624453\"}";
+   const char *timed_hello = "{\"op\":\"link.hello\",\"node\":\"uuid\",\"site\":\"site\",\"domain\":\"test\",\"password\":\"private\",\"clock.unix\":\"1792624453\"}";
    d = rr_link_wire_decode(timed_hello, strlen(timed_hello));
    assert(d && !strcmp(dict_get(d, "clock.unix", ""), "1792624453"));
    encoded = rr_link_wire_encode(d);

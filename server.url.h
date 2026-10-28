@@ -15,9 +15,9 @@ typedef enum {
    RR_TRANSPORT_WSS,
    RR_TRANSPORT_IRC,
    RR_TRANSPORT_IRCS
-} rr_transport_t;
+} rr_url_transport_t;
 typedef struct {
-   rr_transport_t transport;
+   rr_url_transport_t transport;
    char host[HOSTLEN + 1];
    bool credentials;
    char user[NICKLEN + 1];

@@ -35,7 +35,8 @@ enum rr_transport_event {
    RR_TRANSPORT_EVENT_DATAGRAM,
    RR_TRANSPORT_EVENT_STREAM_DATA,
    RR_TRANSPORT_EVENT_CLOSE,
-   RR_TRANSPORT_EVENT_ERROR
+   RR_TRANSPORT_EVENT_ERROR,
+   RR_TRANSPORT_EVENT_PONG
 };
 
 enum rr_transport_status {
@@ -65,6 +66,7 @@ typedef struct rr_transport_driver {
    /* Returns the hash of the authenticated TLS peer SPKI, not an advertised
     * or self-reported identity. Exactly 32 raw SHA-256 bytes. */
    bool (*peer_spki_sha256)(void *driver, uint8_t output[32]);
+   /* Begin closing; driver emits CLOSE after its final I/O callback. */
    void (*close)(void *driver);
 } rr_transport_driver_t;
 
@@ -84,6 +86,8 @@ bool rr_transport_peer_spki_sha256(rr_transport_t *transport, uint8_t output[32]
 void rr_transport_emit(rr_transport_t *transport, enum rr_transport_event event,
    rr_transport_channel_t *channel, const void *data, size_t len);
 void rr_transport_close(rr_transport_t *transport);
+/* Free only after CLOSE. If still live, starts close and retains ownership
+ * until the caller receives CLOSE and calls free again. */
 void rr_transport_free(rr_transport_t *transport);
 void *rr_transport_driver_context(rr_transport_t *transport);
 

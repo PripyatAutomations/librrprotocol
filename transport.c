@@ -74,12 +74,11 @@ void rr_transport_close(rr_transport_t *t) {
    if (!t || t->state == RR_TRANSPORT_CLOSED || t->state == RR_TRANSPORT_CLOSING) return;
    t->state = RR_TRANSPORT_CLOSING;
    if (t->ops->close) t->ops->close(t->driver);
-   /* The driver must not call back after close. */
-   t->state = RR_TRANSPORT_CLOSED;
+   else rr_transport_emit(t, RR_TRANSPORT_EVENT_CLOSE, NULL, NULL, 0);
 }
 void rr_transport_free(rr_transport_t *t) {
    if (!t) return;
-   rr_transport_close(t);
+   if (t->state != RR_TRANSPORT_CLOSED) { rr_transport_close(t); return; }
    free(t);
 }
 void *rr_transport_driver_context(rr_transport_t *t) {
