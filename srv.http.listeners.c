@@ -113,7 +113,7 @@ void http_tls_init(void) {
 
    if (tls_error == true) {
       Log(LOG_CRIT, "http.tls", "No cert/key, aborting TLS setup");
-      Log(LOG_CRIT, "http.tls", "Either fix this or disable TLS!");
+      Log(LOG_CRIT, "http.tls", "HTTPS is required; fix certificate and key configuration.");
       exit(1);
    } else {
       tls_opts.cert = tls_cert;
@@ -196,39 +196,8 @@ bool http_init(struct mg_mgr *mgr) {
    // Reload the user database whenever net.http.authdb* changes (rehash etc)
    reload_event_add("net.http.authdb", http_reload_users_cb, "Reload HTTP users from authdb");
    reload_event_add("net.http.authdb-dynamic", http_reload_users_cb, "Reload HTTP users from authdb");
-   struct in_addr sa_bind = {
-      0
-   };
-   sa_bind.s_addr = htonl(INADDR_ANY);
-   char listen_addr[255];
-   int bind_port = cfg_get_int("net.http.port", 8420);
-
-#ifdef  USE_EEPROM
-
-   if (!bind_port) {
-      bind_port = eeprom_get_int("net/http/port");
-   }
-#endif // USE_EEPROM
-
-   const char *s = cfg_get("net.http.bind");
-
-   if (!s || !inet_aton(s, &sa_bind)) {
-#ifdef  USE_EEPROM
-      eeprom_get_ip4("net/http/bind", &sa_bind);
-#endif // USE_EEPROM
-   }
-   free((char *)s);
-   prepare_msg(listen_addr, sizeof(listen_addr), "http://%s:%d", inet_ntoa(sa_bind), bind_port);
-
-#ifdef  USE_MONGOOSE
-   fprintf(stderr, "mgr: <%p>, listen_addr:<%p> = %s\n", mgr, listen_addr, listen_addr);
-
-   if (!mg_http_listen(mgr, listen_addr, ws_http_cb, NULL)) {
-      Log(LOG_CRIT, "http", "Failed to start http listener -- is program already running or something else listening on port %d?", bind_port);
-
-      Log(LOG_WARN, "http", "Optional plaintext HTTP listener unavailable; HTTPS remains mandatory");
-   }
-
+   /* HTTPS/WSS is the only browser and control listener. */
+#ifdef USE_MONGOOSE
    /* HTTPS bind failure below always terminates startup. */
 
    {
@@ -245,11 +214,11 @@ bool http_init(struct mg_mgr *mgr) {
          0
       };
       sa_tls_bind.s_addr = htonl(INADDR_ANY);
-      s = cfg_get_exp("net.http.tls-bind");
+      char *s = cfg_get_exp("net.http.tls-bind");
 
       if (!s || !inet_aton(s, &sa_tls_bind)) {
 #ifdef  USE_EEPROM
-         eeprom_get_ip4("net/http/bind", &sa_tls_bind);
+         eeprom_get_ip4("net/http/tls-bind", &sa_tls_bind);
 #endif // USE_EEPROM
       }
       free((char *)s);
