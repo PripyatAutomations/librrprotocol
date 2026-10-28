@@ -698,13 +698,11 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       int port = cptr->user_port;
       Log(LOG_CRAZY, "http", "Accepted connection on cptr:<%p> from %s:%d", cptr, ip, port);
 
-#ifdef  HTTP_USE_TLS
 
       if (cptr && cptr->conn && cptr->conn->fn_data) {
          Log(LOG_CRAZY, "http", "Init TLS for cptr:<%p> from %s:%d", cptr, ip, port);
          mg_tls_init(cptr->conn, &tls_opts);
       }
-#endif // HTTP_USE_TLS
    } else if (ev == MG_EV_HTTP_MSG) {
       if (!cptr) {
          Log(LOG_CRAZY, "http.core", "ACCEPT: mg_ev_http_msg cptr doesn't exist, creating");
