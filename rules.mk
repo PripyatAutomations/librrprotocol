@@ -2,7 +2,7 @@ librrprotocol ?= librrprotocol.so
 libs += ${librrprotocol}
 
 # !ls *.c|sed 's/.c$/.o/g'|sed 's/^/librrprotocol_objs += /g'
-librrprotocol_objs += crypto.openssl.o
+librrprotocol_objs += crypto.openssl.o crypto.cert.openssl.o
 librrprotocol_objs += auth.hash.o
 librrprotocol_objs += binframe.o
 librrprotocol_objs += bridge.sdr.o bridge.ipc.o cfg.bridge.o bridge.media.o
