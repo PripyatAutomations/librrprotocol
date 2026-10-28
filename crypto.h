@@ -9,6 +9,11 @@ typedef struct rr_crypto_key rr_crypto_key_t;
 bool rr_crypto_init(void);
 rr_crypto_key_t *rr_crypto_ed25519_generate(void);
 rr_crypto_key_t *rr_crypto_key_read_pem(FILE *stream);
+/* Import an encrypted private key using a supplied passphrase. */
+rr_crypto_key_t *rr_crypto_key_read_encrypted_pem(FILE *stream, const char *passphrase);
+/* Export an AES-256-CBC encrypted PKCS#8 private key; empty password rejected. */
+bool rr_crypto_key_write_encrypted_pem_stream(const rr_crypto_key_t *key,
+   FILE *stream, const char *passphrase);
 bool rr_crypto_key_write_pem_stream(const rr_crypto_key_t *key, FILE *stream);
 rr_crypto_key_t *rr_crypto_key_load_pem(const char *path);
 bool rr_crypto_key_write_pem(const rr_crypto_key_t *key, const char *path);
