@@ -214,7 +214,7 @@ bool http_init(struct mg_mgr *mgr) {
          0
       };
       sa_tls_bind.s_addr = htonl(INADDR_ANY);
-      char *s = cfg_get_exp("net.http.tls-bind");
+      const char *s = cfg_get_exp("net.http.tls-bind");
 
       if (!s || !inet_aton(s, &sa_tls_bind)) {
 #ifdef  USE_EEPROM
