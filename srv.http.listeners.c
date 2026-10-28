@@ -201,7 +201,7 @@ bool http_init(struct mg_mgr *mgr) {
    /* HTTPS bind failure below always terminates startup. */
 
    {
-      int tls_bind_port = cfg_get_int("net.http.tls-port", 4420);
+      int tls_bind_port = cfg_get_int("net.http.tls-port", 4422);
 
 #ifdef  USE_EEPROM
 

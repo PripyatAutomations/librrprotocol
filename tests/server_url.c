@@ -19,7 +19,7 @@ int main(void) {
    assert(rr_server_url_parse("irc://localhost", &url) && url.port == 6667);
    assert(rr_server_url_parse("ircs://[::1]", &url) && url.port == 6697);
    assert(rr_server_url_parse("ws://localhost/ws/", &url) && url.port == 8420);
-   assert(rr_server_url_parse("wss://localhost/", &url) && url.port == 4420);
+   assert(rr_server_url_parse("wss://localhost/", &url) && url.port == 4422);
    assert(rr_server_url_parse("ws://user:pass@localhost:8420/ws/", &url));
    assert(url.credentials && !strcmp(url.user, "user") && !strcmp(url.pass, "pass"));
    assert(!strcmp(url.host, "localhost") && url.port == 8420 && !strcmp(url.path, "/ws/"));

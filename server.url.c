@@ -57,7 +57,7 @@ bool rr_server_url_parse(const char *url, rr_server_url_t *out) {
       host = url + 5;
    } else if (!strncasecmp(url, "wss://", 6)) {
       parsed.transport = RR_TRANSPORT_WSS;
-      parsed.port = 4420;
+      parsed.port = 4422;
       parsed.tls = true;
       host = url + 6;
    } else if (!strncasecmp(url, "irc://", 6)) {
