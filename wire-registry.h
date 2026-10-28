@@ -349,6 +349,10 @@ static const rr_wire_field_t wire_fields_19[] = {
    {"directory.encoding", "encoding"},
    {"directory.data", "data"},
 };
+static const rr_wire_field_t wire_fields_20[] = {
+   {"domain.name", "name"},
+   {"domain.server", "server"},
+};
 static const rr_wire_rule_t wire_rules[] = {
    {"cap.ls", "cap", "cap.cmd", "ls", wire_fields_0, sizeof(wire_fields_0) / sizeof(wire_fields_0[0])},
    {"cap.req", "cap", "cap.cmd", "req", wire_fields_0, sizeof(wire_fields_0) / sizeof(wire_fields_0[0])},
@@ -474,4 +478,5 @@ static const rr_wire_rule_t wire_rules[] = {
    {"receiver-directory.list", "receiver-directory", "directory.cmd", "list", wire_fields_19, sizeof(wire_fields_19) / sizeof(wire_fields_19[0])},
    {"receiver-directory.refresh", "receiver-directory", "directory.cmd", "refresh", wire_fields_19, sizeof(wire_fields_19) / sizeof(wire_fields_19[0])},
    {"receiver-directory.chunk", "receiver-directory", "directory.cmd", "chunk", wire_fields_19, sizeof(wire_fields_19) / sizeof(wire_fields_19[0])},
+   {"domain", "domain", NULL, NULL, wire_fields_20, sizeof(wire_fields_20) / sizeof(wire_fields_20[0])},
 };
