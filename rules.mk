@@ -2,6 +2,7 @@ librrprotocol ?= librrprotocol.so
 libs += ${librrprotocol}
 
 # !ls *.c|sed 's/.c$/.o/g'|sed 's/^/librrprotocol_objs += /g'
+librrprotocol_objs += crypto.openssl.o
 librrprotocol_objs += auth.hash.o
 librrprotocol_objs += binframe.o
 librrprotocol_objs += bridge.sdr.o bridge.ipc.o cfg.bridge.o bridge.media.o
@@ -62,6 +63,12 @@ ifeq (${WITH_RTP_ENCRYPTION},true)
 librrprotocol_rtp_cflags += -DRR_RTP_ENCRYPTION=1
 endif
 endif
+# Exactly one crypto provider per build. No fallback to a second provider.
+CRYPTO_BACKEND ?= openssl
+ifneq ($(CRYPTO_BACKEND),openssl)
+$(error Unsupported CRYPTO_BACKEND=$(CRYPTO_BACKEND); only openssl implemented)
+endif
+librrprotocol_ldlibs += $(shell pkg-config --libs openssl)
 librrprotocol_cflags := ${CFLAGS} ${librrprotocol_rtp_cflags} -I./modsrc/ -I./ -I./inc
 
 # Switching optional protection features must not reuse objects from another build.
