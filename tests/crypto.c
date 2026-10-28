@@ -10,6 +10,23 @@ int main(void) {
    assert(key);
    unsigned char pub[32],sig[64],hash[32],rnd[32];
    assert(rr_crypto_ed25519_public_bytes(key,pub));
+   /* Protected export and import must round-trip, and a wrong password
+    * must never produce a usable private key. */
+   FILE *encrypted = tmpfile();
+   assert(encrypted);
+   assert(!rr_crypto_key_write_encrypted_pem_stream(key, encrypted, ""));
+   assert(rr_crypto_key_write_encrypted_pem_stream(key, encrypted, "simple password"));
+   rewind(encrypted);
+   assert(!rr_crypto_key_read_encrypted_pem(encrypted, "incorrect"));
+   rewind(encrypted);
+   rr_crypto_key_t *imported = rr_crypto_key_read_encrypted_pem(encrypted, "simple password");
+   assert(imported);
+   unsigned char imported_pub[32];
+   assert(rr_crypto_ed25519_public_bytes(imported, imported_pub));
+   assert(memcmp(pub, imported_pub, sizeof(pub)) == 0);
+   rr_crypto_key_free(imported);
+   fclose(encrypted);
+
    rr_crypto_key_t *verify=rr_crypto_ed25519_public(pub,sizeof(pub));
    assert(verify);
    const char *message="rustyrig crypto backend test";
