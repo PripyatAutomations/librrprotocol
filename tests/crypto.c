@@ -2,6 +2,8 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 int main(void) {
    assert(rr_crypto_init());
    rr_crypto_key_t *key=rr_crypto_ed25519_generate();
@@ -18,6 +20,17 @@ int main(void) {
    assert(rr_crypto_random(rnd,sizeof(rnd)));
    rr_crypto_key_free(verify);
    rr_crypto_key_free(key);
+   char dir[]="/tmp/rrcrypto-test-XXXXXX";
+   assert(mkdtemp(dir));
+   char cert[256],priv[256];
+   snprintf(cert,sizeof(cert),"%s/cert.pem",dir);
+   snprintf(priv,sizeof(priv),"%s/key.pem",dir);
+   assert(rr_crypto_tls_identity_ensure(cert,priv,"test.rustyrig.local"));
+   char *pin=rr_crypto_cert_spki_sha256(cert);
+   assert(pin && strlen(pin)==44);
+   assert(rr_crypto_tls_identity_ensure(cert,priv,"test.rustyrig.local"));
+   free(pin);
+   unlink(cert);unlink(priv);rmdir(dir);
    puts("crypto provider OK");
    return 0;
 }
