@@ -270,17 +270,14 @@ bool http_init(struct mg_mgr *mgr) {
       http_tls_init();
 
       if (!mg_http_listen(mgr, tls_listen_addr, ws_http_cb, &tls_opts)) {
-         Log(LOG_CRIT, "http", "Failed to start https listener -- is program already running or something else listening on port %d?", tls_bind_port);
-
-         // If net.http.required is set, exit cleanly rather than limping along
-         if (cfg_get_bool("net.http.required", false)) {
-            Log(LOG_CRIT, "http", "net.http.required is set, exiting");
-            exit(EXIT_FAILURE);
-         }
-
-         Log(LOG_CRIT, "http", "Continuing without https listener (net.http.required is false)");
+         Log(LOG_CRIT, "http.tls",
+             "Cannot bind required HTTPS listener at %s; check address/port conflicts and permissions",
+             tls_listen_addr);
+         /* A server with TLS enabled must not silently fall back to HTTP:
+          * inter-server links and enrollment depend on HTTPS being available. */
+         exit(EXIT_FAILURE);
       }
-      Log(LOG_INFO, "http", "HTTPS listening at %s with www-root at %s", tls_listen_addr, www_root);
+      Log(LOG_INFO, "http.tls", "HTTPS listening at %s with www-root at %s", tls_listen_addr, www_root);
    }
 #endif // HTTP_USE_TLS
 #endif // USE_MONGOOSE
