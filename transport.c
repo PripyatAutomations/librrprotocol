@@ -22,7 +22,8 @@ rr_transport_t *rr_transport_new(const rr_transport_driver_t *ops,
    return t;
 }
 uint32_t rr_transport_capabilities(const rr_transport_t *t) {
-   return t ? t->ops->capabilities : 0;
+   return t ? (t->ops->connection_capabilities ?
+      t->ops->connection_capabilities(t->driver) & t->ops->capabilities : t->ops->capabilities) : 0;
 }
 enum rr_transport_state rr_transport_state(const rr_transport_t *t) {
    return t ? t->state : RR_TRANSPORT_CLOSED;
@@ -30,11 +31,18 @@ enum rr_transport_state rr_transport_state(const rr_transport_t *t) {
 static int check(const rr_transport_t *t, uint32_t capability, const void *data, size_t len) {
    if (!t || (!data && len)) return RR_TRANSPORT_INVALID;
    if (t->state != RR_TRANSPORT_OPEN) return RR_TRANSPORT_CLOSED_ERROR;
-   return (t->ops->capabilities & capability) ? RR_TRANSPORT_OK : RR_TRANSPORT_UNSUPPORTED;
+   return (rr_transport_capabilities(t) & capability) ? RR_TRANSPORT_OK : RR_TRANSPORT_UNSUPPORTED;
 }
 int rr_transport_send_message(rr_transport_t *t, const void *data, size_t len) {
    int r = check(t, RR_TRANSPORT_RELIABLE_MESSAGES, data, len);
    return r ? r : t->ops->send_message ? t->ops->send_message(t->driver, data, len) : RR_TRANSPORT_UNSUPPORTED;
+}
+int rr_transport_send_binary_message(rr_transport_t *t, const void *data, size_t len) {
+   int r = check(t, RR_TRANSPORT_BINARY_MESSAGES, data, len);
+   return r ? r : t->ops->send_binary_message ? t->ops->send_binary_message(t->driver, data, len) : RR_TRANSPORT_UNSUPPORTED;
+}
+size_t rr_transport_queued_bytes(rr_transport_t *t) {
+   return t && t->ops->queued_bytes ? t->ops->queued_bytes(t->driver) : 0;
 }
 int rr_transport_send_datagram(rr_transport_t *t, const void *data, size_t len) {
    int r = check(t, RR_TRANSPORT_DATAGRAMS, data, len);
@@ -53,8 +61,8 @@ int rr_transport_send_stream(rr_transport_t *t, uint64_t id,
 }
 bool rr_transport_peer_spki_sha256(rr_transport_t *t, uint8_t output[32]) {
    return t && output && t->state == RR_TRANSPORT_OPEN &&
-      (t->ops->capabilities & RR_TRANSPORT_TLS_AUTHENTICATED) &&
-      (t->ops->capabilities & RR_TRANSPORT_PEER_SPKI) &&
+      (rr_transport_capabilities(t) & RR_TRANSPORT_TLS_AUTHENTICATED) &&
+      (rr_transport_capabilities(t) & RR_TRANSPORT_PEER_SPKI) &&
       t->ops->peer_spki_sha256 && t->ops->peer_spki_sha256(t->driver, output);
 }
 void rr_transport_emit(rr_transport_t *t, enum rr_transport_event event,

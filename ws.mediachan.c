@@ -636,7 +636,7 @@ static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *targ
    rrconn_t *cur = target ? target : http_client_list;
    while (cur) {
       if ((!target || cur == target) && cur != exclude && cur->is_ws &&
-         cur->authenticated && cur->conn &&
+         cur->authenticated && (cur->conn || cur->native_transport) &&
          ((cp->direction == RR_BINFRAME_DIR_TX &&
          chan_id_in_array(cur->tx_channels, MAX_TX_CHANNELS, chan_id)) ||
          (cp->direction == RR_BINFRAME_DIR_RX && chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id))) && media_client_in_channel_room(cur, cp)) {

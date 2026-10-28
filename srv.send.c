@@ -119,7 +119,7 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
       return false;
    }
 
-   if (!dest->conn) {
+   if (!dest->conn && !dest->native_transport) {
       Log(LOG_WARN, "rrproto.srv", "Send rejected: destination has no active transport (destination=%p, type=%s, frame=%d)", (void *)dest, dict_get(d,
          "msg.type", "(missing)"), data_type);
 

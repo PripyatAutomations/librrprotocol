@@ -334,7 +334,7 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
 
       if (pass == NULL || token == NULL) {
          Log(LOG_DEBUG, "auth", "auth pass command without password <%p> / token <%p>", pass, token);
-         ws_kick_client_by_c(cptr->conn, "auth.pass message incomplete/invalid. Goodbye");
+         ws_kick_client(cptr, "auth.pass message incomplete/invalid. Goodbye");
 
          return false;
       }
@@ -408,9 +408,9 @@ bool ws_handle_auth_msg(rrconn_t *cptr, dict *d) {
       if (correct_length && difference == 0) {
 #ifdef USE_MONGOOSE
 
-         if (cptr->conn) {
+         if (cptr->conn || cptr->native_transport) {
             rr_server_admission_t admission = {
-               cptr->conn->is_tls ? "https" : "http", cptr->user_ip, up, true
+               cptr->native_transport || cptr->conn->is_tls ? "https" : "http", cptr->user_ip, up, true
             };
             event_emit_binary(RR_SERVER_ADMISSION_EVENT, cptr, &admission, sizeof(admission));
 

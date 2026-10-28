@@ -118,6 +118,8 @@ extern rrconn_t *http_add_client(struct mg_connection *c, bool is_ws);
 #endif // defined(USE_MONGOOSE)
 
 extern void http_remove_client(struct mg_connection *c);
+extern rrconn_t *http_add_native_client(struct rr_transport *transport, const char *ip, int port);
+extern void http_remove_native_client(rrconn_t *client);
 extern void http_detach_client(struct mg_connection *c);
 /* Release heap-owned fields held by a connection. Safe to call repeatedly. */
 extern void http_client_free_resources(rrconn_t *cptr);

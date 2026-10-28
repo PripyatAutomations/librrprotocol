@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librrprotocol/transport.h>
 #include <librrprotocol/ws.serial.h>
 #include <librrprotocol/server.events.h>
 #include <librrprotocol/traffic.h>
@@ -553,6 +554,48 @@ static bool ws_send_frame(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_d
       }
    }
 
+   if (cptr && cptr->native_transport) {
+      if (!msg_data || !msg_data->buf || !cptr->is_ws ||
+          (data_type != WEBSOCKET_OP_TEXT && data_type != WEBSOCKET_OP_BINARY)) return false;
+      size_t queued = rr_transport_queued_bytes(cptr->native_transport);
+      struct rr_binframe frame;
+      bool realtime = data_type == WEBSOCKET_OP_BINARY && msg_data->len >= RR_BINFRAME_HDR_LEN &&
+         !rr_binframe_parse((const uint8_t *)msg_data->buf, msg_data->len, &frame) &&
+         (frame.hdr.subsystem == RR_BINFRAME_SUBSYS_AUDIO || frame.hdr.subsystem == RR_BINFRAME_SUBSYS_VIDEO);
+      size_t limit = realtime && !setup ? (frame.hdr.subsystem == RR_BINFRAME_SUBSYS_AUDIO ? 8192 : 262144) : 262144;
+      if (realtime) {
+         bool notify;
+         unsigned quality = rr_media_quality(cptr, &frame.hdr, queued, limit, mono_us(), &notify);
+         if (notify) {
+            cptr->media_quality_changed = now;
+            dict *hint = dict_new();
+            if (hint) {
+               char codec[5];
+               memcpy(codec, frame.hdr.codec, 4);
+               codec[4] = 0;
+               dict_add(hint, "media.codec", codec);
+               dict_add_uint(hint, "media.quality", quality);
+               dict_add_uint(hint, "media.subsys", frame.hdr.subsystem);
+               dict_add_uint(hint, "media.rig", frame.hdr.rig);
+               dict_add_uint(hint, "media.vfo", frame.hdr.vfo);
+               dict_add_uint(hint, "media.direction", frame.hdr.direction);
+               event_emit_dict("media.quality-hint", cptr, hint);
+               dict_free(hint);
+            }
+         }
+      }
+      if (msg_data->len > limit || queued > limit - msg_data->len) {
+         if (!realtime) event_emit("protocol.backpressure", cptr, "Outgoing control queue full");
+         return false;
+      }
+      int result = data_type == WEBSOCKET_OP_TEXT ?
+         rr_transport_send_message(cptr->native_transport, msg_data->buf, msg_data->len) :
+         rr_transport_send_binary_message(cptr->native_transport, msg_data->buf, msg_data->len);
+      if (result != RR_TRANSPORT_OK) return false;
+      rr_traffic_count(cptr, true, data_type == WEBSOCKET_OP_BINARY, msg_data->len);
+      return true;
+   }
+
    if (!cptr || !cptr->conn || !msg_data || !msg_data->buf ||
       (data_type != WEBSOCKET_OP_TEXT && data_type != WEBSOCKET_OP_BINARY) ||
       (cptr->server && !cptr->is_ws) || cptr->conn->is_closing || cptr->conn->is_draining) {
@@ -700,6 +743,17 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
    }
 
    // XXX: Delete the user
+   if (cptr->native_transport) {
+      dict *error = dict_new();
+      if (error) {
+         dict_add(error, "msg.type", "auth");
+         dict_add(error, "auth.error", reason ? reason : "Client disconnected");
+         ws_send_dict(NULL, cptr, error, WEBSOCKET_OP_TEXT);
+         dict_free(error);
+      }
+      rr_transport_close(cptr->native_transport);
+      return true;
+   }
    if (!cptr->conn) {
       Log(LOG_DEBUG, "auth", "ws_kick_client for cptr <%p> has mg_conn <%p> and is invalid", cptr, (cptr ? cptr->conn : NULL));
 

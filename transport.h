@@ -19,7 +19,8 @@ enum rr_transport_capability {
    RR_TRANSPORT_DATAGRAMS         = 1u << 2,
    RR_TRANSPORT_TLS_AUTHENTICATED = 1u << 3,
    RR_TRANSPORT_PEER_SPKI         = 1u << 4,
-   RR_TRANSPORT_MULTIPLEX         = 1u << 5
+   RR_TRANSPORT_MULTIPLEX         = 1u << 5,
+   RR_TRANSPORT_BINARY_MESSAGES  = 1u << 6
 };
 
 enum rr_transport_state {
@@ -36,7 +37,8 @@ enum rr_transport_event {
    RR_TRANSPORT_EVENT_STREAM_DATA,
    RR_TRANSPORT_EVENT_CLOSE,
    RR_TRANSPORT_EVENT_ERROR,
-   RR_TRANSPORT_EVENT_PONG
+   RR_TRANSPORT_EVENT_PONG,
+   RR_TRANSPORT_EVENT_BINARY_MESSAGE
 };
 
 enum rr_transport_status {
@@ -57,8 +59,13 @@ typedef void (*rr_transport_callback_t)(rr_transport_t *transport,
 typedef struct rr_transport_driver {
    uint32_t abi_version;
    uint32_t capabilities;
+   /* Drivers with route-specific authentication may narrow capabilities
+    * after establishment; static capabilities are the upper bound. */
+   uint32_t (*connection_capabilities)(void *driver);
    /* driver-owned connection context is handed in at creation */
    int (*send_message)(void *driver, const uint8_t *data, size_t len);
+   int (*send_binary_message)(void *driver, const uint8_t *data, size_t len);
+   size_t (*queued_bytes)(void *driver);
    int (*send_datagram)(void *driver, const uint8_t *data, size_t len);
    int (*open_stream)(void *driver, uint64_t *stream_id);
    int (*send_stream)(void *driver, uint64_t stream_id,
@@ -70,13 +77,15 @@ typedef struct rr_transport_driver {
    void (*close)(void *driver);
 } rr_transport_driver_t;
 
-#define RR_TRANSPORT_ABI_VERSION 1u
+#define RR_TRANSPORT_ABI_VERSION 2u
 
 rr_transport_t *rr_transport_new(const rr_transport_driver_t *ops,
    void *driver, rr_transport_callback_t callback, void *context);
 uint32_t rr_transport_capabilities(const rr_transport_t *transport);
 enum rr_transport_state rr_transport_state(const rr_transport_t *transport);
 int rr_transport_send_message(rr_transport_t *transport, const void *data, size_t len);
+int rr_transport_send_binary_message(rr_transport_t *transport, const void *data, size_t len);
+size_t rr_transport_queued_bytes(rr_transport_t *transport);
 int rr_transport_send_datagram(rr_transport_t *transport, const void *data, size_t len);
 int rr_transport_open_stream(rr_transport_t *transport, uint64_t *stream_id);
 int rr_transport_send_stream(rr_transport_t *transport, uint64_t stream_id,
