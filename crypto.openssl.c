@@ -25,6 +25,21 @@ rr_crypto_key_t *rr_crypto_key_read_pem(FILE *f) {
    if (!f) return NULL;
    return wrap(PEM_read_PrivateKey(f,NULL,NULL,NULL));
 }
+rr_crypto_key_t *rr_crypto_key_read_encrypted_pem(FILE *f, const char *passphrase) {
+   if (!f || !passphrase) return NULL;
+   /* OpenSSL reads encrypted PKCS#8 PEM with the user-supplied password. */
+   EVP_PKEY *key = PEM_read_PrivateKey(f, NULL, NULL, (void *)passphrase);
+   return wrap(key);
+}
+bool rr_crypto_key_write_encrypted_pem_stream(const rr_crypto_key_t *key,
+                                               FILE *f, const char *passphrase) {
+   /* AES-256-CBC is the standard OpenSSL encrypted PKCS#8 PEM format.
+    * PKCS#8 handles KDF/salt/IV generation; never export unencrypted. */
+   return key && f && passphrase && *passphrase &&
+      PEM_write_PKCS8PrivateKey(f, key->pkey, EVP_aes_256_cbc(),
+                               (char *)passphrase, (int)strlen(passphrase),
+                               NULL, NULL) == 1;
+}
 bool rr_crypto_key_write_pem_stream(const rr_crypto_key_t *key, FILE *f) {
    return key && f && PEM_write_PrivateKey(f,key->pkey,NULL,NULL,0,NULL,NULL)==1;
 }
