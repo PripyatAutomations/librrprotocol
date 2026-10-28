@@ -18,6 +18,14 @@ int main(void) {
    assert(!rr_crypto_ed25519_verify(verify,"other",5,sig));
    assert(rr_crypto_sha256(message,strlen(message),hash));
    assert(rr_crypto_random(rnd,sizeof(rnd)));
+   assert(rr_crypto_binding_sign(key,"camp.local","5bd92d3b-0108-4594-adc5-0cab40ef5f8c",
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",sig));
+   assert(rr_crypto_binding_verify(pub,"camp.local","5bd92d3b-0108-4594-adc5-0cab40ef5f8c",
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",sig));
+   assert(!rr_crypto_binding_verify(pub,"other.local","5bd92d3b-0108-4594-adc5-0cab40ef5f8c",
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",sig));
+   assert(!rr_crypto_binding_verify(pub,"camp.local","5bd92d3b-0108-4594-adc5-0cab40ef5f8c",
+      "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",sig));
    rr_crypto_key_free(verify);
    rr_crypto_key_free(key);
    char dir[]="/tmp/rrcrypto-test-XXXXXX";
