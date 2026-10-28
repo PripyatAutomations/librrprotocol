@@ -90,11 +90,11 @@ void http_tls_init(void) {
    char *key_path = http_config_path("net.http.tls-key", "net/http/tls-key");
 
    if (!cert_path) {
-      cert_path = strdup(HTTP_TLS_CERT);
+      cert_path = strdup("/var/lib/rustyrig/identity/tls-cert.pem");
    }
 
    if (!key_path) {
-      key_path = strdup(HTTP_TLS_KEY);
+      key_path = strdup("/var/lib/rustyrig/identity/tls-key.pem");
    }
    tls_cert = mg_file_read(&mg_fs_posix, cert_path);
 
