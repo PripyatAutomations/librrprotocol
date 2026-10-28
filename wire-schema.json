@@ -589,6 +589,16 @@
         "directory.encoding": "encoding",
         "directory.data": "data"
       }
+    },
+    {
+      "type": "domain",
+      "operations": {
+        "domain": "domain"
+      },
+      "fields": {
+        "domain.name": "name",
+        "domain.server": "server"
+      }
     }
   ]
 }
