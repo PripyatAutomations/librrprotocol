@@ -23,5 +23,13 @@ void rr_crypto_key_free(rr_crypto_key_t *key);
 bool rr_crypto_tls_identity_ensure(const char *cert_path, const char *key_path, const char *dns_name);
 /* SPKI SHA256 of certificate public key, encoded as base64. Caller frees. */
 char *rr_crypto_cert_spki_sha256(const char *cert_path);
+/* Bind a catalog signing identity to a TLS SPKI for a specific domain/owner.
+ * The verifier MUST separately authenticate the presented TLS certificate. */
+bool rr_crypto_binding_sign(const rr_crypto_key_t *identity, const char *domain,
+                            const char *owner, const char *spki_sha256_b64,
+                            uint8_t signature[64]);
+bool rr_crypto_binding_verify(const uint8_t public_key[32], const char *domain,
+                              const char *owner, const char *spki_sha256_b64,
+                              const uint8_t signature[64]);
 const char *rr_crypto_provider(void);
 #endif
