@@ -76,7 +76,6 @@ static char *http_config_path(const char *key, const char *eeprom_key) {
 #ifdef  USE_MONGOOSE
 extern struct mg_mgr mg_mgr;
 
-#ifdef  HTTP_USE_TLS
 struct mg_str tls_cert;
 struct mg_str tls_key;
 
@@ -123,7 +122,6 @@ void http_tls_init(void) {
       Log(LOG_INFO, "http.tls", "TLS initialized successfully (certificate %zu bytes, key %zu bytes)", tls_cert.len, tls_key.len);
    }
 }
-#endif // HTTP_USE_TLS
 #endif // USE_MONGOOSE
 
 bool http_init(struct mg_mgr *mgr) {
@@ -233,10 +231,6 @@ bool http_init(struct mg_mgr *mgr) {
 
    /* HTTPS bind failure below always terminates startup. */
 
-#ifndef HTTP_USE_TLS
-   Log(LOG_CRIT, "http.tls", "TLS support is required but missing from this build");
-   exit(EXIT_FAILURE);
-#else
    {
       int tls_bind_port = cfg_get_int("net.http.tls-port", 4420);
 
@@ -275,7 +269,6 @@ bool http_init(struct mg_mgr *mgr) {
       }
       Log(LOG_INFO, "http.tls", "HTTPS listening at %s with www-root at %s", tls_listen_addr, www_root);
    }
-#endif // HTTP_USE_TLS
 #endif // USE_MONGOOSE
 
    return false;
