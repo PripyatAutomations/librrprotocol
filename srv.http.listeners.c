@@ -228,11 +228,10 @@ bool http_init(struct mg_mgr *mgr) {
    if (!mg_http_listen(mgr, listen_addr, ws_http_cb, NULL)) {
       Log(LOG_CRIT, "http", "Failed to start http listener -- is program already running or something else listening on port %d?", bind_port);
 
-      Log(LOG_CRIT, "http", "Required HTTP listener failed; aborting startup");
-      exit(EXIT_FAILURE);
+      Log(LOG_WARN, "http", "Optional plaintext HTTP listener unavailable; HTTPS remains mandatory");
    }
 
-   Log(LOG_INFO, "http", "HTTP listening at %s with www-root at %s", listen_addr, www_root);
+   /* HTTPS bind failure below always terminates startup. */
 
 #ifndef HTTP_USE_TLS
    Log(LOG_CRIT, "http.tls", "TLS support is required but missing from this build");
