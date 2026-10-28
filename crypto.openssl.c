@@ -22,6 +22,13 @@ rr_crypto_key_t *rr_crypto_ed25519_generate(void) {
    if (!ctx || EVP_PKEY_keygen_init(ctx) != 1 || EVP_PKEY_keygen(ctx,&p) != 1) { EVP_PKEY_free(p); p=NULL; }
    EVP_PKEY_CTX_free(ctx); return wrap(p);
 }
+rr_crypto_key_t *rr_crypto_key_read_pem(FILE *f) {
+   if (!f) return NULL;
+   return wrap(PEM_read_PrivateKey(f,NULL,NULL,NULL));
+}
+bool rr_crypto_key_write_pem_stream(const rr_crypto_key_t *key, FILE *f) {
+   return key && f && PEM_write_PrivateKey(f,key->pkey,NULL,NULL,0,NULL,NULL)==1;
+}
 rr_crypto_key_t *rr_crypto_key_load_pem(const char *path) {
    FILE *f = fopen(path,"rb"); if (!f) return NULL;
    EVP_PKEY *p = PEM_read_PrivateKey(f,NULL,NULL,NULL); fclose(f); return wrap(p);
