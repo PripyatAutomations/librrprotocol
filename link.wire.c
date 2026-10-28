@@ -13,7 +13,7 @@
 #include <librrprotocol/link.wire.h>
 
 static const char *fields[] = {
-   "op", "node", "site", "username", "password", "nodes", "parent", "dest", "kind", "session", "payload", "clock.unix", "version", "features", "domain"
+   "op", "node", "site", "username", "password", "nodes", "parent", "dest", "kind", "session", "payload", "clock.unix", "version", "features", "domain", "identity.public-key", "identity.tls-spki", "identity.signature"
 };
 static bool valid(dict *d) {
    const char *op = dict_get(d, "op", "");
@@ -21,6 +21,8 @@ static bool valid(dict *d) {
 
    if (!strcmp(op, "link.hello")) {
       required = 1 | (1 << 1) | (1 << 2) | (1 << 4) | (1 << 14);
+   } else if (!strcmp(op, "link.identity")) {
+      required = 1 | (1U << 1) | (1U << 14) | (1U << 15) | (1U << 16) | (1U << 17);
    } else if (!strcmp(op, "link.snapshot")) {
       required = 1 | (1 << 5);
    } else if (!strcmp(op, "link.capabilities")) {
