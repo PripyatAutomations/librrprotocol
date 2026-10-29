@@ -39,6 +39,7 @@ librrprotocol_objs += srv.chat.whois.o
 librrprotocol_objs += srv.client.o
 librrprotocol_objs += srv.http.listeners.o
 librrprotocol_objs += srv.http.o
+librrprotocol_objs += srv.ptt.disconnect.o
 librrprotocol_objs += srv.ping.o
 librrprotocol_objs += srv.rigctl.o
 librrprotocol_objs += srv.send.o
