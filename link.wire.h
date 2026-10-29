@@ -13,5 +13,7 @@
 #define RR_LINK_MAX_FRAME 32768
 /* Flat JSON string fields, operation-specific whitelist, bounded messages. */
 dict *rr_link_wire_decode(const char *data, size_t length);
+/* Optional safe diagnostic: no wire field contents are included in reason. */
+dict *rr_link_wire_decode_ex(const char *data, size_t length, char *reason, size_t capacity);
 char *rr_link_wire_encode(dict *message);
 #endif
