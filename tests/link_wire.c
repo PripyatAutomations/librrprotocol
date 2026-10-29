@@ -97,6 +97,16 @@ int main(void) {
       assert(!rr_link_wire_decode(invalid[i], strlen(invalid[i])));
    }
 
+   char why[160];
+   assert(!rr_link_wire_decode_ex("{\\\"op\\\":\\\"link.ready\\\",\\\"admin\\\":true}",
+      strlen("{\\\"op\\\":\\\"link.ready\\\",\\\"admin\\\":true}"), why, sizeof(why)));
+   assert(strstr(why, "unknown JSON field"));
+   assert(!rr_link_wire_decode_ex("{\\\"op\\\":\\\"link.hello\\\"}",
+      strlen("{\\\"op\\\":\\\"link.hello\\\"}"), why, sizeof(why)));
+   assert(strstr(why, "missing required field"));
+   assert(!rr_link_wire_decode_ex("{\\\"op\\\":\\\"link.ready\\\",\\\"password\\\":\\\"do-not-log\\\"}",
+      strlen("{\\\"op\\\":\\\"link.ready\\\",\\\"password\\\":\\\"do-not-log\\\"}"), why, sizeof(why)));
+   assert(!strstr(why, "do-not-log"));
    const char nul[] = "{\"op\":\"link.ready\"}\0extra";
    assert(!rr_link_wire_decode(nul, sizeof(nul) - 1));
    char *huge = calloc(1, RR_LINK_MAX_FRAME + 2);
