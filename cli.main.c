@@ -560,20 +560,24 @@ static bool ws_send_frame(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_d
    }
 
    if (cptr && cptr->native_transport) {
-      if (!msg_data || !msg_data->buf || !cptr->is_ws ||
-          (data_type != WEBSOCKET_OP_TEXT && data_type != WEBSOCKET_OP_BINARY)) return false;
+      if (!msg_data || !msg_data->buf || !cptr->is_ws || (data_type != WEBSOCKET_OP_TEXT && data_type != WEBSOCKET_OP_BINARY)) {
+         return false;
+      }
       size_t queued = rr_transport_queued_bytes(cptr->native_transport);
       struct rr_binframe frame;
       bool realtime = data_type == WEBSOCKET_OP_BINARY && msg_data->len >= RR_BINFRAME_HDR_LEN &&
          !rr_binframe_parse((const uint8_t *)msg_data->buf, msg_data->len, &frame) &&
          (frame.hdr.subsystem == RR_BINFRAME_SUBSYS_AUDIO || frame.hdr.subsystem == RR_BINFRAME_SUBSYS_VIDEO);
       size_t limit = realtime && !setup ? (frame.hdr.subsystem == RR_BINFRAME_SUBSYS_AUDIO ? 8192 : 262144) : 262144;
+
       if (realtime) {
          bool notify;
          unsigned quality = rr_media_quality(cptr, &frame.hdr, queued, limit, mono_us(), &notify);
+
          if (notify) {
             cptr->media_quality_changed = now;
             dict *hint = dict_new();
+
             if (hint) {
                char codec[5];
                memcpy(codec, frame.hdr.codec, 4);
@@ -589,15 +593,23 @@ static bool ws_send_frame(rrconn_t *sender, rrconn_t *cptr, struct mg_str *msg_d
             }
          }
       }
+
       if (msg_data->len > limit || queued > limit - msg_data->len) {
-         if (!realtime) event_emit("protocol.backpressure", cptr, "Outgoing control queue full");
+         if (!realtime) {
+            event_emit("protocol.backpressure", cptr, "Outgoing control queue full");
+         }
+
          return false;
       }
       int result = data_type == WEBSOCKET_OP_TEXT ?
          rr_transport_send_message(cptr->native_transport, msg_data->buf, msg_data->len) :
          rr_transport_send_binary_message(cptr->native_transport, msg_data->buf, msg_data->len);
-      if (result != RR_TRANSPORT_OK) return false;
+
+      if (result != RR_TRANSPORT_OK) {
+         return false;
+      }
       rr_traffic_count(cptr, true, data_type == WEBSOCKET_OP_BINARY, msg_data->len);
+
       return true;
    }
 
@@ -750,6 +762,7 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
    // XXX: Delete the user
    if (cptr->native_transport) {
       dict *error = dict_new();
+
       if (error) {
          dict_add(error, "msg.type", "auth");
          dict_add(error, "auth.error", reason ? reason : "Client disconnected");
@@ -757,13 +770,17 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
          dict_free(error);
       }
       rr_transport_close(cptr->native_transport);
+
       return true;
    }
 #ifdef USE_MONGOOSE
-   if (cptr->conn)
+
+   if (cptr->conn) {
       return ws_kick_client_by_c(cptr->conn, reason);
+   }
 #endif
    Log(LOG_DEBUG, "auth", "ws_kick_client: no active transport for cptr <%p>", (void *)cptr);
+
    return false;
 }
 

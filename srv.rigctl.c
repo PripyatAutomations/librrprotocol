@@ -281,8 +281,10 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
 
    bool sdr_tuning = control_room && strlen(control_room) == 13 && !strncasecmp(control_room, "#sdr-", 5);
    bool rx_tune_cmd = !strcasecmp(cmd, "freq") || !strcasecmp(cmd, "mode") || !strcasecmp(cmd, "width");
+
    if (sdr_tuning && rx_tune_cmd && !ws_room_sdr_tuning_owner(cptr, control_room)) {
       ws_send_error(cptr, "Cannot tune SDR room %s: only the longest-present room member controls this receiver", control_room);
+
       return false;
    }
 
@@ -449,10 +451,10 @@ bool ws_handle_rigctl_msg(rrconn_t *cptr, dict *d) {
          float power = percentage ? (float)dict_get_int(d, "cat.power", 0) : dict_get_float(d, "cat.power", 0);
 
          if (!supplied || !isfinite(power) || power <= 0 || (percentage && power > 100)) {
-            Log(LOG_WARN, "ws.rigctl", "Rejected CAT power for VFO %s room %s: value=%.3f, supplied=%d, unit=%s",
-               vfo, control_room, (double)power, supplied, percentage ? "percent" : "watts");
-            ws_send_error(cptr, "Invalid power %.3f for VFO %s in room %s: expected positive %s",
-               (double)power, vfo, control_room, percentage ? "percent (1-100)" : "watts");
+            Log(LOG_WARN, "ws.rigctl", "Rejected CAT power for VFO %s room %s: value=%.3f, supplied=%d, unit=%s", vfo, control_room, (double)power, supplied,
+               percentage ? "percent" : "watts");
+            ws_send_error(cptr, "Invalid power %.3f for VFO %s in room %s: expected positive %s", (double)power, vfo, control_room, percentage ?
+               "percent (1-100)" : "watts");
 
             return false;
          }

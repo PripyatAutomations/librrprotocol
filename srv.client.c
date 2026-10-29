@@ -160,9 +160,14 @@ void http_dump_clients(void) {
 
 // Add a new client to the client list (HTTP or WebSocket)
 rrconn_t *http_add_native_client(rr_transport_t *transport, const char *ip, int port) {
-   if (!transport || http_count_connections() >= HTTP_MAX_SESSIONS) return NULL;
+   if (!transport || http_count_connections() >= HTTP_MAX_SESSIONS) {
+      return NULL;
+   }
    rrconn_t *client = calloc(1, sizeof(*client));
-   if (!client) return NULL;
+
+   if (!client) {
+      return NULL;
+   }
    auth_generate_nonce(client->token, sizeof(client->token));
    auth_generate_nonce(client->nonce, sizeof(client->nonce));
    client->connected = client->last_heard = now;
@@ -172,20 +177,30 @@ rrconn_t *http_add_native_client(rr_transport_t *transport, const char *ip, int 
    client->user_port = port;
    client->next = http_client_list;
    http_client_list = client;
+
    return client;
 }
 
 void http_remove_native_client(rrconn_t *client) {
-   if (!client) return;
+   if (!client) {
+      return;
+   }
    rrconn_t **slot = &http_client_list;
-   while (*slot && *slot != client) slot = &(*slot)->next;
-   if (*slot != client) return;
+   while (*slot && *slot != client) {
+      slot = &(*slot)->next;
+   }
+
+   if (*slot != client) {
+      return;
+   }
    event_emit("protocol.session.closed", client, NULL);
    *slot = client->next;
    client->active = false;
    client->native_transport = NULL;
-   if (client->user && client->authenticated && client->is_ws && client->user->sessions > 0)
+
+   if (client->user && client->authenticated && client->is_ws && client->user->sessions > 0) {
       client->user->sessions--;
+   }
    http_client_free_resources(client);
    memset(client, 0, sizeof(*client));
    free(client);

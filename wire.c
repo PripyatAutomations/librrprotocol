@@ -386,25 +386,37 @@ static bool profile_report_append(char **text, size_t *used, size_t *capacity, c
    va_copy(measure, args);
    int needed = vsnprintf(NULL, 0, format, measure);
    va_end(measure);
+
    if (needed < 0 || (size_t)needed > SIZE_MAX - *used - 1) {
       va_end(args);
+
       return false;
    }
    size_t required = *used + (size_t)needed + 1;
+
    if (required > *capacity) {
       size_t grown = *capacity ? *capacity : 512;
       while (grown < required) {
-         if (grown > SIZE_MAX / 2) { grown = required; break; }
+         if (grown > SIZE_MAX / 2) {
+            grown = required;
+            break;
+         }
          grown *= 2;
       }
       char *replacement = realloc(*text, grown);
-      if (!replacement) { va_end(args); return false; }
+
+      if (!replacement) {
+         va_end(args);
+
+         return false;
+      }
       *text = replacement;
       *capacity = grown;
    }
    vsnprintf(*text + *used, *capacity - *used, format, args);
    *used += (size_t)needed;
    va_end(args);
+
    return true;
 }
 
@@ -437,8 +449,8 @@ void rr_wire_profile_dump(void) {
    char *duration = time_t2dhms(elapsed / 1000000);
    char *report = NULL;
    size_t report_len = 0, report_capacity = 0;
-   bool report_ok = profile_report_append(&report, &report_len, &report_capacity,
-      "WebSocket JSON parser / binary dispatch counts (cumulative, sampling=%s):", duration ? duration : "unknown");
+   bool report_ok = profile_report_append(&report, &report_len, &report_capacity, "WebSocket JSON parser / binary dispatch counts (cumulative, sampling=%s):",
+      duration ? duration : "unknown");
    free(duration);
    size_t json_rows = 0;
 
@@ -447,10 +459,15 @@ void rr_wire_profile_dump(void) {
          continue;
       }
       const wire_profile_count_t *c = &rows[i].counts;
-      report_ok = report_ok && profile_report_append(&report, &report_len, &report_capacity, "\n  %s: %llu messages, %llu bytes, %llu rejected, %llu processing us (%llu avg us)", rows[i].operation, (unsigned long long)c->
-         count, (unsigned long long)c->bytes, (unsigned long long)c->rejected, (unsigned long long)c->parse_us, (unsigned long long)(c->parse_us / c->count));
+      report_ok = report_ok
+         && profile_report_append(&report, &report_len, &report_capacity, "\n  %s: %llu messages, %llu bytes, %llu rejected, %llu processing us (%llu avg us)",
+         rows[i].operation, (unsigned long long)c->count, (unsigned long long)c->bytes, (unsigned long long)c->rejected, (unsigned long long)c->parse_us, (
+            unsigned long long)(c->parse_us / c->count));
    }
-   if (report_ok) Log(LOG_INFO, "profile", "%s", report ? report : "");
+
+   if (report_ok) {
+      Log(LOG_INFO, "profile", "%s", report ? report : "");
+   }
    free(report);
 
 #endif

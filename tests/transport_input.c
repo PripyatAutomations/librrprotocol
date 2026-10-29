@@ -54,19 +54,22 @@ size_t mg_ws_send(struct mg_connection *c, const void *buf, size_t len, int opco
 }
 
 static int transport_send_text(void *context, const uint8_t *data, size_t length) {
-   if (((struct mg_connection *) context)->send.len >= 1048576)
+   if (((struct mg_connection *)context)->send.len >= 1048576) {
       return RR_TRANSPORT_BACKPRESSURE;
+   }
    mg_ws_send(context, data, length, WEBSOCKET_OP_TEXT);
+
    return RR_TRANSPORT_OK;
 }
 
 static int transport_send_binary(void *context, const uint8_t *data, size_t length) {
    mg_ws_send(context, data, length, WEBSOCKET_OP_BINARY);
+
    return RR_TRANSPORT_OK;
 }
 
 static size_t transport_queued(void *context) {
-   return ((struct mg_connection *) context)->send.len;
+   return ((struct mg_connection *)context)->send.len;
 }
 
 static const rr_transport_driver_t test_transport_driver = {

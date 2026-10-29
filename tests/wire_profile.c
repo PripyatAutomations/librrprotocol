@@ -35,6 +35,7 @@ void Log(logpriority_t priority, const char *subsys, const char *format, ...) {
    } else if (!strncmp(text, "  ", 2)) {
       rows++;
    }
+
    if (strstr(text, "media.list:")) {
       snprintf(media_row, sizeof(media_row), "%s", text);
    }

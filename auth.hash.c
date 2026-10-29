@@ -33,19 +33,24 @@ char *hash_passwd(const char *passwd) {
       return NULL;
    }
    unsigned char digest[SHA_DIGEST_LENGTH];
+
    if (!SHA1((const unsigned char *)passwd, strlen(passwd), digest)) {
       return NULL;
    }
    char *hex_output = malloc(SHA_DIGEST_LENGTH * 2 + 1);
+
    if (!hex_output) {
       return NULL;
    }
    static const char hex[] = "0123456789abcdef";
-   for (size_t i = 0; i < SHA_DIGEST_LENGTH; i++) {
+
+   for (size_t i = 0 ; i < SHA_DIGEST_LENGTH ; i++) {
       hex_output[i * 2] = hex[digest[i] >> 4];
       hex_output[i * 2 + 1] = hex[digest[i] & 0x0f];
    }
+
    hex_output[SHA_DIGEST_LENGTH * 2] = '\0';
+
    return hex_output;
 }
 

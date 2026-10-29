@@ -16,11 +16,13 @@ extern bool ws_binframe_process_mg(rrconn_t *, const char *, size_t);
 static unsigned access_checks, demand_queries;
 static bool deny_access, relay_interested;
 static int discard_message(void *context, const uint8_t *data, size_t length) {
-   (void) context;
-   (void) data;
-   (void) length;
+   (void)context;
+   (void)data;
+   (void)length;
+
    return RR_TRANSPORT_OK;
 }
+
 static const rr_transport_driver_t test_transport_driver = {
    .abi_version = RR_TRANSPORT_ABI_VERSION,
    .capabilities = RR_TRANSPORT_RELIABLE_MESSAGES | RR_TRANSPORT_BINARY_MESSAGES,

@@ -57,7 +57,9 @@ int http_getuid(const char *user) {
 }
 
 static bool http_backup_authdb(const char *filename) {
-   if (!filename || !*filename) return true;
+   if (!filename || !*filename) {
+      return true;
+   }
    char new_path[256];
    struct tm *tm_info = localtime(&now);
    char date_str[9];            // YYYYMMDD + null terminator

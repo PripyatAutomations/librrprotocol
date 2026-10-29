@@ -27,8 +27,7 @@ enum rr_ws_opcode {
    RR_WS_OP_PING = 9,
    RR_WS_OP_PONG = 10
 };
-/* Transitional names for older protocol call sites. Mongoose defines the
- * same wire values when its backend is compiled. */
+/* Transitional names for older protocol call sites. Mongoose defines the same wire values when its backend is compiled. */
 #ifndef USE_MONGOOSE
 #define WEBSOCKET_OP_TEXT RR_WS_OP_TEXT
 #define WEBSOCKET_OP_BINARY RR_WS_OP_BINARY

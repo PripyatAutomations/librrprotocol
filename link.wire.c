@@ -11,7 +11,8 @@
 #include <librrprotocol/link.wire.h>
 
 static const char *fields[] = {
-   "op", "node", "site", "username", "password", "nodes", "parent", "dest", "kind", "session", "payload", "clock.unix", "version", "features", "domain", "identity.public-key", "identity.tls-spki", "identity.signature"
+   "op", "node", "site", "username", "password", "nodes", "parent", "dest", "kind", "session", "payload", "clock.unix", "version", "features", "domain",
+   "identity.public-key", "identity.tls-spki", "identity.signature"
 };
 static void wire_reason(char *out, size_t cap, const char *fmt, ...) {
    if (!out || !cap) {
@@ -56,11 +57,13 @@ static bool valid_ex(dict *d, char *reason, size_t cap) {
 
       if (!known) {
          wire_reason(reason, cap, "unsupported link.application kind");
+
          return false;
       }
       required = 1 | (1 << 1) | (1 << 3) | (15 << 7);
    } else {
       wire_reason(reason, cap, "unknown or missing link operation");
+
       return false;
    }
    unsigned seen = 0;
@@ -78,26 +81,33 @@ static bool valid_ex(dict *d, char *reason, size_t cap) {
 
       if (i == sizeof(fields) / sizeof(fields[0])) {
          wire_reason(reason, cap, "unknown JSON field");
+
          return false;
       }
+
       if (dict_get_type(d, key) != VAL_STR || !value) {
          wire_reason(reason, cap, "field %s is not a string", fields[i]);
+
          return false;
       }
+
       if (strlen(value) > (i == 5 ? 20000U : i == 10 ? 24000U : 256U)) {
          wire_reason(reason, cap, "field %s exceeds length limit", fields[i]);
+
          return false;
       }
 
       if (i == 11) {
          if (strcmp(op, "link.hello") || strlen(value) != 10) {
             wire_reason(reason, cap, "invalid clock.unix field");
+
             return false;
          }
 
          for (const char *p = value ; *p ; p++) {
             if (*p < '0' || *p > '9') {
                wire_reason(reason, cap, "invalid clock.unix digits");
+
                return false;
             }
          }
@@ -108,19 +118,25 @@ static bool valid_ex(dict *d, char *reason, size_t cap) {
    unsigned optional = !strcmp(op, "link.hello") ? (1U << 11) : 0;
 
    if ((seen & ~optional) != required) {
-      for (unsigned i = 0; i < sizeof(fields) / sizeof(fields[0]); i++) {
+      for (unsigned i = 0 ; i < sizeof(fields) / sizeof(fields[0]) ; i++) {
          if ((required & (1U << i)) && !(seen & (1U << i))) {
             wire_reason(reason, cap, "missing required field %s", fields[i]);
+
             return false;
          }
+
          if ((seen & (1U << i)) && !(required & (1U << i)) && !(optional & (1U << i))) {
             wire_reason(reason, cap, "unexpected field %s for operation", fields[i]);
+
             return false;
          }
       }
+
       wire_reason(reason, cap, "invalid operation field set");
+
       return false;
    }
+
    return true;
 }
 
@@ -130,34 +146,43 @@ static bool valid(dict *d) {
 
 dict *rr_link_wire_decode_ex(const char *data, size_t length, char *reason, size_t cap) {
    wire_reason(reason, cap, "unknown decoding error");
+
    if (!data || !length) {
       wire_reason(reason, cap, "empty link frame");
-      return NULL;
-   }
-   if (length > RR_LINK_MAX_FRAME) {
-      wire_reason(reason, cap, "link frame too large");
-      return NULL;
-   }
-   if (memchr(data, 0, length)) {
-      wire_reason(reason, cap, "embedded NUL in link frame");
+
       return NULL;
    }
 
-   /* The link protocol uses a single flat JSON object. Parsing and strict
-    * field validation must not depend on the chosen TLS/WebSocket backend.
+   if (length > RR_LINK_MAX_FRAME) {
+      wire_reason(reason, cap, "link frame too large");
+
+      return NULL;
+   }
+
+   if (memchr(data, 0, length)) {
+      wire_reason(reason, cap, "embedded NUL in link frame");
+
+      return NULL;
+   }
+
+   /* The link protocol uses a single flat JSON object. Parsing and strict field validation must not depend on the chosen TLS/WebSocket backend.
     * json2dict rejects duplicate keys, malformed JSON and trailing data. */
    size_t start = 0;
    while (start < length && strchr(" \t\r\n", data[start])) {
       start++;
    }
+
    if (start == length || data[start] != '{') {
       wire_reason(reason, cap, "expected JSON object");
+
       return NULL;
    }
 
    char *copy = malloc(length + 1);
+
    if (!copy) {
       wire_reason(reason, cap, "out of memory");
+
       return NULL;
    }
    memcpy(copy, data, length);
@@ -167,13 +192,17 @@ dict *rr_link_wire_decode_ex(const char *data, size_t length, char *reason, size
 
    if (!d) {
       wire_reason(reason, cap, "malformed JSON, duplicate key, or trailing content");
+
       return NULL;
    }
+
    if (!valid_ex(d, reason, cap)) {
       dict_free(d);
+
       return NULL;
    }
    wire_reason(reason, cap, "ok");
+
    return d;
 }
 

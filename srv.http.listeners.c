@@ -230,9 +230,7 @@ bool http_init(struct mg_mgr *mgr) {
       http_tls_init();
 
       if (!mg_http_listen(mgr, tls_listen_addr, ws_http_cb, &tls_opts)) {
-         Log(LOG_CRIT, "http.tls",
-             "Cannot bind required HTTPS listener at %s; check address/port conflicts and permissions",
-             tls_listen_addr);
+         Log(LOG_CRIT, "http.tls", "Cannot bind required HTTPS listener at %s; check address/port conflicts and permissions", tls_listen_addr);
          /* A server with TLS enabled must not silently fall back to HTTP:
           * inter-server links and enrollment depend on HTTPS being available. */
          exit(EXIT_FAILURE);

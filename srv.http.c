@@ -54,28 +54,72 @@ extern struct mg_tls_opts tls_opts;
 
 static const char s_content_type[] = "Content-Type: ";
 static struct http_res_types http_res_types[] = {
-   { "7z", "application/x-7z-compressed\r\n" },
-   { "css", "text/css\r\n" },
-   { "htm", "text/html\r\n" },
-   { "html", "text/html\r\n" },
-   { "ico", "image/x-icon\r\n" },
-   { "js", "application/javascript\r\n" },
-   { "json", "application/json\r\n" },
-   { "jpg", "image/jpeg\r\n" },
-   { "mp3", "audio/mpeg\r\n" },
-   { "ogg", "audio/ogg\r\n" },
-   { "otf", "font/otf\r\n" },
-   { "png", "image/png\r\n" },
-   { "svg", "image/svg\r\n" },
-   { "tar", "application/x-tar\r\n" },
-   { "ttf", "font/ttf\r\n" },
-   { "txt", "text/plain\r\n" },
-   { "wasm", "application/wasm\r\n" },
-   { "webp", "image/webp\r\n" },
-   { "woff", "font/woff\r\n" },
-   { "woff2", "font/woff2\r\n" },
-   { "zip", "application/zip\r\n" },
-   { NULL, NULL }
+   {
+      "7z", "application/x-7z-compressed\r\n"
+   },
+   {
+      "css", "text/css\r\n"
+   },
+   {
+      "htm", "text/html\r\n"
+   },
+   {
+      "html", "text/html\r\n"
+   },
+   {
+      "ico", "image/x-icon\r\n"
+   },
+   {
+      "js", "application/javascript\r\n"
+   },
+   {
+      "json", "application/json\r\n"
+   },
+   {
+      "jpg", "image/jpeg\r\n"
+   },
+   {
+      "mp3", "audio/mpeg\r\n"
+   },
+   {
+      "ogg", "audio/ogg\r\n"
+   },
+   {
+      "otf", "font/otf\r\n"
+   },
+   {
+      "png", "image/png\r\n"
+   },
+   {
+      "svg", "image/svg\r\n"
+   },
+   {
+      "tar", "application/x-tar\r\n"
+   },
+   {
+      "ttf", "font/ttf\r\n"
+   },
+   {
+      "txt", "text/plain\r\n"
+   },
+   {
+      "wasm", "application/wasm\r\n"
+   },
+   {
+      "webp", "image/webp\r\n"
+   },
+   {
+      "woff", "font/woff\r\n"
+   },
+   {
+      "woff2", "font/woff2\r\n"
+   },
+   {
+      "zip", "application/zip\r\n"
+   },
+   {
+      NULL, NULL
+   }
 };
 
 // Perform various checks on synthesized URLs to make sure the user isn't up to
@@ -101,6 +145,7 @@ const char *http_content_type(const char *type) {
    }
 
    int items = (sizeof(http_res_types) / sizeof(struct http_res_types));
+
    for (int i = 0 ; i < items ; i++) {
       // end of table marker?
       if (!http_res_types[i].shortname && !http_res_types[i].msg) {
@@ -134,6 +179,7 @@ static bool http_static_contained(const char *path) {
 
    return !strcmp(root, "/") || (!strncmp(root, resolved, n) && (!resolved[n] || resolved[n] == '/'));
 #else
+
    return true;
 #endif
 }
@@ -149,29 +195,35 @@ bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
 
    if (path_len <= 0 || (size_t)path_len >= sizeof(path) || memchr(path, '\0', (size_t)path_len) || path[0] != '/' || check_url(path)) {
       mg_http_reply(cptr->conn, 400, "Content-Type: text/plain\r\n", "Invalid path\n");
+
       return true;
    }
 
    if (!www_root[0]) {
       mg_http_reply(cptr->conn, 503, "", "Static content unavailable\n");
+
       return true;
    }
    int n = snprintf(real_path, sizeof(real_path), "%s%s", www_root, path);
 
    if (n < 0 || (size_t)n >= sizeof(real_path)) {
       mg_http_reply(cptr->conn, 400, "", "Invalid path\n");
+
       return true;
    }
 
    if (file_exists(real_path) || is_dir(real_path)) {
       if (!http_static_contained(real_path)) {
          mg_http_reply(cptr->conn, 403, "", "Forbidden\n");
+
          return true;
       }
    }
    // Mongoose may select these index/gzip alternatives when serving a
    // directory or compressed resource. Check those symlinks as well.
-   const char *suffixes[] = { ".gz", "/index.html", "/index.shtml", "/index.html.gz" };
+   const char *suffixes[] = {
+      ".gz", "/index.html", "/index.shtml", "/index.html.gz"
+   };
 
    for (size_t i = 0 ; i < sizeof(suffixes) / sizeof(suffixes[0]) ; i++) {
       char candidate[8192];
@@ -183,6 +235,7 @@ bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
 
       if (file_exists(candidate) && !http_static_contained(candidate)) {
          mg_http_reply(cptr->conn, 403, "", "Forbidden\n");
+
          return true;
       }
    }
@@ -190,6 +243,7 @@ bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
    // Use Mongoose's MIME mapping and 404 handling.
    // Uploads, deletion, directory listing or SSI processing are NOT enabled by our serve options.
    mg_http_serve_dir(cptr->conn, msg, &opts);
+
    return true;
 }
 
@@ -255,6 +309,7 @@ static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
    }
 
 cleanup:
+
    return rv;
 }
 
@@ -271,16 +326,19 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
       // Old protocol
       Log(LOG_CRIT, "rrproto.core", "ws_txtframe_process: msg_type unset!");
       ws_send_error(cptr, "Invalid command: <missing msg.type>");
+
       return false;
    }
 
    if (!ws_auth_refresh(cptr)) {
       ws_send_error(cptr, "Account database unavailable; try again later");
+
       return false;
    }
 
    if (cptr->authenticated && cptr->user && cptr->user->password_expires > 0 && cptr->user->password_expires <= now) {
       ws_kick_client(cptr, "Password expired; ask an administrator to reset it");
+
       return false;
    }
 
@@ -291,6 +349,7 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
 
       if (!password_change && strcasecmp(msg_type, "auth") && strcasecmp(msg_type, "pong") && strcasecmp(msg_type, "hello")) {
          ws_send_error(cptr, "Password change required: /user pass %s <new-password>", cptr->user->name);
+
          return false;
       }
 
@@ -300,6 +359,7 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
 
          if (sscanf(tail + 5, "%127s", target) != 1 || strcasecmp(target, cptr->user->name)) {
             ws_send_error(cptr, "Change your own password before using other commands");
+
             return false;
          }
       }
@@ -310,8 +370,10 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
    // version negotiation on connect). Everything else - including client
    // pings, which are an easy DoS/amplification vector - is denied.
    // PARITY: rustyrig-www/js/webui.js (send_ping / webui.auth.js login flow)
-   if (!cptr->authenticated && strcasecmp(msg_type, "auth") != 0 && strcasecmp(msg_type, "pong") != 0 && strcasecmp(msg_type, "hello") != 0 && strcasecmp(msg_type, "cap") != 0) {
-      Log(LOG_AUDIT, "auth", "Denied %s from unauthenticated client %s on cptr:<%p> from %s:%d", msg_type, (cptr->chatname[0] != '\0' ? cptr->chatname : "(unknown)"), cptr, cptr->user_ip, cptr->user_port);
+   if (!cptr->authenticated && strcasecmp(msg_type, "auth") != 0 && strcasecmp(msg_type, "pong") != 0 && strcasecmp(msg_type, "hello") != 0
+      && strcasecmp(msg_type, "cap") != 0) {
+      Log(LOG_AUDIT, "auth", "Denied %s from unauthenticated client %s on cptr:<%p> from %s:%d", msg_type, (cptr->chatname[0] != '\0' ? cptr->chatname :
+         "(unknown)"), cptr, cptr->user_ip, cptr->user_port);
 
       // Don't reply to ping at all (no amplification); tell the client
       // why anything else was rejected.
@@ -520,6 +582,7 @@ bool ws_process_dict(rrconn_t *cptr, dict *d) {
    }
 
 cleanup:
+
    return result;
 }
 
@@ -532,37 +595,47 @@ bool ws_handle_payload(rrconn_t *cptr, const void *data, size_t len, bool binary
       return false;
    }
    rr_traffic_count(cptr, false, binary, len);
+
    if (binary) {
       return ws_binframe_process_mg(cptr, data, len);
    }
+
    if (len > HTTP_WS_MAX_MSG || memchr(data, '\0', len)) {
       Log(LOG_WARN, "http.ws", "Dropping oversized or NUL-containing text frame");
+
       return false;
    }
    char buf[HTTP_WS_MAX_MSG + 1];
    memcpy(buf, data, len);
    buf[len] = '\0';
    dict *d = rr_wire_decode(buf);
+
    if (!d) {
       ws_send_error(cptr, "Invalid RustyRig wire message");
+
       return false;
    }
    bool accepted = ws_process_dict(cptr, d);
    dict_free(d);
+
    return accepted;
 }
+
 #ifdef USE_MONGOOSE
 bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
    if (!msg || !msg->data.buf) {
       return false;
    }
+
    if (cptr && cptr->conn && (cptr->conn->is_closing || cptr->conn->is_draining)) {
       return false;
    }
    unsigned opcode = msg->flags & 0x0F;
+
    if (opcode != WEBSOCKET_OP_TEXT && opcode != WEBSOCKET_OP_BINARY) {
       return false;
    }
+
    return ws_handle_payload(cptr, msg->data.buf, msg->data.len, opcode == WEBSOCKET_OP_BINARY);
 }
 #endif
@@ -604,6 +677,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
    } else if (ev == MG_EV_CONNECT) {
       if (!cptr) {
          Log(LOG_CRIT, "ws.core", "ws_http_cb MG_EV_CONNECT with no client for conn:<%p>", c);
+
          return;
       }
 
@@ -625,6 +699,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
 
       if (!admission.allowed) {
          c->is_closing = 1;
+
          return;
       }
 
@@ -639,12 +714,12 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
 
       if (!cptr) {
          Log(LOG_CRIT, "ws.core", "ws_http_cb failed to http_add_client(%p)", c);
+
          return;
       }
       char *ip = cptr->user_ip;
       int port = cptr->user_port;
       Log(LOG_CRAZY, "http", "Accepted connection on cptr:<%p> from %s:%d", cptr, ip, port);
-
 
       if (cptr && cptr->conn && cptr->conn->fn_data) {
          Log(LOG_CRAZY, "http", "Init TLS for cptr:<%p> from %s:%d", cptr, ip, port);
@@ -658,6 +733,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
 
       if (!cptr) {
          Log(LOG_CRIT, "ws.core", "ws_http_cb failed to http_add_client(%p)", c);
+
          return;
       }
 
@@ -670,6 +746,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
                if (!http_client_set_user_agent(cptr, ua_hdr->buf, ua_hdr->len)) {
                   Log(LOG_CRIT, "http.core", "Unable to save HTTP User-Agent");
                   c->is_closing = 1;
+
                   return;
                }
                Log(LOG_DEBUG, "http.core", "New session cptr:<%p> User-Agent: %s (%zu)", cptr, cptr->user_agent, strlen(cptr->user_agent));
@@ -680,6 +757,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       if (cptr->user_agent && is_http_banned(cptr->user_agent)) {
          Log(LOG_INFO, "http", "Rejecting banned User-Agent: %s", cptr->user_agent);
          mg_http_reply(c, 403, "Content-Type: text/plain\r\n", "Forbidden\n");
+
          return;
       }
 
@@ -692,6 +770,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          if (request.detach_client) {
             http_detach_client(c);
          }
+
          return;
       }
 
@@ -703,6 +782,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
    } else if (ev == MG_EV_WS_OPEN) {
       if (!cptr) {
          Log(LOG_CRIT, "ws.core", "ws_http_cb MG_EV_WS_OPEN with no client for conn:<%p>", c);
+
          return;
       }
       char *ip = cptr->user_ip;
@@ -711,10 +791,13 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       Log(LOG_CRAZY, "http.core", "WS OPEN for cptr:<%p>", cptr);
       Log(LOG_DEBUG, "http", "Conn cptr:<%p> from %s:%d upgraded to ws with cptr:<%p>", cptr, ip, port, cptr);
       cptr->is_ws = true;
+
       if (!cptr->native_transport) {
          cptr->native_transport = rr_transport_mongoose_adopt(c, NULL, NULL);
-         if (cptr->native_transport)
+
+         if (cptr->native_transport) {
             rr_transport_mongoose_open(cptr->native_transport);
+         }
       }
       dict *d = dict_new();
       dict_add(d, "msg.type", "hello");
@@ -727,6 +810,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
    } else if (ev == MG_EV_WS_MSG) {
       if (!cptr) {
          Log(LOG_CRIT, "ws.core", "ws_http_cb MG_EV_WS_MSG with no client for conn:<%p>", c);
+
          return;
       }
       struct mg_ws_message *msg = (struct mg_ws_message *)ev_data;
@@ -778,6 +862,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       } else {
          if (!cptr) {
             Log(LOG_CRIT, "ws.core", "ws_http_cb(): cptr is null!?");
+
             return;
          }
          char *ip = cptr->user_ip;
@@ -792,6 +877,7 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          rr_transport_mongoose_release(cptr->native_transport);
          cptr->native_transport = NULL;
       }
+
       if (cptr->conn) {
          http_remove_client(cptr->conn);
       }

@@ -639,7 +639,7 @@ static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *targ
    while (cur) {
       if ((!target || cur == target) && cur != exclude && cur->is_ws &&
          cur->authenticated && cur->native_transport &&
-          rr_transport_state(cur->native_transport) == RR_TRANSPORT_OPEN &&
+         rr_transport_state(cur->native_transport) == RR_TRANSPORT_OPEN &&
          ((cp->direction == RR_BINFRAME_DIR_TX &&
          chan_id_in_array(cur->tx_channels, MAX_TX_CHANNELS, chan_id)) ||
          (cp->direction == RR_BINFRAME_DIR_RX && chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id))) && media_client_in_channel_room(cur, cp)) {
@@ -647,10 +647,10 @@ static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *targ
          rr_binframe_parse(frame, flen, &parsed);
          uint32_t sequence = rr_media_next_sequence(cur, &parsed.hdr);
          rr_binframe_pack_hdr(frame, flen, cp->subsystem, codecbuf, cp->direction, cp->vfo, cp->rig, chan_id, sequence, len, parsed.hdr.ts);
-         /* Setup frames are reliable control data; live media is realtime.
-          * Avoid letting an overloaded subscriber accumulate stale media. */
+         /* Setup frames are reliable control data; live media is realtime. Avoid letting an overloaded subscriber accumulate stale media. */
          size_t queued = rr_transport_queued_bytes(cur->native_transport);
          size_t limit = setup ? 262144u : (cp->subsystem == RR_BINFRAME_SUBSYS_AUDIO ? 8192u : 262144u);
+
          if ((size_t)flen <= limit && queued <= limit - (size_t)flen) {
             if (rr_transport_send_binary_message(cur->native_transport, frame, (size_t)flen) == RR_TRANSPORT_OK) {
                rr_traffic_count(cur, true, true, (size_t)flen);
@@ -1074,21 +1074,21 @@ bool ws_handle_mediachan_msg(rrconn_t *cptr, dict *d) {
          return true;
       }
 
-      /* The encoder belongs to the shared channel, not the requesting client.
-       * Never change its wire format while another listener is attached. */
+      /* The encoder belongs to the shared channel, not the requesting client. Never change its wire format while another listener is attached. */
       if (cp->subsystem == RR_BINFRAME_SUBSYS_AUDIO && old_codec[0]) {
          u_int32_t chan_id = (u_int32_t) (cp - media_channels) + 1;
-         for (rrconn_t *peer = http_client_list; peer; peer = peer->next) {
+
+         for (rrconn_t *peer = http_client_list ; peer ; peer = peer->next) {
             if (peer == cptr || !media_client_in_channel_room(peer, cp)) {
                continue;
             }
             bool subscribed = cp->direction == RR_BINFRAME_DIR_TX ?
-               chan_id_in_array(peer->tx_channels, MAX_TX_CHANNELS, chan_id) :
-               chan_id_in_array(peer->rx_channels, MAX_RX_CHANNELS, chan_id);
+               chan_id_in_array(peer->tx_channels, MAX_TX_CHANNELS, chan_id) : chan_id_in_array(peer->rx_channels, MAX_RX_CHANNELS, chan_id);
+
             if (subscribed) {
-               ws_send_error(cptr,
-                  "Codec %s is already shared by other listeners on channel %s (%s); cannot switch to %s while they are subscribed",
-                  old_codec, cp->name, cp->uuid, codec);
+               ws_send_error(cptr, "Codec %s is already shared by other listeners on channel %s (%s); cannot switch to %s while they are subscribed", old_codec,
+                  cp->name, cp->uuid, codec);
+
                return false;
             }
          }
