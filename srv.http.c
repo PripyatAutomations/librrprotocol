@@ -193,6 +193,8 @@ bool http_static(struct mg_http_message *msg, rrconn_t *cptr) {
    return true;
 }
 
+#endif /* USE_MONGOOSE: static HTTP serving */
+
 static bool ws_handle_pong(rrconn_t *cptr, dict *d) {
    bool rv = true;
 
