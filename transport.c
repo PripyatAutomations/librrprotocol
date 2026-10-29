@@ -44,6 +44,13 @@ int rr_transport_send_binary_message(rr_transport_t *t, const void *data, size_t
 size_t rr_transport_queued_bytes(rr_transport_t *t) {
    return t && t->ops->queued_bytes ? t->ops->queued_bytes(t->driver) : 0;
 }
+/* Reactor-backed drivers deliver callbacks from their registered watchers;
+ * poll is reserved for manually driven adapters. */
+int rr_transport_poll(rr_transport_t *t, int timeout_ms) {
+   if (!t || timeout_ms < 0) return RR_TRANSPORT_INVALID;
+   if (t->state == RR_TRANSPORT_CLOSED) return RR_TRANSPORT_CLOSED_ERROR;
+   return t->ops->poll ? t->ops->poll(t->driver, timeout_ms) : RR_TRANSPORT_UNSUPPORTED;
+}
 int rr_transport_send_datagram(rr_transport_t *t, const void *data, size_t len) {
    int r = check(t, RR_TRANSPORT_DATAGRAMS, data, len);
    return r ? r : t->ops->send_datagram ? t->ops->send_datagram(t->driver, data, len) : RR_TRANSPORT_UNSUPPORTED;
