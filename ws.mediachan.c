@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <librustyaxe/core.h>
+#include <librustyaxe/transport.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/codecneg.h>
 #include <librrprotocol/media.health.h>
@@ -636,7 +637,8 @@ static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *targ
    rrconn_t *cur = target ? target : http_client_list;
    while (cur) {
       if ((!target || cur == target) && cur != exclude && cur->is_ws &&
-         cur->authenticated && (cur->conn || cur->native_transport) &&
+         cur->authenticated && cur->native_transport &&
+          rr_transport_state(cur->native_transport) == RR_TRANSPORT_OPEN &&
          ((cp->direction == RR_BINFRAME_DIR_TX &&
          chan_id_in_array(cur->tx_channels, MAX_TX_CHANNELS, chan_id)) ||
          (cp->direction == RR_BINFRAME_DIR_RX && chan_id_in_array(cur->rx_channels, MAX_RX_CHANNELS, chan_id))) && media_client_in_channel_room(cur, cp)) {
@@ -644,14 +646,16 @@ static bool ws_media_send_frame_filtered(struct rr_mediachan *cp, rrconn_t *targ
          rr_binframe_parse(frame, flen, &parsed);
          uint32_t sequence = rr_media_next_sequence(cur, &parsed.hdr);
          rr_binframe_pack_hdr(frame, flen, cp->subsystem, codecbuf, cp->direction, cp->vfo, cp->rig, chan_id, sequence, len, parsed.hdr.ts);
-         struct mg_str payload = {
-            (char *)frame, flen
-         };
-
-         if (setup) {
-            ws_send_setup_to_cptr(NULL, cur, &payload);
-         } else {
-            ws_send_to_cptr(NULL, cur, &payload, WEBSOCKET_OP_BINARY);
+         /* Setup frames are reliable control data; live media is realtime.
+          * Avoid letting an overloaded subscriber accumulate stale media. */
+         size_t queued = rr_transport_queued_bytes(cur->native_transport);
+         size_t limit = setup ? 262144u : (cp->subsystem == RR_BINFRAME_SUBSYS_AUDIO ? 8192u : 262144u);
+         if ((size_t)flen <= limit && queued <= limit - (size_t)flen) {
+            if (rr_transport_send_binary_message(cur->native_transport, frame, (size_t)flen) == RR_TRANSPORT_OK) {
+               rr_traffic_count(cur, true, true, (size_t)flen);
+            }
+         } else if (setup) {
+            event_emit("protocol.backpressure", cur, "Media setup queue full");
          }
       }
       cur = target ? NULL : cur->next;
