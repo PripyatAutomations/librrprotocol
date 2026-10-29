@@ -572,6 +572,7 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
  * without a live socket in regression tests.
  */
 
+#ifdef USE_MONGOOSE
 ///// Main HTTP callback
 void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
    if (!c) {
