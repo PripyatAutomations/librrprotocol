@@ -17,6 +17,10 @@
 #include "build_config.h"
 #include <librustyaxe/struct.h>
 
+/* Mongoose handles are opaque here; native builds do not include mongoose.h. */
+struct mg_http_message;
+struct mg_connection;
+
 ///////
 // many of these need moved to config; decide if runtime or build? (prob build)
 // Limit to 10 backups of authdb retained, this should be sane; we delete older
