@@ -56,7 +56,8 @@ int http_getuid(const char *user) {
    return -1;
 }
 
-static bool http_backup_authdb(void) {
+static bool http_backup_authdb(const char *filename) {
+   if (!filename || !*filename) return true;
    char new_path[256];
    struct tm *tm_info = localtime(&now);
    char date_str[9];            // YYYYMMDD + null terminator
@@ -69,15 +70,15 @@ static bool http_backup_authdb(void) {
       if (index > MAX_AUTHDB_BK_INDEX) {
          return true;
       }
-      prepare_msg(new_path, sizeof(new_path), "%s.bak-%s.%d", HTTP_AUTHDB_PATH, date_str, index);
+      prepare_msg(new_path, sizeof(new_path), "%s.bak-%s.%d", filename, date_str, index);
       index++;
    } while (file_exists(new_path));
 
    // Rename the file
-   if (rename(HTTP_AUTHDB_PATH, new_path) == 0) {
-      Log(LOG_INFO, "http.core", "* Renamed old config (%s) to %s", HTTP_AUTHDB_PATH, new_path);
+   if (rename(filename, new_path) == 0) {
+      Log(LOG_INFO, "http.core", "* Renamed old config (%s) to %s", filename, new_path);
    } else {
-      Log(LOG_CRIT, "http.core", "* Error renaming old config (%s) to %s: %d:%s", HTTP_AUTHDB_PATH, new_path, errno, strerror(errno));
+      Log(LOG_CRIT, "http.core", "* Error renaming old config (%s) to %s: %d:%s", filename, new_path, errno, strerror(errno));
 
       return true;
    }
@@ -90,7 +91,7 @@ bool http_save_users(const char *filename) {
       return true;
    }
 
-   if (http_backup_authdb()) {
+   if (http_backup_authdb(filename)) {
       return true;
    }
    int users_saved = 0;
@@ -261,7 +262,7 @@ int http_load_users(const char *filename) {
  * If net.http.authdb-dynamic is true, we emit an "authdb.load" event and the embedding program (rrserver) is responsible for filling http_users[] from its own
  * user store (e.g. the sqlite users table) -- the protocol library doesn't know about databases.
  *
- * Otherwise we load users from the file given by net.http.authdb (defaulting to the compile-time HTTP_AUTHDB_PATH fallback).
+ * Otherwise we load users from the file given by net.http.authdb (defaulting to the legacy /etc/rustyrig/http.users path).
  *
  * Called by http_init() at startup and whenever the config is reloaded (see the reload_event_add() registrations in http_init() and the 'rehash'
  * message handler in srv.http.c).
@@ -304,7 +305,7 @@ int http_reload_users(void) {
    const char *authdb = cfg_get_exp("net.http.authdb");
 
    if (!authdb || authdb[0] == '\0') {
-      authdb = HTTP_AUTHDB_PATH;
+      authdb = "/etc/rustyrig/http.users";
    }
 
    // Let the program handle dynamic (sql) user storage if it wants to
