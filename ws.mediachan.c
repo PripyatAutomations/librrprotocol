@@ -28,6 +28,7 @@
 #include <stdbool.h>
 #include <librustyaxe/core.h>
 #include <librustyaxe/transport.h>
+#include <librrprotocol/traffic.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/codecneg.h>
 #include <librrprotocol/media.health.h>
