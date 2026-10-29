@@ -16,7 +16,7 @@
 #define __rr_vfo_h
 #include <stdint.h>
 #include <stdbool.h>
-
+#include <sys/time.h>
 #define MAX_VFOS 26             // maximum VFOs (A-Z); most rigs
                                 // will use 2-3, backends pick the
                                 // subset the rig supports
