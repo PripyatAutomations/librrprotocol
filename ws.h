@@ -106,7 +106,10 @@ extern void ws_add_client(rrconn_t *cptr);
 extern bool ws_kick_client_by_c(struct mg_connection *c, const char *reason);
 extern void ws_fini(struct mg_mgr *mgr);
 extern bool ws_init(struct mg_mgr *mgr);
+extern bool ws_handle_payload(rrconn_t *cptr, const void *data, size_t len, bool binary);
+#ifdef USE_MONGOOSE
 extern bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg);
+#endif
 
 // Send to a specific, authenticated websocket user by cptr
 extern bool ws_send_to_cptr(rrconn_t *sender, rrconn_t *acptr, struct mg_str *msg_data, int data_type);
