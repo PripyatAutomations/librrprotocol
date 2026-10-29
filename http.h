@@ -115,12 +115,15 @@ extern rrconn_t *whos_talking(void);
 extern rrconn_t *http_find_client_by_c(struct mg_connection *c);
 extern bool http_init(struct mg_mgr *mgr);
 extern bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr);
-extern bool is_http_banned(const char *user_agent);
-extern bool load_http_ua_bans(const char *path);
 extern rrconn_t *http_add_client(struct mg_connection *c, bool is_ws);
 extern void http_remove_client(struct mg_connection *c);
 extern void http_detach_client(struct mg_connection *c);
 #endif // defined(USE_MONGOOSE)
+
+#ifdef USE_HTTP
+extern bool is_http_banned(const char *user_agent);
+extern bool load_http_ua_bans(const char *path);
+#endif
 
 extern rrconn_t *http_add_native_client(struct rr_transport *transport, const char *ip, int port);
 extern void http_remove_native_client(rrconn_t *client);
