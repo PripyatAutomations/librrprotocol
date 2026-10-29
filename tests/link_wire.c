@@ -98,14 +98,14 @@ int main(void) {
    }
 
    char why[160];
-   assert(!rr_link_wire_decode_ex("{\\\"op\\\":\\\"link.ready\\\",\\\"admin\\\":true}",
-      strlen("{\\\"op\\\":\\\"link.ready\\\",\\\"admin\\\":true}"), why, sizeof(why)));
+   const char *unknown_field = "{\"op\":\"link.ready\",\"admin\":true}";
+   assert(!rr_link_wire_decode_ex(unknown_field, strlen(unknown_field), why, sizeof(why)));
    assert(strstr(why, "unknown JSON field"));
-   assert(!rr_link_wire_decode_ex("{\\\"op\\\":\\\"link.hello\\\"}",
-      strlen("{\\\"op\\\":\\\"link.hello\\\"}"), why, sizeof(why)));
+   const char *missing_field = "{\"op\":\"link.hello\"}";
+   assert(!rr_link_wire_decode_ex(missing_field, strlen(missing_field), why, sizeof(why)));
    assert(strstr(why, "missing required field"));
-   assert(!rr_link_wire_decode_ex("{\\\"op\\\":\\\"link.ready\\\",\\\"password\\\":\\\"do-not-log\\\"}",
-      strlen("{\\\"op\\\":\\\"link.ready\\\",\\\"password\\\":\\\"do-not-log\\\"}"), why, sizeof(why)));
+   const char *secret_field = "{\"op\":\"link.ready\",\"password\":\"do-not-log\"}";
+   assert(!rr_link_wire_decode_ex(secret_field, strlen(secret_field), why, sizeof(why)));
    assert(!strstr(why, "do-not-log"));
    const char nul[] = "{\"op\":\"link.ready\"}\0extra";
    assert(!rr_link_wire_decode(nul, sizeof(nul) - 1));
