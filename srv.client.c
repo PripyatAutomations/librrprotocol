@@ -358,6 +358,7 @@ rrconn_t *whos_talking(void) {
    return query.client;
 }
 
+#ifdef USE_MONGOOSE
 /* Transfer an unauthenticated HTTP socket to an application-owned protocol. */
 void http_detach_client(struct mg_connection *c) {
    http_release_client(c, false);
@@ -366,6 +367,7 @@ void http_detach_client(struct mg_connection *c) {
 void http_remove_client(struct mg_connection *c) {
    http_release_client(c, true);
 }
+#endif /* USE_MONGOOSE */
 
 /* Applications own consent; missing policy listeners fail closed. */
 bool ws_supervision_allowed(rrconn_t *client, const char *room, bool request) {
