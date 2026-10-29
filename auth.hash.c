@@ -8,6 +8,7 @@
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <openssl/sha.h>
 
 int auth_generate_nonce(char *buffer, size_t length) {
    if (!buffer || length < 2) {
@@ -27,40 +28,26 @@ int auth_generate_nonce(char *buffer, size_t length) {
    return (int)generated;
 }
 
-#ifdef  USE_MONGOOSE
 char *hash_passwd(const char *passwd) {
    if (!passwd) {
       return NULL;
    }
-   char *hex_output = (char *)malloc(HTTP_HASH_LEN * 2 + 1);   // Allocate space
-
-   // for hex string
-   if (!hex_output) {
-      fprintf(stderr, "oom in hash_passwd?!\n");
-
+   unsigned char digest[SHA_DIGEST_LENGTH];
+   if (!SHA1((const unsigned char *)passwd, strlen(passwd), digest)) {
       return NULL;
    }
-   // Compute SHA1 of the combined string
-   mg_sha1_ctx ctx;
-   mg_sha1_init(&ctx);
-   size_t len = strlen((char *)passwd);   // Cast to (char *) for strlen
-   mg_sha1_update(&ctx, (unsigned char *)passwd, len);
-
-   // store the raw sha1 hash
-   unsigned char hash[20];
-   mg_sha1_final(hash, &ctx);
-
-   // Convert the raw hash to a hexadecimal string
-   for (int i = 0 ; i < 20 ; i++) {
-      sprintf(hex_output + (i * 2), "%02x", hash[i]);
+   char *hex_output = malloc(SHA_DIGEST_LENGTH * 2 + 1);
+   if (!hex_output) {
+      return NULL;
    }
-
-   // Null terminate teh string for libc's sake
-   hex_output[HTTP_HASH_LEN * 2] = '\0';
-
+   static const char hex[] = "0123456789abcdef";
+   for (size_t i = 0; i < SHA_DIGEST_LENGTH; i++) {
+      hex_output[i * 2] = hex[digest[i] >> 4];
+      hex_output[i * 2 + 1] = hex[digest[i] & 0x0f];
+   }
+   hex_output[SHA_DIGEST_LENGTH * 2] = '\0';
    return hex_output;
 }
-#endif // USE_MONGOOSE
 
 //////////////////////////////////////////
 // Compute wire password:
@@ -73,9 +60,6 @@ char *hash_passwd(const char *passwd) {
 //
 // You *must* free the result
 char *compute_wire_password(const char *password, const char *nonce) {
-#if     defined(USE_MONGOOSE)
-   mg_sha1_ctx ctx;
-#endif // USE_MONGOOSE
 
    if (password == NULL || nonce == NULL) {
       Log(LOG_CRIT, "auth", "wtf compute_wire_password called with NULL password<%p> or nonce<%p>", password, nonce);
@@ -93,14 +77,13 @@ char *compute_wire_password(const char *password, const char *nonce) {
    unsigned char hash[20];      // Store the raw SHA1 hash
    memset(hash, 0, sizeof(hash));
 
-#if     defined(USE_MONGOOSE)
-   /* PARITY: rustyrig-www/js/webui.auth.js authenticate(). */
-   mg_sha1_init(&ctx);
-   mg_sha1_update(&ctx, (const unsigned char *)password, strlen(password));
-   mg_sha1_update(&ctx, (const unsigned char *)"+", 1);
-   mg_sha1_update(&ctx, (const unsigned char *)nonce, strlen(nonce));
-   mg_sha1_final(hash, &ctx);
-#endif // USE_MONGOOSE
+/* PARITY: rustyrig-www/js/webui.auth.js authenticate(). */
+   SHA_CTX ctx;
+   SHA1_Init(&ctx);
+   SHA1_Update(&ctx, password, strlen(password));
+   SHA1_Update(&ctx, "+", 1);
+   SHA1_Update(&ctx, nonce, strlen(nonce));
+   SHA1_Final(hash, &ctx);
 
    // Convert the raw hash to a hexadecimal string
    for (int i = 0 ; i < 20 ; i++) {
