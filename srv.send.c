@@ -17,6 +17,7 @@
 #include <limits.h>
 #include <time.h>
 #include <librustyaxe/core.h>
+#include <librustyaxe/transport.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/server.events.h>
 #include <librrprotocol/wire.h>
@@ -119,7 +120,7 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
       return false;
    }
 
-   if (!dest->conn && !dest->native_transport) {
+   if (!dest->native_transport || rr_transport_state(dest->native_transport) != RR_TRANSPORT_OPEN) {
       Log(LOG_WARN, "rrproto.srv", "Send rejected: destination has no active transport (destination=%p, type=%s, frame=%d)", (void *)dest, dict_get(d,
          "msg.type", "(missing)"), data_type);
 
@@ -147,8 +148,8 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
 
    Log(LOG_CRAZY, "ws.proto", "Sending dict <%p> to conn <%p> (%zu bytes)", (void *)d, (void *)dest, strlen(jp));
 
-   struct mg_str payload = mg_str(jp);
-   bool sent = ws_send_to_cptr(sender, dest, &payload, WEBSOCKET_OP_TEXT);
+   size_t len = strlen(jp);
+   bool sent = rr_transport_send_message(dest->native_transport, jp, len) == RR_TRANSPORT_OK;
 
    if (sent && dest->server) {
       rr_latency_sent(dest, d, mono_us());
