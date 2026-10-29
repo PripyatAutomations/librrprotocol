@@ -21,6 +21,7 @@
 #include <time.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+#include <librustyaxe/transport.mongoose.h>
 #include <librrprotocol/server.events.h>
 #include <librrprotocol/traffic.h>
 #include <librrprotocol/media.health.h>
@@ -764,6 +765,11 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
       Log(LOG_CRAZY, "http.core", "WS OPEN for cptr:<%p>", cptr);
       Log(LOG_DEBUG, "http", "Conn cptr:<%p> from %s:%d upgraded to ws with cptr:<%p>", cptr, ip, port, cptr);
       cptr->is_ws = true;
+      if (!cptr->native_transport) {
+         cptr->native_transport = rr_transport_mongoose_adopt(c, NULL, NULL);
+         if (cptr->native_transport)
+            rr_transport_mongoose_open(cptr->native_transport);
+      }
       dict *d = dict_new();
       dict_add(d, "msg.type", "hello");
       dict_add_ulong(d, "msg.ts", now);
@@ -835,6 +841,11 @@ void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
          Log(LOG_CRAZY, "auth", "Unauthenticated client on cptr:<%p> from %s:%d disconnected", cptr, ip, port);
       }
 
+      if (cptr->native_transport) {
+         rr_transport_mongoose_closed(cptr->native_transport);
+         rr_transport_mongoose_release(cptr->native_transport);
+         cptr->native_transport = NULL;
+      }
       if (cptr->conn) {
          http_remove_client(cptr->conn);
       }
