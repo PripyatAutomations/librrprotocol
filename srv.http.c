@@ -569,36 +569,6 @@ bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
  * Release PTT before an authenticated WebSocket client disappears. Keep this separate from the Mongoose callback so the disconnect safety path can be exercised
  * without a live socket in regression tests.
  */
-void ws_release_ptt_on_disconnect(rrconn_t *cptr) {
-   if (!cptr || !cptr->is_ptt) {
-      return;
-   }
-
-   dict *rig_msg = dict_new();
-
-   if (!rig_msg) {
-      Log(LOG_CRIT, "http", "Unable to allocate disconnect PTT release for %s", cptr->chatname[0] ? cptr->chatname : "(unknown)");
-      return;
-   }
-   dict_add(rig_msg, "msg.type", "cat");
-   dict_add(rig_msg, "cat.cmd", "ptt");
-   dict_add_bool(rig_msg, "cat.ptt", false);
-   dict_add(rig_msg, "cat.user", cptr->chatname);
-
-   if (cptr->ptt_room[0]) {
-      dict_add(rig_msg, "cat.room", cptr->ptt_room);
-   }
-
-   if (cptr->ptt_vfo) {
-      char vfo_buf[2] = {
-         cptr->ptt_vfo, '\0'
-      };
-      dict_add(rig_msg, "cat.vfo", vfo_buf);
-   }
-   cptr->is_ptt = false;
-   event_emit_dict("rig.ptt", cptr, rig_msg);
-   dict_free(rig_msg);
-}
 
 ///// Main HTTP callback
 void ws_http_cb(struct mg_connection *c, int ev, void *ev_data) {
