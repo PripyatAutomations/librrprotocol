@@ -43,7 +43,6 @@ librrprotocol_objs += srv.ping.o
 librrprotocol_objs += srv.rigctl.o
 librrprotocol_objs += srv.send.o
 librrprotocol_objs += srv.session.o
-librrprotocol_objs += transport.o
 librrprotocol_objs += traffic.o
 librrprotocol_objs += vfo.o
 librrprotocol_objs += wire.o
