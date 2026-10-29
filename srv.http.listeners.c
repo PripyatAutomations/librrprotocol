@@ -124,6 +124,7 @@ void http_tls_init(void) {
 }
 #endif // USE_MONGOOSE
 
+#ifdef USE_MONGOOSE
 bool http_init(struct mg_mgr *mgr) {
    if (!mgr) {
       Log(LOG_CRIT, "http", "http_init passed NULL mgr!");
@@ -242,3 +243,4 @@ bool http_init(struct mg_mgr *mgr) {
 
    return false;
 }
+#endif /* USE_MONGOOSE */
