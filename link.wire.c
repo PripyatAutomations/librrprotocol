@@ -6,10 +6,6 @@
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #include <stdlib.h>
 #include <string.h>
-#include "build_config.h"
-#ifdef USE_MONGOOSE
-#include <ext/libmongoose/mongoose.h>
-#endif
 #include <librrprotocol/link.wire.h>
 
 static const char *fields[] = {
