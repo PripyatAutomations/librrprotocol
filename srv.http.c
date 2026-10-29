@@ -524,73 +524,46 @@ cleanup:
 //
 // Handle a websocket request
 //
+/* Backend-independent entry point for complete WebSocket messages. */
+bool ws_handle_payload(rrconn_t *cptr, const void *data, size_t len, bool binary) {
+   if (!cptr || (!data && len)) {
+      return false;
+   }
+   rr_traffic_count(cptr, false, binary, len);
+   if (binary) {
+      return ws_binframe_process_mg(cptr, data, len);
+   }
+   if (len > HTTP_WS_MAX_MSG || memchr(data, '\0', len)) {
+      Log(LOG_WARN, "http.ws", "Dropping oversized or NUL-containing text frame");
+      return false;
+   }
+   char buf[HTTP_WS_MAX_MSG + 1];
+   memcpy(buf, data, len);
+   buf[len] = '\0';
+   dict *d = rr_wire_decode(buf);
+   if (!d) {
+      ws_send_error(cptr, "Invalid RustyRig wire message");
+      return false;
+   }
+   bool accepted = ws_process_dict(cptr, d);
+   dict_free(d);
+   return accepted;
+}
+#ifdef USE_MONGOOSE
 bool ws_handle(rrconn_t *cptr, struct mg_ws_message *msg) {
+   if (!msg || !msg->data.buf) {
+      return false;
+   }
    if (cptr && cptr->conn && (cptr->conn->is_closing || cptr->conn->is_draining)) {
       return false;
    }
-
-   if (!cptr || !msg || !msg->data.buf) {
-      Log(LOG_DEBUG, "http.ws", "ws_handle got msg:<%p> c:<%p> data:<%p>", msg, cptr, (msg ? msg->data.buf : NULL));
+   unsigned opcode = msg->flags & 0x0F;
+   if (opcode != WEBSOCKET_OP_TEXT && opcode != WEBSOCKET_OP_BINARY) {
       return false;
    }
-#if     defined(HTTP_DEBUG_CRAZY) || defined(DEBUG_PROTO)
-   // XXX: This should be moved to an option in config perhaps?
-   Log(LOG_CRAZY, "http", "ws_handle WS message: %zu bytes", msg->data.len);
-#endif
-
-   if ((msg->flags & 0x0F) == WEBSOCKET_OP_TEXT || (msg->flags & 0x0F) == WEBSOCKET_OP_BINARY) {
-      rr_traffic_count(cptr, false, (msg->flags & 0x0F) == WEBSOCKET_OP_BINARY, msg->data.len);
-   }
-
-   // Binary (audio, waterfall) frames
-   if ((msg->flags & 0x0F) == WEBSOCKET_OP_BINARY) {
-      Log(LOG_CRAZY, "ws.frame.bin", "Incoming Binary frame: %zu bytes", msg->data.len);
-
-#ifdef USE_PROFILING
-      uint64_t started = mono_us();
-      bool accepted = ws_binframe_process_mg(cptr, msg->data.buf, msg->data.len);
-      rr_wire_profile_binary(msg->data.buf, msg->data.len, accepted, mono_us() - started);
-      return accepted;
-#else
-      return ws_binframe_process_mg(cptr, msg->data.buf, msg->data.len);
-#endif
-   } else if ((msg->flags & 0x0F) == WEBSOCKET_OP_TEXT) {
-      // Text (mostly json) frames
-      Log(LOG_CRAZY, "ws.frame.txt", "Incoming Text frame: %zu bytes", msg->data.len);
-
-      // Drop oversized frames: copying into our fixed buffer without this
-      // check smashed the stack/heap and later crashed mg_iobuf_free
-      // ("double free or corruption") when the connection closed.
-      if (msg->data.len > HTTP_WS_MAX_MSG || memchr(msg->data.buf, '\0', msg->data.len)) {
-         Log(LOG_WARN, "http.ws", "Dropping oversized or NUL-containing WS text frame (%zu bytes, limit %d) from cptr:<%p>", msg->data.len, HTTP_WS_MAX_MSG, cptr);
-         return false;
-      }
-
-      struct mg_str msg_data = msg->data;
-      char buf[HTTP_WS_MAX_MSG + 1];
-      memset(buf, 0, sizeof(buf));
-      memcpy(buf, msg_data.buf, msg_data.len);
-//      fprintf(stderr, "buf(%d): %s(%d)\n", msg_data.len, buf, strlen(buf));
-      const char *root = buf;
-      while (*root == ' ' || *root == '\t' || *root == '\r' || *root == '\n') {
-         root++;
-      }
-      dict *d = rr_wire_decode(buf);
-
-      if (!d) {
-         /* Decoder logs the safe operation/field/reason; do not duplicate warnings. */
-         ws_send_error(cptr, "Invalid RustyRig wire message");
-         return false;
-      }
-
-      bool result = ws_process_dict(cptr, d);
-      dict_free(d);
-      memset(buf, 0, sizeof(buf));
-      return result;
-   }
-
-   return false;
+   return ws_handle_payload(cptr, msg->data.buf, msg->data.len, opcode == WEBSOCKET_OP_BINARY);
 }
+#endif
 
 /*
  * Release PTT before an authenticated WebSocket client disappears. Keep this separate from the Mongoose callback so the disconnect safety path can be exercised
