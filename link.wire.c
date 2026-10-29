@@ -91,62 +91,27 @@ static bool valid(dict *d) {
 }
 
 dict *rr_link_wire_decode(const char *data, size_t length) {
-#ifdef USE_MONGOOSE
-
    if (!data || !length || length > RR_LINK_MAX_FRAME || memchr(data, 0, length)) {
       return NULL;
    }
-   struct mg_str json = {
-      (char *)data, length
-   }, key, value;
-   int token_length;
-   int start = mg_json_get(json, "$", &token_length);
 
-   if (start < 0 || data[start] != '{') {
+   /* The link protocol uses a single flat JSON object. Parsing and strict
+    * field validation must not depend on the chosen TLS/WebSocket backend.
+    * json2dict rejects duplicate keys, malformed JSON and trailing data. */
+   size_t start = 0;
+   while (start < length && strchr(" \t\r\n", data[start])) {
+      start++;
+   }
+   if (start == length || data[start] != '{') {
       return NULL;
    }
 
-   for (size_t i = start + token_length ; i < length ; i++) {
-      if (!strchr(" \t\r\n", data[i])) {
-         return NULL;
-      }
-   }
-
-   unsigned seen = 0;
-   size_t offset = 0;
-   while ((offset = mg_json_next(json, offset, &key, &value))) {
-      unsigned i;
-
-      for (i = 0 ; i < sizeof(fields) / sizeof(fields[0]) ; i++) {
-         size_t n = strlen(fields[i]);
-
-         if (key.len == n + 2 && key.buf[0] == '"' && key.buf[n + 1] == '"' && !memcmp(key.buf + 1, fields[i], n)) {
-            break;
-         }
-      }
-
-      if (i == sizeof(fields) / sizeof(fields[0]) || (seen & (1U << i)) || value.len < 2 || value.buf[0] != '"') {
-         return NULL;
-      }
-      seen |= 1U << i;
-
-      /* No embedded NUL or escape ambiguity in link identity/credential fields. */
-      for (size_t j = 1 ; j + 1 < value.len ; j++) {
-         if (value.buf[j] == '\\') {
-            if (j + 5 < value.len && !memcmp(value.buf + j, "\\u0000", 6)) {
-               return NULL;
-            }
-            j++;                // An escaped backslash must not become a second Unicode escape.
-         }
-      }
-   }
    char *copy = malloc(length + 1);
-
    if (!copy) {
       return NULL;
    }
    memcpy(copy, data, length);
-   copy[length] = 0;
+   copy[length] = '\0';
    dict *d = json2dict(copy);
    free(copy);
 
@@ -154,14 +119,7 @@ dict *rr_link_wire_decode(const char *data, size_t length) {
       dict_free(d);
       d = NULL;
    }
-
    return d;
-#else
-   (void)data;
-   (void)length;
-
-   return NULL;
-#endif
 }
 
 char *rr_link_wire_encode(dict *message) {
