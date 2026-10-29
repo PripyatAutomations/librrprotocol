@@ -17,9 +17,6 @@
 #include "build_config.h"
 #include <librustyaxe/struct.h>
 
-/* Mongoose handles are opaque here; native builds do not include mongoose.h. */
-struct mg_http_message;
-struct mg_connection;
 
 ///////
 // many of these need moved to config; decide if runtime or build? (prob build)
@@ -85,12 +82,14 @@ struct rr_user {
 
 extern http_user_t http_users[HTTP_MAX_USERS];
 
+#if defined(USE_MONGOOSE)
 struct http_route {
    char *match;                 // match expression
    bool (*cb)(struct mg_http_message *msg, rrconn_t *cptr);    // true on success
    bool auth_reqd;              // Is authentication required?
 };
 typedef struct http_route http_route_t;
+#endif
 
 enum http_res_type {
    RES_PLAIN = 0,
@@ -119,12 +118,12 @@ extern bool http_dispatch_route(struct mg_http_message *msg, rrconn_t *cptr);
 extern bool is_http_banned(const char *user_agent);
 extern bool load_http_ua_bans(const char *path);
 extern rrconn_t *http_add_client(struct mg_connection *c, bool is_ws);
+extern void http_remove_client(struct mg_connection *c);
+extern void http_detach_client(struct mg_connection *c);
 #endif // defined(USE_MONGOOSE)
 
-extern void http_remove_client(struct mg_connection *c);
 extern rrconn_t *http_add_native_client(struct rr_transport *transport, const char *ip, int port);
 extern void http_remove_native_client(rrconn_t *client);
-extern void http_detach_client(struct mg_connection *c);
 /* Release heap-owned fields held by a connection. Safe to call repeatedly. */
 extern void http_client_free_resources(rrconn_t *cptr);
 /* Store a bounded, NUL-terminated copy of an HTTP User-Agent header. */
