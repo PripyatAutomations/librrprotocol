@@ -19,6 +19,23 @@
 #include <time.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
+/* RFC 6455 frame opcodes; independent of any WebSocket implementation. */
+enum rr_ws_opcode {
+   RR_WS_OP_TEXT = 1,
+   RR_WS_OP_BINARY = 2,
+   RR_WS_OP_CLOSE = 8,
+   RR_WS_OP_PING = 9,
+   RR_WS_OP_PONG = 10
+};
+/* Transitional names for older protocol call sites. Mongoose defines the
+ * same wire values when its backend is compiled. */
+#ifndef USE_MONGOOSE
+#define WEBSOCKET_OP_TEXT RR_WS_OP_TEXT
+#define WEBSOCKET_OP_BINARY RR_WS_OP_BINARY
+#define WEBSOCKET_OP_CLOSE RR_WS_OP_CLOSE
+#define WEBSOCKET_OP_PING RR_WS_OP_PING
+#define WEBSOCKET_OP_PONG RR_WS_OP_PONG
+#endif
 
 struct ws_client {
 #ifdef USE_MONGOOSE
