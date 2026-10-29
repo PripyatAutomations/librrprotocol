@@ -24,10 +24,14 @@ for i,g in enumerate(schema['groups']):
 rows.append('static const rr_wire_rule_t wire_rules[] = {')
 for i,g in enumerate(schema['groups']):
  for op,cmd in g['operations'].items():
-  vals=[json.dumps(op),json.dumps(g['type']),json.dumps(g['command_key']) if g['command_key'] else 'NULL',json.dumps(cmd) if cmd else 'NULL',f'wire_fields_{i}',f'sizeof(wire_fields_{i}) / sizeof(wire_fields_{i}[0])']
+  command_key = g.get('command_key')
+  vals=[json.dumps(op),json.dumps(g['type']),json.dumps(command_key) if command_key else 'NULL',json.dumps(cmd) if cmd else 'NULL',f'wire_fields_{i}',f'sizeof(wire_fields_{i}) / sizeof(wire_fields_{i}[0])']
   rows.append('   {'+', '.join(vals)+'},')
 rows.append('};')
-outputs={'librrprotocol/wire-version.h':c_license+'/* Generated from wire-schema.json. */\n#define RR_PROTOCOL_VERSION '+str(schema['version'])+'\n#define RR_WS_SUBPROTOCOL '+json.dumps(schema['websocket_subprotocol'])+'\n', 'librrprotocol/wire-registry.h':'\n'.join(rows)+'\n', 'www/js/webui.wire.registry.js':'/* Generated from librrprotocol/wire-schema.json. */\nconst rrWireSchema = '+json.dumps(schema,separators=(',',':'))+';\nif (typeof module !== "undefined") module.exports = rrWireSchema;\n'}
+outputs={'librrprotocol/wire-version.h':c_license+'/* Generated from wire-schema.json. */\n#define RR_PROTOCOL_VERSION '+str(schema['version'])+'\n#define RR_WS_SUBPROTOCOL '+json.dumps(schema['websocket_subprotocol'])+'\n', 'librrprotocol/wire-registry.h':'\n'.join(rows)+'\n'}
+web_registry = root / 'www/js/webui.wire.registry.js'
+if web_registry.parent.is_dir():
+ outputs['www/js/webui.wire.registry.js'] = '/* Generated from librrprotocol/wire-schema.json. */\nconst rrWireSchema = ' + json.dumps(schema,separators=(',',':')) + ';\nif (typeof module !== "undefined") module.exports = rrWireSchema;\n'
 for name,text in outputs.items():
  path=root/name
  if '--check' in sys.argv:

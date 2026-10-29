@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <librustyaxe/core.h>
+#include <librustyaxe/transport.h>
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/ws.mediachan.h>
 #include <librrprotocol/server.events.h>
@@ -14,6 +15,18 @@ extern bool ws_binframe_process_mg(rrconn_t *, const char *, size_t);
 
 static unsigned access_checks, demand_queries;
 static bool deny_access, relay_interested;
+static int discard_message(void *context, const uint8_t *data, size_t length) {
+   (void) context;
+   (void) data;
+   (void) length;
+   return RR_TRANSPORT_OK;
+}
+static const rr_transport_driver_t test_transport_driver = {
+   .abi_version = RR_TRANSPORT_ABI_VERSION,
+   .capabilities = RR_TRANSPORT_RELIABLE_MESSAGES | RR_TRANSPORT_BINARY_MESSAGES,
+   .send_message = discard_message,
+   .send_binary_message = discard_message
+};
 static void count_access(const char *event, const void *data, size_t len, rrconn_t *client, void *user) {
    assert(len == sizeof(rr_media_access_t));
    access_checks++;
@@ -39,6 +52,9 @@ int main(void) {
    rrconn_t client = {
       .authenticated = true, .user = account
    };
+   client.native_transport = rr_transport_new(&test_transport_driver, NULL, NULL, NULL);
+   assert(client.native_transport);
+   rr_transport_emit(client.native_transport, RR_TRANSPORT_EVENT_OPEN, NULL, NULL, 0);
    snprintf(client.media_codecs, sizeof(client.media_codecs), "pc16 opuT ---- none");
    dict *request = dict_new();
    dict_add(request, "media.cmd", "subscribe");
@@ -256,6 +272,8 @@ int main(void) {
    assert(ws_media_channel_has_subscribers(channel));
    assert(!access_checks && demand_queries == 3);
    http_client_list = NULL;
+   rr_transport_emit(client.native_transport, RR_TRANSPORT_EVENT_CLOSE, NULL, NULL, 0);
+   rr_transport_free(client.native_transport);
    event_off_binary(RR_MEDIA_ACCESS_EVENT, count_access, NULL);
    event_off_binary(RR_MEDIA_DEMAND_EVENT, count_demand, NULL);
    dict_free(cfg);

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <librustyaxe/core.h>
+#include <librustyaxe/transport.h>
 #include <librrprotocol/rrprotocol.h>
 
 time_t now;
@@ -52,6 +53,30 @@ size_t mg_ws_send(struct mg_connection *c, const void *buf, size_t len, int opco
    return len + 2 + (len < 126 ? 0 : len <= 65535 ? 2 : 8) + (c->is_client ? 4 : 0);
 }
 
+static int transport_send_text(void *context, const uint8_t *data, size_t length) {
+   if (((struct mg_connection *) context)->send.len >= 1048576)
+      return RR_TRANSPORT_BACKPRESSURE;
+   mg_ws_send(context, data, length, WEBSOCKET_OP_TEXT);
+   return RR_TRANSPORT_OK;
+}
+
+static int transport_send_binary(void *context, const uint8_t *data, size_t length) {
+   mg_ws_send(context, data, length, WEBSOCKET_OP_BINARY);
+   return RR_TRANSPORT_OK;
+}
+
+static size_t transport_queued(void *context) {
+   return ((struct mg_connection *) context)->send.len;
+}
+
+static const rr_transport_driver_t test_transport_driver = {
+   .abi_version = RR_TRANSPORT_ABI_VERSION,
+   .capabilities = RR_TRANSPORT_RELIABLE_MESSAGES | RR_TRANSPORT_BINARY_MESSAGES,
+   .send_message = transport_send_text,
+   .send_binary_message = transport_send_binary,
+   .queued_bytes = transport_queued
+};
+
 int main(void) {
    assert(parse_freq("7200") == 7200000);
    assert(parse_freq("7.2MHz") == 7200000);
@@ -68,6 +93,9 @@ int main(void) {
    }, other = {
       .conn = &other_conn
    };
+   client.native_transport = rr_transport_new(&test_transport_driver, &c, NULL, NULL);
+   assert(client.native_transport);
+   rr_transport_emit(client.native_transport, RR_TRANSPORT_EVENT_OPEN, NULL, NULL, 0);
    c.fn_data = &client;
    c.is_tls = true;
    server_name = "test";
@@ -184,6 +212,8 @@ int main(void) {
    assert(sent && !strcmp(dict_get(sent, "msg.type", ""), "auth") && strstr(dict_get(sent, "auth.error", ""), "test kick"));
    dict_free(sent);
    http_client_list = NULL;
+   rr_transport_emit(client.native_transport, RR_TRANSPORT_EVENT_CLOSE, NULL, NULL, 0);
+   rr_transport_free(client.native_transport);
    free(client.cli_version);
    puts("PASS: WebSocket opcodes/NUL/root/size, exact binary lengths and named-session delivery");
 

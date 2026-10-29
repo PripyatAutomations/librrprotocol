@@ -113,7 +113,6 @@ static const rr_wire_field_t wire_fields_4[] = {
    {"cat.freq", "freq"},
    {"cat.mode", "mode"},
    {"cat.power", "power"},
-   {"cat.power-unit", "power-unit"},
    {"cat.ptt", "ptt"},
    {"cat.room", "room"},
    {"cat.state.active", "state.active"},
@@ -386,6 +385,7 @@ static const rr_wire_rule_t wire_rules[] = {
    {"cat.freq", "cat", "cat.cmd", "freq", wire_fields_4, sizeof(wire_fields_4) / sizeof(wire_fields_4[0])},
    {"cat.mode", "cat", "cat.cmd", "mode", wire_fields_4, sizeof(wire_fields_4) / sizeof(wire_fields_4[0])},
    {"cat.power", "cat", "cat.cmd", "power", wire_fields_4, sizeof(wire_fields_4) / sizeof(wire_fields_4[0])},
+   {"cat.power-unit", "cat", "cat.cmd", "power-unit", wire_fields_4, sizeof(wire_fields_4) / sizeof(wire_fields_4[0])},
    {"cat.ptt", "cat", "cat.cmd", "ptt", wire_fields_4, sizeof(wire_fields_4) / sizeof(wire_fields_4[0])},
    {"cat.width", "cat", "cat.cmd", "width", wire_fields_4, sizeof(wire_fields_4) / sizeof(wire_fields_4[0])},
    {"cat.state", "cat", "cat.cmd", NULL, wire_fields_4, sizeof(wire_fields_4) / sizeof(wire_fields_4[0])},
@@ -478,5 +478,5 @@ static const rr_wire_rule_t wire_rules[] = {
    {"receiver-directory.list", "receiver-directory", "directory.cmd", "list", wire_fields_19, sizeof(wire_fields_19) / sizeof(wire_fields_19[0])},
    {"receiver-directory.refresh", "receiver-directory", "directory.cmd", "refresh", wire_fields_19, sizeof(wire_fields_19) / sizeof(wire_fields_19[0])},
    {"receiver-directory.chunk", "receiver-directory", "directory.cmd", "chunk", wire_fields_19, sizeof(wire_fields_19) / sizeof(wire_fields_19[0])},
-   {"domain", "domain", NULL, NULL, wire_fields_20, sizeof(wire_fields_20) / sizeof(wire_fields_20[0])},
+   {"domain", "domain", NULL, "domain", wire_fields_20, sizeof(wire_fields_20) / sizeof(wire_fields_20[0])},
 };

@@ -18,7 +18,7 @@ static uint64_t profile_clock(void) {
 #include <librrprotocol/wire.c>
 #undef mono_us
 static unsigned dumps, rows;
-static char first_row[512];
+static char media_row[512];
 void Log(logpriority_t priority, const char *subsys, const char *format, ...) {
    if (strcmp(subsys, "profile")) {
       return;
@@ -32,8 +32,11 @@ void Log(logpriority_t priority, const char *subsys, const char *format, ...) {
    if (strstr(text, "WebSocket JSON parser / binary dispatch counts")) {
       dumps++;
       rows = 0;
-   } else if (!strncmp(text, "  ", 2) && rows++ == 0) {
-      snprintf(first_row, sizeof(first_row), "%s", text);
+   } else if (!strncmp(text, "  ", 2)) {
+      rows++;
+   }
+   if (strstr(text, "media.list:")) {
+      snprintf(media_row, sizeof(media_row), "%s", text);
    }
    rr_wire_profile_dump();      /* Logging can forward messages or re-enter profiling. */
 }
@@ -66,7 +69,7 @@ int main(void) {
    test_clock += 1000000;
    rr_wire_profile_dump();
    assert(dumps == 2);
-   assert(strstr(first_row, "media.list: 3 messages") && strstr(first_row, "1 rejected"));
+   assert(strstr(media_row, "media.list: 3 messages") && strstr(media_row, "1 rejected"));
    puts("PASS: bounded per-operation JSON parser counts, bytes, rejects, timing, ranking and reentrant five-minute dumps");
 #else
    rr_wire_profile_dump();

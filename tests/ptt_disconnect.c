@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include "build_config.h"
 #include <librustyaxe/dict.h>
 #include <librustyaxe/struct.h>
 #include <librustyaxe/event-bus.h>
