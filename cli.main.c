@@ -754,17 +754,11 @@ bool ws_kick_client(rrconn_t *cptr, const char *reason) {
       rr_transport_close(cptr->native_transport);
       return true;
    }
-   if (!cptr->conn) {
-      Log(LOG_DEBUG, "auth", "ws_kick_client for cptr <%p> has mg_conn <%p> and is invalid", cptr, (cptr ? cptr->conn : NULL));
-
-      return false;
-   }
-
-#ifdef  USE_MONGOOSE
-
-   return ws_kick_client_by_c(cptr->conn, reason);
-#endif // USE_MONGOOSE
-
+#ifdef USE_MONGOOSE
+   if (cptr->conn)
+      return ws_kick_client_by_c(cptr->conn, reason);
+#endif
+   Log(LOG_DEBUG, "auth", "ws_kick_client: no active transport for cptr <%p>", (void *)cptr);
    return false;
 }
 
