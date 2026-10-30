@@ -103,6 +103,11 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
       event_emit_binary(RR_SERVER_SEND_EVENT, dest, &send, sizeof(send));
 
       if (send.handled) {
+         if (!send.result) {
+            Log(LOG_WARN, "rrproto.srv",
+                "Send intercepted and rejected by application handler (destination=%p, type=%s)",
+                (void *)dest, dict_get(d, "msg.type", "(missing)"));
+         }
          return send.result;
       }
    }
@@ -149,7 +154,14 @@ bool ws_send_dict(rrconn_t *sender, rrconn_t *dest, dict *d, int data_type) {
    Log(LOG_CRAZY, "ws.proto", "Sending dict <%p> to conn <%p> (%zu bytes)", (void *)d, (void *)dest, strlen(jp));
 
    size_t len = strlen(jp);
-   bool sent = rr_transport_send_message(dest->native_transport, jp, len) == RR_TRANSPORT_OK;
+   int status = rr_transport_send_message(dest->native_transport, jp, len);
+   bool sent = status == RR_TRANSPORT_OK;
+   if (!sent) {
+      Log(LOG_WARN, "rrproto.srv",
+          "Transport send failed (destination=%p, type=%s, status=%d, bytes=%zu, state=%d)",
+          (void *)dest, dict_get(d, "msg.type", "(missing)"), status, len,
+          (int)rr_transport_state(dest->native_transport));
+   }
 
    if (sent && dest->server) {
       rr_latency_sent(dest, d, mono_us());
