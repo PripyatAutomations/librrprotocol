@@ -351,6 +351,14 @@ void rr_rtp_socket_poll(rr_rtp_socket_t *s, uint64_t now, bool (*validate) (void
    }
 }
 #else
+bool rr_rtp_socket_start_ingress(rr_rtp_socket_t *s) {
+   (void)s;
+   return false;
+}
+uint64_t rr_rtp_socket_ingress_dropped(const rr_rtp_socket_t *s) {
+   (void)s;
+   return 0;
+}
 void rr_rtp_socket_set_source_filter(rr_rtp_socket_t *s, rr_rtp_source_fn filter, void *context) {
    (void)s;
    (void)filter;
