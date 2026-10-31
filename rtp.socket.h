@@ -21,6 +21,8 @@ void rr_rtp_socket_close(rr_rtp_socket_t *socket);
  * Call before attaching channels. */
 bool rr_rtp_socket_start_ingress(rr_rtp_socket_t *socket);
 uint64_t rr_rtp_socket_ingress_dropped(const rr_rtp_socket_t *socket);
+/* Read/reset high-water and maximum queue residence since last observation. */
+void rr_rtp_socket_ingress_stats(const rr_rtp_socket_t *socket, unsigned *high_water, uint64_t *max_age_us);
 rr_rtp_attachment_t *rr_rtp_socket_attach(rr_rtp_socket_t *socket, uint32_t ssrc, const uint8_t key[RR_RTP_KEY_LEN], bool encrypted, const char *endpoint,
    void *user);
 void rr_rtp_socket_detach(rr_rtp_attachment_t *attachment);
