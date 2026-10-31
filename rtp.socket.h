@@ -16,6 +16,11 @@ rr_rtp_socket_t *rr_rtp_socket_open(const char *host, unsigned port);
 typedef bool (*rr_rtp_source_fn)(void *context, void *attachment_user, const char *ip);
 void rr_rtp_socket_set_source_filter(rr_rtp_socket_t *socket, rr_rtp_source_fn filter, void *context);
 void rr_rtp_socket_close(rr_rtp_socket_t *socket);
+/* Optional dedicated UDP receive thread. RTP state and callbacks remain
+ * owner-thread only; socket polling drains the bounded datagram queue.
+ * Call before attaching channels. */
+bool rr_rtp_socket_start_ingress(rr_rtp_socket_t *socket);
+uint64_t rr_rtp_socket_ingress_dropped(const rr_rtp_socket_t *socket);
 rr_rtp_attachment_t *rr_rtp_socket_attach(rr_rtp_socket_t *socket, uint32_t ssrc, const uint8_t key[RR_RTP_KEY_LEN], bool encrypted, const char *endpoint,
    void *user);
 void rr_rtp_socket_detach(rr_rtp_attachment_t *attachment);
