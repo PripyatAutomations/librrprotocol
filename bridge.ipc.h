@@ -36,7 +36,7 @@ typedef struct rrp_bridge_ipc_message {
    char name[64];
    char driver[64];
    uint32_t flags;              /* bit 0 RX, 1 TX, 2 RX audio, 3 IQ, 4 waterfall, 5 TX audio */
-   uint32_t reserved2;
+   uint16_t waterfall_zoom_min, waterfall_zoom_max; /* Valid when WATERFALL flag set. */
    uint64_t rx_min_hz, rx_max_hz, tx_min_hz, tx_max_hz;
    char rx_modes[96], tx_modes[96];
    uint64_t request, frequency_hz;
