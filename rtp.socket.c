@@ -286,7 +286,7 @@ void rr_rtp_socket_poll(rr_rtp_socket_t *s, uint64_t now, bool (*validate) (void
             MSG_DONTWAIT, (struct sockaddr *)&queued.from, &queued.length);
          if (queued.size < 0) break;
       }
-      const uint8_t *packet = queued.packet;
+      uint8_t *packet = queued.packet;
       struct sockaddr_storage from = queued.from;
       socklen_t length = queued.length;
       ssize_t size = queued.size;
