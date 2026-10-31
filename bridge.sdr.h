@@ -34,6 +34,8 @@ typedef struct rrp_sdr_capabilities {
    bool rx_audio;
    bool rx_iq;
    bool rx_waterfall;
+   bool waterfall_zoom;
+   uint16_t waterfall_zoom_min, waterfall_zoom_max;
    bool tx_audio;
    uint64_t rx_min_hz, rx_max_hz;
    uint64_t tx_min_hz, tx_max_hz;
