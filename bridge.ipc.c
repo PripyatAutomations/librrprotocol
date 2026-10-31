@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/socket.h>
 
 _Static_assert(sizeof(rrp_bridge_ipc_message_t) <= RRP_BRIDGE_IPC_MAX, "bridge IPC size");
@@ -46,7 +47,7 @@ bool rrp_bridge_mode_valid(const char *modes, const char *mode) {
       }
       size_t n = strcspn(p, " ");
 
-      if (n == len && !strncmp(p, mode, n)) {
+      if (n == len && !strncasecmp(p, mode, n)) {
          return true;
       }
       p += n;
