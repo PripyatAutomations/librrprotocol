@@ -22,7 +22,7 @@
 #define RRP_BRIDGE_IPC_METADATA 8u
 #define RRP_BRIDGE_IPC_LOG 9u
 #define RRP_BRIDGE_IPC_WATERFALL 10u
-/* WATERFALL control: available=enabled, flags=absolute zoom (0..14). */
+/* WATERFALL control: available=enabled, flags=zoom, frequency_hz=center (0=follow VFO). */
 #define RRP_BRIDGE_RX 1u
 #define RRP_BRIDGE_TX 2u
 #define RRP_BRIDGE_RX_AUDIO 4u
