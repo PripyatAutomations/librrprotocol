@@ -11,7 +11,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define RRP_SDR_ABI_VERSION 6u
+#define RRP_SDR_ABI_VERSION 7u
 
 typedef struct rrp_sdr_host {
    void (*audio_pcm16)(void *user, const int16_t *samples, size_t count, unsigned sample_rate);
@@ -64,6 +64,8 @@ typedef struct rrp_sdr_driver {
    bool (*receive)(void *instance, const void *frame, size_t length);
    /* Optional RF waterfall control, called on the bridge host thread. */
    bool (*set_waterfall)(void *instance, bool enabled, unsigned zoom, uint64_t center_hz);
+   /* Optional device-specific, validated controls. Never block on I/O. */
+   bool (*set_control)(void *instance, const char *name, const char *value);
 } rrp_sdr_driver_t;
 
 // true = success, false = failure.
