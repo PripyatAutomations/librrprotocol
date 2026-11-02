@@ -10,7 +10,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #define RRP_BRIDGE_IPC_MAGIC 0x52524231u
-#define RRP_BRIDGE_IPC_VERSION 4u
+#define RRP_BRIDGE_IPC_VERSION 5u
 #define RRP_BRIDGE_IPC_FD 3
 #define RRP_BRIDGE_IPC_HELLO 1u
 #define RRP_BRIDGE_IPC_CAPABILITIES 2u
@@ -22,6 +22,8 @@
 #define RRP_BRIDGE_IPC_METADATA 8u
 #define RRP_BRIDGE_IPC_LOG 9u
 #define RRP_BRIDGE_IPC_WATERFALL 10u
+#define RRP_BRIDGE_IPC_CONTROL 11u
+/* CONTROL: metadata_key=driver-scoped control name, metadata_value=value. */
 /* WATERFALL control: available=enabled, flags=zoom, frequency_hz=center (0=follow VFO). */
 #define RRP_BRIDGE_RX 1u
 #define RRP_BRIDGE_TX 2u
