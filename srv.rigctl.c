@@ -35,7 +35,8 @@ bool rr_set_mode(rr_vfo_t vfo, rr_mode_t mode) {
 
 extern time_t now;
 
-time_t cfg_backend_poll_interval = 60;
+/* Legacy rig-state resend interval (seconds), unrelated to server backend polling (milliseconds). */
+static const time_t legacy_rig_state_interval = 60;
 
 // TODO: Merge with existing rr_vfo_data_t
 typedef struct ws_rig_state {
@@ -129,7 +130,7 @@ static bool ws_rig_state_send(rr_vfo_t vfo) {
    }
 
    // Nothing to return, see if we've iterated enough times to force a send
-   if (ws_rig_state_last_sent >= cfg_backend_poll_interval) {
+   if (ws_rig_state_last_sent >= legacy_rig_state_interval) {
       force_send = true;
    }
    ws_rig_state_t *diff = NULL;
