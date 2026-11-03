@@ -72,17 +72,20 @@ bool rrp_bridge_ipc_valid(const rrp_bridge_ipc_message_t *m) {
 
    if (m->type == RRP_BRIDGE_IPC_CONTROL &&
       (!memchr(m->metadata_key, 0, sizeof(m->metadata_key)) ||
-       !memchr(m->metadata_value, 0, sizeof(m->metadata_value)) ||
-       !token(m->metadata_key) || !m->metadata_value[0])) return false;
+      !memchr(m->metadata_value, 0, sizeof(m->metadata_value)) || !token(m->metadata_key) || !m->metadata_value[0])) {
+      return false;
+   }
 
-   if (m->type == RRP_BRIDGE_IPC_WATERFALL &&
-       (m->flags > 14 || m->waterfall_zoom_min || m->waterfall_zoom_max)) return false;
+   if (m->type == RRP_BRIDGE_IPC_WATERFALL && (m->flags > 14 || m->waterfall_zoom_min || m->waterfall_zoom_max)) {
+      return false;
+   }
 
    if (m->type == RRP_BRIDGE_IPC_CAPABILITIES) {
       if (m->waterfall_zoom_min > m->waterfall_zoom_max ||
-          m->waterfall_zoom_max > 14 ||
-          (!(m->flags & RRP_BRIDGE_WATERFALL) &&
-           (m->waterfall_zoom_min || m->waterfall_zoom_max))) return false;
+         m->waterfall_zoom_max > 14 || (!(m->flags & RRP_BRIDGE_WATERFALL) && (m->waterfall_zoom_min || m->waterfall_zoom_max))) {
+         return false;
+      }
+
       if ((m->flags & ~63u) || !modes_valid(m->rx_modes) || !modes_valid(m->tx_modes) ||
          ((m->flags & RRP_BRIDGE_RX) && (m->rx_min_hz > m->rx_max_hz || !m->rx_modes[0])) ||
          ((m->flags & RRP_BRIDGE_TX) && (m->tx_min_hz > m->tx_max_hz || !m->tx_modes[0])) ||

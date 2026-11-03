@@ -59,18 +59,30 @@ static void *ingress_thread(void *user) {
    rr_rtp_socket_t *s = user;
    struct rr_rtp_ingress *q = &s->ingress;
    while (!atomic_load_explicit(&q->stop, memory_order_acquire)) {
-      struct pollfd pfd = {.fd = s->fd, .events = POLLIN};
+      struct pollfd pfd = {
+         .fd = s->fd, .events = POLLIN
+      };
       int ready = poll(&pfd, 1, 20);
-      if (ready <= 0 || !(pfd.revents & POLLIN)) continue;
-      struct rr_rtp_datagram packet = {0};
+
+      if (ready <= 0 || !(pfd.revents & POLLIN)) {
+         continue;
+      }
+      struct rr_rtp_datagram packet = {
+         0
+      };
       packet.length = sizeof(packet.from);
-      packet.size = recvfrom(s->fd, packet.packet, sizeof(packet.packet),
-                             MSG_DONTWAIT, (struct sockaddr *)&packet.from, &packet.length);
-      if (packet.size < 0) continue;
+      packet.size = recvfrom(s->fd, packet.packet, sizeof(packet.packet), MSG_DONTWAIT, (struct sockaddr *)&packet.from, &packet.length);
+
+      if (packet.size < 0) {
+         continue;
+      }
       struct timespec ts;
-      if (!clock_gettime(CLOCK_MONOTONIC, &ts))
-         packet.received_us = (uint64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+
+      if (!clock_gettime(CLOCK_MONOTONIC, &ts)) {
+         packet.received_us = (uint64_t) ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+      }
       pthread_mutex_lock(&q->lock);
+
       if (q->count == RR_RTP_INGRESS_DEPTH) {
          atomic_fetch_add_explicit(&q->dropped, 1, memory_order_relaxed);
       } else {
@@ -78,35 +90,57 @@ static void *ingress_thread(void *user) {
          q->tail = (q->tail + 1) % RR_RTP_INGRESS_DEPTH;
          q->count++;
          unsigned high = atomic_load_explicit(&q->high_water, memory_order_relaxed);
-         if (q->count > high)
+
+         if (q->count > high) {
             atomic_store_explicit(&q->high_water, (unsigned)q->count, memory_order_relaxed);
+         }
       }
       pthread_mutex_unlock(&q->lock);
    }
    return NULL;
 }
 bool rr_rtp_socket_start_ingress(rr_rtp_socket_t *s) {
-   if (!s) return false;
+   if (!s) {
+      return false;
+   }
    struct rr_rtp_ingress *q = &s->ingress;
-   if (q->started) return true;
+
+   if (q->started) {
+      return true;
+   }
    q->frames = calloc(RR_RTP_INGRESS_DEPTH, sizeof(*q->frames));
-   if (!q->frames) return false;
+
+   if (!q->frames) {
+      return false;
+   }
+
    if (pthread_mutex_init(&q->lock, NULL)) {
-      free(q->frames); q->frames = NULL;
+      free(q->frames);
+      q->frames = NULL;
+
       return false;
    }
    atomic_store(&q->stop, false);
+
    if (pthread_create(&q->thread, NULL, ingress_thread, s)) {
       pthread_mutex_destroy(&q->lock);
-      free(q->frames); q->frames = NULL;
+      free(q->frames);
+      q->frames = NULL;
+
       return false;
    }
    q->started = true;
+
    return true;
 }
 void rr_rtp_socket_ingress_stats(const rr_rtp_socket_t *s, unsigned *high_water, uint64_t *max_age_us) {
-   if (high_water) *high_water = s ? atomic_exchange_explicit((_Atomic unsigned *)&s->ingress.high_water, 0, memory_order_relaxed) : 0;
-   if (max_age_us) *max_age_us = s ? atomic_exchange_explicit((_Atomic uint64_t *)&s->ingress.max_age_us, 0, memory_order_relaxed) : 0;
+   if (high_water) {
+      *high_water = s ? atomic_exchange_explicit((_Atomic unsigned *)&s->ingress.high_water, 0, memory_order_relaxed) : 0;
+   }
+
+   if (max_age_us) {
+      *max_age_us = s ? atomic_exchange_explicit((_Atomic uint64_t *) &s->ingress.max_age_us, 0, memory_order_relaxed) : 0;
+   }
 }
 uint64_t rr_rtp_socket_ingress_dropped(const rr_rtp_socket_t *s) {
    return s ? atomic_load_explicit(&s->ingress.dropped, memory_order_relaxed) : 0;
@@ -188,6 +222,7 @@ void rr_rtp_socket_close(rr_rtp_socket_t *s) {
       pthread_mutex_destroy(&s->ingress.lock);
       free(s->ingress.frames);
    }
+
    for (unsigned i = 0 ; i < RR_RTP_ATTACHMENTS ; i++) {
       rr_rtp_socket_detach(&s->peers[i]);
    }
@@ -283,28 +318,40 @@ void rr_rtp_socket_poll(rr_rtp_socket_t *s, uint64_t now, bool (*validate) (void
    }
 
    for (unsigned budget = 0 ; budget < 128 ; budget++) {
-      struct rr_rtp_datagram queued = {0};
+      struct rr_rtp_datagram queued = {
+         0
+      };
+
       if (s->ingress.started) {
          struct rr_rtp_ingress *q = &s->ingress;
          pthread_mutex_lock(&q->lock);
+
          if (q->count) {
             queued = q->frames[q->head];
             q->head = (q->head + 1) % RR_RTP_INGRESS_DEPTH;
             q->count--;
          }
          pthread_mutex_unlock(&q->lock);
-         if (!queued.size) break;
+
+         if (!queued.size) {
+            break;
+         }
+
          if (queued.received_us && now >= queued.received_us) {
             uint64_t age = now - queued.received_us;
             uint64_t max = atomic_load_explicit(&q->max_age_us, memory_order_relaxed);
-            if (age > max)
+
+            if (age > max) {
                atomic_store_explicit(&q->max_age_us, age, memory_order_relaxed);
+            }
          }
       } else {
          queued.length = sizeof(queued.from);
-         queued.size = recvfrom(s->fd, queued.packet, sizeof(queued.packet),
-            MSG_DONTWAIT, (struct sockaddr *)&queued.from, &queued.length);
-         if (queued.size < 0) break;
+         queued.size = recvfrom(s->fd, queued.packet, sizeof(queued.packet), MSG_DONTWAIT, (struct sockaddr *)&queued.from, &queued.length);
+
+         if (queued.size < 0) {
+            break;
+         }
       }
       uint8_t *packet = queued.packet;
       struct sockaddr_storage from = queued.from;
@@ -373,15 +420,23 @@ void rr_rtp_socket_poll(rr_rtp_socket_t *s, uint64_t now, bool (*validate) (void
 #else
 void rr_rtp_socket_ingress_stats(const rr_rtp_socket_t *s, unsigned *high_water, uint64_t *max_age_us) {
    (void)s;
-   if (high_water) *high_water = 0;
-   if (max_age_us) *max_age_us = 0;
+
+   if (high_water) {
+      *high_water = 0;
+   }
+
+   if (max_age_us) {
+      *max_age_us = 0;
+   }
 }
 bool rr_rtp_socket_start_ingress(rr_rtp_socket_t *s) {
    (void)s;
+
    return false;
 }
 uint64_t rr_rtp_socket_ingress_dropped(const rr_rtp_socket_t *s) {
    (void)s;
+
    return 0;
 }
 void rr_rtp_socket_set_source_filter(rr_rtp_socket_t *s, rr_rtp_source_fn filter, void *context) {
