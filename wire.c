@@ -49,7 +49,8 @@ static const rr_wire_rule_t *rule_for(dict *in, bool encode) {
       }
       const char *command = dict_get(in, rule->command_key, NULL);
 
-      if (command && rule->command && !strcmp(command, rule->command)) {
+      if ((!command && !rule->command) ||
+         (command && rule->command && !strcmp(command, rule->command))) {
          return rule;
       }
    }
