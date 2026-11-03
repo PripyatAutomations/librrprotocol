@@ -42,9 +42,14 @@ static const rr_wire_rule_t *rule_for(dict *in, bool encode) {
       if (!encode) {
          return rule;
       }
-      const char *command = rule->command_key ? dict_get(in, rule->command_key, NULL) : NULL;
+      /* Operations without a command key are identified by msg.type alone.
+       * Their wire operation name need not be present in the internal dict. */
+      if (!rule->command_key) {
+         return rule;
+      }
+      const char *command = dict_get(in, rule->command_key, NULL);
 
-      if ((!command && !rule->command) || (command && rule->command && !strcmp(command, rule->command))) {
+      if (command && rule->command && !strcmp(command, rule->command)) {
          return rule;
       }
    }
