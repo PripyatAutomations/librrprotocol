@@ -79,6 +79,20 @@ int main(void) {
    fclose(input);
    free(line);
    assert(!rr_wire_encode(NULL) && !rr_wire_decode(NULL));
+   /* The post-login domain announcement has no separate command field. */
+   dict *domain = dict_new();
+   assert(domain);
+   dict_add(domain, "msg.type", "domain");
+   dict_add(domain, "domain.name", "ham.example");
+   dict_add(domain, "domain.server", "01234567-89ab-cdef-0123-456789abcdef");
+   char *domain_wire = rr_wire_encode(domain);
+   assert(domain_wire);
+   dict *domain_roundtrip = rr_wire_decode(domain_wire);
+   equivalent(domain, domain_roundtrip);
+   dict_free(domain_roundtrip);
+   free(domain_wire);
+   dict_free(domain);
+
    dict *alias = dict_new();
    dict_add(alias, "msg.type", "auth");
    dict_add(alias, "auth.cmd", "error");
