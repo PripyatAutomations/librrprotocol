@@ -102,7 +102,7 @@ ${BUILD_DIR}/librrprotocol/.stamp:
 
 ${librrprotocol}: ${BUILD_DIR}/librrprotocol/.stamp ${real_librrprotocol_objs} ${librrprotocol_headers} GNUmakefile librrprotocol/rules.mk
 	@echo "[link] $@ from $(words ${real_librrprotocol_objs}) objects"
-	@${CC} ${LDFLAGS} ${LIB_LDFLAGS} -Wl,-soname,librrprotocol.so.0 -lm -o $@ ${real_librrprotocol_objs} -lrustyaxe ${librrprotocol_ldlibs} || exit 2
+	@${CC} ${LDFLAGS} ${LIB_LDFLAGS} $(call SHARED_ID_FLAG,librrprotocol.so) -lm -o $@ ${real_librrprotocol_objs} -lrustyaxe ${librrprotocol_ldlibs} || exit 2
 	@ln -sf librrprotocol.so librrprotocol.so.0
 
 # Objects include build_config.h via the protocol/rustyaxe headers; wait for
