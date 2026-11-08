@@ -99,8 +99,8 @@ enum http_res_type {
 typedef enum http_res_type http_res_type_t;
 
 struct http_res_types {
-   char *shortname;
-   char *msg;
+   const char *shortname;
+   const char *msg;
 };
 
 #if     !defined(__RRCLI)
