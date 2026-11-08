@@ -33,7 +33,6 @@
 #include <stdbool.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
-#include <fwdsp/fwdsp-shared.h>
 
 // if passed NULL for codecs, use all available codecs
 dict *media_capab_prepare(const char *codecs) {
