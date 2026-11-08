@@ -1,0 +1,3 @@
+usr/include/librrprotocol/*.h
+usr/lib/*/librrprotocol.so
+usr/lib/*/pkgconfig/librrprotocol.pc
