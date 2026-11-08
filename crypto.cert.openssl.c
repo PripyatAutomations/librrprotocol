@@ -46,7 +46,7 @@ static bool add_ext(X509 *cert, int nid, const char *value) {
 
    return ok == 1;
 }
-static bool read_pair(const char *certpath, const char *keypath) {
+static bool read_pair(const char *certpath, const char *keypath, const char *dns) {
    FILE *f = fopen(certpath, "rb");
 
    if (!f) {
@@ -60,7 +60,8 @@ static bool read_pair(const char *certpath, const char *keypath) {
    if (f) {
       fclose(f);
    }
-   bool ok = cert && key && X509_check_private_key(cert, key) == 1;
+   bool ok = cert && key && X509_check_private_key(cert, key) == 1 &&
+      (!dns || X509_check_host(cert, dns, 0, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS, NULL) == 1);
    EVP_PKEY_free(key);
    X509_free(cert);
 
@@ -108,7 +109,7 @@ bool rr_crypto_tls_identity_ensure(const char *certpath, const char *keypath, co
    bool c = lstat(certpath, &a) == 0, k = lstat(keypath, &b) == 0;
 
    if (c || k) {
-      return c && k && S_ISREG(a.st_mode) && S_ISREG(b.st_mode) && !(b.st_mode & 0077) && read_pair(certpath, keypath);
+      return c && k && S_ISREG(a.st_mode) && S_ISREG(b.st_mode) && !(b.st_mode & 0077) && read_pair(certpath, keypath, dns);
    }
 
    if (errno != ENOENT) {
