@@ -1,3 +1,10 @@
+librrprotocol (0.1.0-2) unstable; urgency=medium
+
+  * Keep server-only online-user and ACL implementation out of the shared
+    library so independent consumers such as rrbridge link cleanly.
+
+ -- Pripyat Automations <dangerousdevices@istabpeople.com>  Sun, 08 Nov 2026 03:00:00 -0500
+
 librrprotocol (0.1.0-1) unstable; urgency=medium
 
   * Introduce independent shared-library and development packaging.
