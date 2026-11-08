@@ -23,7 +23,7 @@ $(error Missing required development libraries: $(PACKAGES))
 endif
 endif
 RR_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PACKAGES)) -I$(BUILD_DIR)/include -I$(BUILD_DIR)/generated -DHOST_POSIX=1
-RR_LIBS := $(shell $(PKG_CONFIG) --libs $(PACKAGES)) -lrustyaxe -lm -pthread
+RR_LIBS := $(shell $(PKG_CONFIG) --libs $(PACKAGES)) $(shell $(PKG_CONFIG) --libs-only-L librustyaxe 2>/dev/null) -lrustyaxe -lm -pthread
 ifeq ($(WITH_RTP),true)
 RR_CFLAGS += -DRR_HAVE_SRTP=1 $(shell $(PKG_CONFIG) --cflags libsrtp2)
 RR_LIBS += $(shell $(PKG_CONFIG) --libs libsrtp2)
@@ -66,7 +66,8 @@ install: all
 	ln -sfn $(notdir $(REAL_LIB)) "$(DESTDIR)$(LIBDIR)/$(SONAME)"
 	ln -sfn $(SONAME) "$(DESTDIR)$(LIBDIR)/librrprotocol.so"
 	install -d "$(DESTDIR)$(INCLUDEDIR)/librrprotocol"
-	@for h in $(PUBLIC_HEADERS); do install -m644 "$$h" "$(DESTDIR)$(INCLUDEDIR)/librrprotocol/$$h"; done
+	@for h in $(PUBLIC_HEADERS); do install -m644 "$h" "$(DESTDIR)$(INCLUDEDIR)/librrprotocol/$h"; done
+	install -m644 $(BUILD_DIR)/generated/build_config.h "$(DESTDIR)$(INCLUDEDIR)/librrprotocol/build_config.h"
 	install -Dm644 $(PC_FILE) "$(DESTDIR)$(LIBDIR)/pkgconfig/librrprotocol.pc"
 
 clean:
