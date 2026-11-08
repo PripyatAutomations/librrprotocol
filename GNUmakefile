@@ -11,7 +11,7 @@ BUILD_DIR ?= build
 DESTDIR ?=
 VERSION ?= 0.1.0
 SOVERSION ?= 0
-WITH_RTP ?= false
+WITH_RTP ?= $(shell $(PKG_CONFIG) --exists libsrtp2 && echo true || echo false)
 
 include sources.mk
 OBJECTS := $(addprefix $(BUILD_DIR)/objects/,$(librrprotocol_objs))
@@ -55,7 +55,7 @@ $(PC_FILE): GNUmakefile
 	@mkdir -p $(BUILD_DIR)
 	@printf '%s\n' 'prefix=$(PREFIX)' 'libdir=$(LIBDIR)' 'includedir=$(INCLUDEDIR)' '' \
 	    'Name: librrprotocol' 'Description: RustyRig wire protocol library' \
-	    'Version: $(VERSION)' 'Requires.private: glib-2.0 gio-2.0 openssl' \
+	    'Version: $(VERSION)' 'Requires.private: librustyaxe glib-2.0 gio-2.0 openssl' \
 	    'Libs: -L$${libdir} -lrrprotocol' 'Cflags: -I$${includedir}' > $@
 
 check: all
