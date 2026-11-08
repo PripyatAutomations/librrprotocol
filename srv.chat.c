@@ -2016,7 +2016,7 @@ bool ws_handle_chat_msg(rrconn_t *cptr, dict *d) {
          dict_add(u, "user.data", data ? data : "");
          /* Optional account profile for the server-owned user creation path. The server validates fields and persists them with bound SQL. */
          const char *profile_keys[] = {
-            "email", "real_name", "phone"
+            "email", "real_name", "phone", "maxsessions"
          };
 
          for (size_t profile_index = 0 ; profile_index < sizeof(profile_keys) / sizeof(profile_keys[0]) ; profile_index++) {
