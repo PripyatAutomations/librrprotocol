@@ -9,9 +9,6 @@
 #define __rrprotocol_h
 
 #include "build_config.h"
-#if     defined(USE_MONGOOSE)
-#include "ext/libmongoose/mongoose.h"
-#endif
 #include <librrprotocol/vfo.h>
 #include <librrprotocol/auth.h>
 #include <librrprotocol/http.h>
