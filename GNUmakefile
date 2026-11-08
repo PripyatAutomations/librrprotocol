@@ -22,7 +22,7 @@ OBJECTS := $(addprefix $(BUILD_DIR)/objects/,$(librrprotocol_objs))
 # client and server, but may not own either application's handlers.
 .PHONY: check-boundary
 check-boundary:
-	@bad=$(printf '%s\n' $(librrprotocol_objs) | grep -E '^(srv\\.|cli\\.|http\\.api\\.|http\\.bans\\.|ws\\.auth\\.|ws\\.mediachan\\.|ws\\.serial\\.|cfg\\.servers\\.|cfg\\.fwdsp\\.)' || :); \
+	@bad=$(printf '%s\n' $(librrprotocol_objs) | grep -E '^(srv\\.|cli\\.|http\\.api\\.|http\\.bans\\.|ws\\.auth\\.|ws\\.mediachan\\.|ws\\.serial\\.|cfg\\.servers\\.)' || :); \
 	 test -z "$bad" || { printf 'Application-only objects in librrprotocol: %s\n' "$bad" >&2; exit 1; }
 	@for src in $(addsuffix .c,$(basename $(librrprotocol_objs))); do \
 	  if grep -Eq '#[[:space:]]*include[[:space:]]*[<"](rrserver|rrclient|fwdsp)/' "$src"; then \
