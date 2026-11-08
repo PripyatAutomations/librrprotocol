@@ -59,7 +59,10 @@ $(PC_FILE): GNUmakefile
 	    'Libs: -L$${libdir} -lrrprotocol' 'Cflags: -I$${includedir}' > $@
 
 check: all
-	@echo "Standalone protocol library built. Integration tests run from rustyrig-fw."
+	@readelf -d $(REAL_LIB) | grep -q "SONAME.*$(SONAME)"
+	@test -L $(BUILD_DIR)/$(SONAME)
+	@test -f $(PC_FILE)
+	@echo "Protocol shared library, SONAME and pkg-config metadata verified."
 
 install: all
 	install -Dm755 $(REAL_LIB) "$(DESTDIR)$(LIBDIR)/$(notdir $(REAL_LIB))"
