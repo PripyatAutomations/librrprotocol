@@ -12,7 +12,7 @@ LIBDIR ?= $(if $(filter $(BUILD_PC_PREFIX),$(PREFIX)),$(shell $(PKG_CONFIG) --va
 INCLUDEDIR ?= $(PREFIX)/include
 BUILD_DIR ?= build
 DESTDIR ?=
-VERSION ?= 0.1.0
+VERSION ?= $(strip $(shell cat .version))
 SOVERSION ?= 0
 WITH_RTP ?= $(shell $(PKG_CONFIG) --exists libsrtp2 && echo true || echo false)
 
