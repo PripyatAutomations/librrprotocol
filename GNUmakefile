@@ -84,13 +84,13 @@ install: all
 	ln -sfn $(notdir $(REAL_LIB)) "$(DESTDIR)$(LIBDIR)/$(SONAME)"
 	ln -sfn $(SONAME) "$(DESTDIR)$(LIBDIR)/librrprotocol.so"
 	install -d "$(DESTDIR)$(INCLUDEDIR)/librrprotocol"
-	@for h in $(PUBLIC_HEADERS); do install -m644 "$h" "$(DESTDIR)$(INCLUDEDIR)/librrprotocol/$h"; done
+	@for h in $(PUBLIC_HEADERS); do install -m644 "$$h" "$(DESTDIR)$(INCLUDEDIR)/librrprotocol/$$h"; done
 	install -m644 $(BUILD_DIR)/generated/build_config.h "$(DESTDIR)$(INCLUDEDIR)/librrprotocol/build_config.h"
 	install -Dm644 $(PC_FILE) "$(DESTDIR)$(LIBDIR)/pkgconfig/librrprotocol.pc"
 
 uninstall:
 	rm -f "$(DESTDIR)$(LIBDIR)/$(notdir $(REAL_LIB))" "$(DESTDIR)$(LIBDIR)/$(SONAME)" "$(DESTDIR)$(LIBDIR)/librrprotocol.so" "$(DESTDIR)$(LIBDIR)/pkgconfig/librrprotocol.pc"
-	@for h in $(PUBLIC_HEADERS); do rm -f "$(DESTDIR)$(INCLUDEDIR)/librrprotocol/$h"; done
+	@for h in $(PUBLIC_HEADERS); do rm -f "$(DESTDIR)$(INCLUDEDIR)/librrprotocol/$$h"; done
 	rm -f "$(DESTDIR)$(INCLUDEDIR)/librrprotocol/build_config.h"
 	-rmdir "$(DESTDIR)$(INCLUDEDIR)/librrprotocol"
 
