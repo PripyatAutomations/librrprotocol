@@ -399,7 +399,11 @@
         "talk.typing": "typing",
         "talk.epoch": "epoch",
         "talk.seq": "seq",
-        "talk.ttl": "ttl"
+        "talk.ttl": "ttl",
+        "user.email": "user.email",
+        "user.real_name": "user.real_name",
+        "user.phone": "user.phone",
+        "user.maxsessions": "user.maxsessions"
       }
     },
     {
