@@ -45,7 +45,7 @@ static bool valid_ex(dict *d, char *reason, size_t cap) {
    } else if (!strcmp(op, "link.application")) {
       const char *kind = dict_get(d, "kind", "");
       const char *kinds[] = {
-         "catalog", "catalog-remove", "catalog-begin", "catalog-end", "catalog-ack", "users", "request", "reply", "state", "subscribe", "unsubscribe", "close"
+         "catalog", "catalog-remove", "catalog-begin", "catalog-end", "catalog-ack", "identity-revocation", "identity-revocation-ack", "users", "request", "reply", "state", "subscribe", "unsubscribe", "close"
       };
       bool known = false;
 
