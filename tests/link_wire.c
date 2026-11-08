@@ -41,6 +41,24 @@ int main(void) {
    dict_add(app, "session", "session");
    dict_add(app, "username", "CALLSIGN");
    dict_add(app, "payload", "{\"msg\":{\"type\":\"cat\"}}");
+   /* Mutable per-hop TTL belongs to the outer envelope, not the
+    * signed JSON application payload. Strictly bound to 1..255. */
+   dict_add(app, "ttl", "10");
+   encoded = rr_link_wire_encode(app);
+   assert(encoded);
+   copy = rr_link_wire_decode(encoded, strlen(encoded));
+   assert(copy && !strcmp(dict_get(copy, "ttl", ""), "10"));
+   dict_free(copy);
+   free(encoded);
+   dict_add(app, "ttl", "0");
+   assert(!rr_link_wire_encode(app));
+   dict_add(app, "ttl", "256");
+   assert(!rr_link_wire_encode(app));
+   dict_add(app, "ttl", "-1");
+   assert(!rr_link_wire_encode(app));
+   dict_add(app, "ttl", "01");
+   assert(!rr_link_wire_encode(app));
+   dict_add(app, "ttl", "1");
    encoded = rr_link_wire_encode(app);
    assert(encoded);
    copy = rr_link_wire_decode(encoded, strlen(encoded));
