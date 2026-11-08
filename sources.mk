@@ -14,7 +14,8 @@ librrprotocol_objs += crypto.cert.openssl.o
 librrprotocol_objs += crypto.binding.o
 #librrprotocol_objs += irc.client.o
 #librrprotocol_objs += irc.server.o
-librrprotocol_objs += is.o
+# is_admin_online/is_elmer_online depend on rrserver sessions and ACLs;
+# do not link application-only is.c into the standalone protocol SDK.
 librrprotocol_objs += latency.o
 librrprotocol_objs += link.wire.o
 librrprotocol_objs += media.health.o
