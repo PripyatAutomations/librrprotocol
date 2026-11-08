@@ -1,0 +1,27 @@
+Source: librrprotocol
+Section: libs
+Priority: optional
+Maintainer: Pripyat Automations <dangerousdevices@istabpeople.com>
+Build-Depends: debhelper-compat (= 13), pkg-config, librustyaxe-dev, libglib2.0-dev, libssl-dev, libcurl4-openssl-dev, libsqlite3-dev
+Standards-Version: 4.7.2
+Rules-Requires-Root: no
+Homepage: https://github.com/PripyatAutomations/librrprotocol
+Vcs-Git: https://github.com/PripyatAutomations/librrprotocol.git
+Vcs-Browser: https://github.com/PripyatAutomations/librrprotocol
+
+Package: librrprotocol0
+Architecture: any
+Multi-Arch: same
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Breaks: librrprotocol (<< 1.0.3~)
+Replaces: librrprotocol (<< 1.0.3~)
+Description: RustyRig shared protocol library
+ Shared WebSocket, messaging and rig protocol support.
+
+Package: librrprotocol-dev
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends: librrprotocol0 (= ${binary:Version}), librustyaxe-dev, ${misc:Depends}
+Description: Development files for librrprotocol
+ Public headers, unversioned linker symlink and pkg-config metadata.
