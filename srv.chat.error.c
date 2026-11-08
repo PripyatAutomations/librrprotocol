@@ -17,7 +17,6 @@
 #include <time.h>
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
-#include <rrserver/backend.h>
 
 // minimum reason length for kick/ban/etc
 #define CHAT_MIN_REASON_LEN 10

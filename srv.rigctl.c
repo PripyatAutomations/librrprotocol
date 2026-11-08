@@ -23,7 +23,6 @@
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/objects.h>
 #include <librrprotocol/server.events.h>
-#include <rrserver/backend.h>
 
 bool rr_set_width(rr_vfo_t vfo, const char *width) {
    return false;

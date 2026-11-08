@@ -26,7 +26,6 @@
 #include <librrprotocol/rrprotocol.h>
 #include <librrprotocol/server.events.h>
 #include <librrprotocol/srv.chat.internal.h>
-#include <rrserver/backend.h>
 
 // minimum reason length for kick/ban/etc
 #define CHAT_MIN_REASON_LEN 10
