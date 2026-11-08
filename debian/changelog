@@ -1,3 +1,10 @@
+librrprotocol (0.1.0-4) unstable; urgency=medium
+
+  * Add link.goodbye and signed identity-revocation/ack link application
+    frames for authenticated mesh maintenance and catalog invalidation.
+
+ -- Pripyat Automations <dangerousdevices@istabpeople.com>  Sun, 08 Nov 2026 15:00:00 -0500
+
 librrprotocol (0.1.0-3) unstable; urgency=medium
 
   * Default RustyRig WSS client URLs to native TLS port 4420.
