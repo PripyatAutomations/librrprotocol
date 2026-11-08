@@ -22,14 +22,13 @@ OBJECTS := $(addprefix $(BUILD_DIR)/objects/,$(librrprotocol_objs))
 # client and server, but may not own either application's handlers.
 .PHONY: check-boundary
 check-boundary:
-	@bad=$(printf '%s\n' $(librrprotocol_objs) | grep -E '^(srv\\.|cli\\.|http\\.api\\.|http\\.bans\\.|ws\\.auth\\.|ws\\.mediachan\\.|ws\\.serial\\.|cfg\\.servers\\.)' || :); \
-	 test -z "$bad" || { printf 'Application-only objects in librrprotocol: %s\n' "$bad" >&2; exit 1; }
+	@bad='$(filter srv.%.o cli.%.o http.api.o http.bans.o ws.auth.o ws.mediachan.o ws.serial.o cfg.servers.o,$(librrprotocol_objs))'; \
+	 test -z "$$bad" || { printf 'Application-only objects in librrprotocol: %s\n' "$$bad" >&2; exit 1; }
 	@for src in $(addsuffix .c,$(basename $(librrprotocol_objs))); do \
-	  if grep -Eq '#[[:space:]]*include[[:space:]]*[<"](rrserver|rrclient|fwdsp)/' "$src"; then \
-	    echo "Forbidden application include in shared protocol: $src" >&2; exit 1; \
+	  if grep -Eq '#[[:space:]]*include[[:space:]]*[<"](rrserver|rrclient|fwdsp)/' "$$src"; then \
+	    echo "Forbidden application include in shared protocol: $$src" >&2; exit 1; \
 	  fi; \
 	done
-
 
 PUBLIC_HEADERS := $(filter-out %.internal.h internal.h,$(notdir $(wildcard *.h)))
 PACKAGES := librustyaxe glib-2.0 gio-2.0 openssl
