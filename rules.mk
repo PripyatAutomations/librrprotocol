@@ -17,7 +17,12 @@ ifneq ($(CRYPTO_BACKEND),openssl)
 $(error Unsupported CRYPTO_BACKEND=$(CRYPTO_BACKEND); only openssl implemented)
 endif
 librrprotocol_ldlibs += $(shell pkg-config --libs openssl)
+ifeq ($(LIBRUSTYAXE_PROVIDER),system)
+# Installed RustyAxe headers must outrank checkout-root headers.
+librrprotocol_cflags := ${CFLAGS} ${librrprotocol_rtp_cflags} -I./modsrc/ -idirafter ./ -idirafter ./inc
+else
 librrprotocol_cflags := ${CFLAGS} ${librrprotocol_rtp_cflags} -I./modsrc/ -I./ -I./inc
+endif
 
 # Switching optional protection features must not reuse objects from another build.
 .PHONY: rrprotocol-rtp-config-force
