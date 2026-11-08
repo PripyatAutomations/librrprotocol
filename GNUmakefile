@@ -17,7 +17,7 @@ include sources.mk
 OBJECTS := $(addprefix $(BUILD_DIR)/objects/,$(librrprotocol_objs))
 PUBLIC_HEADERS := $(filter-out %.internal.h internal.h,$(notdir $(wildcard *.h)))
 PACKAGES := glib-2.0 gio-2.0 openssl libcurl sqlite3
-ifeq ($(filter clean distclean,$(MAKECMDGOALS)),)
+ifeq ($(filter clean distclean src-deb source-deb,$(MAKECMDGOALS)),)
 ifeq ($(shell $(PKG_CONFIG) --exists $(PACKAGES) && echo yes),)
 $(error Missing required development libraries: $(PACKAGES))
 endif
