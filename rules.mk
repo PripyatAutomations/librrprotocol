@@ -86,7 +86,7 @@ ${BUILD_DIR}/librrprotocol/.rtp-config: rrprotocol-rtp-config-force
 	@rm -f $@.new
 ${BUILD_DIR}/librrprotocol/rtp.o ${BUILD_DIR}/librrprotocol/rtp.socket.o: ${BUILD_DIR}/librrprotocol/.rtp-config
 
-extra_clean += ${librustyaxe_objs} ${librustyaxe} librrprotocol.so.0
+extra_clean += librrprotocol.so.0
 # librrprotocol headers include librustyaxe's public structs.  Make those
 # headers prerequisites too, otherwise a shared-struct change can leave the
 # protocol library with a stale definition of global arrays such as http_users.
