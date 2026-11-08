@@ -169,7 +169,7 @@ bool rr_crypto_tls_identity_ensure(const char *certpath, const char *keypath, co
    }
 
    if (ok) {
-      ok = read_pair(certpath, keypath);
+      ok = read_pair(certpath, keypath, dns);
    }
    X509_free(cert);
    EVP_PKEY_free(key);
