@@ -82,7 +82,7 @@ deb:
 	dpkg-buildpackage -b -us -uc
 
 src-deb source-deb:
-	@test -d .git && git diff --quiet && git diff --cached --quiet || { echo "Commit tracked changes before source packaging" >&2; exit 1; }
+	@git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git diff --quiet && git diff --cached --quiet || { echo "Commit tracked changes before source packaging" >&2; exit 1; }
 	@v=$$(dpkg-parsechangelog -S Version | sed 's/-[^-]*$$//'); \
-	 git archive --format=tar --prefix="librrprotocol-$$v/" HEAD | gzip -n > "../librrprotocol_$$v.orig.tar.gz"
+	 git archive --format=tar --prefix="librrprotocol-$$v/" HEAD -- . ':!debian' | gzip -n > "../librrprotocol_$$v.orig.tar.gz"
 	dpkg-buildpackage -S -us -uc
