@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 .DEFAULT_GOAL := all
 CC ?= cc
+CFLAGS += -std=gnu23
 PKG_CONFIG ?= pkg-config
 PREFIX ?= /usr
 MULTIARCH ?= $(shell $(CC) -dumpmachine)
