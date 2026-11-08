@@ -38,7 +38,7 @@ $(error Missing required development libraries: $(PACKAGES))
 endif
 endif
 RR_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PACKAGES)) -I$(BUILD_DIR)/include -I$(BUILD_DIR)/generated -DHOST_POSIX=1
-RR_LIBS := $(shell $(PKG_CONFIG) --libs $(PACKAGES)) -lm -pthread
+RR_LIBS := $(shell $(PKG_CONFIG) --libs $(PACKAGES)) -largon2 -lm -pthread
 ifeq ($(WITH_RTP),true)
 RR_CFLAGS += -DRR_HAVE_SRTP=1 $(shell $(PKG_CONFIG) --cflags libsrtp2)
 RR_LIBS += $(shell $(PKG_CONFIG) --libs libsrtp2)
@@ -71,7 +71,7 @@ $(PC_FILE): GNUmakefile
 	@printf '%s\n' 'prefix=$(PREFIX)' 'libdir=$(LIBDIR)' 'includedir=$(INCLUDEDIR)' '' \
 	    'Name: librrprotocol' 'Description: RustyRig wire protocol library' \
 	    'Version: $(VERSION)' 'Requires.private: librustyaxe glib-2.0 gio-2.0 openssl' \
-	    'Libs: -L$${libdir} -lrrprotocol' 'Cflags: -I$${includedir}' > $@
+	    'Libs: -L${libdir} -lrrprotocol' 'Libs.private: -largon2' 'Cflags: -I$${includedir}' > $@
 
 check: all
 	@readelf -d $(REAL_LIB) | grep -q "SONAME.*$(SONAME)"

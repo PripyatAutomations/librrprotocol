@@ -39,6 +39,18 @@ static void test_privileges(void) {
    assert(!has_priv(3, NULL));
 }
 
+static void test_argon2id_passwords(void) {
+   char *one = auth_password_hash_argon2id("correct horse battery staple");
+   char *two = auth_password_hash_argon2id("correct horse battery staple");
+   assert(one && two && strcmp(one, two));
+   assert(auth_password_is_argon2id(one));
+   assert(auth_password_verify_argon2id(one, "correct horse battery staple"));
+   assert(!auth_password_verify_argon2id(one, "wrong"));
+   assert(!auth_password_verify_argon2id("a9993e364706816aba3e25717850c26c9cd0d89d", "abc"));
+   assert(!auth_password_hash_argon2id(NULL));
+   free(one);
+   free(two);
+}
 static void test_wire_password(void) {
    char *wire = compute_wire_password("abc", "nonce");
    assert(wire);
@@ -201,6 +213,7 @@ int main(void) {
    test_privileges();
    test_elmer_account_changes();
    test_static_account_reload();
+   test_argon2id_passwords();
    test_wire_password();
    test_wire_password_full_inputs();
    test_media_source_authorization();
