@@ -1,3 +1,9 @@
+librrprotocol (0.1.0-3) unstable; urgency=medium
+
+  * Default RustyRig WSS client URLs to native TLS port 4420.
+
+ -- Pripyat Automations <dangerousdevices@istabpeople.com>  Sun, 08 Nov 2026 13:30:00 -0500
+
 librrprotocol (0.1.0-2) unstable; urgency=medium
 
   * Keep server-only online-user and ACL implementation out of the shared
