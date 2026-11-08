@@ -40,7 +40,7 @@ static bool valid_ex(dict *d, char *reason, size_t cap) {
       required = 1;
    } else if (!strcmp(op, "link.introduce")) {
       required = 1 | (1 << 1) | (1 << 2) | (1 << 6);
-   } else if (!strcmp(op, "link.withdraw")) {
+   } else if (!strcmp(op, "link.withdraw") || !strcmp(op, "link.goodbye")) {
       required = 1 | (1 << 1);
    } else if (!strcmp(op, "link.application")) {
       const char *kind = dict_get(d, "kind", "");
