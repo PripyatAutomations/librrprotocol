@@ -49,6 +49,9 @@ int main(void) {
    char *pin = rr_crypto_cert_spki_sha256(cert);
    assert(pin && strlen(pin) == 44);
    assert(rr_crypto_tls_identity_ensure(cert, priv, "test.rustyrig.local"));
+   /* Existing key material must never silently change when a new logical
+    * station name is configured. Require an explicit key rotation. */
+   assert(!rr_crypto_tls_identity_ensure(cert, priv, "moved.rustyrig.local"));
    free(pin);
    unlink(cert);
    unlink(priv);
