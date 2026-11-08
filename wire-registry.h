@@ -258,6 +258,10 @@ static const rr_wire_field_t wire_fields_7[] = {
    {"talk.epoch", "epoch"},
    {"talk.seq", "seq"},
    {"talk.ttl", "ttl"},
+   {"user.email", "user.email"},
+   {"user.real_name", "user.real_name"},
+   {"user.phone", "user.phone"},
+   {"user.maxsessions", "user.maxsessions"},
 };
 static const rr_wire_field_t wire_fields_8[] = {
    {"msg.ts", "time"},
