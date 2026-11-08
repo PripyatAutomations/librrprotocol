@@ -61,7 +61,7 @@ static bool read_pair(const char *certpath, const char *keypath, const char *dns
       fclose(f);
    }
    bool ok = cert && key && X509_check_private_key(cert, key) == 1 &&
-      (!dns || X509_check_host(cert, dns, 0, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS, NULL) == 1);
+      (!dns || X509_check_host(cert, dns, 0, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS | X509_CHECK_FLAG_NEVER_CHECK_SUBJECT, NULL) == 1);
    EVP_PKEY_free(key);
    X509_free(cert);
 
