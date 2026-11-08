@@ -18,6 +18,19 @@ WITH_RTP ?= $(shell $(PKG_CONFIG) --exists libsrtp2 && echo true || echo false)
 
 include sources.mk
 OBJECTS := $(addprefix $(BUILD_DIR)/objects/,$(librrprotocol_objs))
+# Reject source-list regressions: code in this library may be shared between
+# client and server, but may not own either application's handlers.
+.PHONY: check-boundary
+check-boundary:
+	@bad=$(printf '%s\n' $(librrprotocol_objs) | grep -E '^(srv\\.|cli\\.|http\\.api\\.|http\\.bans\\.|ws\\.auth\\.|ws\\.mediachan\\.|ws\\.serial\\.|cfg\\.servers\\.|cfg\\.fwdsp\\.)' || :); \
+	 test -z "$bad" || { printf 'Application-only objects in librrprotocol: %s\n' "$bad" >&2; exit 1; }
+	@for src in $(addsuffix .c,$(basename $(librrprotocol_objs))); do \
+	  if grep -Eq '#[[:space:]]*include[[:space:]]*[<"](rrserver|rrclient|fwdsp)/' "$src"; then \
+	    echo "Forbidden application include in shared protocol: $src" >&2; exit 1; \
+	  fi; \
+	done
+
+
 PUBLIC_HEADERS := $(filter-out %.internal.h internal.h,$(notdir $(wildcard *.h)))
 PACKAGES := librustyaxe glib-2.0 gio-2.0 openssl
 ifeq ($(filter clean distclean uninstall src-deb source-deb,$(MAKECMDGOALS)),)
@@ -36,7 +49,7 @@ SONAME := librrprotocol.so.$(SOVERSION)
 PC_FILE := $(BUILD_DIR)/librrprotocol.pc
 
 .PHONY: all check install uninstall clean distclean deb src-deb source-deb
-all: $(REAL_LIB) $(PC_FILE)
+all: check-boundary $(REAL_LIB) $(PC_FILE)
 
 $(BUILD_DIR)/include/librrprotocol $(BUILD_DIR)/generated/build_config.h &:
 	@mkdir -p $(BUILD_DIR)/include $(BUILD_DIR)/generated
