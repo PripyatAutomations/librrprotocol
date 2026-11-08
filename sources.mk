@@ -6,7 +6,6 @@ librrprotocol_objs += bridge.ipc.o
 librrprotocol_objs += bridge.media.o
 librrprotocol_objs += bridge.sdr.o
 librrprotocol_objs += cfg.bridge.o
-librrprotocol_objs += cfg.fwdsp.o		# config section callbacks for [fwdsp]/[pipeline]
 librrprotocol_objs += codecneg.o
 librrprotocol_objs += connman.o
 librrprotocol_objs += crypto.openssl.o
