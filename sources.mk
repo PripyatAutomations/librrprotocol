@@ -7,14 +7,11 @@ librrprotocol_objs += bridge.media.o
 librrprotocol_objs += bridge.sdr.o
 librrprotocol_objs += cfg.bridge.o
 librrprotocol_objs += cfg.fwdsp.o		# config section callbacks for [fwdsp]/[pipeline]
-librrprotocol_objs += cfg.servers.o
 librrprotocol_objs += codecneg.o
 librrprotocol_objs += connman.o
 librrprotocol_objs += crypto.openssl.o
 librrprotocol_objs += crypto.cert.openssl.o
 librrprotocol_objs += crypto.binding.o
-librrprotocol_objs += http.api.o
-librrprotocol_objs += http.bans.o
 #librrprotocol_objs += irc.client.o
 #librrprotocol_objs += irc.server.o
 librrprotocol_objs += is.o
@@ -29,11 +26,8 @@ librrprotocol_objs += traffic.o
 librrprotocol_objs += vfo.o
 librrprotocol_objs += wire.o
 #librrprotocol_objs += ws.audio.o
-librrprotocol_objs += ws.auth.o
 #librrprotocol_objs += ws.file-xfer.o
-librrprotocol_objs += ws.mediachan.o
 #librrprotocol_objs += ws.media.o
 #librrprotocol_objs += wsnew.o
-librrprotocol_objs += ws.serial.o
 # This needs merged into various other files...
 
