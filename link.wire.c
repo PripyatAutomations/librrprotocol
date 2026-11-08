@@ -12,7 +12,7 @@
 
 static const char *fields[] = {
    "op", "node", "site", "username", "password", "nodes", "parent", "dest", "kind", "session", "payload", "clock.unix", "version", "features", "domain",
-   "identity.public-key", "identity.tls-spki", "identity.signature"
+   "identity.public-key", "identity.tls-spki", "identity.signature", "ttl"
 };
 static void wire_reason(char *out, size_t cap, const char *fmt, ...) {
    if (!out || !cap) {
@@ -97,6 +97,26 @@ static bool valid_ex(dict *d, char *reason, size_t cap) {
          return false;
       }
 
+      /* Mutable hop budget is envelope metadata, never part of an
+       * origin-signed application payload. Reject noncanonical encodings. */
+      if (i == 18) {
+         if (!*value || strlen(value) > 3 || value[0] == '0') {
+            wire_reason(reason, cap, "invalid mesh ttl");
+            return false;
+         }
+         unsigned ttl = 0;
+         for (const unsigned char *p = (const unsigned char *)value; *p; ++p) {
+            if (*p < '0' || *p > '9') {
+               wire_reason(reason, cap, "non-numeric mesh ttl");
+               return false;
+            }
+            ttl = ttl * 10 + (unsigned)(*p - '0');
+         }
+         if (ttl < 1 || ttl > 255) {
+            wire_reason(reason, cap, "mesh ttl out of range (1..255)");
+            return false;
+         }
+      }
       if (i == 11) {
          if (strcmp(op, "link.hello") || strlen(value) != 10) {
             wire_reason(reason, cap, "invalid clock.unix field");
@@ -115,7 +135,7 @@ static bool valid_ex(dict *d, char *reason, size_t cap) {
       seen |= 1U << i;
    }
    /* The clock sample is an optional hello extension; old hellos remain valid. */
-   unsigned optional = !strcmp(op, "link.hello") ? (1U << 11) : 0;
+   unsigned optional = (!strcmp(op, "link.hello") ? (1U << 11) : 0) | (1U << 18);
 
    if ((seen & ~optional) != required) {
       for (unsigned i = 0 ; i < sizeof(fields) / sizeof(fields[0]) ; i++) {
