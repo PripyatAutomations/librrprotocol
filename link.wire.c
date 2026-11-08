@@ -45,7 +45,8 @@ static bool valid_ex(dict *d, char *reason, size_t cap) {
    } else if (!strcmp(op, "link.application")) {
       const char *kind = dict_get(d, "kind", "");
       const char *kinds[] = {
-         "catalog", "catalog-remove", "catalog-begin", "catalog-end", "catalog-ack", "identity-revocation", "identity-revocation-ack", "users", "request", "reply", "state", "subscribe", "unsubscribe", "close"
+         "catalog", "catalog-remove", "catalog-begin", "catalog-end", "catalog-ack", "identity-revocation", "identity-revocation-ack", "users", "request",
+         "reply", "state", "subscribe", "unsubscribe", "close"
       };
       bool known = false;
 
@@ -97,26 +98,31 @@ static bool valid_ex(dict *d, char *reason, size_t cap) {
          return false;
       }
 
-      /* Mutable hop budget is envelope metadata, never part of an
-       * origin-signed application payload. Reject noncanonical encodings. */
+      /* Mutable hop budget is envelope metadata, never part of an origin-signed application payload. Reject noncanonical encodings. */
       if (i == 18) {
          if (!*value || strlen(value) > 3 || value[0] == '0') {
             wire_reason(reason, cap, "invalid mesh ttl");
+
             return false;
          }
          unsigned ttl = 0;
-         for (const unsigned char *p = (const unsigned char *)value; *p; ++p) {
+
+         for (const unsigned char *p = (const unsigned char *)value ; *p ; ++p) {
             if (*p < '0' || *p > '9') {
                wire_reason(reason, cap, "non-numeric mesh ttl");
+
                return false;
             }
             ttl = ttl * 10 + (unsigned)(*p - '0');
          }
+
          if (ttl < 1 || ttl > 255) {
             wire_reason(reason, cap, "mesh ttl out of range (1..255)");
+
             return false;
          }
       }
+
       if (i == 11) {
          if (strcmp(op, "link.hello") || strlen(value) != 10) {
             wire_reason(reason, cap, "invalid clock.unix field");
