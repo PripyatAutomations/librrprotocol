@@ -33,7 +33,7 @@ REAL_LIB := $(BUILD_DIR)/librrprotocol.so.$(SOVERSION).$(VERSION)
 SONAME := librrprotocol.so.$(SOVERSION)
 PC_FILE := $(BUILD_DIR)/librrprotocol.pc
 
-.PHONY: all check install clean distclean deb src-deb source-deb
+.PHONY: all check install uninstall clean distclean deb src-deb source-deb
 all: $(REAL_LIB) $(PC_FILE)
 
 $(BUILD_DIR)/include/librrprotocol $(BUILD_DIR)/generated/build_config.h &:
@@ -73,6 +73,12 @@ install: all
 	@for h in $(PUBLIC_HEADERS); do install -m644 "$h" "$(DESTDIR)$(INCLUDEDIR)/librrprotocol/$h"; done
 	install -m644 $(BUILD_DIR)/generated/build_config.h "$(DESTDIR)$(INCLUDEDIR)/librrprotocol/build_config.h"
 	install -Dm644 $(PC_FILE) "$(DESTDIR)$(LIBDIR)/pkgconfig/librrprotocol.pc"
+
+uninstall:
+	rm -f "$(DESTDIR)$(LIBDIR)/$(notdir $(REAL_LIB))" "$(DESTDIR)$(LIBDIR)/$(SONAME)" "$(DESTDIR)$(LIBDIR)/librrprotocol.so" "$(DESTDIR)$(LIBDIR)/pkgconfig/librrprotocol.pc"
+	@for h in $(PUBLIC_HEADERS); do rm -f "$(DESTDIR)$(INCLUDEDIR)/librrprotocol/$h"; done
+	rm -f "$(DESTDIR)$(INCLUDEDIR)/librrprotocol/build_config.h"
+	-rmdir "$(DESTDIR)$(INCLUDEDIR)/librrprotocol"
 
 clean:
 	rm -rf "$(BUILD_DIR)"
