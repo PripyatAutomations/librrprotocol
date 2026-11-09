@@ -31,7 +31,10 @@ extern bool is_elmer_online(void);
 //// Authentication Core ////
 extern char session_token[HTTP_TOKEN_LEN + 1];
 extern char *compute_wire_password(const char *password, const char *nonce);
-extern char *hash_passwd(const char *passwd);
+extern char *hash_passwd(const char *passwd); /* legacy SHA-1; migration only */
+extern char *auth_password_hash_argon2id(const char *password);
+extern bool auth_password_verify_argon2id(const char *encoded, const char *password);
+extern bool auth_password_is_argon2id(const char *encoded);
 
 //// User privileges matching ////
 extern bool match_priv(const char *user_privs, const char *priv);

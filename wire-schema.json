@@ -141,7 +141,10 @@
         "auth.logout": "logout",
         "auth.challenge": "challenge",
         "auth.authorized": "authorized",
-        "auth.error": null
+        "auth.error": null,
+        "auth.change-password": "change-password",
+        "auth.password-changed": "password-changed",
+        "auth.password-change-failed": "password-change-failed"
       },
       "fields": {
         "msg.ts": "time",
@@ -156,7 +159,10 @@
         "auth.server": "server",
         "auth.token": "token",
         "auth.ts": "ts",
-        "auth.user": "user"
+        "auth.user": "user",
+        "auth.method": "method",
+        "auth.new-password": "new-password",
+        "auth.reason": "reason"
       }
     },
     {

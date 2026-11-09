@@ -8,7 +8,8 @@
 // Licensed under MIT license, if built without mongoose or GPL if built with.
 #include <librustyaxe/core.h>
 #include <librrprotocol/rrprotocol.h>
-#include <openssl/sha.h>
+#include <openssl/evp.h>
+#include <argon2.h>
 
 int auth_generate_nonce(char *buffer, size_t length) {
    if (!buffer || length < 2) {
@@ -32,24 +33,25 @@ char *hash_passwd(const char *passwd) {
    if (!passwd) {
       return NULL;
    }
-   unsigned char digest[SHA_DIGEST_LENGTH];
-
-   if (!SHA1((const unsigned char *)passwd, strlen(passwd), digest)) {
+   unsigned char digest[20];
+   unsigned int digest_len = 0;
+   /* Legacy SHA-1 only for migration; EVP avoids removed low-level APIs. */
+   if (EVP_Digest(passwd, strlen(passwd), digest, &digest_len, EVP_sha1(), NULL) != 1 || digest_len != sizeof(digest)) {
       return NULL;
    }
-   char *hex_output = malloc(SHA_DIGEST_LENGTH * 2 + 1);
+   char *hex_output = malloc(sizeof(digest) * 2 + 1);
 
    if (!hex_output) {
       return NULL;
    }
    static const char hex[] = "0123456789abcdef";
 
-   for (size_t i = 0 ; i < SHA_DIGEST_LENGTH ; i++) {
+   for (size_t i = 0 ; i < sizeof(digest) ; i++) {
       hex_output[i * 2] = hex[digest[i] >> 4];
       hex_output[i * 2 + 1] = hex[digest[i] & 0x0f];
    }
 
-   hex_output[SHA_DIGEST_LENGTH * 2] = '\0';
+   hex_output[sizeof(digest) * 2] = '\0';
 
    return hex_output;
 }
@@ -83,12 +85,19 @@ char *compute_wire_password(const char *password, const char *nonce) {
    memset(hash, 0, sizeof(hash));
 
 /* PARITY: rustyrig-www/js/webui.auth.js authenticate(). */
-   SHA_CTX ctx;
-   SHA1_Init(&ctx);
-   SHA1_Update(&ctx, password, strlen(password));
-   SHA1_Update(&ctx, "+", 1);
-   SHA1_Update(&ctx, nonce, strlen(nonce));
-   SHA1_Final(hash, &ctx);
+   EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+   unsigned int hash_len = 0;
+   bool ok = ctx && EVP_DigestInit_ex(ctx, EVP_sha1(), NULL) == 1 &&
+      EVP_DigestUpdate(ctx, password, strlen(password)) == 1 &&
+      EVP_DigestUpdate(ctx, "+", 1) == 1 &&
+      EVP_DigestUpdate(ctx, nonce, strlen(nonce)) == 1 &&
+      EVP_DigestFinal_ex(ctx, hash, &hash_len) == 1 && hash_len == sizeof(hash);
+   EVP_MD_CTX_free(ctx);
+   if (!ok) {
+      explicit_bzero(hash, sizeof(hash));
+      free(hex_output);
+      return NULL;
+   }
 
    // Convert the raw hash to a hexadecimal string
    for (int i = 0 ; i < 20 ; i++) {
@@ -98,4 +107,39 @@ char *compute_wire_password(const char *password, const char *nonce) {
    hex_output[HTTP_HASH_LEN * 2] = '\0';  // Null-terminate the string
 
    return hex_output;
+}
+
+/* Encoded Argon2id v=19 password hashes; fresh random salt per account.
+ * The 19 MiB / 2 iteration / 1 lane parameters fit constrained servers.
+ * Encoded parameters remain part of the hash for future migration.
+ */
+char *auth_password_hash_argon2id(const char *password) {
+   if (!password || !*password) {
+      return NULL;
+   }
+   unsigned char salt[16];
+   char encoded[256];
+   arc4random_buf(salt, sizeof(salt));
+   int rc = argon2id_hash_encoded(2, 19456, 1, password, strlen(password),
+      salt, sizeof(salt), 32, encoded, sizeof(encoded));
+   explicit_bzero(salt, sizeof(salt));
+   if (rc != ARGON2_OK) {
+      explicit_bzero(encoded, sizeof(encoded));
+      return NULL;
+   }
+   char *stored = strdup(encoded);
+   explicit_bzero(encoded, sizeof(encoded));
+   return stored;
+}
+
+bool auth_password_verify_argon2id(const char *encoded, const char *password) {
+   if (!encoded || !password || strncmp(encoded, "$argon2id$v=19$", 15) ||
+       strlen(encoded) >= 256) {
+      return false;
+   }
+   return argon2id_verify(encoded, password, strlen(password)) == ARGON2_OK;
+}
+
+bool auth_password_is_argon2id(const char *encoded) {
+   return encoded && strncmp(encoded, "$argon2id$v=19$", 15) == 0;
 }
