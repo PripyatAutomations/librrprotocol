@@ -1,3 +1,9 @@
+librrprotocol (0.1.0-7) unstable; urgency=medium
+
+  * Extend authenticated domain messages with station name to validate expected station.domain identities.
+
+ -- Pripyat Automations <dangerousdevices@istabpeople.com>  Sun, 08 Nov 2026 21:00:00 -0500
+
 librrprotocol (0.1.0-6) unstable; urgency=medium
 
   * Add salted Argon2id password hashing and verification primitives.
