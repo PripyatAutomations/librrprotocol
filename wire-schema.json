@@ -608,7 +608,8 @@
       },
       "fields": {
         "domain.name": "name",
-        "domain.server": "server"
+        "domain.server": "server",
+        "domain.station": "station"
       }
     }
   ]
