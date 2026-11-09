@@ -93,6 +93,31 @@ int main(void) {
    free(domain_wire);
    dict_free(domain);
 
+   /* TLS-only password login and browser password changes must round-trip
+    * through the strict compact-wire field/operation registry. */
+   const char *auth_operations[] = {
+      "pass", "challenge", "change-password", "password-changed",
+      "password-change-failed"
+   };
+   for (size_t i = 0; i < sizeof(auth_operations) / sizeof(auth_operations[0]); ++i) {
+      dict *auth = dict_new();
+      assert(auth);
+      dict_add(auth, "msg.type", "auth");
+      dict_add(auth, "auth.cmd", auth_operations[i]);
+      dict_add(auth, "auth.method", "tls-password-v1");
+      dict_add(auth, "auth.user", "admin");
+      dict_add(auth, "auth.token", "test-token");
+      if (i == 0) dict_add(auth, "auth.pass", "test-password");
+      if (i == 2) dict_add(auth, "auth.new-password", "new test password");
+      if (i == 4) dict_add(auth, "auth.reason", "test failure");
+      char *wire = rr_wire_encode(auth);
+      assert(wire);
+      dict *roundtrip = rr_wire_decode(wire);
+      equivalent(auth, roundtrip);
+      dict_free(roundtrip);
+      free(wire);
+      dict_free(auth);
+   }
    dict *alias = dict_new();
    dict_add(alias, "msg.type", "auth");
    dict_add(alias, "auth.cmd", "error");
