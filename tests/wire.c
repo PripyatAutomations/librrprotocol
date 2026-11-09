@@ -84,6 +84,7 @@ int main(void) {
    assert(domain);
    dict_add(domain, "msg.type", "domain");
    dict_add(domain, "domain.name", "ham.example");
+   dict_add(domain, "domain.station", "rplywv00");
    dict_add(domain, "domain.server", "01234567-89ab-cdef-0123-456789abcdef");
    char *domain_wire = rr_wire_encode(domain);
    assert(domain_wire);
