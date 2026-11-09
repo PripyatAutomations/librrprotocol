@@ -133,7 +133,7 @@ char *auth_password_hash_argon2id(const char *password) {
 }
 
 bool auth_password_verify_argon2id(const char *encoded, const char *password) {
-   if (!encoded || !password || strncmp(encoded, "$argon2id$v=19$", 14) ||
+   if (!encoded || !password || strncmp(encoded, "$argon2id$v=19$", 15) ||
        strlen(encoded) >= 256) {
       return false;
    }
@@ -141,5 +141,5 @@ bool auth_password_verify_argon2id(const char *encoded, const char *password) {
 }
 
 bool auth_password_is_argon2id(const char *encoded) {
-   return encoded && strncmp(encoded, "$argon2id$v=19$", 14) == 0;
+   return encoded && strncmp(encoded, "$argon2id$v=19$", 15) == 0;
 }
