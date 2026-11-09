@@ -1,3 +1,13 @@
+librrprotocol (0.1.0-6) unstable; urgency=medium
+
+  * Add salted Argon2id password hashing and verification primitives.
+  * Register TLS password login and password-change wire messages.
+  * Keep SHA-1 verification only for controlled legacy account migration;
+    use EVP in place of deprecated OpenSSL SHA-1 contexts.
+  * Link against libargon2 and build with libargon2-dev.
+
+ -- Pripyat Automations <dangerousdevices@istabpeople.com>  Sun, 08 Nov 2026 18:45:00 -0500
+
 librrprotocol (0.1.0-5) unstable; urgency=medium
 
   * Accept and validate the mutable mesh TTL envelope field on every link
