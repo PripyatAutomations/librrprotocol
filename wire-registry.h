@@ -359,6 +359,7 @@ static const rr_wire_field_t wire_fields_19[] = {
 static const rr_wire_field_t wire_fields_20[] = {
    {"domain.name", "name"},
    {"domain.server", "server"},
+   {"domain.station", "station"},
 };
 static const rr_wire_rule_t wire_rules[] = {
    {"cap.ls", "cap", "cap.cmd", "ls", wire_fields_0, sizeof(wire_fields_0) / sizeof(wire_fields_0[0])},
