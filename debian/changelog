@@ -1,3 +1,9 @@
+librrprotocol (0.1.1-1) unstable; urgency=medium
+
+  * Release upstream version 0.1.1.
+
+ -- Pripyat Automations <dangerousdevices@istabpeople.com>  Tue, 10 Nov 2026 21:43:34 -0500
+
 librrprotocol (0.1.0-7) unstable; urgency=medium
 
   * Extend authenticated domain messages with station name to validate expected station.domain identities.
