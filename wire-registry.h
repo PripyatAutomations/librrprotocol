@@ -152,6 +152,7 @@ static const rr_wire_field_t wire_fields_5[] = {
    {"media.old-codec", "old-codec"},
    {"media.preferred", "preferred"},
    {"media.rate", "rate"},
+   {"media.source-rate", "source-rate"},
    {"media.rig", "rig"},
    {"media.rig-uuid", "rig-uuid"},
    {"media.room", "room"},
