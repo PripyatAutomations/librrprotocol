@@ -22,12 +22,14 @@ static bool filter(void *context, void *user, const char *ip) {
 
    return identity;
 }
+
 static bool frame(void *user, const uint8_t *data, size_t length) {
    assert(user == &marker && !data && !length);
    bindings++;
 
    return true;
 }
+
 int main(void) {
    if (!rr_rtp_supported(false)) {
       puts("SKIP: RTP transport disabled");

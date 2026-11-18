@@ -37,6 +37,7 @@ int rrp_bridge_media_send(int fd, const int16_t *samples, size_t count, unsigned
 
    return n == (ssize_t) (12 + 2 * count) ? 1 : -1;
 }
+
 int rrp_bridge_media_recv(int fd, struct rrp_bridge_pcm *frame) {
    if (fd < 0 || !frame) {
       return -1;

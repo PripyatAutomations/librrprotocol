@@ -15,6 +15,7 @@ static bool capture(const uint8_t *packet, size_t length, void *user) {
 
    return true;
 }
+
 int main(int argc, char **argv) {
    bool encrypted = argc > 1 && atoi(argv[1]);
    uint8_t key[RR_RTP_KEY_LEN] = {

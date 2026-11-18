@@ -17,6 +17,7 @@ extern const char *server_name;
 const char *get_server_property(const char *server, const char *name) {
    return !strcmp(name, "server.url") ? "wss://example.test/ws" : NULL;
 }
+
 void mg_tls_init(struct mg_connection *c, const struct mg_tls_opts *opts) {
    assert(c->is_tls && !mg_strcmp(opts->name, mg_str("example.test")));
    tls_calls++;
@@ -41,6 +42,7 @@ void event_emit_dict(const char *event, rrconn_t *client, dict *d) {
       hello_events++;
    }
 }
+
 size_t mg_ws_send(struct mg_connection *c, const void *buf, size_t len, int opcode) {
    if (opcode == WEBSOCKET_OP_TEXT && buf) {
       assert(len < sizeof(last_text));

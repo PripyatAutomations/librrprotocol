@@ -164,12 +164,14 @@ static rr_log_chunk_pending_t *log_pending;
 static uint32_t rr_log_chunk_u32(const uint8_t *p) {
    return ((uint32_t) p[0] << 24) | ((uint32_t) p[1] << 16) | ((uint32_t) p[2] << 8) | p[3];
 }
+
 static void rr_log_chunk_remove(rr_log_chunk_pending_t **slot) {
    rr_log_chunk_pending_t *entry = *slot;
    *slot = entry->next;
    free(entry->text);
    free(entry);
 }
+
 static bool rr_log_chunk_dispatch(const struct rr_binframe *f, void *ctx) {
    if (f->len < RR_LOGFRAME_HDR_LEN + 12) {
       return false;

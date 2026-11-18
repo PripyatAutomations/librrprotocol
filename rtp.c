@@ -22,12 +22,14 @@ struct rr_rtp {
 static uint32_t read32(const uint8_t *p) {
    return (uint32_t) p[0] << 24 | (uint32_t) p[1] << 16 | (uint32_t) p[2] << 8 | p[3];
 }
+
 static void write32(uint8_t *p, uint32_t n) {
    p[0] = n >> 24;
    p[1] = n >> 16;
    p[2] = n >> 8;
    p[3] = n;
 }
+
 bool rr_rtp_supported(bool encrypted) {
 #ifdef RR_RTP_ENCRYPTION
    (void)encrypted;
@@ -38,6 +40,7 @@ bool rr_rtp_supported(bool encrypted) {
    return !encrypted;
 #endif
 }
+
 rr_rtp_t *rr_rtp_new(const uint8_t key[RR_RTP_KEY_LEN], uint32_t ssrc, bool server, bool encrypted) {
    static bool initialized;
 
@@ -87,6 +90,7 @@ rr_rtp_t *rr_rtp_new(const uint8_t key[RR_RTP_KEY_LEN], uint32_t ssrc, bool serv
 
    return peer;
 }
+
 void rr_rtp_free(rr_rtp_t *peer) {
    if (!peer) {
       return;
@@ -103,6 +107,7 @@ void rr_rtp_free(rr_rtp_t *peer) {
    memset(peer, 0, sizeof(*peer));
    free(peer);
 }
+
 bool rr_rtp_probe(rr_rtp_t *peer, rr_rtp_send_fn send, void *user) {
    if (!peer || !send) {
       return false;
@@ -115,6 +120,7 @@ bool rr_rtp_probe(rr_rtp_t *peer, rr_rtp_send_fn send, void *user) {
 
    return srtp_protect_rtcp(peer->tx, packet, &length) == srtp_err_status_ok && send(packet, length, user);
 }
+
 bool rr_rtp_send(rr_rtp_t *peer, const void *frame, size_t length, uint64_t time_us, rr_rtp_send_fn send, void *user) {
    if (!peer || !frame || !length || length > RR_RTP_MAX_FRAME || !send) {
       return false;
@@ -158,6 +164,7 @@ bool rr_rtp_send(rr_rtp_t *peer, const void *frame, size_t length, uint64_t time
 
    return true;
 }
+
 int rr_rtp_receive(rr_rtp_t *peer, uint8_t *packet, size_t length, uint64_t now_us, const uint8_t **frame, size_t *frame_length) {
    if (!peer || !packet || !frame || !frame_length || length < 8 || length > RR_RTP_MTU) {
       return -1;
@@ -226,12 +233,14 @@ int rr_rtp_receive(rr_rtp_t *peer, uint8_t *packet, size_t length, uint64_t now_
 
    return 1;
 }
+
 #else
 bool rr_rtp_supported(bool encrypted) {
    (void)encrypted;
 
    return false;
 }
+
 rr_rtp_t *rr_rtp_new(const uint8_t key[RR_RTP_KEY_LEN], uint32_t ssrc, bool server, bool encrypted) {
    (void)key;
    (void)ssrc;
@@ -240,9 +249,11 @@ rr_rtp_t *rr_rtp_new(const uint8_t key[RR_RTP_KEY_LEN], uint32_t ssrc, bool serv
 
    return NULL;
 }
+
 void rr_rtp_free(rr_rtp_t *peer) {
    (void)peer;
 }
+
 bool rr_rtp_send(rr_rtp_t *peer, const void *frame, size_t length, uint64_t time_us, rr_rtp_send_fn send, void *user) {
    (void)peer;
    (void)frame;
@@ -253,6 +264,7 @@ bool rr_rtp_send(rr_rtp_t *peer, const void *frame, size_t length, uint64_t time
 
    return false;
 }
+
 bool rr_rtp_probe(rr_rtp_t *peer, rr_rtp_send_fn send, void *user) {
    (void)peer;
    (void)send;
@@ -260,6 +272,7 @@ bool rr_rtp_probe(rr_rtp_t *peer, rr_rtp_send_fn send, void *user) {
 
    return false;
 }
+
 int rr_rtp_receive(rr_rtp_t *peer, uint8_t *packet, size_t length, uint64_t now_us, const uint8_t **frame, size_t *frame_length) {
    (void)peer;
    (void)packet;
@@ -270,4 +283,5 @@ int rr_rtp_receive(rr_rtp_t *peer, uint8_t *packet, size_t length, uint64_t now_
 
    return -1;
 }
+
 #endif

@@ -65,4 +65,5 @@ static inline bool rrp_spectrum_kiwi_row(rrp_spectrum_row_t *out, const uint8_t 
 
    return rrp_spectrum_row_valid(out);
 }
+
 #endif

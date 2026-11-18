@@ -13,15 +13,18 @@ static int send_message(void *arg, const uint8_t *data, size_t len) {
 
    return RR_TRANSPORT_OK;
 }
+
 static void close_driver(void *arg) {
    ++((struct fixture *)arg)->closes;
 }
+
 static bool pin(void *arg, uint8_t out[32]) {
    (void)arg;
    memset(out, 42, 32);
 
    return true;
 }
+
 static void event(rr_transport_t *t, enum rr_transport_event e, rr_transport_channel_t *ch, const uint8_t *data, size_t len, void *arg) {
    (void)t;
    (void)e;
@@ -30,6 +33,7 @@ static void event(rr_transport_t *t, enum rr_transport_event e, rr_transport_cha
    (void)len;
    ++((struct fixture *)arg)->events;
 }
+
 int main(void) {
    struct fixture f = {
       0

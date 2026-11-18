@@ -34,6 +34,7 @@ static bool binding_message(const char *domain, const char *owner, const char *s
 
    return true;
 }
+
 bool rr_crypto_binding_sign(const rr_crypto_key_t *identity, const char *domain, const char *owner, const char *spki, uint8_t sig[64]) {
    char *msg = NULL;
    size_t n = 0;
@@ -46,6 +47,7 @@ bool rr_crypto_binding_sign(const rr_crypto_key_t *identity, const char *domain,
 
    return ok;
 }
+
 bool rr_crypto_binding_verify(const uint8_t pub[32], const char *domain, const char *owner, const char *spki, const uint8_t sig[64]) {
    if (!pub || !sig) {
       return false;

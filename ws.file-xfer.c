@@ -31,6 +31,7 @@ static uint64_t gen_id(void) {
 
    return x ? x : 1;
 }
+
 #endif
 
 static const char *rr_basename(const char *path) {
@@ -100,6 +101,7 @@ static void ws_send_file(struct mg_connection *c, const char *path, const char *
    free(buf);
    fclose(fp);
 }
+
 #endif // USE_MONGOOSE
 
 struct xfer {
@@ -256,4 +258,5 @@ static void on_ws_msg(struct mg_connection *c, int ev, void *ev_data) {
       }
    }
 }
+
 #endif // USE_MONGOOSE

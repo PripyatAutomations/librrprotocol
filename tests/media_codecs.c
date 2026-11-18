@@ -37,6 +37,7 @@ static void count_access(const char *event, const void *data, size_t len, rrconn
       ((rr_media_access_t *) data)->allowed = false;
    }
 }
+
 static void count_demand(const char *event, const void *data, size_t len, rrconn_t *client, void *user) {
    assert(len == sizeof(rr_media_demand_t));
    demand_queries++;
@@ -210,6 +211,7 @@ int main(void) {
       .data = {
          .buf = feedback_wire, .len = strlen(feedback_wire)
       }
+
    };
    assert(ws_handle(&client, &feedback_frame));
    client.authenticated = false;

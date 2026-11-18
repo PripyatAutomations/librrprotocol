@@ -32,12 +32,15 @@ static rr_crypto_key_t *wrap(EVP_PKEY *p) {
 
    return k;
 }
+
 bool rr_crypto_init(void) {
    return true;
 }
+
 const char *rr_crypto_provider(void) {
    return "openssl";
 }
+
 rr_crypto_key_t *rr_crypto_ed25519_generate(void) {
    EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, NULL);
    EVP_PKEY *p = NULL;
@@ -50,6 +53,7 @@ rr_crypto_key_t *rr_crypto_ed25519_generate(void) {
 
    return wrap(p);
 }
+
 rr_crypto_key_t *rr_crypto_key_read_pem(FILE *f) {
    if (!f) {
       return NULL;
@@ -57,6 +61,7 @@ rr_crypto_key_t *rr_crypto_key_read_pem(FILE *f) {
 
    return wrap(PEM_read_PrivateKey(f, NULL, NULL, NULL));
 }
+
 rr_crypto_key_t *rr_crypto_key_read_encrypted_pem(FILE *f, const char *passphrase) {
    if (!f || !passphrase) {
       return NULL;
@@ -66,14 +71,17 @@ rr_crypto_key_t *rr_crypto_key_read_encrypted_pem(FILE *f, const char *passphras
 
    return wrap(key);
 }
+
 bool rr_crypto_key_write_encrypted_pem_stream(const rr_crypto_key_t *key, FILE *f, const char *passphrase) {
    /* AES-256-CBC is the standard OpenSSL encrypted PKCS#8 PEM format. PKCS#8 handles KDF/salt/IV generation; never export unencrypted. */
    return key && f && passphrase && *passphrase &&
           PEM_write_PKCS8PrivateKey(f, key->pkey, EVP_aes_256_cbc(), (char *)passphrase, (int)strlen(passphrase), NULL, NULL) == 1;
 }
+
 bool rr_crypto_key_write_pem_stream(const rr_crypto_key_t *key, FILE *f) {
    return key && f && PEM_write_PrivateKey(f, key->pkey, NULL, NULL, 0, NULL, NULL) == 1;
 }
+
 rr_crypto_key_t *rr_crypto_key_load_pem(const char *path) {
    FILE *f = fopen(path, "rb");
 
@@ -85,6 +93,7 @@ rr_crypto_key_t *rr_crypto_key_load_pem(const char *path) {
 
    return wrap(p);
 }
+
 bool rr_crypto_key_write_pem(const rr_crypto_key_t *key, const char *path) {
    if (!key || !path) {
       return false;
@@ -102,6 +111,7 @@ bool rr_crypto_key_write_pem(const rr_crypto_key_t *key, const char *path) {
 
    return ok;
 }
+
 rr_crypto_key_t *rr_crypto_ed25519_public(const uint8_t *raw, size_t len) {
    if (!raw || len != 32) {
       return NULL;
@@ -109,11 +119,13 @@ rr_crypto_key_t *rr_crypto_ed25519_public(const uint8_t *raw, size_t len) {
 
    return wrap(EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL, raw, len));
 }
+
 bool rr_crypto_ed25519_public_bytes(const rr_crypto_key_t *k, uint8_t out[32]) {
    size_t len = 32;
 
    return k && out && EVP_PKEY_get_raw_public_key(k->pkey, out, &len) == 1 && len == 32;
 }
+
 bool rr_crypto_ed25519_sign(const rr_crypto_key_t *k, const void *data, size_t len, uint8_t sig[64]) {
    if (!k || !data || !sig) {
       return false;
@@ -125,6 +137,7 @@ bool rr_crypto_ed25519_sign(const rr_crypto_key_t *k, const void *data, size_t l
 
    return ok;
 }
+
 bool rr_crypto_ed25519_verify(const rr_crypto_key_t *k, const void *data, size_t len, const uint8_t sig[64]) {
    if (!k || !data || !sig) {
       return false;
@@ -135,14 +148,17 @@ bool rr_crypto_ed25519_verify(const rr_crypto_key_t *k, const void *data, size_t
 
    return ok;
 }
+
 bool rr_crypto_sha256(const void *data, size_t len, uint8_t out[32]) {
    unsigned int digest_len = 0;
 
    return data && out && EVP_Digest(data, len, out, &digest_len, EVP_sha256(), NULL) == 1 && digest_len == 32;
 }
+
 bool rr_crypto_random(void *data, size_t len) {
    return data && len <= INT_MAX && RAND_bytes(data, (int)len) == 1;
 }
+
 void rr_crypto_key_free(rr_crypto_key_t *key) {
    if (key) {
       EVP_PKEY_free(key->pkey);

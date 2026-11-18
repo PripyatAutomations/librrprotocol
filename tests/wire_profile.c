@@ -41,6 +41,7 @@ void Log(logpriority_t priority, const char *subsys, const char *format, ...) {
    }
    rr_wire_profile_dump();      /* Logging can forward messages or re-enter profiling. */
 }
+
 int main(void) {
    alarm(5);
    const char *list = "{\"op\":\"media.list\"}";

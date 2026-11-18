@@ -26,6 +26,7 @@ static bool token(const char *s) {
 
    return true;
 }
+
 static bool modes_valid(const char *s) {
    for ( ; *s ; s++) {
       if (!isalnum((unsigned char)*s) && *s != ' ' && *s != '-') {
@@ -35,6 +36,7 @@ static bool modes_valid(const char *s) {
 
    return true;
 }
+
 bool rrp_bridge_mode_valid(const char *modes, const char *mode) {
    if (!modes || !token(mode)) {
       return false;
@@ -55,6 +57,7 @@ bool rrp_bridge_mode_valid(const char *modes, const char *mode) {
 
    return false;
 }
+
 bool rrp_bridge_ipc_valid(const rrp_bridge_ipc_message_t *m) {
    if (!m || m->magic != RRP_BRIDGE_IPC_MAGIC || m->version != RRP_BRIDGE_IPC_VERSION ||
       m->reserved || m->type < RRP_BRIDGE_IPC_HELLO || m->type > RRP_BRIDGE_IPC_CONTROL ||
@@ -109,12 +112,14 @@ bool rrp_bridge_ipc_valid(const rrp_bridge_ipc_message_t *m) {
 
    return true;
 }
+
 void rrp_bridge_ipc_init(rrp_bridge_ipc_message_t *m, uint32_t type) {
    memset(m, 0, sizeof(*m));
    m->magic = RRP_BRIDGE_IPC_MAGIC;
    m->version = RRP_BRIDGE_IPC_VERSION;
    m->type = type;
 }
+
 bool rrp_bridge_ipc_send(int fd, const rrp_bridge_ipc_message_t *m) {
    if (fd < 0 || !rrp_bridge_ipc_valid(m)) {
       return false;
@@ -125,6 +130,7 @@ bool rrp_bridge_ipc_send(int fd, const rrp_bridge_ipc_message_t *m) {
    } while (n < 0 && errno == EINTR);
    return n == (ssize_t) sizeof(*m);
 }
+
 int rrp_bridge_ipc_recv(int fd, rrp_bridge_ipc_message_t *m) {
    if (fd < 0 || !m) {
       return -1;

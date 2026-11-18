@@ -33,6 +33,7 @@ static bool safe_name(const char *s) {
 
    return true;
 }
+
 static bool add_ext(X509 *cert, int nid, const char *value) {
    X509V3_CTX ctx;
    X509V3_set_ctx(&ctx, cert, cert, NULL, NULL, 0);
@@ -46,6 +47,7 @@ static bool add_ext(X509 *cert, int nid, const char *value) {
 
    return ok == 1;
 }
+
 static bool read_pair(const char *certpath, const char *keypath, const char *dns) {
    FILE *f = fopen(certpath, "rb");
 
@@ -67,6 +69,7 @@ static bool read_pair(const char *certpath, const char *keypath, const char *dns
 
    return ok;
 }
+
 static bool write_exclusive(const char *path, bool cert, X509 *x, EVP_PKEY *key) {
    int fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, cert ? 0644 : 0600);
 
@@ -101,6 +104,7 @@ static bool write_exclusive(const char *path, bool cert, X509 *x, EVP_PKEY *key)
 
    return ok;
 }
+
 bool rr_crypto_tls_identity_ensure(const char *certpath, const char *keypath, const char *dns) {
    if (!certpath || !keypath || !safe_name(dns) || !strcmp(certpath, keypath)) {
       return false;
@@ -177,6 +181,7 @@ bool rr_crypto_tls_identity_ensure(const char *certpath, const char *keypath, co
 
    return ok;
 }
+
 char *rr_crypto_cert_spki_sha256(const char *path) {
    if (!path) {
       return NULL;

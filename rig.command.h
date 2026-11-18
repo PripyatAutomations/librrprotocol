@@ -55,6 +55,7 @@ static inline int rr_rig_cmd_kind(const char *s) {
 
    return -1;
 }
+
 static inline bool rr_rig_parse_frequency(const char *s, uint64_t *hz) {
    if (!s || !*s || !hz || *s == '-') {
       return false;
@@ -148,4 +149,5 @@ static inline bool rr_rig_parse_commands(const char *line, rr_rig_cmd_fn fn, voi
    }
    return any;
 }
+
 #endif

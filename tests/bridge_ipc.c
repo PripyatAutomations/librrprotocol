@@ -29,6 +29,7 @@ static void media_frames(void) {
    close(fd[0]);
    close(fd[1]);
 }
+
 int main(void) {
    media_frames();
    int fd[2];

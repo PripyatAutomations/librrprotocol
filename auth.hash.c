@@ -35,6 +35,7 @@ char *hash_passwd(const char *passwd) {
    }
    unsigned char digest[20];
    unsigned int digest_len = 0;
+
    /* Legacy SHA-1 only for migration; EVP avoids removed low-level APIs. */
    if (EVP_Digest(passwd, strlen(passwd), digest, &digest_len, EVP_sha1(), NULL) != 1 || digest_len != sizeof(digest)) {
       return NULL;
@@ -90,12 +91,13 @@ char *compute_wire_password(const char *password, const char *nonce) {
    bool ok = ctx && EVP_DigestInit_ex(ctx, EVP_sha1(), NULL) == 1 &&
       EVP_DigestUpdate(ctx, password, strlen(password)) == 1 &&
       EVP_DigestUpdate(ctx, "+", 1) == 1 &&
-      EVP_DigestUpdate(ctx, nonce, strlen(nonce)) == 1 &&
-      EVP_DigestFinal_ex(ctx, hash, &hash_len) == 1 && hash_len == sizeof(hash);
+      EVP_DigestUpdate(ctx, nonce, strlen(nonce)) == 1 && EVP_DigestFinal_ex(ctx, hash, &hash_len) == 1 && hash_len == sizeof(hash);
    EVP_MD_CTX_free(ctx);
+
    if (!ok) {
       explicit_bzero(hash, sizeof(hash));
       free(hex_output);
+
       return NULL;
    }
 
@@ -109,9 +111,8 @@ char *compute_wire_password(const char *password, const char *nonce) {
    return hex_output;
 }
 
-/* Encoded Argon2id v=19 password hashes; fresh random salt per account.
- * The 19 MiB / 2 iteration / 1 lane parameters fit constrained servers.
- * Encoded parameters remain part of the hash for future migration.
+/* Encoded Argon2id v=19 password hashes; fresh random salt per account. The 19 MiB / 2 iteration / 1 lane parameters fit constrained servers. Encoded
+ * parameters remain part of the hash for future migration.
  */
 char *auth_password_hash_argon2id(const char *password) {
    if (!password || !*password) {
@@ -120,23 +121,25 @@ char *auth_password_hash_argon2id(const char *password) {
    unsigned char salt[16];
    char encoded[256];
    arc4random_buf(salt, sizeof(salt));
-   int rc = argon2id_hash_encoded(2, 19456, 1, password, strlen(password),
-      salt, sizeof(salt), 32, encoded, sizeof(encoded));
+   int rc = argon2id_hash_encoded(2, 19456, 1, password, strlen(password), salt, sizeof(salt), 32, encoded, sizeof(encoded));
    explicit_bzero(salt, sizeof(salt));
+
    if (rc != ARGON2_OK) {
       explicit_bzero(encoded, sizeof(encoded));
+
       return NULL;
    }
    char *stored = strdup(encoded);
    explicit_bzero(encoded, sizeof(encoded));
+
    return stored;
 }
 
 bool auth_password_verify_argon2id(const char *encoded, const char *password) {
-   if (!encoded || !password || strncmp(encoded, "$argon2id$v=19$", 15) ||
-       strlen(encoded) >= 256) {
+   if (!encoded || !password || strncmp(encoded, "$argon2id$v=19$", 15) || strlen(encoded) >= 256) {
       return false;
    }
+
    return argon2id_verify(encoded, password, strlen(password)) == ARGON2_OK;
 }
 

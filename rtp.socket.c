@@ -99,6 +99,7 @@ static void *ingress_thread(void *user) {
    }
    return NULL;
 }
+
 bool rr_rtp_socket_start_ingress(rr_rtp_socket_t *s) {
    if (!s) {
       return false;
@@ -133,6 +134,7 @@ bool rr_rtp_socket_start_ingress(rr_rtp_socket_t *s) {
 
    return true;
 }
+
 void rr_rtp_socket_ingress_stats(const rr_rtp_socket_t *s, unsigned *high_water, uint64_t *max_age_us) {
    if (high_water) {
       *high_water = s ? atomic_exchange_explicit((_Atomic unsigned *)&s->ingress.high_water, 0, memory_order_relaxed) : 0;
@@ -142,15 +144,18 @@ void rr_rtp_socket_ingress_stats(const rr_rtp_socket_t *s, unsigned *high_water,
       *max_age_us = s ? atomic_exchange_explicit((_Atomic uint64_t *) &s->ingress.max_age_us, 0, memory_order_relaxed) : 0;
    }
 }
+
 uint64_t rr_rtp_socket_ingress_dropped(const rr_rtp_socket_t *s) {
    return s ? atomic_load_explicit(&s->ingress.dropped, memory_order_relaxed) : 0;
 }
+
 void rr_rtp_socket_set_source_filter(rr_rtp_socket_t *s, rr_rtp_source_fn filter, void *context) {
    if (s) {
       s->source_filter = filter;
       s->filter_context = context;
    }
 }
+
 static bool address(const char *host, unsigned port, struct sockaddr_storage *out, socklen_t *length) {
    char service[16];
    snprintf(service, sizeof(service), "%u", port);
@@ -167,6 +172,7 @@ static bool address(const char *host, unsigned port, struct sockaddr_storage *ou
 
    return true;
 }
+
 rr_rtp_socket_t *rr_rtp_socket_open(const char *host, unsigned port) {
    rr_rtp_socket_t *s = calloc(1, sizeof(*s));
 
@@ -204,6 +210,7 @@ rr_rtp_socket_t *rr_rtp_socket_open(const char *host, unsigned port) {
 
    return s;
 }
+
 void rr_rtp_socket_detach(rr_rtp_attachment_t *peer) {
    if (!peer) {
       return;
@@ -211,6 +218,7 @@ void rr_rtp_socket_detach(rr_rtp_attachment_t *peer) {
    rr_rtp_free(peer->rtp);
    memset(peer, 0, sizeof(*peer));
 }
+
 void rr_rtp_socket_close(rr_rtp_socket_t *s) {
    if (!s) {
       return;
@@ -230,6 +238,7 @@ void rr_rtp_socket_close(rr_rtp_socket_t *s) {
    close(s->fd);
    free(s);
 }
+
 rr_rtp_attachment_t *rr_rtp_socket_attach(rr_rtp_socket_t *s, uint32_t ssrc, const uint8_t key[RR_RTP_KEY_LEN], bool encrypted, const char *endpoint, void *user
    ) {
    if (!s) {
@@ -274,6 +283,7 @@ rr_rtp_attachment_t *rr_rtp_socket_attach(rr_rtp_socket_t *s, uint32_t ssrc, con
 
    return NULL;
 }
+
 static bool send_packet(const uint8_t *packet, size_t length, void *user) {
    struct rr_rtp_attachment *p = user;
 
@@ -288,12 +298,15 @@ static bool send_packet(const uint8_t *packet, size_t length, void *user) {
 
    return p->address_length && sendto(p->socket->fd, packet, length, MSG_DONTWAIT, (struct sockaddr *)&p->address, p->address_length) == (ssize_t) length;
 }
+
 bool rr_rtp_socket_active(const rr_rtp_attachment_t *p, uint64_t now) {
    return p && p->rtp && p->last_seen && now >= p->last_seen && now - p->last_seen < 3000000;
 }
+
 bool rr_rtp_socket_send(rr_rtp_attachment_t *p, const void *frame, size_t length, uint64_t now) {
    return rr_rtp_socket_active(p, now) && rr_rtp_send(p->rtp, frame, length, now, send_packet, p);
 }
+
 void rr_rtp_socket_poll(rr_rtp_socket_t *s, uint64_t now, bool (*validate) (void *), rr_rtp_frame_fn frame) {
    if (!s) {
       return;
@@ -417,6 +430,7 @@ void rr_rtp_socket_poll(rr_rtp_socket_t *s, uint64_t now, bool (*validate) (void
       }
    }
 }
+
 #else
 void rr_rtp_socket_ingress_stats(const rr_rtp_socket_t *s, unsigned *high_water, uint64_t *max_age_us) {
    (void)s;
@@ -429,30 +443,36 @@ void rr_rtp_socket_ingress_stats(const rr_rtp_socket_t *s, unsigned *high_water,
       *max_age_us = 0;
    }
 }
+
 bool rr_rtp_socket_start_ingress(rr_rtp_socket_t *s) {
    (void)s;
 
    return false;
 }
+
 uint64_t rr_rtp_socket_ingress_dropped(const rr_rtp_socket_t *s) {
    (void)s;
 
    return 0;
 }
+
 void rr_rtp_socket_set_source_filter(rr_rtp_socket_t *s, rr_rtp_source_fn filter, void *context) {
    (void)s;
    (void)filter;
    (void)context;
 }
+
 rr_rtp_socket_t *rr_rtp_socket_open(const char *host, unsigned port) {
    (void)host;
    (void)port;
 
    return NULL;
 }
+
 void rr_rtp_socket_close(rr_rtp_socket_t *s) {
    (void)s;
 }
+
 rr_rtp_attachment_t *rr_rtp_socket_attach(rr_rtp_socket_t *s, uint32_t ssrc, const uint8_t key[RR_RTP_KEY_LEN], bool encrypted, const char *endpoint, void *user
    ) {
    (void)s;
@@ -464,15 +484,18 @@ rr_rtp_attachment_t *rr_rtp_socket_attach(rr_rtp_socket_t *s, uint32_t ssrc, con
 
    return NULL;
 }
+
 void rr_rtp_socket_detach(rr_rtp_attachment_t *p) {
    (void)p;
 }
+
 bool rr_rtp_socket_active(const rr_rtp_attachment_t *p, uint64_t now) {
    (void)p;
    (void)now;
 
    return false;
 }
+
 bool rr_rtp_socket_send(rr_rtp_attachment_t *p, const void *frame, size_t length, uint64_t now) {
    (void)p;
    (void)frame;
@@ -481,10 +504,12 @@ bool rr_rtp_socket_send(rr_rtp_attachment_t *p, const void *frame, size_t length
 
    return false;
 }
+
 void rr_rtp_socket_poll(rr_rtp_socket_t *s, uint64_t now, bool (*validate) (void *), rr_rtp_frame_fn frame) {
    (void)s;
    (void)now;
    (void)validate;
    (void)frame;
 }
+
 #endif

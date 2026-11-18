@@ -18,6 +18,7 @@ bool ws_send_dict(rrconn_t *from, rrconn_t *to, dict *d, int type) {
 
    return true;
 }
+
 void event_emit_dict(const char *event, rrconn_t *client, dict *d) {
    if (!strcmp(event, "rigctl")) {
       requests++;
@@ -26,6 +27,7 @@ void event_emit_dict(const char *event, rrconn_t *client, dict *d) {
       assert(!strcmp(dict_get(d, "rigctl.vfo", ""), "B"));
    }
 }
+
 int main(void) {
    cfg = dict_new();
    dict_add(cfg, "station.name", "authority");

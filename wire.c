@@ -178,6 +178,7 @@ static const char *wire_safe_label(const char *src, char *dst, size_t size) {
 
    return dst;
 }
+
 static dict *transform(dict *in, bool encode, const rr_wire_rule_t **selected) {
    const rr_wire_rule_t *rule = rule_for(in, encode);
 
@@ -380,6 +381,7 @@ static int wire_profile_compare(const void *a, const void *b) {
 
    return strcmp(left->operation, right->operation);
 }
+
 #endif
 
 /* Process-local parser instrumentation: fixed registry rows, no payload data or attacker-controlled labels. Snapshot before logging so log forwarding/re-entry

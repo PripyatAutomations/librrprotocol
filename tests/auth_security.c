@@ -51,6 +51,7 @@ static void test_argon2id_passwords(void) {
    free(one);
    free(two);
 }
+
 static void test_wire_password(void) {
    char *wire = compute_wire_password("abc", "nonce");
    assert(wire);
