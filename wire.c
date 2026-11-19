@@ -203,7 +203,7 @@ static dict *transform(dict *in, bool encode, const rr_wire_rule_t **selected) {
    }
 
    if (encode ? dict_add(out, "op", rule->operation) :
-      (dict_add(out, "msg.type", rule->type) || (rule->command && dict_add(out, rule->command_key, rule->command)))) {
+      (dict_add(out, "msg.type", rule->type) || (rule->command_key && rule->command && dict_add(out, rule->command_key, rule->command)))) {
       goto invalid;
    }
    int rank = 0;
