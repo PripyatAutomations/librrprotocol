@@ -89,6 +89,9 @@ int main(void) {
    char *domain_wire = rr_wire_encode(domain);
    assert(domain_wire);
    dict *domain_roundtrip = rr_wire_decode(domain_wire);
+   /* A commandless operation has only msg.type and its declared fields. */
+   assert(domain_roundtrip && fields(domain_roundtrip) == 4);
+   assert(dict_get_type(domain_roundtrip, "domain.cmd") == VAL_END);
    equivalent(domain, domain_roundtrip);
    dict_free(domain_roundtrip);
    free(domain_wire);
