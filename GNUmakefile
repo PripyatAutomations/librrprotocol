@@ -47,7 +47,7 @@ REAL_LIB := $(BUILD_DIR)/librrprotocol.so.$(SOVERSION).$(VERSION)
 SONAME := librrprotocol.so.$(SOVERSION)
 PC_FILE := $(BUILD_DIR)/librrprotocol.pc
 
-.PHONY: all check install uninstall clean distclean deb src-deb source-deb
+.PHONY: all test tests check install uninstall clean distclean deb src-deb source-deb
 all: check-boundary $(REAL_LIB) $(PC_FILE)
 
 $(BUILD_DIR)/include/librrprotocol $(BUILD_DIR)/generated/build_config.h &:
@@ -73,7 +73,7 @@ $(PC_FILE): GNUmakefile
 	    'Version: $(VERSION)' 'Requires.private: librustyaxe glib-2.0 gio-2.0 openssl' \
 	    'Libs: -L$${libdir} -lrrprotocol' 'Libs.private: -largon2' 'Cflags: -I$${includedir}' > $@
 
-check: all
+test tests check: all
 	@readelf -d $(REAL_LIB) | grep -q "SONAME.*$(SONAME)"
 	@test -L $(BUILD_DIR)/$(SONAME)
 	@test -f $(PC_FILE)
