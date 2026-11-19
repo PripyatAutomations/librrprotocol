@@ -575,7 +575,8 @@
         "file.readable": "readable",
         "file.writable": "writable",
         "file.error": "error",
-        "file.site-name": "file.site-name"
+        "file.site-name": "file.site-name",
+        "file.binary": "binary"
       }
     },
     {
