@@ -274,15 +274,6 @@ static const rr_wire_field_t wire_fields_3[] = {
       "auth.msg", "text"
    },
    {
-      "auth.method", "method"
-   },
-   {
-      "auth.new-password", "new-password"
-   },
-   {
-      "auth.reason", "reason"
-   },
-   {
       "auth.nonce", "nonce"
    },
    {
@@ -311,6 +302,15 @@ static const rr_wire_field_t wire_fields_3[] = {
    },
    {
       "auth.user", "user"
+   },
+   {
+      "auth.method", "method"
+   },
+   {
+      "auth.new-password", "new-password"
+   },
+   {
+      "auth.reason", "reason"
    },
 };
 
@@ -1102,6 +1102,9 @@ static const rr_wire_rule_t wire_rules[] = {
       "auth.authorized", "auth", "auth.cmd", "authorized", wire_fields_3, sizeof(wire_fields_3) / sizeof(wire_fields_3[0])
    },
    {
+      "auth.error", "auth", "auth.cmd", NULL, wire_fields_3, sizeof(wire_fields_3) / sizeof(wire_fields_3[0])
+   },
+   {
       "auth.change-password", "auth", "auth.cmd", "change-password", wire_fields_3, sizeof(wire_fields_3) / sizeof(wire_fields_3[0])
    },
    {
@@ -1109,9 +1112,6 @@ static const rr_wire_rule_t wire_rules[] = {
    },
    {
       "auth.password-change-failed", "auth", "auth.cmd", "password-change-failed", wire_fields_3, sizeof(wire_fields_3) / sizeof(wire_fields_3[0])
-   },
-   {
-      "auth.error", "auth", "auth.cmd", NULL, wire_fields_3, sizeof(wire_fields_3) / sizeof(wire_fields_3[0])
    },
    {
       "cat.freq", "cat", "cat.cmd", "freq", wire_fields_4, sizeof(wire_fields_4) / sizeof(wire_fields_4[0])
