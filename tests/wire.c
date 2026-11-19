@@ -44,7 +44,7 @@ static void equivalent(dict *a, dict *b) {
 }
 
 int main(void) {
-   FILE *input = fopen("librrprotocol/tests/wire-vectors.jsonl", "r");
+   FILE *input = fopen("tests/wire-vectors.jsonl", "r");
    assert(input);
    char *line = NULL;
    size_t capacity = 0;
@@ -128,6 +128,23 @@ int main(void) {
       free(wire);
       dict_free(auth);
    }
+
+   /* An upgraded native client may request FILE binary frame delivery,
+    * but the transfer itself remains independently authorized. */
+   dict *file = dict_new();
+   assert(file);
+   dict_add(file, "msg.type", "file");
+   dict_add(file, "file.cmd", "begin");
+   dict_add(file, "file.path", "/recordings/test.bin");
+   dict_add(file, "request.id", "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee");
+   dict_add_bool(file, "file.binary", true);
+   char *file_wire = rr_wire_encode(file);
+   assert(file_wire);
+   dict *file_roundtrip = rr_wire_decode(file_wire);
+   equivalent(file, file_roundtrip);
+   dict_free(file_roundtrip);
+   free(file_wire);
+   dict_free(file);
 
    dict *alias = dict_new();
    dict_add(alias, "msg.type", "auth");
