@@ -77,6 +77,8 @@ check: all
 	@readelf -d $(REAL_LIB) | grep -q "SONAME.*$(SONAME)"
 	@test -L $(BUILD_DIR)/$(SONAME)
 	@test -f $(PC_FILE)
+	@grep -Fqx 'Libs: -L$${libdir} -lrrprotocol' $(PC_FILE)
+	@grep -Fqx 'Cflags: -I$${includedir}' $(PC_FILE)
 	@echo "Protocol shared library, SONAME and pkg-config metadata verified."
 
 install: all
