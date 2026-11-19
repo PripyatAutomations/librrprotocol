@@ -80,6 +80,7 @@ test tests: all
 	@grep -Fqx 'Libs: -L$${libdir} -lrrprotocol' $(PC_FILE)
 	@grep -Fqx 'Cflags: -I$${includedir}' $(PC_FILE)
 	@echo "Protocol shared library, SONAME and pkg-config metadata verified."
+	@bash tests/test_wire.sh
 
 install: all
 	install -Dm755 $(REAL_LIB) "$(DESTDIR)$(LIBDIR)/$(notdir $(REAL_LIB))"
