@@ -960,6 +960,9 @@ static const rr_wire_field_t wire_fields_18[] = {
    {
       "file.site-name", "file.site-name"
    },
+   {
+      "file.binary", "binary"
+   },
 };
 
 static const rr_wire_field_t wire_fields_19[] = {
