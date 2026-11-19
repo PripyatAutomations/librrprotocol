@@ -3,8 +3,8 @@
 import json
 import sys
 from pathlib import Path
-root=Path(__file__).resolve().parents[2]
-schema=json.loads((root/'librrprotocol/wire-schema.json').read_text())
+root=Path(__file__).resolve().parents[1]
+schema=json.loads((root/'wire-schema.json').read_text())
 reserved = {'msg', 'cmd', 'object', 'property'}
 for group in schema['groups']:
  for field in group['fields'].values():
@@ -28,7 +28,7 @@ for i,g in enumerate(schema['groups']):
   vals=[json.dumps(op),json.dumps(g['type']),json.dumps(command_key) if command_key else 'NULL',json.dumps(cmd) if cmd else 'NULL',f'wire_fields_{i}',f'sizeof(wire_fields_{i}) / sizeof(wire_fields_{i}[0])']
   rows.append('   {'+', '.join(vals)+'},')
 rows.append('};')
-outputs={'librrprotocol/wire-version.h':c_license+'/* Generated from wire-schema.json. */\n#define RR_PROTOCOL_VERSION '+str(schema['version'])+'\n#define RR_WS_SUBPROTOCOL '+json.dumps(schema['websocket_subprotocol'])+'\n', 'librrprotocol/wire-registry.h':'\n'.join(rows)+'\n'}
+outputs={'wire-version.h':c_license+'/* Generated from wire-schema.json. */\n#define RR_PROTOCOL_VERSION '+str(schema['version'])+'\n#define RR_WS_SUBPROTOCOL '+json.dumps(schema['websocket_subprotocol'])+'\n', 'wire-registry.h':'\n'.join(rows)+'\n'}
 web_registry = root / 'www/js/webui.wire.registry.js'
 if web_registry.parent.is_dir():
  outputs['www/js/webui.wire.registry.js'] = '/* Generated from librrprotocol/wire-schema.json. */\nconst rrWireSchema = ' + json.dumps(schema,separators=(',',':')) + ';\nif (typeof module !== "undefined") module.exports = rrWireSchema;\n'
