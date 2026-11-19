@@ -27,7 +27,6 @@ librrprotocol_objs += traffic.o
 librrprotocol_objs += vfo.o
 librrprotocol_objs += wire.o
 #librrprotocol_objs += ws.audio.o
-#librrprotocol_objs += ws.file-xfer.o
 #librrprotocol_objs += ws.media.o
 #librrprotocol_objs += wsnew.o
 # This needs merged into various other files...
