@@ -288,6 +288,7 @@
         "msg.ts": "time",
         "serial.baud": "baud",
         "serial.error": "error",
+        "serial.kind": "kind",
         "serial.mode": "mode",
         "serial.name": "name",
         "serial.port": "port",
