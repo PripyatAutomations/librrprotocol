@@ -523,6 +523,9 @@ static const rr_wire_field_t wire_fields_6[] = {
       "serial.error", "error"
    },
    {
+      "serial.kind", "kind"
+   },
+   {
       "serial.mode", "mode"
    },
    {
