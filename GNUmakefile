@@ -13,7 +13,7 @@ INCLUDEDIR ?= $(PREFIX)/include
 BUILD_DIR ?= build
 DESTDIR ?=
 VERSION ?= $(strip $(shell cat .version))
-SOVERSION ?= 0
+SOVERSION ?= 1
 WITH_RTP ?= $(shell $(PKG_CONFIG) --exists libsrtp2 && echo true || echo false)
 
 include sources.mk
@@ -103,7 +103,7 @@ clean:
 distclean: clean
 	@if command -v dh_clean >/dev/null 2>&1; then dh_clean; fi
 	rm -rf debian/tmp debian/.debhelper debian/files debian/debhelper-build-stamp
-	rm -rf debian/librrprotocol0 debian/librrprotocol-dev
+	rm -rf debian/librrprotocol1 debian/librrprotocol-dev
 
 deb:
 	dpkg-buildpackage -b -us -uc
