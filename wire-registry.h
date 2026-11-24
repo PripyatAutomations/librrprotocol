@@ -988,6 +988,21 @@ static const rr_wire_field_t wire_fields_19[] = {
       "directory.fetched", "fetched"
    },
    {
+      "directory.published", "published"
+   },
+   {
+      "directory.published-age", "published-age"
+   },
+   {
+      "directory.last-attempt", "last-attempt"
+   },
+   {
+      "directory.last-http", "last-http"
+   },
+   {
+      "directory.last-curl", "last-curl"
+   },
+   {
       "directory.next-refresh", "next-refresh"
    },
    {
