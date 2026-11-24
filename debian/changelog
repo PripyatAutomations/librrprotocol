@@ -1,3 +1,9 @@
+librrprotocol (0.2.0-1) unstable; urgency=medium
+
+  * Rebuild for the RustyAxe ABI-1 account layout; bump protocol SONAME.
+
+ -- Pripyat Automations <dangerousdevices@istabpeople.com>  Mon, 23 Nov 2026 23:30:00 -0500
+
 librrprotocol (0.1.1-1) unstable; urgency=medium
 
   * Release upstream version 0.1.1.
