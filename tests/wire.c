@@ -79,6 +79,25 @@ int main(void) {
    fclose(input);
    free(line);
    assert(!rr_wire_encode(NULL) && !rr_wire_decode(NULL));
+   /* The receiver directory's upstream freshness and failure diagnostics are
+    * real wire fields, not local-only metadata; reject missing schema entries. */
+   dict *directory = dict_new();
+   assert(directory);
+   dict_add(directory, "msg.type", "receiver-directory");
+   dict_add(directory, "directory.cmd", "status");
+   dict_add_llong(directory, "directory.fetched", 1795482000);
+   dict_add_llong(directory, "directory.published", 1795481000);
+   dict_add_llong(directory, "directory.published-age", 1000);
+   dict_add_llong(directory, "directory.last-attempt", 1795482100);
+   dict_add_llong(directory, "directory.last-http", 200);
+   dict_add_llong(directory, "directory.last-curl", 0);
+   char *directory_wire = rr_wire_encode(directory);
+   assert(directory_wire);
+   dict *directory_roundtrip = rr_wire_decode(directory_wire);
+   equivalent(directory,directory_roundtrip);
+   dict_free(directory_roundtrip);
+   free(directory_wire);
+   dict_free(directory);
    /* The post-login domain announcement has no separate command field. */
    dict *domain = dict_new();
    assert(domain);
