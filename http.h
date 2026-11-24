@@ -66,7 +66,7 @@ struct mg_http_message;
 struct rr_user {
    char name[HTTP_USER_LEN + 1];
    char room[128];
-   char privs[200];
+   char privs[USER_PRIV_LEN + 1];
    time_t logged_in;
    time_t last_heard;
    uint32_t user_flags;
