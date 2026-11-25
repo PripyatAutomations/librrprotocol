@@ -837,6 +837,9 @@ static const rr_wire_field_t wire_fields_12[] = {
    {
       "notice.msg", "text"
    },
+   {
+      "notice.target", "target"
+   },
 };
 
 static const rr_wire_field_t wire_fields_13[] = {
