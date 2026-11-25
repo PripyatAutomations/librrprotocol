@@ -474,7 +474,8 @@
       },
       "fields": {
         "msg.ts": "time",
-        "notice.msg": "text"
+        "notice.msg": "text",
+        "notice.target": "target"
       }
     },
     {
