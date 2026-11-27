@@ -5,7 +5,7 @@ python3 tests/generate_wire.py --check
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 : "${CC:=cc}"
-"$CC" ${CFLAGS:-} -std=gnu23 -Ibuild/include -Ibuild/generated \
+"$CC" ${CFLAGS:-} -std=gnu2x -Ibuild/include -Ibuild/generated \
    $(pkg-config --cflags librustyaxe glib-2.0 gio-2.0 openssl) \
    tests/wire.c -Lbuild -Wl,-rpath,"$PWD/build" \
    -lrrprotocol $(pkg-config --libs librustyaxe glib-2.0 gio-2.0 openssl) \
