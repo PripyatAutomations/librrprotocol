@@ -4,6 +4,13 @@
 CC ?= cc
 CFLAGS += -std=gnu2x
 PKG_CONFIG ?= pkg-config
+# Diagnose a missing executable before probing installed development libraries.
+# Pure maintenance targets must remain usable without the build toolchain.
+ifneq ($(strip $(if $(MAKECMDGOALS),$(filter-out clean distclean uninstall gmatrix-clean src-deb source-deb,$(MAKECMDGOALS)),all)),)
+ifeq ($(shell $(PKG_CONFIG) --version >/dev/null 2>&1 && echo yes),)
+$(error Required build tool '$(PKG_CONFIG)' is missing or not executable. Install pkg-config (Debian/Devuan: apt install pkg-config; Fedora: dnf install pkgconf-pkg-config; Arch: pacman -S pkgconf))
+endif
+endif
 # Derive native distro layouts from the selected toolchain's pkg-config.
 # Explicit PREFIX/LIBDIR remain authoritative (including cross builds).
 BUILD_PC_PREFIX := $(shell $(PKG_CONFIG) --variable=prefix glib-2.0 2>/dev/null)
@@ -33,8 +40,9 @@ check-boundary:
 PUBLIC_HEADERS := $(filter-out %.internal.h internal.h,$(notdir $(wildcard *.h)))
 PACKAGES := librustyaxe glib-2.0 gio-2.0 openssl
 ifeq ($(filter clean distclean uninstall src-deb source-deb,$(MAKECMDGOALS)),)
-ifeq ($(shell $(PKG_CONFIG) --exists $(PACKAGES) && echo yes),)
-$(error Missing required development libraries: $(PACKAGES))
+MISSING_PC_PACKAGES := $(strip $(foreach pkg,$(PACKAGES),$(if $(shell $(PKG_CONFIG) --exists $(pkg) 2>/dev/null && echo yes),,$(pkg))))
+ifneq ($(MISSING_PC_PACKAGES),)
+$(error Missing pkg-config development dependencies: $(MISSING_PC_PACKAGES). Install the corresponding development packages or check PKG_CONFIG_PATH)
 endif
 endif
 RR_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PACKAGES)) -I$(BUILD_DIR)/include -I$(BUILD_DIR)/generated -DHOST_POSIX=1
